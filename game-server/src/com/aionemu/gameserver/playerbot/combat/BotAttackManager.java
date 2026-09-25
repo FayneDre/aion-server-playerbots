@@ -46,7 +46,7 @@ public class BotAttackManager {
 	}
 
 	/**
-	 * Performs a single auto attack if the target is reachable. Does nothing when it is out of range, since bots cannot move yet.
+	 * Performs a single auto attack if the target is reachable. Closing the distance is the caller's job.
 	 */
 	public static void autoAttack(Player bot, Creature target) {
 		if (isInAttackRange(bot, target) && GeoService.getInstance().canSee(bot, target)) {
@@ -56,7 +56,7 @@ public class BotAttackManager {
 		}
 	}
 
-	private static boolean isInAttackRange(Player bot, Creature target) {
+	public static boolean isInAttackRange(Player bot, Creature target) {
 		return PositionUtil.isInAttackRange(bot, target, bot.getGameStats().getAttackRange().getCurrent() / 1000f);
 	}
 }

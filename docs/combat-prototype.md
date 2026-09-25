@@ -14,9 +14,10 @@ Each milestone is independently demoable, ordered so the riskiest unknown is pro
 
 Autonomy lives in `PlayerBotAI`: a decision tick every second picks a target through `BotTargetSelector` when idle, and `handleAttack` triggers retaliation. It is on by default and toggled with `//bot auto <name>` — without that switch no behavior can be tested in isolation, since the bot always re-engages.
 
+Bots also move: they walk to a commanded point, chase a target out of weapon reach and return to their anchor, within the bounds described in [navigation-prototype.md](navigation-prototype.md). `BotTargetSelector` searches a 25 m radius rather than weapon range.
+
 What the prototype deliberately does not do yet:
 
-- **Move.** The engine has no pathfinding, so a bot only engages what is already within attack range. `BotTargetSelector` limits its search accordingly; widen it to a real search radius once navigation exists. This is the main blocker for everything else.
 - **Rotate skills per class** (M7). It casts the highest-id usable skill, which is a decent proxy for "strongest available" but not a real rotation.
 - **Anything outside combat** — no looting, resting, grouping, economy or social behavior.
 

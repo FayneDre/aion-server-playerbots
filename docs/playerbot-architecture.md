@@ -8,7 +8,7 @@ Bots are **real `Player` objects** driven by server-side AI, not NPCs wearing pl
 2. **Packet sending is already null-safe.** `utils/PacketSendUtility.java:75` guards with `if (player.isOnline())`, and `Player.isOnline()` is `getClientConnection() != null`. Every broadcast helper funnels through it, so a connectionless bot no-ops for itself while **nearby real players still receive its attack and cast packets**.
 3. **The existing AI managers cannot be reused.** `ai/manager/*` (`AttackManager`, `SkillAttackManager`, `SimpleAttackManager`, `FollowManager`, `WalkManager`) and every `ai/handler/*` are typed `NpcAI`, not `AbstractAI`. A `Player`-typed AI must re-implement their equivalents. They are small; `SimpleAttackManager` is the reference.
 
-## AI attachment: the one core patch
+## AI attachment: the first core patch
 
 `model/gameobjects/Creature.java:43` declares `private final AbstractAI<? extends Creature> ai;`, assigned in the constructor from `objectTemplate.getAiName()`. `PlayerCommonData extends CreatureTemplate` does not override `getAiName()`, so players get `AIEngine.DummyAI`. There is no `setAi()`.
 
@@ -62,17 +62,22 @@ com.aionemu.gameserver.playerbot/
     BotTargetSelector           Target picking via Player.getAggroList() / known list
     BotAttackManager            Player-typed re-implementation of SimpleAttackManager
     BotSkillManager             Cooldown/MP/range-aware skill selection and casting
+
+  movement/
+    BotMoveController           extends PlayerMoveController — legs, detours, stuck detection
+    BotGeoHelper                Corridor probing and sidestep search over GeoService
 ```
 
 The admin command lives **outside** core sources, at `game-server/data/handlers/admincommands/Bot.java` (runtime-compiled scripts): zero core diff.
 
-Future subsystems plug in as: auction house / shops → `economy/` plus new behaviors; legions → `social/`; RvR → a `squad/` coordinator above behavior selection; navigation → replace the straight-line move implementation behind the same interface.
+Future subsystems plug in as: auction house / shops → `economy/` plus new behaviors; legions → `social/`; RvR → a `squad/` coordinator above behavior selection; navigation → replace the reactive steering behind the same interface (see [navigation-prototype.md](navigation-prototype.md)).
 
 ## Core files touched
 
 | File | Change | Merge risk |
 |---|---|---|
 | `model/gameobjects/Creature.java` | `final` → `volatile` + `setAi()` | Minimal — these lines never change upstream |
+| `model/gameobjects/Creature.java` | `moveController` → `volatile` + `setMoveController()` | Minimal — same reasoning as `setAi()` |
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. Defer while the prototype uses constants. |
 
 Nothing else. `services/player/MultiClientingService.java:24` dereferences the connection's IP/MAC and would NPE — it needs no patch, because `PlayerBotEnterWorldService` simply never calls it.
@@ -101,4 +106,6 @@ Nothing else. `services/player/MultiClientingService.java:24` dereferences the c
 
 ## Not yet designed
 
-Autonomous navigation (the heaviest chantier — the engine has collision raycasts but no pathfinding; it gates outdoor PvP and RvR), groups, economy, legions, RvR mass coordination.
+Groups, economy, legions, RvR mass coordination.
+
+Navigation has a first reactive implementation, documented in [navigation-prototype.md](navigation-prototype.md); a navmesh and real path planning remain to be designed.

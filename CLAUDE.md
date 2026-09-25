@@ -42,12 +42,15 @@ game-server/src/com/aionemu/gameserver/playerbot/
 
 ### Main obstacle: no pathfinding
 
-`geoEngine` (`game-server/src/com/aionemu/gameserver/geoEngine/`) only provides collision/raycasting (line of sight, ground height) — no path planning. The only existing "paths" are fixed scripted waypoints (`spawnengine/WalkerGroup.java`) or fixed flight paths. **A real autonomous navigation system (raycast-based steering or navmesh) needs to be built from scratch** and heavily gates the outdoor PvP and RvR phases.
+`geoEngine` (`game-server/src/com/aionemu/gameserver/geoEngine/`) only provides collision/raycasting (line of sight, ground height) — no path planning. The only existing "paths" are fixed scripted waypoints (`spawnengine/WalkerGroup.java`) or fixed flight paths.
+
+Bots currently use **reactive steering** built on those raycasts: it handles open ground, slopes and single obstacles, and gives up on anything that needs real planning. A navmesh plus A\* is the next stage, and still gates the outdoor PvP and RvR phases. See [docs/navigation-prototype.md](docs/navigation-prototype.md).
 
 ### Design docs
 
-- [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the single core patch (`Creature.setAi()`) and its justification, reuse map, risks.
+- [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
 - [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.
+- [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
 
 ### Secondary obstacle: headless `Player` lifecycle
 

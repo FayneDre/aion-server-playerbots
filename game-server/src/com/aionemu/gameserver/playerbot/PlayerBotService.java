@@ -143,6 +143,8 @@ public class PlayerBotService {
 		if (!(bot.getMoveController() instanceof BotMoveController moveController))
 			return characterName + " has no bot move controller attached";
 
+		if (bot.getAi() instanceof PlayerBotAI botAi) // being sent somewhere makes it the bot's new home, otherwise it would walk back
+			botAi.setAnchor(commander.getX(), commander.getY(), commander.getZ());
 		if (!moveController.moveToPoint(commander.getX(), commander.getY(), commander.getZ()))
 			return characterName + " is blocked by an obstacle";
 		return characterName + " is on its way";

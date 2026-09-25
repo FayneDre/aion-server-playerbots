@@ -1,5 +1,7 @@
 package com.aionemu.gameserver.playerbot.ai;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 import org.slf4j.Logger;
@@ -13,6 +15,7 @@ import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
 
 /**
@@ -24,6 +27,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final Logger log = LoggerFactory.getLogger(PlayerBotAI.class);
 
 	private static final int THINK_INTERVAL_MILLIS = 1000;
+	/** A chase is abandoned after this long, whatever the reason it is not getting anywhere. */
+	private static final long MAX_CHASE_MILLIS = 15000;
+	/** How far from its anchor a bot may be dragged before it breaks off and comes back. */
+	private static final float LEASH_DISTANCE = 40f;
+	/** A chased target is only given a new route once it has moved this far, instead of on every tick. */
+	private static final float RETARGET_STEP = 2f;
+	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
+	private static final long UNREACHABLE_MILLIS = 10000;
+	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
+	private static final float ANCHOR_TOLERANCE = 5f;
 
 	/** Guards the scheduled tasks against concurrent starts and stops, since events and ticks run on different pool threads. */
 	private final Object combatLock = new Object();
@@ -31,8 +44,22 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private ScheduledFuture<?> thinkTask;
 	private volatile boolean autonomous = true;
 
+	/** Where the bot belongs: it fights around this point and returns to it rather than following a target across the map. */
+	private volatile float anchorX, anchorY, anchorZ;
+	private volatile long chaseStartTime;
+	private final Map<Integer, Long> unreachableTargets = new ConcurrentHashMap<>();
+
 	public PlayerBotAI(Player owner) {
 		super(owner);
+	}
+
+	/**
+	 * Sets the point the bot fights around and returns to when a chase drags it too far.
+	 */
+	public void setAnchor(float x, float y, float z) {
+		anchorX = x;
+		anchorY = y;
+		anchorZ = z;
 	}
 
 	public boolean isAutonomous() {
@@ -51,9 +78,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
 		if (autonomous && !isAttacking() && !getOwner().isDead() && getOwner().isSpawned()) {
-			Creature target = BotTargetSelector.findTarget(getOwner());
+			Creature target = BotTargetSelector.findTarget(getOwner(), this::isUnreachable);
 			if (target != null)
 				startAttacking(target);
+			else
+				returnToAnchor();
 		}
 		synchronized (combatLock) {
 			if (thinkTask != null) // still spawned
@@ -84,6 +113,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void cancelCombat() {
 		synchronized (combatLock) {
 			stopAttackTask();
+			chaseStartTime = 0;
+			stopMoving();
 			BotAttackManager.leaveAttackMode(getOwner());
 			getOwner().setTarget(null);
 		}
@@ -104,8 +135,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 
-		if (bot.getCastingSkill() == null && !BotSkillManager.tryCastSkill(bot, target))
-			BotAttackManager.autoAttack(bot, target);
+		if (bot.getCastingSkill() != null) {
+			// casting roots a real player, so the bot neither moves nor starts another action until the cast is over
+		} else if (BotAttackManager.isInAttackRange(bot, target)) {
+			chaseStartTime = 0;
+			stopMoving();
+			if (!BotSkillManager.tryCastSkill(bot, target))
+				BotAttackManager.autoAttack(bot, target);
+		} else if (!chase(target)) {
+			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
+			unreachableTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
+			stopAttacking();
+			return;
+		}
 
 		synchronized (combatLock) {
 			if (attackTask != null) // not stopped while we were attacking
@@ -122,6 +164,53 @@ public class PlayerBotAI extends AITemplate<Player> {
 			attackTask.cancel(false);
 			attackTask = null;
 		}
+	}
+
+	/**
+	 * Walks towards a target that is out of weapon reach.
+	 * <p>
+	 * Every bound here exists because reactive steering cannot guarantee it will ever arrive: the leash keeps a fleeing target from dragging the bot
+	 * across the map, the timeout ends chases that make no progress, and the move controller reports geometry it could not get through.
+	 *
+	 * @return false if the bot should give this target up.
+	 */
+	private boolean chase(Creature target) {
+		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
+			return false;
+		long now = System.currentTimeMillis();
+		if (chaseStartTime == 0)
+			chaseStartTime = now;
+		else if (now - chaseStartTime > MAX_CHASE_MILLIS)
+			return false;
+		if (PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE)
+			return false;
+
+		if (moveController.isInMove() && moveController.isHeadingTo(target.getX(), target.getY(), RETARGET_STEP))
+			return true; // already on its way, and the target has not moved enough to be worth a new route
+		return moveController.moveToPoint(target.getX(), target.getY(), target.getZ());
+	}
+
+	private void stopMoving() {
+		if (getOwner().getMoveController() instanceof BotMoveController moveController && moveController.isInMove())
+			moveController.stop();
+	}
+
+	/** Brings the bot back where it belongs once it has nothing to fight, so a chase does not slowly displace it. */
+	private void returnToAnchor() {
+		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
+			return;
+		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > ANCHOR_TOLERANCE)
+			moveController.moveToPoint(anchorX, anchorY, anchorZ);
+	}
+
+	private boolean isUnreachable(Creature target) {
+		Long until = unreachableTargets.get(target.getObjectId());
+		if (until == null)
+			return false;
+		if (until > System.currentTimeMillis())
+			return true;
+		unreachableTargets.remove(target.getObjectId());
+		return false;
 	}
 
 	@Override
@@ -141,9 +230,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	@Override
+	protected void handleMoveValidate() {
+		// the attack tick only runs at weapon speed, far too slow to notice the target came into reach while running at it
+		if (chaseStartTime != 0 && getOwner().getTarget() instanceof Creature target && BotAttackManager.isInAttackRange(getOwner(), target))
+			stopMoving();
+	}
+
+	@Override
 	protected void handleSpawned() {
 		// without leaving AIState.CREATED, every event except (BEFORE_)SPAWNED is filtered out
 		setStateIfNot(AIState.IDLE);
+		setAnchor(getOwner().getX(), getOwner().getY(), getOwner().getZ());
 		synchronized (combatLock) {
 			scheduleBotTick();
 		}

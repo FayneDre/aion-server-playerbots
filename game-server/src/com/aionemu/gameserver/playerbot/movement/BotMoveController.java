@@ -78,6 +78,11 @@ public class BotMoveController extends PlayerMoveController {
 		return blocked;
 	}
 
+	/** @return true if the bot is already on its way to that point, so a moving target does not need a new route on every tick. */
+	public boolean isHeadingTo(float x, float y, float tolerance) {
+		return hasGoal && PositionUtil.getDistance(goalX, goalY, x, y) < tolerance;
+	}
+
 	/**
 	 * Called on arrival: continues towards the goal if it is further than the leg just walked, otherwise ends the movement.
 	 *
