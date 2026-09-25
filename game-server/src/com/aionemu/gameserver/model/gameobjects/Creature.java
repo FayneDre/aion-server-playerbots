@@ -45,7 +45,7 @@ public abstract class Creature extends VisibleObject {
 	private CreatureGameStats<? extends Creature> gameStats;
 	private CreatureLifeStats<? extends Creature> lifeStats;
 	private EffectController effectController;
-	protected CreatureMoveController<? extends Creature> moveController;
+	protected volatile CreatureMoveController<? extends Creature> moveController;
 	private int state = CreatureState.ACTIVE.getId();
 	private int visualState = CreatureVisualState.VISIBLE.getId();
 	private int seeState = CreatureSeeState.NORMAL.getId();
@@ -72,6 +72,14 @@ public abstract class Creature extends VisibleObject {
 
 	public CreatureMoveController<? extends Creature> getMoveController() {
 		return moveController;
+	}
+
+	/**
+	 * Replaces the move controller assigned at construction time. Used to drive player bots, since server side movement of players is otherwise
+	 * restricted to fear and confuse effects.
+	 */
+	public void setMoveController(CreatureMoveController<? extends Creature> moveController) {
+		this.moveController = Objects.requireNonNull(moveController);
 	}
 
 	protected AggroList createAggroList() {

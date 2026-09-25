@@ -12,6 +12,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
+import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
 
 /**
@@ -121,6 +122,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 			attackTask.cancel(false);
 			attackTask = null;
 		}
+	}
+
+	@Override
+	public boolean isDestinationReached() {
+		// AITemplate returns false by default, which would prevent MoveTaskManager from ever firing MOVE_ARRIVED
+		return !(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isArrived();
+	}
+
+	@Override
+	protected void handleMoveArrived() {
+		log.info("Bot {} arrived at destination", getOwner().getName());
 	}
 
 	@Override

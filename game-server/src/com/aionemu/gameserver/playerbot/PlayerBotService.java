@@ -10,6 +10,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
+import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.world.World;
@@ -130,6 +131,20 @@ public class PlayerBotService {
 
 		botAi.setAutonomous(!botAi.isAutonomous());
 		return characterName + " autonomy " + (botAi.isAutonomous() ? "on" : "off");
+	}
+
+	/**
+	 * Makes the bot walk to the given player's position.
+	 */
+	public String come(String characterName, Player commander) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+		if (!(bot.getMoveController() instanceof BotMoveController moveController))
+			return characterName + " has no bot move controller attached";
+
+		moveController.moveToPoint(commander.getX(), commander.getY(), commander.getZ());
+		return characterName + " is on its way";
 	}
 
 	public String listSpawnedBots() {
