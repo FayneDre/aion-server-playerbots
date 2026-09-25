@@ -3,6 +3,7 @@ package com.aionemu.gameserver.model.gameobjects;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.aionemu.gameserver.ai.AIEngine;
@@ -40,7 +41,7 @@ import com.aionemu.gameserver.world.zone.ZoneName;
  */
 public abstract class Creature extends VisibleObject {
 
-	private final AbstractAI<? extends Creature> ai;
+	private volatile AbstractAI<? extends Creature> ai;
 	private CreatureGameStats<? extends Creature> gameStats;
 	private CreatureLifeStats<? extends Creature> lifeStats;
 	private EffectController effectController;
@@ -110,6 +111,13 @@ public abstract class Creature extends VisibleObject {
 
 	public AbstractAI<? extends Creature> getAi() {
 		return ai;
+	}
+
+	/**
+	 * Replaces the AI assigned at construction time. Used to drive player bots, since players have no AI name in their template.
+	 */
+	public void setAi(AbstractAI<? extends Creature> ai) {
+		this.ai = Objects.requireNonNull(ai);
 	}
 
 	public boolean isDead() {

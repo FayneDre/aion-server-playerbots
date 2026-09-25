@@ -1,5 +1,6 @@
 package com.aionemu.gameserver.playerbot.lifecycle;
 
+import com.aionemu.gameserver.ai.event.AIEventType;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 
 /**
@@ -14,6 +15,7 @@ public class PlayerBotLeaveWorldService {
 	}
 
 	public static void leaveWorld(Player bot) {
+		bot.getAi().onGeneralEvent(AIEventType.DESPAWNED);
 		bot.getController().cancelCurrentSkill(null);
 		bot.getEffectController().removeAllEffects();
 		bot.getLifeStats().cancelAllTasks();

@@ -76,6 +76,19 @@ public class PlayerBotService {
 		return "Despawned " + bot.getName() + (stillInWorld ? " but it is still registered in the world!" : "");
 	}
 
+	/**
+	 * Answers yes to a pending question window, which a bot can never answer itself since it has no client.
+	 */
+	public String acceptRequest(String characterName, int questionId) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+
+		if (!bot.getResponseRequester().respond(questionId, 1))
+			return characterName + " has no pending request of that type";
+		return characterName + " accepted";
+	}
+
 	public String listSpawnedBots() {
 		if (spawnedBots.isEmpty())
 			return "No bots spawned";

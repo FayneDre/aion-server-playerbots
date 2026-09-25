@@ -3,6 +3,7 @@ package admincommands;
 import java.util.function.Function;
 
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
 import com.aionemu.gameserver.utils.chathandlers.AdminCommand;
 
@@ -16,6 +17,7 @@ public class Bot extends AdminCommand {
 			load <characterName> - Loads a bot character from the database without spawning it.
 			spawn <characterName> - Loads a bot character and spawns it next to you.
 			despawn <characterName> - Removes a spawned bot from the world.
+			duel <characterName> - Makes the bot accept your pending duel request.
 			list - Lists all currently spawned bots.
 			""");
 	}
@@ -31,6 +33,8 @@ public class Bot extends AdminCommand {
 			case "load" -> withName(admin, params, name -> PlayerBotService.getInstance().describeLoadedBot(name));
 			case "spawn" -> withName(admin, params, name -> PlayerBotService.getInstance().spawn(name, admin));
 			case "despawn" -> withName(admin, params, name -> PlayerBotService.getInstance().despawn(name));
+			case "duel" -> withName(admin, params,
+				name -> PlayerBotService.getInstance().acceptRequest(name, SM_QUESTION_WINDOW.STR_DUEL_DO_YOU_ACCEPT_REQUEST));
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
 			default -> sendInfo(admin);
 		}
