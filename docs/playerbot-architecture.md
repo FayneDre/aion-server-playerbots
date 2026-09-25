@@ -41,6 +41,8 @@ The engine fires AI events on any `Creature`, so an attached bot AI receives, wi
 
 Events dispatched via `forEachNpc(...)` (`CREATURE_SEE`, `CREATURE_MOVED`, `CREATURE_NEEDS_SUPPORT`) are Npc-filtered and will **not** reach bots.
 
+Neither will **`DIED`, `SPAWNED` and `DESPAWNED`**: they are fired from `NpcController` only, because real players carry a dummy AI nobody ever needed to notify. `PlayerController.onDie` says nothing to the AI. Bots therefore fire their own spawn/despawn events from the lifecycle services, and notice death from the decision tick (`PlayerBotAI.handleDeath`) rather than patching a core file upstream changes often.
+
 ## Package layout
 
 ```text

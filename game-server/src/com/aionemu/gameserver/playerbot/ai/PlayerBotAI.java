@@ -46,6 +46,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private final Object combatLock = new Object();
 	private ScheduledFuture<?> attackTask;
 	private ScheduledFuture<?> thinkTask;
+	/** Non null between death and resurrection, which also marks the death as already handled. */
+	private ScheduledFuture<?> reviveTask;
 	private volatile boolean autonomous = true;
 
 	/** Where the bot belongs: it fights around this point and returns to it rather than following a target across the map. */
@@ -81,7 +83,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
-		if (autonomous && !isAttacking() && !getOwner().isDead() && getOwner().isSpawned()) {
+		if (getOwner().isSpawned() && getOwner().isDead())
+			handleDeath();
+		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
 			Creature target = BotTargetSelector.findTarget(getOwner(), this::isUnreachable);
 			if (target != null)
 				startAttacking(target);
@@ -261,11 +265,25 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	@Override
 	protected void handleDied() {
+		handleDeath();
+	}
+
+	/**
+	 * Reacts to the bot being dead, at most once per death.
+	 * <p>
+	 * The engine only fires {@code AIEventType.DIED} from {@code NpcController}: {@code PlayerController.onDie} never notifies the AI, since real
+	 * players have a dummy one. Rather than patch a core file upstream changes often, the decision tick notices the death itself.
+	 */
+	private void handleDeath() {
+		synchronized (combatLock) {
+			if (reviveTask != null) // already dealt with
+				return;
+			// nobody will ever click the resurrection window for a bot, so without this it lies dead forever
+			reviveTask = ThreadPoolManager.getInstance().schedule(this::revive, REVIVE_DELAY_MILLIS);
+		}
 		cancelCombat();
 		setStateIfNot(AIState.DIED);
 		log.info("Bot {} died", getOwner().getName());
-		// nobody will ever click the resurrection window for a bot, so without this it lies dead forever
-		ThreadPoolManager.getInstance().schedule(this::revive, REVIVE_DELAY_MILLIS);
 	}
 
 	/**
@@ -274,6 +292,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private void revive() {
 		Player bot = getOwner();
+		synchronized (combatLock) {
+			reviveTask = null;
+		}
 		if (!bot.isSpawned() || !bot.isDead())
 			return;
 		PlayerReviveService.revive(bot, 25, 25, true, 0);
@@ -288,6 +309,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 			if (thinkTask != null) {
 				thinkTask.cancel(false);
 				thinkTask = null;
+			}
+			if (reviveTask != null) {
+				reviveTask.cancel(false);
+				reviveTask = null;
 			}
 		}
 		cancelCombat();
