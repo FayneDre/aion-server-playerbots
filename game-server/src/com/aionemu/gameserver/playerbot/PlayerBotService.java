@@ -143,7 +143,8 @@ public class PlayerBotService {
 		if (!(bot.getMoveController() instanceof BotMoveController moveController))
 			return characterName + " has no bot move controller attached";
 
-		moveController.moveToPoint(commander.getX(), commander.getY(), commander.getZ());
+		if (!moveController.moveToPoint(commander.getX(), commander.getY(), commander.getZ()))
+			return characterName + " is blocked by an obstacle";
 		return characterName + " is on its way";
 	}
 

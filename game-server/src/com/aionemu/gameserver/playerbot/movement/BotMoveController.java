@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot.movement;
 
 import com.aionemu.gameserver.controllers.movement.PlayerMoveController;
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.EmotionType;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
@@ -37,7 +38,20 @@ public class BotMoveController extends PlayerMoveController {
 	/**
 	 * Heads towards the given point, starting to move if idle.
 	 */
-	public void moveToPoint(float x, float y, float z) {
+	/**
+	 * Heads towards the given point, stopping short of any obstacle in the way.
+	 *
+	 * @return false if an obstacle blocks the bot right away, in which case it does not move at all.
+	 */
+	public boolean moveToPoint(float x, float y, float z) {
+		Vector3f reachable = BotGeoHelper.reachablePointToward(owner, x, y, z);
+		if (!BotGeoHelper.isWorthMovingTo(owner, reachable))
+			return false;
+		moveToReachablePoint(reachable.getX(), reachable.getY(), reachable.getZ());
+		return true;
+	}
+
+	private void moveToReachablePoint(float x, float y, float z) {
 		boolean destinationChanged = x != getTargetX2() || y != getTargetY2() || z != getTargetZ2();
 		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
 		if (!started.get()) {
