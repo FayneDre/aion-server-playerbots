@@ -1,28 +1,33 @@
 <#
 .SYNOPSIS
-    Starts the local Aion server stack, each server in its own window.
+    Starts the local Aion server stack in dependency order, each server in its own window.
 
 .DESCRIPTION
-    Starts the login server first, waits for it to accept game server connections, then the game server.
-    The chat server is optional and only needed for in-game chat channels.
+    Order matters: the game server connects to both the chat server and the login server on startup,
+    so they must already be listening. Each step waits for the next server's port to actually accept
+    connections instead of sleeping for a fixed duration.
+
+      chat-server   port 9021 (game server connections)
+      login-server  port 9014 (game server connections)
+      game-server   port 7777 (game clients)
 
 .PARAMETER ServerRoot
     Root of the server installation. Defaults to the AION_SERVER_HOME environment variable.
 
-.PARAMETER WithChat
-    Also start the chat server.
+.PARAMETER SkipChat
+    Do not start the chat server (in-game chat channels will not work).
 
-.PARAMETER LoginDelaySeconds
-    Seconds to wait after starting the login server before starting the game server.
+.PARAMETER TimeoutSeconds
+    How long to wait for each server to start listening before giving up.
 
 .EXAMPLE
     .\tools\start-server.ps1
-    .\tools\start-server.ps1 -WithChat
+    .\tools\start-server.ps1 -SkipChat
 #>
 param(
     [string]$ServerRoot = $env:AION_SERVER_HOME,
-    [switch]$WithChat,
-    [int]$LoginDelaySeconds = 8
+    [switch]$SkipChat,
+    [int]$TimeoutSeconds = 120
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,23 +36,40 @@ if (-not $ServerRoot) {
     throw "No server path. Set the AION_SERVER_HOME environment variable or pass -ServerRoot."
 }
 
-function Start-AionServer([string]$name) {
-    $folder = Join-Path $ServerRoot $name
+function Test-PortListening([int]$Port) {
+    return [bool](Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+}
+
+function Start-AionServer([string]$Name, [int]$Port) {
+    if (Test-PortListening $Port) {
+        Write-Host "$Name already running (port $Port)" -ForegroundColor Yellow
+        return
+    }
+
+    $folder = Join-Path $ServerRoot $Name
     $script = Join-Path $folder 'start.bat'
     if (-not (Test-Path $script)) {
         throw "Not found: $script"
     }
+
+    Write-Host "Starting $Name..." -ForegroundColor Cyan
     Start-Process -FilePath $script -WorkingDirectory $folder
-    Write-Host "Started $name" -ForegroundColor Green
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-PortListening $Port) {
+            Write-Host "$Name is up (port $Port)" -ForegroundColor Green
+            return
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    throw "$Name did not start listening on port $Port within $TimeoutSeconds seconds. Check its window for errors."
 }
 
-Start-AionServer 'login-server'
-
-Write-Host "Waiting ${LoginDelaySeconds}s for the login server..." -ForegroundColor Cyan
-Start-Sleep -Seconds $LoginDelaySeconds
-
-if ($WithChat) {
-    Start-AionServer 'chat-server'
+if (-not $SkipChat) {
+    Start-AionServer 'chat-server' 9021
 }
+Start-AionServer 'login-server' 9014
+Start-AionServer 'game-server' 7777
 
-Start-AionServer 'game-server'
+Write-Host 'Server stack is up.' -ForegroundColor Green
