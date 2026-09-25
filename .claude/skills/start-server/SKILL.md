@@ -27,6 +27,18 @@ The game server connects to both the chat server and the login server while star
 
 The script starts each one, then polls until its port accepts connections before moving on. A server already listening is left alone rather than started twice.
 
+## Stopping the server
+
+**Never kill the game server process.** It saves player data (positions, inventories, game time since the last periodic save) from a JVM shutdown hook that only runs on `System.exit` or a console CTRL+C. `Stop-Process` and `taskkill /F` call TerminateProcess, which skips it entirely and silently loses data.
+
+```powershell
+.\tools\stop-server.ps1
+```
+
+It sends a real CTRL+C (via `tools/send-ctrl-c.ps1`, which must run in its own process because attaching to another console detaches the caller from its own) and waits for the exit. Shutdown is immediate when only staff is online, otherwise the server announces it and waits `gameserver.shutdown.delay` seconds (120 by default).
+
+`deploy.ps1 -Restart` uses this path, so redeploying never loses data.
+
 ## When a server fails to start
 
 The script throws after the timeout and names the server. Its own window stays open with the stack trace. Common causes:

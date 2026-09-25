@@ -51,11 +51,8 @@ if ($gameServerProcess) {
     if (-not $Restart) {
         throw "The game server is running (PID $($gameServerProcess.ProcessId)). Stop it first, or re-run with -Restart."
     }
-    Write-Host "Stopping the game server (PID $($gameServerProcess.ProcessId))..." -ForegroundColor Cyan
-    Stop-Process -Id $gameServerProcess.ProcessId -Force
-    while (Get-NetTCPConnection -State Listen -LocalPort 7777 -ErrorAction SilentlyContinue) {
-        Start-Sleep -Milliseconds 300
-    }
+    # never kill it: the JVM shutdown hook is what saves player data
+    & (Join-Path $PSScriptRoot 'stop-server.ps1')
 }
 
 if (-not $SkipBuild) {
