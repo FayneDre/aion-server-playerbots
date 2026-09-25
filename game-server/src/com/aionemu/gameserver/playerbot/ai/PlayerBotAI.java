@@ -132,9 +132,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	@Override
 	protected void handleMoveArrived() {
-		if (getOwner().getMoveController() instanceof BotMoveController moveController && moveController.continueToGoal())
+		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
+			return;
+		if (moveController.continueToGoal())
 			return; // the goal is further away, another leg was started
-		log.info("Bot {} arrived at destination", getOwner().getName());
+		if (!moveController.isBlocked()) // being blocked is logged where it is detected
+			log.info("Bot {} arrived at destination", getOwner().getName());
 	}
 
 	@Override

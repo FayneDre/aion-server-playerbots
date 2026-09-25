@@ -1,5 +1,8 @@
 package com.aionemu.gameserver.playerbot.movement;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.aionemu.gameserver.controllers.movement.PlayerMoveController;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.EmotionType;
@@ -8,6 +11,7 @@ import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
+import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
 import com.aionemu.gameserver.taskmanager.tasks.MoveTaskManager;
 import com.aionemu.gameserver.utils.PacketSendUtility;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -16,42 +20,62 @@ import com.aionemu.gameserver.world.World;
 import com.aionemu.gameserver.world.geo.GeoService;
 
 /**
- * Moves a bot in a straight line towards a destination.
+ * Moves a bot towards a destination, walking around obstacles in the way.
  * <p>
  * {@link com.aionemu.gameserver.controllers.movement.PlayableMoveController} already implements the right interpolation, but gates it behind a
  * private {@code isControlled()} that only allows server driven movement under fear or confuse. This subclass overrides the two public methods that
  * consult it. Registration goes to {@link MoveTaskManager} rather than PlayerMoveTaskManager, because only the former reports arrival and updates
  * zones.
+ * <p>
+ * There is no pathfinding in this engine, so routing is reactive: walk as far towards the goal as the ground allows, sidestep when something blocks
+ * the way, and give up when that stops making headway. The last part is not optional, since reactive steering always loses in concave geometry.
  */
 public class BotMoveController extends PlayerMoveController {
+
+	private static final Logger log = LoggerFactory.getLogger(BotMoveController.class);
 
 	private static final float ARRIVE_OFFSET = 0.5f;
 	/** Ray casts are not free, so the ground is only sampled a few times per second rather than on every 200 ms tick. */
 	private static final long GEO_Z_UPDATE_INTERVAL = 500;
+	/** How much closer to the goal the bot must get for the route to count as progressing. */
+	private static final float PROGRESS_STEP = 1.0f;
+	/** Without that progress, the route is abandoned rather than letting the bot grind against an obstacle forever. */
+	private static final long PROGRESS_TIMEOUT = 5000;
 
 	private long nextGeoZUpdate;
 	/** Final destination, which may be several legs away from the point currently being walked to. */
 	private volatile float goalX, goalY, goalZ;
 	private volatile boolean hasGoal;
+	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
+	private int detourSide;
+	private double closestToGoal;
+	private long lastProgressTime;
+	private volatile boolean blocked;
 
 	public BotMoveController(Player owner) {
 		super(owner);
 	}
 
 	/**
-	 * Heads towards the given point, starting to move if idle.
-	 */
-	/**
-	 * Walks towards the given point, stopping short of any obstacle in the way. Long routes are covered in successive legs.
+	 * Walks towards the given point, going around obstacles in the way. Long routes are covered in successive legs.
 	 *
-	 * @return false if an obstacle blocks the bot right away, in which case it does not move at all.
+	 * @return false if the bot is walled in, in which case it does not move at all.
 	 */
 	public boolean moveToPoint(float x, float y, float z) {
 		goalX = x;
 		goalY = y;
 		goalZ = z;
 		hasGoal = true;
+		blocked = false;
+		detourSide = 0;
+		closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), x, y);
+		lastProgressTime = System.currentTimeMillis();
 		return startNextLeg();
+	}
+
+	/** @return true if the last route was abandoned because the bot could not find a way through. */
+	public boolean isBlocked() {
+		return blocked;
 	}
 
 	/**
@@ -72,11 +96,19 @@ public class BotMoveController extends PlayerMoveController {
 			return false;
 		}
 		Vector3f reachable = BotGeoHelper.reachablePointToward(owner, goalX, goalY, goalZ);
-		if (!BotGeoHelper.isWorthMovingTo(owner, reachable)) {
+		if (BotGeoHelper.isWorthMovingTo(owner, reachable)) {
+			moveToReachablePoint(reachable.getX(), reachable.getY(), reachable.getZ());
+			return true;
+		}
+		Detour detour = BotGeoHelper.detourPointToward(owner, goalX, goalY, goalZ, detourSide);
+		if (detour == null) {
+			log.info("Bot {} is walled in and gives up moving", owner.getName());
+			blocked = true;
 			hasGoal = false;
 			return false;
 		}
-		moveToReachablePoint(reachable.getX(), reachable.getY(), reachable.getZ());
+		detourSide = detour.side();
+		moveToReachablePoint(detour.point().getX(), detour.point().getY(), detour.point().getZ());
 		return true;
 	}
 
@@ -146,6 +178,26 @@ public class BotMoveController extends PlayerMoveController {
 		float newY = (getTargetY2() - y) * fraction + y;
 		World.getInstance().updatePosition(owner, newX, newY, groundZ(newX, newY, (getTargetZ2() - z) * fraction + z), heading, false);
 		updateLastMove();
+		checkProgress();
+	}
+
+	/**
+	 * Abandons the route once the bot stops getting closer to its goal. Sidestepping a single obstacle recovers on its own, but a dead end or a U
+	 * shaped corridor makes reactive steering bounce between the same two detours indefinitely, which this is the only defence against.
+	 */
+	private void checkProgress() {
+		if (!hasGoal)
+			return;
+		double distanceToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
+		long now = System.currentTimeMillis();
+		if (distanceToGoal < closestToGoal - PROGRESS_STEP) {
+			closestToGoal = distanceToGoal;
+			lastProgressTime = now;
+		} else if (now - lastProgressTime > PROGRESS_TIMEOUT) {
+			log.info("Bot {} makes no headway towards its goal and gives up moving", owner.getName());
+			blocked = true;
+			stop();
+		}
 	}
 
 	/**
