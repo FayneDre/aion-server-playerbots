@@ -10,6 +10,7 @@ import com.aionemu.gameserver.ai.AITemplate;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
+import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
 
 /**
@@ -59,15 +60,20 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	private void attackTick() {
-		Creature target = getOwner().getTarget() instanceof Creature creature ? creature : null;
-		if (BotAttackManager.attackTick(getOwner(), target)) {
-			synchronized (combatLock) {
-				if (attackTask != null) // not stopped while we were attacking
-					scheduleAttackTick(getOwner().getGameStats().getAttackSpeed().getCurrent());
-			}
-		} else {
-			log.info("Bot {} stops attacking", getOwner().getName());
+		Player bot = getOwner();
+		Creature target = bot.getTarget() instanceof Creature creature ? creature : null;
+		if (!BotAttackManager.canKeepFighting(bot, target)) {
+			log.info("Bot {} stops attacking", bot.getName());
 			stopAttacking();
+			return;
+		}
+
+		if (bot.getCastingSkill() == null && !BotSkillManager.tryCastSkill(bot, target))
+			BotAttackManager.autoAttack(bot, target);
+
+		synchronized (combatLock) {
+			if (attackTask != null) // not stopped while we were attacking
+				scheduleAttackTick(bot.getGameStats().getAttackSpeed().getCurrent());
 		}
 	}
 

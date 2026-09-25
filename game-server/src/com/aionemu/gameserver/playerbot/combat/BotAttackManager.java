@@ -37,22 +37,23 @@ public class BotAttackManager {
 	}
 
 	/**
-	 * Performs a single auto attack if the bot currently can.
-	 *
 	 * @return false if the fight is over and the caller should stop attacking.
 	 */
-	public static boolean attackTick(Player bot, Creature target) {
+	public static boolean canKeepFighting(Player bot, Creature target) {
 		if (!bot.isSpawned() || bot.isDead() || !bot.canAttack())
 			return false;
-		if (target == null || target.isDead() || !bot.canSee(target))
-			return false;
+		return target != null && !target.isDead() && bot.canSee(target);
+	}
 
+	/**
+	 * Performs a single auto attack if the target is reachable. Does nothing when it is out of range, since bots cannot move yet.
+	 */
+	public static void autoAttack(Player bot, Creature target) {
 		if (isInAttackRange(bot, target) && GeoService.getInstance().canSee(bot, target)) {
 			bot.getPosition().setH(PositionUtil.getHeadingTowards(bot, target));
 			// PlayerController applies its own range, line of sight and attack speed checks, so bots obey the same rules as real players
 			bot.getController().attackTarget(target, 0, true);
 		}
-		return true;
 	}
 
 	private static boolean isInAttackRange(Player bot, Creature target) {
