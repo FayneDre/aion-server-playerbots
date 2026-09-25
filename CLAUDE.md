@@ -35,7 +35,7 @@ game-server/src/com/aionemu/gameserver/playerbot/
 
 - **`Player`** (`game-server/src/com/aionemu/gameserver/model/gameobjects/player/Player.java`) extends `Creature` and only holds a **nullable** reference to the network connection (`clientConnection`). Nothing structurally prevents instantiating a headless `Player` (no socket) driven by AI.
 - **`PlayerController`** (`game-server/src/com/aionemu/gameserver/controllers/PlayerController.java`) is the shared logic layer: network handlers (`CM_*`) and NPC AI call the same methods (e.g. `useSkill(...)`). This is the key reuse seam for driving a bot in pure Java code.
-- **AI framework**: package `game-server/src/com/aionemu/gameserver/ai/` — `AbstractAI<T extends Creature>` (generic, not NPC-specific), `AIEngine`, `NpcAI`, handlers in `ai/handler/`, managers in `ai/manager/` (`SkillAttackManager`, `FollowManager`, `WalkManager`, `EmoteManager`). A `PlayerAI extends AbstractAI<Player>` can reuse this whole framework.
+- **AI framework**: package `game-server/src/com/aionemu/gameserver/ai/`. `AITemplate<T extends Creature>` (no-op defaults over `AbstractAI`) is the base to extend — `data/handlers/ai/siege/SiegeWeaponAI.java` is the non-Npc precedent. **Caution: every `ai/handler/*` and `ai/manager/*` class is typed `NpcAI`, not `AbstractAI`, so none of them is reusable from a `Player`-typed AI** — their equivalents must be re-implemented (they are small; `ai/manager/SimpleAttackManager.java` is the reference for an attack loop).
 - **Reference pattern for an AI-controlled character**: `Servant.java` (`game-server/src/com/aionemu/gameserver/model/gameobjects/Servant.java`) — not a `Player`, but shows the existing follow/attack pattern for summoned servants.
 - **Programmatic skill casting**: `SkillEngine.java` (`game-server/src/com/aionemu/gameserver/skillengine/SkillEngine.java`) — `getSkillFor(...)` then `skill.useSkill()`, no packet parsing involved. Already used this way by NPC AI.
 - **Groups**: `game-server/src/com/aionemu/gameserver/model/team/group/` (`PlayerGroup`, `PlayerGroupService`, loot rules in `team/common/legacy/LootGroupRules.java`) — operates on `Player` objects, not sockets; a headless `Player` in a group should follow the same rules as a real member.
@@ -43,6 +43,11 @@ game-server/src/com/aionemu/gameserver/playerbot/
 ### Main obstacle: no pathfinding
 
 `geoEngine` (`game-server/src/com/aionemu/gameserver/geoEngine/`) only provides collision/raycasting (line of sight, ground height) — no path planning. The only existing "paths" are fixed scripted waypoints (`spawnengine/WalkerGroup.java`) or fixed flight paths. **A real autonomous navigation system (raycast-based steering or navmesh) needs to be built from scratch** and heavily gates the outdoor PvP and RvR phases.
+
+### Design docs
+
+- [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the single core patch (`Creature.setAi()`) and its justification, reuse map, risks.
+- [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.
 
 ### Secondary obstacle: headless `Player` lifecycle
 
