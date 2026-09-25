@@ -37,6 +37,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final float RETARGET_STEP = 2f;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
 	private static final long UNREACHABLE_MILLIS = 10000;
+	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
+	private static final long KILLER_AVOIDED_MILLIS = 120000;
+	/** Health below which the bot waits to regenerate instead of looking for a fight. */
+	private static final int MIN_ENGAGE_HP_PERCENT = 70;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	private static final float ANCHOR_TOLERANCE = 5f;
 	/** Roughly the time a player spends looking at the resurrection window. */
@@ -53,7 +57,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Where the bot belongs: it fights around this point and returns to it rather than following a target across the map. */
 	private volatile float anchorX, anchorY, anchorZ;
 	private volatile long chaseStartTime;
-	private final Map<Integer, Long> unreachableTargets = new ConcurrentHashMap<>();
+	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
+	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
 
 	public PlayerBotAI(Player owner) {
 		super(owner);
@@ -85,8 +90,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void botTick() {
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
-		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
-			Creature target = BotTargetSelector.findTarget(getOwner(), this::isUnreachable);
+		else if (autonomous && !isAttacking() && getOwner().isSpawned() && isHealthyEnoughToFight()) {
+			Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 			if (target != null)
 				startAttacking(target);
 			else
@@ -152,7 +157,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 				BotAttackManager.autoAttack(bot, target);
 		} else if (!chase(target)) {
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
-			unreachableTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
+			ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
 			stopAttacking();
 			return;
 		}
@@ -211,13 +216,21 @@ public class PlayerBotAI extends AITemplate<Player> {
 			moveController.moveToPoint(anchorX, anchorY, anchorZ);
 	}
 
-	private boolean isUnreachable(Creature target) {
-		Long until = unreachableTargets.get(target.getObjectId());
+	/**
+	 * Keeps the bot from starting a fight it is in no shape for — in particular right after resurrecting at 25% hp, next to whatever killed it.
+	 * Only picking a fight is gated: it always defends itself, whatever its health.
+	 */
+	private boolean isHealthyEnoughToFight() {
+		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT;
+	}
+
+	private boolean isIgnored(Creature target) {
+		Long until = ignoredTargets.get(target.getObjectId());
 		if (until == null)
 			return false;
 		if (until > System.currentTimeMillis())
 			return true;
-		unreachableTargets.remove(target.getObjectId());
+		ignoredTargets.remove(target.getObjectId());
 		return false;
 	}
 
@@ -281,9 +294,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// nobody will ever click the resurrection window for a bot, so without this it lies dead forever
 			reviveTask = ThreadPoolManager.getInstance().schedule(this::revive, REVIVE_DELAY_MILLIS);
 		}
+		Player bot = getOwner();
+		// whatever it was fighting just won, so leave it alone for a while instead of walking straight back into it
+		if (bot.getTarget() instanceof Creature killer)
+			ignoredTargets.put(killer.getObjectId(), System.currentTimeMillis() + KILLER_AVOIDED_MILLIS);
 		cancelCombat();
 		setStateIfNot(AIState.DIED);
-		log.info("Bot {} died", getOwner().getName());
+		log.info("Bot {} died at {} {} {} (anchor {} {} {})", bot.getName(), bot.getX(), bot.getY(), bot.getZ(), anchorX, anchorY, anchorZ);
 	}
 
 	/**
@@ -292,15 +309,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private void revive() {
 		Player bot = getOwner();
-		synchronized (combatLock) {
-			reviveTask = null;
+		try {
+			if (!bot.isSpawned() || !bot.isDead())
+				return;
+			PlayerReviveService.revive(bot, 25, 25, true, 0);
+			TeleportService.teleportTo(bot, bot.getWorldId(), anchorX, anchorY, anchorZ);
+			setStateIfNot(AIState.IDLE);
+			log.info("Bot {} revived at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
+		} finally {
+			// cleared last, so the decision tick cannot mistake the bot for freshly dead while it is being brought back
+			synchronized (combatLock) {
+				reviveTask = null;
+			}
 		}
-		if (!bot.isSpawned() || !bot.isDead())
-			return;
-		PlayerReviveService.revive(bot, 25, 25, true, 0);
-		TeleportService.teleportTo(bot, bot.getWorldId(), anchorX, anchorY, anchorZ);
-		setStateIfNot(AIState.IDLE);
-		log.info("Bot {} revived", bot.getName());
 	}
 
 	@Override

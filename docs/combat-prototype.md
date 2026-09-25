@@ -18,7 +18,7 @@ Bots also move: they walk to a commanded point, chase a target out of weapon rea
 
 What the prototype deliberately does not do yet:
 
-- **Survive deliberately.** It engages anything hostile up to 3 levels above itself and never flees, heals or rests. On death it waits 10 s then resurrects at its anchor with 25% hp/mp and soul sickness, like a player picking the obelisk, since no client will ever answer the resurrection window for it.
+- **Survive deliberately.** It never flees, heals or uses potions; it only waits to regenerate. It picks fights up to 3 levels above itself and only above 70% hp, leaves whatever killed it alone for 2 minutes, and on death resurrects after 10 s at its anchor with 25% hp/mp and soul sickness, like a player picking the obelisk. Those last rules exist because a bot reviving at 25% hp next to the mob that killed it dies again on a loop. Defending itself is never gated: the limits only apply to fights it starts.
 - **Rotate skills per class** (M7). It casts the highest-id usable skill, which is a decent proxy for "strongest available" but not a real rotation.
 - **Anything outside combat** — no looting, resting, grouping, economy or social behavior.
 
