@@ -15,17 +15,20 @@ public class BotGeoHelper {
 
 	/** Below this, a destination is not worth walking to and the bot is considered blocked. */
 	private static final float MIN_STEP = 1.0f;
+	/** The probe walks the ground in one metre steps, so its cost grows with distance. Longer routes are split into legs. */
+	private static final float MAX_LEG_DISTANCE = 25f;
 
 	private BotGeoHelper() {
 	}
 
 	/**
-	 * @return The furthest point towards the destination the bot can actually reach, with its height snapped to the ground. Equals the destination
-	 *         when the way is clear, and the bot's own position when an obstacle blocks it immediately. Returns the destination unchanged when geo
-	 *         data is disabled.
+	 * @return The furthest point towards the destination the bot can actually walk to, following the ground. Real obstacles (trees, walls, inclines
+	 *         over 45°) stop it, mere slopes do not. Capped at one leg length, so a long route yields an intermediate waypoint.
 	 */
 	public static Vector3f reachablePointToward(Player bot, float x, float y, float z) {
-		return GeoService.getInstance().getClosestCollision(bot, x, y, z);
+		float angle = PositionUtil.calculateAngleFrom(bot.getX(), bot.getY(), x, y);
+		float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), x, y);
+		return GeoService.getInstance().findMovementCollision(bot, angle, Math.min(distance, MAX_LEG_DISTANCE));
 	}
 
 	public static boolean isWorthMovingTo(Player bot, Vector3f point) {

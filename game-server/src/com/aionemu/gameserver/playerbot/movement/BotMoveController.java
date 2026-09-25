@@ -30,6 +30,9 @@ public class BotMoveController extends PlayerMoveController {
 	private static final long GEO_Z_UPDATE_INTERVAL = 500;
 
 	private long nextGeoZUpdate;
+	/** Final destination, which may be several legs away from the point currently being walked to. */
+	private volatile float goalX, goalY, goalZ;
+	private volatile boolean hasGoal;
 
 	public BotMoveController(Player owner) {
 		super(owner);
@@ -39,14 +42,40 @@ public class BotMoveController extends PlayerMoveController {
 	 * Heads towards the given point, starting to move if idle.
 	 */
 	/**
-	 * Heads towards the given point, stopping short of any obstacle in the way.
+	 * Walks towards the given point, stopping short of any obstacle in the way. Long routes are covered in successive legs.
 	 *
 	 * @return false if an obstacle blocks the bot right away, in which case it does not move at all.
 	 */
 	public boolean moveToPoint(float x, float y, float z) {
-		Vector3f reachable = BotGeoHelper.reachablePointToward(owner, x, y, z);
-		if (!BotGeoHelper.isWorthMovingTo(owner, reachable))
+		goalX = x;
+		goalY = y;
+		goalZ = z;
+		hasGoal = true;
+		return startNextLeg();
+	}
+
+	/**
+	 * Called on arrival: continues towards the goal if it is further than the leg just walked, otherwise ends the movement.
+	 *
+	 * @return true if the bot keeps moving.
+	 */
+	public boolean continueToGoal() {
+		if (hasGoal && startNextLeg())
+			return true;
+		stop();
+		return false;
+	}
+
+	private boolean startNextLeg() {
+		if (PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY) < ARRIVE_OFFSET) {
+			hasGoal = false;
 			return false;
+		}
+		Vector3f reachable = BotGeoHelper.reachablePointToward(owner, goalX, goalY, goalZ);
+		if (!BotGeoHelper.isWorthMovingTo(owner, reachable)) {
+			hasGoal = false;
+			return false;
+		}
 		moveToReachablePoint(reachable.getX(), reachable.getY(), reachable.getZ());
 		return true;
 	}
@@ -68,6 +97,7 @@ public class BotMoveController extends PlayerMoveController {
 	 * Ends the current movement and tells clients the authoritative position, so they stop extrapolating.
 	 */
 	public void stop() {
+		hasGoal = false;
 		MoveTaskManager.getInstance().removeCreature(owner);
 		if (started.compareAndSet(true, false))
 			setAndSendStopMove(owner);
