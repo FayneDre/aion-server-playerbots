@@ -20,6 +20,8 @@ public class BotTargetSelector {
 	public static final float CHASE_RADIUS = 25f;
 	/** Height difference above which a target is treated as being on another level (a cliff, a roof, the floor below) and left alone. */
 	private static final float MAX_Z_DELTA = 8f;
+	/** How far above its own level a bot will pick a fight it started. Anything higher kills it, and it would just keep dying. */
+	private static final int MAX_LEVEL_GAP = 3;
 
 	private BotTargetSelector() {
 	}
@@ -43,6 +45,8 @@ public class BotTargetSelector {
 			return false;
 		if (Math.abs(bot.getZ() - npc.getZ()) > MAX_Z_DELTA)
 			return false;
+		if (npc.getLevel() > bot.getLevel() + MAX_LEVEL_GAP)
+			return false; // this only limits what the bot picks: it still fights back against anything that attacks it
 		// line of sight is not just a targeting rule here: without it the bot would walk towards things behind walls it cannot reach
 		return PositionUtil.getDistance(bot, npc) <= CHASE_RADIUS && GeoService.getInstance().canSee(bot, npc);
 	}

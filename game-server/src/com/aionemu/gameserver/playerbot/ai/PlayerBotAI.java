@@ -15,6 +15,8 @@ import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.services.player.PlayerReviveService;
+import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
 
@@ -37,6 +39,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long UNREACHABLE_MILLIS = 10000;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	private static final float ANCHOR_TOLERANCE = 5f;
+	/** Roughly the time a player spends looking at the resurrection window. */
+	private static final int REVIVE_DELAY_MILLIS = 10000;
 
 	/** Guards the scheduled tasks against concurrent starts and stops, since events and ticks run on different pool threads. */
 	private final Object combatLock = new Object();
@@ -260,6 +264,22 @@ public class PlayerBotAI extends AITemplate<Player> {
 		cancelCombat();
 		setStateIfNot(AIState.DIED);
 		log.info("Bot {} died", getOwner().getName());
+		// nobody will ever click the resurrection window for a bot, so without this it lies dead forever
+		ThreadPoolManager.getInstance().schedule(this::revive, REVIVE_DELAY_MILLIS);
+	}
+
+	/**
+	 * Brings the bot back at its anchor, the way a player choosing to resurrect at an obelisk would: reduced hp and mp, soul sickness, and away from
+	 * whatever killed it. Reviving on the spot would just feed it back to the same mob.
+	 */
+	private void revive() {
+		Player bot = getOwner();
+		if (!bot.isSpawned() || !bot.isDead())
+			return;
+		PlayerReviveService.revive(bot, 25, 25, true, 0);
+		TeleportService.teleportTo(bot, bot.getWorldId(), anchorX, anchorY, anchorZ);
+		setStateIfNot(AIState.IDLE);
+		log.info("Bot {} revived", bot.getName());
 	}
 
 	@Override
