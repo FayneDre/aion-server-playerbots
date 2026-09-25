@@ -12,6 +12,7 @@ import com.aionemu.gameserver.ai.AITemplate;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
+import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
@@ -90,12 +91,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void botTick() {
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
-		else if (autonomous && !isAttacking() && getOwner().isSpawned() && isHealthyEnoughToFight()) {
-			Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
-			if (target != null)
-				startAttacking(target);
-			else
-				returnToAnchor();
+		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
+			if (!isHealthyEnoughToFight())
+				recover();
+			else {
+				Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
+				if (target != null)
+					startAttacking(target);
+				else
+					returnToAnchor();
+			}
 		}
 		synchronized (combatLock) {
 			if (thinkTask != null) // still spawned
@@ -108,6 +113,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	public void startAttacking(Creature target) {
+		BotRestManager.standUp(getOwner()); // canAttack() is false while resting
 		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
 			getOwner().getController().stopProtectionActiveTask();
 		synchronized (combatLock) {
@@ -222,6 +228,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * Keeps the bot from starting a fight it is in no shape for — in particular right after resurrecting at 25% hp, next to whatever killed it.
 	 * Only picking a fight is gated: it always defends itself, whatever its health.
 	 */
+	/** Walks home first, then sits down to heal, because resting recovers eight times faster than standing around. */
+	private void recover() {
+		if (getOwner().getMoveController().isInMove())
+			return;
+		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > ANCHOR_TOLERANCE)
+			returnToAnchor();
+		else
+			BotRestManager.sitDown(getOwner());
+	}
+
 	private boolean isHealthyEnoughToFight() {
 		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT;
 	}

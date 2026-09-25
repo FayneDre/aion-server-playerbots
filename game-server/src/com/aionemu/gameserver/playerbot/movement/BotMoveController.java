@@ -11,6 +11,7 @@ import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
+import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
 import com.aionemu.gameserver.taskmanager.tasks.MoveTaskManager;
 import com.aionemu.gameserver.utils.PacketSendUtility;
@@ -62,6 +63,7 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return false if the bot is walled in, in which case it does not move at all.
 	 */
 	public boolean moveToPoint(float x, float y, float z) {
+		BotRestManager.standUp(owner); // a seated bot would slide across the ground
 		// CM_MOVE does this for a real player: without it the bot stays blinking and untargetable for the full protection minute
 		if (owner.isProtectionActive())
 			owner.getController().stopProtectionActiveTask();
