@@ -10,13 +10,15 @@ Each milestone is independently demoable, ordered so the riskiest unknown is pro
 
 ## Status
 
-**M0 to M6 are implemented and verified in game.** A bot loads from the database with no connection, spawns visible to real clients, draws its weapon, auto-attacks and casts offensive class skills, then despawns cleanly.
+**M0 to M6 are implemented and verified in game, plus a first autonomy layer.** A bot loads from the database with no connection, spawns visible to real clients, draws its weapon, auto-attacks and casts offensive class skills, fights back when attacked, engages hostiles within reach on its own, and despawns cleanly. Verified against both mobs and a real player in a duel.
+
+Autonomy lives in `PlayerBotAI`: a decision tick every second picks a target through `BotTargetSelector` when idle, and `handleAttack` triggers retaliation. It is on by default and toggled with `//bot auto <name>` — without that switch no behavior can be tested in isolation, since the bot always re-engages.
 
 What the prototype deliberately does not do yet:
 
-- **Move.** The engine has no pathfinding, so a bot only fights what is already within reach.
-- **Decide anything.** Targets and combat start/stop come from `//bot` commands. Autonomy (picking targets, retaliating, choosing behaviors) is the next layer, on top of this one.
+- **Move.** The engine has no pathfinding, so a bot only engages what is already within attack range. `BotTargetSelector` limits its search accordingly; widen it to a real search radius once navigation exists. This is the main blocker for everything else.
 - **Rotate skills per class** (M7). It casts the highest-id usable skill, which is a decent proxy for "strongest available" but not a real rotation.
+- **Anything outside combat** — no looting, resting, grouping, economy or social behavior.
 
 Two lessons worth carrying forward:
 
