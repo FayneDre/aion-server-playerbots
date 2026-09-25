@@ -151,7 +151,8 @@ public class PlayerBotService {
 		if (spawnedBots.isEmpty())
 			return "No bots spawned";
 		StringBuilder sb = new StringBuilder("Spawned bots:");
-		spawnedBots.values().forEach(bot -> sb.append("\n  ").append(bot.getName()).append(" (objId ").append(bot.getObjectId()).append(')'));
+		spawnedBots.values().forEach(bot -> sb.append(String.format("%n  %s at %.1f %.1f %.1f%s", bot.getName(), bot.getX(), bot.getY(), bot.getZ(),
+			bot.getMoveController().isInMove() ? " (moving)" : "")));
 		return sb.toString();
 	}
 

@@ -12,6 +12,7 @@ import com.aionemu.gameserver.utils.PacketSendUtility;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.utils.stats.StatFunctions;
 import com.aionemu.gameserver.world.World;
+import com.aionemu.gameserver.world.geo.GeoService;
 
 /**
  * Moves a bot in a straight line towards a destination.
@@ -24,6 +25,10 @@ import com.aionemu.gameserver.world.World;
 public class BotMoveController extends PlayerMoveController {
 
 	private static final float ARRIVE_OFFSET = 0.5f;
+	/** Ray casts are not free, so the ground is only sampled a few times per second rather than on every 200 ms tick. */
+	private static final long GEO_Z_UPDATE_INTERVAL = 500;
+
+	private long nextGeoZUpdate;
 
 	public BotMoveController(Player owner) {
 		super(owner);
@@ -35,10 +40,23 @@ public class BotMoveController extends PlayerMoveController {
 	public void moveToPoint(float x, float y, float z) {
 		boolean destinationChanged = x != getTargetX2() || y != getTargetY2() || z != getTargetZ2();
 		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
-		if (!isInMove())
+		if (!started.get()) {
 			startMovingToDestination();
-		else if (destinationChanged) // clients extrapolate between packets, so only resend when the destination actually moved
-			PacketSendUtility.broadcastToSightedPlayers(owner, new SM_MOVE(owner));
+		} else {
+			// MoveTaskManager removes the bot on arrival, so re-register (idempotent) instead of assuming we are still ticked
+			MoveTaskManager.getInstance().addCreature(owner);
+			if (destinationChanged) // clients extrapolate between packets, so only resend when the destination actually moved
+				PacketSendUtility.broadcastToSightedPlayers(owner, new SM_MOVE(owner));
+		}
+	}
+
+	/**
+	 * Ends the current movement and tells clients the authoritative position, so they stop extrapolating.
+	 */
+	public void stop() {
+		MoveTaskManager.getInstance().removeCreature(owner);
+		if (started.compareAndSet(true, false))
+			setAndSendStopMove(owner);
 	}
 
 	public boolean isArrived() {
@@ -80,9 +98,24 @@ public class BotMoveController extends PlayerMoveController {
 		float distancePassed = Math.min(speed * millisElapsed / 1000f, distance);
 		float fraction = distancePassed / distance;
 
-		World.getInstance().updatePosition(owner, (getTargetX2() - x) * fraction + x, (getTargetY2() - y) * fraction + y,
-			(getTargetZ2() - z) * fraction + z, heading, false);
+		float newX = (getTargetX2() - x) * fraction + x;
+		float newY = (getTargetY2() - y) * fraction + y;
+		World.getInstance().updatePosition(owner, newX, newY, groundZ(newX, newY, (getTargetZ2() - z) * fraction + z), heading, false);
 		updateLastMove();
+	}
+
+	/**
+	 * Snaps the interpolated height to the ground, so the bot follows slopes instead of sliding along a straight line through them. Most maps have no
+	 * heightmap, in which case the interpolated value is kept rather than dropping the bot to zero.
+	 */
+	private float groundZ(float x, float y, float interpolatedZ) {
+		long now = System.currentTimeMillis();
+		if (now < nextGeoZUpdate)
+			return interpolatedZ;
+		nextGeoZUpdate = now + GEO_Z_UPDATE_INTERVAL;
+
+		float geoZ = GeoService.getInstance().getZ(owner.getWorldId(), x, y, interpolatedZ + 2, interpolatedZ - 2, owner.getInstanceId());
+		return Float.isNaN(geoZ) ? interpolatedZ : geoZ;
 	}
 
 	@Override
