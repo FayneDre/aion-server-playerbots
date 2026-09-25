@@ -1,5 +1,7 @@
 package admincommands;
 
+import java.util.function.Function;
+
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
 import com.aionemu.gameserver.utils.chathandlers.AdminCommand;
@@ -12,6 +14,9 @@ public class Bot extends AdminCommand {
 	public Bot() {
 		super("bot", "Controls playerbots.", """
 			load <characterName> - Loads a bot character from the database without spawning it.
+			spawn <characterName> - Loads a bot character and spawns it next to you.
+			despawn <characterName> - Removes a spawned bot from the world.
+			list - Lists all currently spawned bots.
 			""");
 	}
 
@@ -22,14 +27,19 @@ public class Bot extends AdminCommand {
 			return;
 		}
 
-		if (params[0].equalsIgnoreCase("load")) {
-			if (params.length < 2) {
-				sendInfo(admin, "Please provide a character name");
-				return;
-			}
-			sendInfo(admin, PlayerBotService.getInstance().describeLoadedBot(params[1]));
-		} else {
-			sendInfo(admin);
+		switch (params[0].toLowerCase()) {
+			case "load" -> withName(admin, params, name -> PlayerBotService.getInstance().describeLoadedBot(name));
+			case "spawn" -> withName(admin, params, name -> PlayerBotService.getInstance().spawn(name, admin));
+			case "despawn" -> withName(admin, params, name -> PlayerBotService.getInstance().despawn(name));
+			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
+			default -> sendInfo(admin);
 		}
+	}
+
+	private void withName(Player admin, String[] params, Function<String, String> action) {
+		if (params.length < 2)
+			sendInfo(admin, "Please provide a character name");
+		else
+			sendInfo(admin, action.apply(params[1]));
 	}
 }

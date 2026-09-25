@@ -1,0 +1,22 @@
+package com.aionemu.gameserver.playerbot.lifecycle;
+
+import com.aionemu.gameserver.model.gameobjects.player.Player;
+
+/**
+ * Removes a bot from the world, mirroring the parts of {@link com.aionemu.gameserver.services.player.PlayerLeaveWorldService} that apply to a
+ * connectionless player. Nothing here may touch the client connection.
+ * <p>
+ * Reviewed against PlayerLeaveWorldService as of commit 558677569. Re-diff it after every upstream merge.
+ */
+public class PlayerBotLeaveWorldService {
+
+	private PlayerBotLeaveWorldService() {
+	}
+
+	public static void leaveWorld(Player bot) {
+		bot.getController().cancelCurrentSkill(null);
+		bot.getEffectController().removeAllEffects();
+		bot.getLifeStats().cancelAllTasks();
+		bot.getController().delete();
+	}
+}
