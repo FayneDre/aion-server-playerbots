@@ -108,6 +108,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	public void startAttacking(Creature target) {
+		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
+			getOwner().getController().stopProtectionActiveTask();
 		synchronized (combatLock) {
 			stopAttackTask();
 			getOwner().setTarget(target);

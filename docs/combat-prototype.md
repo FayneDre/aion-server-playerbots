@@ -24,7 +24,7 @@ What the prototype deliberately does not do yet:
 
 Two lessons worth carrying forward:
 
-1. **Whatever the client normally does by itself must be redone server-side for a bot.** Drawing the weapon is the first example: without the emotion a real client sends, the bot dealt damage with no attack animation. Expect more of these (movement, visual target, stances).
+1. **Whatever the client normally does by itself must be redone server-side for a bot.** Drawing the weapon was the first example: without the emotion a real client sends, the bot dealt damage with no attack animation. Spawn protection is the second: `CM_MOVE` and `CM_ATTACK` end it, so a bot kept blinking, untargetable **and immune to damage** (`PlayerController.onAttack` returns early) for the whole minute. It is now ended when the bot moves or attacks, exactly where the client would. Expect more of these.
 2. **Let the engine validate.** `Skill.useNoAnimationSkill()` already checks mp, cooldown, range, target and restrictions and returns false, so the bot tries candidate skills in order instead of duplicating that logic, which would drift from upstream.
 
 ## M0 — Scaffolding and admin command

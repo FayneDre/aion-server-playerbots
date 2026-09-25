@@ -62,6 +62,9 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return false if the bot is walled in, in which case it does not move at all.
 	 */
 	public boolean moveToPoint(float x, float y, float z) {
+		// CM_MOVE does this for a real player: without it the bot stays blinking and untargetable for the full protection minute
+		if (owner.isProtectionActive())
+			owner.getController().stopProtectionActiveTask();
 		goalX = x;
 		goalY = y;
 		goalZ = z;
