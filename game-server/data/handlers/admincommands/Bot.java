@@ -18,6 +18,8 @@ public class Bot extends AdminCommand {
 			spawn <characterName> - Loads a bot character and spawns it next to you.
 			despawn <characterName> - Removes a spawned bot from the world.
 			duel <characterName> - Makes the bot accept your pending duel request.
+			attack <characterName> - Makes the bot attack your target, or you if you have none.
+			stop <characterName> - Makes the bot stop attacking.
 			list - Lists all currently spawned bots.
 			""");
 	}
@@ -35,6 +37,8 @@ public class Bot extends AdminCommand {
 			case "despawn" -> withName(admin, params, name -> PlayerBotService.getInstance().despawn(name));
 			case "duel" -> withName(admin, params,
 				name -> PlayerBotService.getInstance().acceptRequest(name, SM_QUESTION_WINDOW.STR_DUEL_DO_YOU_ACCEPT_REQUEST));
+			case "attack" -> withName(admin, params, name -> PlayerBotService.getInstance().attack(name, admin));
+			case "stop" -> withName(admin, params, name -> PlayerBotService.getInstance().stopAttacking(name));
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
 			default -> sendInfo(admin);
 		}

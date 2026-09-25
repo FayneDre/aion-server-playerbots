@@ -6,7 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
@@ -87,6 +89,33 @@ public class PlayerBotService {
 		if (!bot.getResponseRequester().respond(questionId, 1))
 			return characterName + " has no pending request of that type";
 		return characterName + " accepted";
+	}
+
+	/**
+	 * Makes the bot attack the given player's target, or the player itself if it has no other target (handy during a duel).
+	 */
+	public String attack(String characterName, Player commander) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+
+		Creature target = commander.getTarget() instanceof Creature creature && !creature.equals(bot) ? creature : commander;
+		if (!(bot.getAi() instanceof PlayerBotAI botAi))
+			return characterName + " has no bot AI attached";
+
+		botAi.startAttacking(target);
+		return characterName + " attacks " + target.getName();
+	}
+
+	public String stopAttacking(String characterName) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+		if (!(bot.getAi() instanceof PlayerBotAI botAi))
+			return characterName + " has no bot AI attached";
+
+		botAi.stopAttacking();
+		return characterName + " stopped";
 	}
 
 	public String listSpawnedBots() {
