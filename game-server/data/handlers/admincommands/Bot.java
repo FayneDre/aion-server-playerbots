@@ -20,6 +20,7 @@ public class Bot extends AdminCommand {
 			duel <characterName> - Makes the bot accept your pending duel request.
 			attack <characterName> - Makes the bot attack your target, or you if you have none.
 			stop <characterName> - Makes the bot stop attacking.
+			auto <characterName> - Toggles autonomy (fights on its own) on and off.
 			list - Lists all currently spawned bots.
 			""");
 	}
@@ -39,6 +40,7 @@ public class Bot extends AdminCommand {
 				name -> PlayerBotService.getInstance().acceptRequest(name, SM_QUESTION_WINDOW.STR_DUEL_DO_YOU_ACCEPT_REQUEST));
 			case "attack" -> withName(admin, params, name -> PlayerBotService.getInstance().attack(name, admin));
 			case "stop" -> withName(admin, params, name -> PlayerBotService.getInstance().stopAttacking(name));
+			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
 			default -> sendInfo(admin);
 		}

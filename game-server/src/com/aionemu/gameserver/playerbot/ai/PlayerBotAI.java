@@ -11,6 +11,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
+import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
 
 /**
@@ -21,12 +22,46 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	private static final Logger log = LoggerFactory.getLogger(PlayerBotAI.class);
 
-	/** Guards the attack task against concurrent starts and stops, since events and ticks run on different pool threads. */
+	private static final int THINK_INTERVAL_MILLIS = 1000;
+
+	/** Guards the scheduled tasks against concurrent starts and stops, since events and ticks run on different pool threads. */
 	private final Object combatLock = new Object();
 	private ScheduledFuture<?> attackTask;
+	private ScheduledFuture<?> thinkTask;
+	private volatile boolean autonomous = true;
 
 	public PlayerBotAI(Player owner) {
 		super(owner);
+	}
+
+	public boolean isAutonomous() {
+		return autonomous;
+	}
+
+	/**
+	 * When autonomous, the bot engages hostiles within reach and fights back on its own. Turn it off to drive it purely by command.
+	 */
+	public void setAutonomous(boolean autonomous) {
+		this.autonomous = autonomous;
+		if (!autonomous)
+			stopAttacking();
+	}
+
+	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
+	private void botTick() {
+		if (autonomous && !isAttacking() && !getOwner().isDead() && getOwner().isSpawned()) {
+			Creature target = BotTargetSelector.findTarget(getOwner());
+			if (target != null)
+				startAttacking(target);
+		}
+		synchronized (combatLock) {
+			if (thinkTask != null) // still spawned
+				scheduleBotTick();
+		}
+	}
+
+	private void scheduleBotTick() {
+		thinkTask = ThreadPoolManager.getInstance().schedule(this::botTick, THINK_INTERVAL_MILLIS);
 	}
 
 	public void startAttacking(Creature target) {
@@ -92,12 +127,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 	protected void handleSpawned() {
 		// without leaving AIState.CREATED, every event except (BEFORE_)SPAWNED is filtered out
 		setStateIfNot(AIState.IDLE);
+		synchronized (combatLock) {
+			scheduleBotTick();
+		}
 		log.info("Bot {} spawned", getOwner().getName());
 	}
 
 	@Override
 	protected void handleAttack(Creature attacker) {
-		log.info("Bot {} attacked by {}", getOwner().getName(), attacker.getName());
+		if (autonomous && !isAttacking() && !attacker.equals(getOwner())) {
+			log.info("Bot {} retaliates against {}", getOwner().getName(), attacker.getName());
+			startAttacking(attacker);
+		}
 	}
 
 	@Override
@@ -109,6 +150,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	@Override
 	protected void handleDespawned() {
+		synchronized (combatLock) {
+			if (thinkTask != null) {
+				thinkTask.cancel(false);
+				thinkTask = null;
+			}
+		}
 		cancelCombat();
 		setStateIfNot(AIState.DESPAWNED);
 		log.info("Bot {} despawned", getOwner().getName());

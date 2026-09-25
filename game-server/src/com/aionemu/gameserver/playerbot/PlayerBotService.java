@@ -118,6 +118,20 @@ public class PlayerBotService {
 		return characterName + " stopped";
 	}
 
+	/**
+	 * Toggles whether the bot acts on its own (engaging hostiles in reach, fighting back) or only follows commands.
+	 */
+	public String toggleAutonomy(String characterName) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+		if (!(bot.getAi() instanceof PlayerBotAI botAi))
+			return characterName + " has no bot AI attached";
+
+		botAi.setAutonomous(!botAi.isAutonomous());
+		return characterName + " autonomy " + (botAi.isAutonomous() ? "on" : "off");
+	}
+
 	public String listSpawnedBots() {
 		if (spawnedBots.isEmpty())
 			return "No bots spawned";
