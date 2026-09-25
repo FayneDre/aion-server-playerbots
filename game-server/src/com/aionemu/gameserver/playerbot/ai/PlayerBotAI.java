@@ -33,6 +33,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			stopAttackTask();
 			getOwner().setTarget(target);
 			setStateIfNot(AIState.FIGHT);
+			BotAttackManager.enterAttackMode(getOwner(), target);
 			scheduleAttackTick(0);
 		}
 		log.info("Bot {} starts attacking {}", getOwner().getName(), target.getName());
@@ -46,6 +47,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void cancelCombat() {
 		synchronized (combatLock) {
 			stopAttackTask();
+			BotAttackManager.leaveAttackMode(getOwner());
 			getOwner().setTarget(null);
 		}
 	}

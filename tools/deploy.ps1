@@ -15,13 +15,19 @@
 .PARAMETER SkipBuild
     Deploy the existing build output without running Maven again.
 
+.PARAMETER Restart
+    Stop the running game server before deploying and start the whole stack again afterwards.
+    Without it, deploying while the server runs is refused, because the JVM locks the jar.
+
 .EXAMPLE
     .\tools\deploy.ps1
     .\tools\deploy.ps1 -SkipBuild
+    .\tools\deploy.ps1 -Restart
 #>
 param(
     [string]$ServerRoot = $env:AION_SERVER_HOME,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$Restart
 )
 
 $ErrorActionPreference = 'Stop'
@@ -35,6 +41,21 @@ $targetGameServer = Join-Path $ServerRoot 'game-server'
 
 if (-not (Test-Path $targetGameServer)) {
     throw "Not found: $targetGameServer"
+}
+
+# The running JVM locks game-server-*.jar, so the copy below would fail halfway through the deploy
+$gameServerProcess = Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -like '*com.aionemu.gameserver.GameServer*' }
+
+if ($gameServerProcess) {
+    if (-not $Restart) {
+        throw "The game server is running (PID $($gameServerProcess.ProcessId)). Stop it first, or re-run with -Restart."
+    }
+    Write-Host "Stopping the game server (PID $($gameServerProcess.ProcessId))..." -ForegroundColor Cyan
+    Stop-Process -Id $gameServerProcess.ProcessId -Force
+    while (Get-NetTCPConnection -State Listen -LocalPort 7777 -ErrorAction SilentlyContinue) {
+        Start-Sleep -Milliseconds 300
+    }
 }
 
 if (-not $SkipBuild) {
@@ -67,4 +88,9 @@ Copy-Item $handlersSource $handlersTarget -Recurse -Force
 Write-Host '  data/handlers'
 
 Write-Host "Deployed to $targetGameServer" -ForegroundColor Green
-Write-Host 'Restart the game server to apply.' -ForegroundColor Yellow
+
+if ($Restart) {
+    & (Join-Path $PSScriptRoot 'start-server.ps1') -ServerRoot $ServerRoot
+} else {
+    Write-Host 'Restart the game server to apply.' -ForegroundColor Yellow
+}
