@@ -8,6 +8,21 @@ See [playerbot-architecture.md](playerbot-architecture.md) for the module layout
 
 Each milestone is independently demoable, ordered so the riskiest unknown is proven first.
 
+## Status
+
+**M0 to M6 are implemented and verified in game.** A bot loads from the database with no connection, spawns visible to real clients, draws its weapon, auto-attacks and casts offensive class skills, then despawns cleanly.
+
+What the prototype deliberately does not do yet:
+
+- **Move.** The engine has no pathfinding, so a bot only fights what is already within reach.
+- **Decide anything.** Targets and combat start/stop come from `//bot` commands. Autonomy (picking targets, retaliating, choosing behaviors) is the next layer, on top of this one.
+- **Rotate skills per class** (M7). It casts the highest-id usable skill, which is a decent proxy for "strongest available" but not a real rotation.
+
+Two lessons worth carrying forward:
+
+1. **Whatever the client normally does by itself must be redone server-side for a bot.** Drawing the weapon is the first example: without the emotion a real client sends, the bot dealt damage with no attack animation. Expect more of these (movement, visual target, stances).
+2. **Let the engine validate.** `Skill.useNoAnimationSkill()` already checks mp, cooldown, range, target and restrictions and returns false, so the bot tries candidate skills in order instead of duplicating that logic, which would drift from upstream.
+
 ## M0 — Scaffolding and admin command
 
 Create `PlayerBotService` (empty singleton) and `game-server/data/handlers/admincommands/Bot.java` returning a placeholder message. Add `bot = 5` to `game-server/config/administration/commands.properties`.
