@@ -36,8 +36,11 @@ public class BotMoveController extends PlayerMoveController {
 	private static final Logger log = LoggerFactory.getLogger(BotMoveController.class);
 
 	private static final float ARRIVE_OFFSET = 0.5f;
-	/** Ray casts are not free, so the ground is only sampled a few times per second rather than on every 200 ms tick. */
-	private static final long GEO_Z_UPDATE_INTERVAL = 500;
+	/**
+	 * The ground is sampled on every move tick. Sampling less often makes the bot follow a straight line between two heights and then jump to the
+	 * real one, which reads as a stutter on sloped ground.
+	 */
+	private static final long GEO_Z_UPDATE_INTERVAL = 200;
 	/** How much closer to the goal the bot must get for the route to count as progressing. */
 	private static final float PROGRESS_STEP = 1.0f;
 	/** Without that progress, the route is abandoned rather than letting the bot grind against an obstacle forever. */

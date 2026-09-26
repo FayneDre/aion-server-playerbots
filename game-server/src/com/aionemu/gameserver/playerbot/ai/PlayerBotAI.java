@@ -35,13 +35,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** How far from its anchor a bot may be dragged before it breaks off and comes back. */
 	private static final float LEASH_DISTANCE = 40f;
 	/** A chased target is only given a new route once it has moved this far, instead of on every tick. */
-	private static final float RETARGET_STEP = 2f;
+	private static final float RETARGET_STEP = 3f;
+	/**
+	 * Minimum delay between two routes towards the same chased target. Each new route makes clients restart their interpolation, so re-routing on
+	 * every attack tick turns a run into a stutter.
+	 */
+	private static final long CHASE_REROUTE_INTERVAL = 600;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
 	private static final long UNREACHABLE_MILLIS = 10000;
 	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
 	private static final long KILLER_AVOIDED_MILLIS = 120000;
 	/** Health below which the bot waits to regenerate instead of looking for a fight. */
-	private static final int MIN_ENGAGE_HP_PERCENT = 70;
+	private static final int MIN_ENGAGE_HP_PERCENT = 90;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	private static final float ANCHOR_TOLERANCE = 5f;
 	/** Roughly the time a player spends looking at the resurrection window. */
@@ -58,6 +63,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Where the bot belongs: it fights around this point and returns to it rather than following a target across the map. */
 	private volatile float anchorX, anchorY, anchorZ;
 	private volatile long chaseStartTime;
+	private volatile long lastChaseRoute;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
 
@@ -206,8 +212,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE)
 			return false;
 
-		if (moveController.isInMove() && moveController.isHeadingTo(target.getX(), target.getY(), RETARGET_STEP))
+		if (moveController.isInMove()
+			&& (now - lastChaseRoute < CHASE_REROUTE_INTERVAL || moveController.isHeadingTo(target.getX(), target.getY(), RETARGET_STEP)))
 			return true; // already on its way, and the target has not moved enough to be worth a new route
+		lastChaseRoute = now;
 		return moveController.moveToPoint(target.getX(), target.getY(), target.getZ());
 	}
 
@@ -228,13 +236,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * Keeps the bot from starting a fight it is in no shape for — in particular right after resurrecting at 25% hp, next to whatever killed it.
 	 * Only picking a fight is gated: it always defends itself, whatever its health.
 	 */
-	/** Walks home first, then sits down to heal, because resting recovers eight times faster than standing around. */
+	/**
+	 * Sits down to heal where the bot stands, because resting recovers eight times faster than standing around. It recovers on the spot rather than
+	 * walking home first: the fight is over, and a player sits down where it ended.
+	 */
 	private void recover() {
-		if (getOwner().getMoveController().isInMove())
-			return;
-		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > ANCHOR_TOLERANCE)
-			returnToAnchor();
-		else
+		if (!getOwner().getMoveController().isInMove())
 			BotRestManager.sitDown(getOwner());
 	}
 

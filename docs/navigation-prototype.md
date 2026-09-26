@@ -64,7 +64,7 @@ A target the bot failed to reach is ignored for 10 s (`PlayerBotAI.unreachableTa
 2. In weapon range → stop moving, then cast or auto-attack.
 3. Otherwise → `chase()`, and give the target up if it returns false.
 
-A new route is only issued once the target has moved `RETARGET_STEP` (2 m) from the current goal. Because the attack tick only runs at weapon speed (over a second), `handleMoveValidate` — which fires every 200 ms — is what stops the chase the moment the target comes into reach; otherwise the bot overshoots and runs through it.
+A new route is only issued once the target has moved `RETARGET_STEP` (3 m) from the current goal, and never more than once every `CHASE_REROUTE_INTERVAL` (600 ms): each route makes clients restart their interpolation, so re-routing on every attack tick turns a run into a stutter. Because the attack tick only runs at weapon speed (over a second), `handleMoveValidate` — which fires every 200 ms — is what stops the chase the moment the target comes into reach; otherwise the bot overshoots and runs through it.
 
 Idle bots return to their **anchor**, set at spawn and moved by `//bot come`, so repeated chases do not slowly displace them.
 
