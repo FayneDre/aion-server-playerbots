@@ -83,8 +83,26 @@ public class PlayerBotCreationService {
 			ClassChangeService.completeAscensionQuest(bot);
 			PlayerQuestListDAO.store(bot);
 		}
-		PlayerDAO.storePlayer(bot); // the creation insert has no exp column, so the level would be lost on the next load
+		storeExperience(bot.getObjectId(), commonData.getExp());
 		return bot;
+	}
+
+	/**
+	 * Writes the experience, which the character creation insert leaves out because a client created character always starts at zero. The level is
+	 * never stored as such, it is always derived from experience, so without this the bot would be back to level 1 on its next load.
+	 * <p>
+	 * Only this one column is updated: {@code PlayerDAO.storePlayer} reads {@code getPosition()}, which stays null until the character first enters
+	 * the world.
+	 */
+	private static void storeExperience(int playerId, long exp) {
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("UPDATE `players` SET `exp` = ? WHERE `id` = ?")) {
+			stmt.setLong(1, exp);
+			stmt.setInt(2, playerId);
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			LoggerFactory.getLogger(PlayerBotCreationService.class).error("Could not store the experience of player " + playerId, e);
+		}
 	}
 
 	/**
