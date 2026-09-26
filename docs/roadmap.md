@@ -18,7 +18,7 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 
 ## Then
 
-**Skill rotation (M7).** `BotSkillManager` casts the highest id usable skill, a decent proxy for "strongest available" and nothing more. No chains, no conditional skills, no opener, no mana management. Worth doing once bots fight constantly, which they now do.
+**Skill rotation (M7), started.** Bots heal themselves and cast from a skill's own range rather than walking into melee first — see [combat-prototype.md](combat-prototype.md). Still missing: a priority order per class instead of the highest usable id, self buffs (which target the caster, the same blind spot healing had), and openers.
 
 **Groups.** `model/team/group/` works on `Player` objects, so a headless bot should join like anyone else. Group loot rules already treat bots correctly, and `BotTargetSelector` already spares a team mate's target. This is the gateway to instanced PvE.
 
@@ -33,7 +33,7 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 3. **Only maps with a generated file are planned on.** Run `tools/navmesh.ps1 <mapId>`; the rest fall back to reactive steering. Only Poeta (210010000) is generated.
 4. **Crossing maps is not a navigation problem.** It needs teleporters and flight paths, like a player.
 5. **A crash loses whatever bots did since they spawned.** They are saved on despawn and on shutdown only.
-6. **Bots never flee, heal or use potions.** They only sit down to regenerate.
+6. **Bots never flee and never use potions.** They heal themselves if their class can, and otherwise sit down to regenerate.
 
 ## Traps that cost hours, so they do not cost them twice
 

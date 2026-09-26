@@ -18,8 +18,8 @@ Bots also move: they walk to a commanded point, chase a target out of weapon rea
 
 What the prototype deliberately does not do yet:
 
-- **Survive deliberately.** It never flees, heals or uses potions; it sits down where it stands to regenerate (resting multiplies hp regen by 8, so a standing bot takes minutes to heal what a seated one heals in seconds). It picks fights up to 3 levels above itself and only above 90% hp, leaves whatever killed it alone for 2 minutes, and on death resurrects after 10 s at its anchor with 25% hp/mp and soul sickness, like a player picking the obelisk. Those last rules exist because a bot reviving at 25% hp next to the mob that killed it dies again on a loop. Defending itself is never gated: the limits only apply to fights it starts, and an npc currently attacking the bot is picked before anything else, so a bot pulled by several mobs finishes them off instead of sitting down between two kills.
-- **Rotate skills per class** (M7). It casts the highest-id usable skill, which is a decent proxy for "strongest available" but not a real rotation.
+- **Survive deliberately.** It never flees and never uses potions; it sits down where it stands to regenerate (resting multiplies hp regen by 8, so a standing bot takes minutes to heal what a seated one heals in seconds). It picks fights up to 3 levels above itself and only above 90% hp, leaves whatever killed it alone for 2 minutes, and on death resurrects after 10 s at its anchor with 25% hp/mp and soul sickness, like a player picking the obelisk. Those last rules exist because a bot reviving at 25% hp next to the mob that killed it dies again on a loop. Defending itself is never gated: the limits only apply to fights it starts, and an npc currently attacking the bot is picked before anything else, so a bot pulled by several mobs finishes them off instead of sitting down between two kills.
+- **Rotate skills per class** (M7, started). It heals itself and casts from whatever range a skill has, but still picks the highest-id usable skill, which is a decent proxy for "strongest available" and not a real rotation. Buffs are still never cast.
 - **Anything outside combat besides looting and resting** — no grouping, economy or social behavior.
 
 Looting works like the client's second half only: `CM_START_LOOT` opens the corpse and cancels its decay task, `CM_LOOT_ITEM` takes a line. Bots skip the opening, because `DropService.requestDropItem` does not need an open drop list and a bot that failed to close one would leave the corpse lying around forever. Once the bag is 70% full the bot turns selective and only takes kinah, quest items and anything above ordinary quality: the rest is vendor fodder, and it cannot go and sell yet. After a kill the bot walks within 4 m of the corpse (only the client enforces looting range, so the server would happily let it vacuum from 25 m) and takes every line it is entitled to.
@@ -107,9 +107,18 @@ Cooldowns are keyed by `template.getCooldownId()`, **not** by skill id — a fre
 
 **Verify:** the bot casts a visible skill and respects its cooldown.
 
-## M7 — Rotation and combat end
+## M7 — Making the class matter
 
-A priority list of 2-3 skill ids per `PlayerClass`, clean stop when the target dies, tick cancellation in `handleDied` and on despawn.
+**Started.** Two gaps were closed first, because both made every class play alike:
+
+- **Healing.** Skill selection only ever considered skills whose target relation is `ENEMY`, so everything aimed at oneself or an ally was filtered out by construction — a priest fought like a warrior and recovered by sitting in the grass. A bot now heals itself below 50% in a fight, and after one when the wound is worth the mana: below 70% health with over 30% mana. Otherwise it rests, which restores both at eight times the rate and is free. Heals are recognised by their effects (`EffectType.HEAL`, `HEALINSTANT`), so this holds for every healing class without a table of skill ids to maintain.
+- **Range.** Skills were only ever tried once the target was within **weapon** reach, so a caster walked into melee before casting a spell good from twenty five metres. It now tries to cast before closing, and stands still to do it. Which skills reach how far needs no table either: the engine validates each skill's range as it is cast, so trying is itself the question.
+
+What is left: a real priority order per `PlayerClass` instead of the highest usable id, self buffs (same blind spot healing had — they target the caster), and openers.
+
+## Ending a fight against a player
+
+`canKeepFighting` asked only whether the target was alive and visible. A duel opponent stays both, so bots chased their opponent around the map once the duel ended. The check now asks the engine whether the target is still an enemy (`isEnemy`, which already accounts for duels and PvP zones), for **player** targets only: a player's standing changes mid fight, an npc's does not, and asking it of a peaceful mob would make the bot drop it the moment it swung.
 
 ## Bot characters in the database
 

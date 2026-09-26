@@ -47,7 +47,12 @@ public class BotAttackManager {
 	public static boolean canKeepFighting(Player bot, Creature target) {
 		if (!bot.isSpawned() || bot.isDead())
 			return false;
-		return target != null && !target.isDead() && bot.canSee(target);
+		if (target == null || target.isDead() || !bot.canSee(target))
+			return false;
+		// A player stops being a legitimate target without dying or leaving: a duel ends, a PvP zone is left. Asked of the engine rather than
+		// worked out here, since it is the same question it answers for a real player's attacks, duels included. Npcs are left out on purpose: a
+		// mob's standing does not change mid fight, and one that never was aggressive would be dropped the moment the bot swung at it.
+		return !(target instanceof Player) || bot.isEnemy(target);
 	}
 
 	/**

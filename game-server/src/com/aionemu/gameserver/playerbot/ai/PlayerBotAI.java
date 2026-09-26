@@ -264,6 +264,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// staying alive outranks landing a hit, and a cast costs one swing either way
 			if (!BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT) && !BotSkillManager.tryCastSkill(bot, target))
 				BotAttackManager.autoAttack(bot, target);
+		} else if (castFromAfar(target)) {
+			// something in the bot's book reaches where its weapon does not, so there is nothing to close
 		} else if (!chase(target)) {
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
 			ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
@@ -286,6 +288,24 @@ public class PlayerBotAI extends AITemplate<Player> {
 			attackTask.cancel(false);
 			attackTask = null;
 		}
+	}
+
+	/**
+	 * Attacks a target still out of weapon reach, when the bot knows something that reaches that far.
+	 * <p>
+	 * Without this a bot walks into melee before it will cast anything, which throws its class away: a priest closed to staff range to cast a spell
+	 * good from twenty five metres. There is no need to work out which skills reach, since the engine checks each one's range as it is cast — trying
+	 * is itself the question "does anything reach from here".
+	 *
+	 * @return true if a skill went off, in which case the bot holds its ground for the cast.
+	 */
+	private boolean castFromAfar(Creature target) {
+		Player bot = getOwner();
+		if (!BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT) && !BotSkillManager.tryCastSkill(bot, target))
+			return false;
+		chaseStartTime = 0;
+		stopMoving(); // a cast roots a real player, and sliding through one is the animation fault we keep paying for elsewhere
+		return true;
 	}
 
 	/**
