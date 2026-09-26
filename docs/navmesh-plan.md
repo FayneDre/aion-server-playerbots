@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. Not started — this is the design.
+Replacing reactive steering with real path planning. **N0 done**, the rest is the design.
 
 ## Why
 
@@ -59,13 +59,24 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 
 | | Goal | Verification |
 |---|---|---|
-| N0 | Offline tool loads one map's geometry and reports triangle and placement counts | Counts match the server's own startup log |
+| N0 | Offline tool loads one map's geometry and reports triangle and placement counts | **Done.** 20028 meshes and 419707 entities on 151 maps, plus 919 town level clones, matches the server's 20028 and 420626 exactly |
 | N1 | Rasterise one map to spans, dump a PNG per level | The image looks like the map: roads, buildings, water edges |
 | N2 | Walkability rules (slope, headroom, WALK volumes) | The known log and the known dead end appear as blocked |
 | N3 | Binary format, write and read back | Round trip is identical, load time under a second |
 | N4 | A\* plus funnel smoothing, `//bot path <x> <y>` prints the route | A route around a building, not through it |
 | N5 | `BotMoveController` follows a planned route | A bot walks around the log instead of into it |
 | N6 | Long route inside a map, then the vendor run | A bot reaches a town npc and comes back |
+
+## Running it
+
+```powershell
+.	ools
+avmesh.ps1 210010000
+.	ools
+avmesh.ps1 all
+```
+
+It runs from the server directory against the deployed jar, so deploy after changing the generator. `GeoDataReader` duplicates the format knowledge of `GeoWorldLoader` on purpose, because the offline tool cannot pull in `DataManager` and the world model. `all` exists to catch format drift: its totals must keep matching the server's startup log.
 
 ## Risks
 
