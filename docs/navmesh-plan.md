@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 to N4 done, N5 deployed and awaiting an in game check.**
+Replacing reactive steering with real path planning. **N0 to N5 done**, N6 is the remaining one.
 
 ## Why
 
@@ -42,9 +42,10 @@ Offline, as a `main` reusing `GeoWorldLoader` so it reads exactly what the serve
 
 1. Load one map's meshes, placements and terrain.
 2. For each column on a 0.5 m grid, cast a downward ray and record every surface hit: that is the span list. Terrain gives the base surface, meshes give floors, roofs and props.
-3. Mark a span walkable when its slope is ≤ 45° (matching `findMovementCollision`), it has at least 2 m of headroom, and no WALK volume covers it. Slope comes from the triangle's own normal for meshes, and from the height gradient across the cell for terrain.
-4. Link neighbouring spans where the step is ≤ ~0.5 m, so stairs connect and ledges do not.
-5. Write a compact binary per map into `data/navmesh/<mapId>.nav`.
+3. Erode the result by a body's width. Skipping this was the one mistake that showed in game: without it a bot climbed a fallen trunk by its branches, because the grid only ever asked whether ground was flat, never whether a body fitted. Eroding removes narrow footholds by construction, with nothing to recognise.
+4. Mark a span walkable when its slope is ≤ 45° (matching `findMovementCollision`), it has at least 2 m of headroom, and no WALK volume covers it. Slope comes from the triangle's own normal for meshes, and from the height gradient across the cell for terrain.
+5. Link neighbouring spans where the step is ≤ ~0.5 m, so stairs connect and ledges do not.
+6. Write a compact binary per map into `data/navmesh/<mapId>.nav`.
 
 The format is tiled, 64 columns square. Three decisions carry it: heights are quantized to 5 cm, which halves them into unsigned shorts; each tile carries an offset per **row** instead of per column, turning 151 MB of offsets into 1 MB; and each tile is **compressed separately** behind a directory at the head of the file, so the server reads a tile without reading the map. Opening a map is then instant, and a bot working a camp holds four tiles instead of 117 MB.
 
@@ -53,6 +54,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 ### Runtime
 
 - Load lazily, per map, on first use. Keep it out of the startup path.
+- Start and goal **snap outwards** to the nearest walkable cell, up to six metres. A player stands on a rock or against a wall more often than not, and without snapping "come here" simply found no route and fell back to walking blind. The last few metres are the reactive layer's job anyway.
 - `BotPathFinder.findPath(from, to)` — A\* over spans, then string pulling into a waypoint list. String pulling replaced the funnel: without polygon portals there is nothing to funnel through, and dropping every waypoint a straight walk can skip gives the same result in a fraction of the code.
 - It returns a `Route` that says whether the search **gave up** rather than proved the place unreachable. A bot must treat those differently: one means try another way, the other means stop trying.
 - `BotMoveController` walks waypoints through its existing leg machinery: arrival, stuck detection and the client packets all stay as they were, and the controller only gained the notion of a current waypoint separate from the final destination. This is the seam the earlier design was built around, and it held.
@@ -67,7 +69,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 | N2 | Walkability rules (slope, headroom, WALK volumes) | **Done.** 25.7 M of Poeta's 39.4 M surfaces are walkable, and the blocked ones trace its ridges and cliffs exactly. Its tree stumps, the kind of low prop the runtime probes cannot see at all, each block 8 to 15 cells and leave the ground under them unstandable for want of head room |
 | N3 | Binary format, write and read back | **Done.** Poeta is a 38 MB file, written in 4.3 s, read back in 0.35 s into 117 MB of heap, with all 39.4 M surfaces compared and no mismatch |
 | N4 | A\* plus string pulling, `NavmeshTool <mapId> path <x1> <y1> <x2> <y2>` draws the route | **Done.** A 20 m route between two houses bends around the first one instead of crossing its wall, in 8 ms. Routes of 50 to 100 m take 8 to 17 ms and come back as 2 to 4 waypoints |
-| N5 | `BotMoveController` follows a planned route | **Deployed.** `NavmeshService` loads a map on a pool thread the first time a bot needs it, the controller walks the waypoints through its existing leg machinery, and falls back to walking straight at the goal whenever there is no plan. In game check pending |
+| N5 | `BotMoveController` follows a planned route | **Done.** Bots walk around the fallen trunk they used to wedge themselves into, and a camp holds three or four tiles. Two fixes made it work: snapping start and goal to walkable ground, and eroding by a body's width |
 | N6 | Long route inside a map, then the vendor run | A bot reaches a town npc and comes back |
 
 ## Running it
