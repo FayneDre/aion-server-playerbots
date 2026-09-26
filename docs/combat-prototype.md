@@ -14,7 +14,7 @@ Each milestone is independently demoable, ordered so the riskiest unknown is pro
 
 Autonomy lives in `PlayerBotAI`: a decision tick every second picks a target through `BotTargetSelector` when idle, and `handleAttack` triggers retaliation. It is on by default and toggled with `//bot auto <name>` — without that switch no behavior can be tested in isolation, since the bot always re-engages.
 
-Bots also move: they walk to a commanded point, chase a target out of weapon reach and return to their anchor, within the bounds described in [navigation-prototype.md](navigation-prototype.md). `BotTargetSelector` searches a 25 m radius rather than weapon range, and leaves alone whatever another player or ungrouped bot is already fighting, so several bots in the same spot spread over the mobs instead of piling onto the nearest one.
+Bots also move: they walk to a commanded point, chase a target out of weapon reach and return to their anchor, within the bounds described in [navigation-prototype.md](navigation-prototype.md). `BotTargetSelector` searches a 25 m radius rather than weapon range, and leaves alone whatever another player or ungrouped bot is already fighting, so several bots in the same spot spread over the mobs instead of piling onto the nearest one. Reading `npc.getTarget()` is not enough for that, since it is only set once the mob retaliates: `BotTargetRegistry` has each bot claim its target atomically before attacking.
 
 What the prototype deliberately does not do yet:
 

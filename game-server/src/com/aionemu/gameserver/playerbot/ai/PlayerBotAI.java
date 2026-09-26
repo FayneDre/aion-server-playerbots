@@ -14,6 +14,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
+import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
@@ -105,10 +106,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 				recover();
 			else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
 				Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
-				if (target != null)
-					startAttacking(target);
-				else
+				if (target == null)
 					returnToAnchor();
+				else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
+					startAttacking(target);
 			}
 		}
 		synchronized (combatLock) {
@@ -122,6 +123,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	public void startAttacking(Creature target) {
+		BotTargetRegistry.forceClaim(target, getOwner()); // retaliation and commands are not negotiable
 		standUp(); // canAttack() is false while resting
 		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
 			getOwner().getController().stopProtectionActiveTask();
@@ -141,6 +143,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	private void cancelCombat() {
+		BotTargetRegistry.releaseAllOf(getOwner());
 		synchronized (combatLock) {
 			stopAttackTask();
 			chaseStartTime = 0;

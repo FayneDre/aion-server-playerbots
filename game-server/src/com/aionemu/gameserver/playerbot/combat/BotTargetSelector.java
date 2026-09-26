@@ -46,7 +46,11 @@ public class BotTargetSelector {
 	 * players.
 	 */
 	private static boolean isTakenByAnotherPlayer(Player bot, Npc npc) {
-		return npc.getTarget() instanceof Player other && !other.equals(bot) && !other.isInSameTeam(bot);
+		return isFighting(bot, npc.getTarget()) || isFighting(bot, BotTargetRegistry.getOwner(npc));
+	}
+
+	private static boolean isFighting(Player bot, Object candidate) {
+		return candidate instanceof Player other && !other.equals(bot) && !other.isInSameTeam(bot);
 	}
 
 	private static boolean isAttackable(Player bot, Npc npc) {
