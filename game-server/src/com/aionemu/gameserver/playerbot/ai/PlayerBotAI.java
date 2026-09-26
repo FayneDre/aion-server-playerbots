@@ -41,6 +41,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * every attack tick turns a run into a stutter.
 	 */
 	private static final long CHASE_REROUTE_INTERVAL = 600;
+	/** Roughly how long the client takes to play the stand up animation. Moving the bot before that makes it slide to its feet. */
+	private static final long STAND_UP_MILLIS = 1000;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
 	private static final long UNREACHABLE_MILLIS = 10000;
 	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
@@ -64,6 +66,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile float anchorX, anchorY, anchorZ;
 	private volatile long chaseStartTime;
 	private volatile long lastChaseRoute;
+	private volatile long standUpTime;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
 
@@ -100,7 +103,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
 			if (!isHealthyEnoughToFight())
 				recover();
-			else {
+			else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
 				Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 				if (target != null)
 					startAttacking(target);
@@ -119,7 +122,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	public void startAttacking(Creature target) {
-		BotRestManager.standUp(getOwner()); // canAttack() is false while resting
+		standUp(); // canAttack() is false while resting
 		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
 			getOwner().getController().stopProtectionActiveTask();
 		synchronized (combatLock) {
@@ -211,6 +214,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return false;
 		if (PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE)
 			return false;
+		if (!hasStoodUpLongEnough())
+			return true; // on its feet in a moment, do not slide there
 
 		if (moveController.isInMove()
 			&& (now - lastChaseRoute < CHASE_REROUTE_INTERVAL || moveController.isHeadingTo(target.getX(), target.getY(), RETARGET_STEP)))
@@ -240,6 +245,23 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * Sits down to heal where the bot stands, because resting recovers eight times faster than standing around. It recovers on the spot rather than
 	 * walking home first: the fight is over, and a player sits down where it ended.
 	 */
+	/**
+	 * Gets the bot up and remembers when, because moving it while the client is still playing the stand up animation makes it slide across the
+	 * ground.
+	 *
+	 * @return true if it was resting and has just stood up, in which case the caller should not act yet.
+	 */
+	private boolean standUp() {
+		if (!BotRestManager.standUp(getOwner()))
+			return false;
+		standUpTime = System.currentTimeMillis();
+		return true;
+	}
+
+	private boolean hasStoodUpLongEnough() {
+		return System.currentTimeMillis() - standUpTime >= STAND_UP_MILLIS;
+	}
+
 	private void recover() {
 		if (!getOwner().getMoveController().isInMove())
 			BotRestManager.sitDown(getOwner());
@@ -278,8 +300,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 	@Override
 	protected void handleMoveValidate() {
 		// the attack tick only runs at weapon speed, far too slow to notice the target came into reach while running at it
-		if (chaseStartTime != 0 && getOwner().getTarget() instanceof Creature target && BotAttackManager.isInAttackRange(getOwner(), target))
-			stopMoving();
+		if (chaseStartTime == 0 || !(getOwner().getTarget() instanceof Creature target) || !BotAttackManager.isInAttackRange(getOwner(), target))
+			return;
+		chaseStartTime = 0;
+		stopMoving();
+		// strike right away instead of standing next to the target until the scheduled tick comes round
+		synchronized (combatLock) {
+			if (attackTask != null) {
+				stopAttackTask();
+				scheduleAttackTick(0);
+			}
+		}
 	}
 
 	@Override

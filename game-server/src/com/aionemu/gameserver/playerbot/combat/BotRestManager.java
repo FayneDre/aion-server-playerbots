@@ -27,11 +27,14 @@ public class BotRestManager {
 	/**
 	 * Gets the bot back on its feet. Mandatory before any action: {@code Creature.canAttack()} is false while resting, and a seated bot walking
 	 * looks like it is gliding across the ground.
+	 *
+	 * @return true if the bot was actually resting, in which case callers must leave it time to play the animation before moving it.
 	 */
-	public static void standUp(Player bot) {
+	public static boolean standUp(Player bot) {
 		if (!bot.isInState(CreatureState.RESTING))
-			return;
+			return false;
 		bot.unsetState(CreatureState.RESTING);
 		PacketSendUtility.broadcastPacket(bot, new SM_EMOTION(bot, EmotionType.STAND));
+		return true;
 	}
 }
