@@ -1,7 +1,9 @@
 package com.aionemu.gameserver.playerbot.combat;
 
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.gameobjects.Creature;
@@ -9,6 +11,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.skillengine.change.Change;
+import com.aionemu.gameserver.skillengine.condition.ChainCondition;
 import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.effect.EffectTemplate;
 import com.aionemu.gameserver.skillengine.effect.EffectType;
@@ -46,6 +49,13 @@ public class BotSkillManager {
 	 * three seconds, long enough to break contact and no longer, while the approach skills last from twenty seconds to five minutes.
 	 */
 	private static final long APPROACH_HIDE_MILLIS = 10_000;
+	/**
+	 * How the data marks the first link of a chain. Everything else carrying a chain condition continues one, which is the distinction that matters:
+	 * a continuation is a window that closes.
+	 */
+	private static final String FIRST_CHAIN_LINK = "_1TH";
+	/** Auras a bot keeps running. The engine ends the oldest past this many (see {@code EffectController}), so going further would only cycle them. */
+	private static final int MAX_MANTRAS = 3;
 
 	/**
 	 * Effects whose whole purpose is to keep their bearer alive. Read from the data rather than from a curated list of skill ids, so a skill nobody
@@ -166,7 +176,59 @@ public class BotSkillManager {
 	public static boolean tryCastSkill(Player bot, Creature target) {
 		if (isSavingManaToHeal(bot))
 			return false; // the auto attack costs nothing, and the fight is not lost until the heal cannot be paid for
-		return cast(bot, target, skills(bot, BotSkillManager::isOffensive));
+		List<PlayerSkillEntry> candidates = skills(bot, BotSkillManager::isOffensive).stream()
+			.filter(entry -> !alreadyAfflicts(target, DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId()))).toList();
+		return cast(bot, target, candidates);
+	}
+
+	/**
+	 * Tells whether a weakening skill would land on a target that already carries it.
+	 * <p>
+	 * Re-applying one buys nothing and costs the swing that would have gone into damage. Asked by stack group, as everywhere else, so a higher rank
+	 * is not laid over a lower one. Only skills whose whole purpose is the debuff are checked: an attack that happens to leave a mark is still worth
+	 * casting for its damage.
+	 */
+	private static boolean alreadyAfflicts(Creature target, SkillTemplate template) {
+		if (template.getSubType() != SkillSubType.DEBUFF || template.getStack() == null)
+			return false;
+		return target.getEffectController().getAbnormalEffect(template.getStack()) != null;
+	}
+
+	/**
+	 * Turns on one of the bot's mantras, if it is running fewer than it is allowed.
+	 * <p>
+	 * Mantras are toggles, so the rule that keeps a bot from switching its own toggles off had excluded every one of them, and chanters ran none at
+	 * all. They are the only toggles a bot may touch, and only ever to turn one on: casting an active one turns it off again.
+	 *
+	 * @return true if one was turned on. One per call, like any other buff.
+	 */
+	public static boolean tryChantMantra(Player bot) {
+		if (activeMantras(bot) >= MAX_MANTRAS)
+			return false;
+		return cast(bot, bot, skills(bot, BotSkillManager::isMissingMantra));
+	}
+
+	private static boolean isMissingMantra(Player bot, SkillTemplate template) {
+		return isMantra(template) && !isAlreadyUp(bot, template);
+	}
+
+	private static boolean isMantra(SkillTemplate template) {
+		return template.getSubType() == SkillSubType.CHANT && template.isToggle();
+	}
+
+	/**
+	 * Counts the mantras currently running, by stack group rather than by skill, since the ranks of one mantra share a group and only one of them can
+	 * be up. Counted from the bot's own book instead of read off the effect controller, whose aura list is private to the engine.
+	 */
+	private static int activeMantras(Player bot) {
+		Set<String> running = new HashSet<>();
+		for (PlayerSkillEntry entry : bot.getSkillList().getAllSkills()) {
+			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
+			if (template != null && isMantra(template) && template.getStack() != null
+				&& bot.getEffectController().getAbnormalEffect(template.getStack()) != null)
+				running.add(template.getStack());
+		}
+		return running.size();
 	}
 
 	/**
@@ -354,18 +416,39 @@ public class BotSkillManager {
 		return false;
 	}
 
-	/** @return The bot's usable skills of one kind, strongest first. */
+	/** @return The bot's usable skills of one kind, in the order it should try them. */
 	private static List<PlayerSkillEntry> skills(Player bot, SkillFilter filter) {
 		return bot.getSkillList().getAllSkills().stream().filter(entry -> {
 			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
-			if (template == null || template.isPassive() || template.isToggle() || template.getProperties() == null)
+			if (template == null || template.isPassive() || template.getProperties() == null)
+				return false;
+			// a toggle cast a second time turns itself off, so the only rule allowed near one is the mantra rule, which checks first that it is off
+			if (template.isToggle() && !isMantra(template))
 				return false;
 			if (bot.isSkillDisabled(template)) // cooldowns are keyed by cooldown id, not skill id, which this handles
 				return false;
 			return filter.matches(bot, template);
 		})
-			// skills are learned in level order, so the highest id is usually the strongest one available
-			.sorted(Comparator.comparingInt(PlayerSkillEntry::getSkillId).reversed()).toList();
+			.sorted(CHAIN_FIRST_THEN_STRONGEST).toList();
+	}
+
+	/**
+	 * A chain continuation before anything else, then the highest id.
+	 * <p>
+	 * A continuation is a window that closes on its own, and it closes the moment the bot casts something else: the engine resets the chain whenever
+	 * a non-chain skill passes its checks, and merely trying a chain's opening link resets a chain already in progress. So the order is not a
+	 * preference but a correctness rule — asking in the wrong order destroyed the very thing being asked about.
+	 * <p>
+	 * Beyond that the highest id still wins. Skills are learned in level order, so it reads as "the strongest one available", which is a fair
+	 * approximation and not yet a rotation.
+	 */
+	private static final Comparator<PlayerSkillEntry> CHAIN_FIRST_THEN_STRONGEST = Comparator
+		.comparing((PlayerSkillEntry entry) -> !continuesAChain(DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId())))
+		.thenComparing(PlayerSkillEntry::getSkillId, Comparator.reverseOrder());
+
+	private static boolean continuesAChain(SkillTemplate template) {
+		ChainCondition chain = template.getChainCondition();
+		return chain != null && chain.getCategory() != null && !chain.getCategory().contains(FIRST_CHAIN_LINK);
 	}
 
 	private interface SkillFilter {

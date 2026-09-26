@@ -182,7 +182,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing. Not an early return: the tick reschedules
 				// itself at the end of this method, and leaving by any other door stops the bot for good.
-				if (!BotSkillManager.tryBuffSelf(getOwner())) {
+				if (!BotSkillManager.tryBuffSelf(getOwner()) && !BotSkillManager.tryChantMantra(getOwner())) {
 					Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 					if (target == null)
 						roam();

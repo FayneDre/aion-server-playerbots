@@ -116,7 +116,7 @@ Cooldowns are keyed by `template.getCooldownId()`, **not** by skill id — a fre
 - **Buffs.** Same blind spot as healing: a buff is cast on its caster, so the enemy-only filter hid every one of them. A bot now raises a missing buff out of combat, one per decision tick, asked **by stack group** rather than by skill id — two ranks of one buff share a group while their ids differ, so going by id had a bot raise its best rank and overwrite it with a weaker one a tick later, for ever.
 - **Cooldowns, kept and then spent**, and **class openers** — how each of those decides what to cast, and in which order, is its own topic: see [combat-skills.md](combat-skills.md).
 
-What is left: a real priority order per `PlayerClass` instead of the highest usable id, mantras (`SkillSubType.CHANT` toggles, excluded by the toggle filter and needing on/off management), and a classification for the abilities the stance pass leaves unlabelled.
+What is left: a genuine rotation per `PlayerClass`, and a classification for the abilities the stance pass leaves unlabelled.
 
 ## Ending a fight against a player
 

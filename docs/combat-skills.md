@@ -6,6 +6,8 @@
 
 `useBestSkill(target)` is the whole of a bot's in-fight judgement, so it lives in one method rather than being restated wherever a skill might be cast: **approach, opening burst, defensive ability, heal, gap closer, attack.** A cast costs a swing either way, which is why staying alive comes before damage and why nothing is tried twice in the same tick.
 
+Within each of those, `skills(bot, filter)` returns the candidates in the order to try them and `cast` stops at the first that fires. The engine validates mp, cooldown, range, target and every start condition as each one is tried, so trying **is** the question — no table of ranges or requirements to keep in step with upstream.
+
 Mana is reserved as well: a class that can heal stops paying for attack skills below 25% mana, so a fight going badly does not find it unable to afford the heal. For everyone else, mana exists to be spent.
 
 ## Upkeep, and abilities kept in hand
@@ -52,3 +54,27 @@ The hide durations split the two uses cleanly with nothing in between: the escap
 `BACKDASH` was a real bug, not a missing feature. These are ordinary attacks that happen to leap backwards, so a bot choosing skills for damage alone undid its own chase and walked the distance again, over and over. Kiting is a genuine tactic and one a bot may learn later; until then these only work against it.
 
 The approach also had to be taken away from two rules that would have claimed it. `Shadow Walk` lasts five minutes on a three-minute cooldown, which makes it upkeep by the duration rule — bots would have been permanently invisible, which is the opposite of populating a world. It is not a defensive button either. A long hide is its own thing, and the approach has its own once-per-fight flag so that hiding does not also cost the bot its opening burst.
+
+## Picking an attack
+
+Attacks were tried highest id first. Skills are learned in level order, so that reads as "the strongest one available" and is a fair approximation — but it ignored the thing Aion combat is actually built on.
+
+### Chains come first, and not as a preference
+
+**716 of the skills a class can learn continue a chain**, against 727 that open one, and every class has them — 96 for a chanter, 88 for a gladiator, 57 for a cleric. A continuation is a window that closes on its own, and the engine closes it the moment the bot does anything else: `Skill.canUseSkill` resets the chain whenever a non-chain skill passes its checks, and `ChainCondition.validate` resets a chain in progress merely because the bot *tried* another chain's opening link. Asking in the wrong order destroyed the very thing being asked about, so this is a correctness rule and not a matter of taste.
+
+The data marks the first link of a chain with `_1TH` in its category; anything else carrying a chain condition continues one. That is the whole test. Trying continuations first costs nothing when no chain is open: `ChainCondition` returns false and the next candidate is tried.
+
+### A weakening skill is not re-applied
+
+All 157 enemy-targeted `DEBUFF` skills carry a stack group, so a debuff already on the target is recognised the same way a buff already on the bot is. Re-applying one buys nothing and costs the swing that would have gone into damage. Only skills whose *whole purpose* is the debuff are checked — an attack that happens to leave a mark is still worth casting for its damage.
+
+## Mantras
+
+A chanter's mantras are toggles, and the rule that stops a bot switching its own toggles off had excluded every one of them, so chanters ran none at all. They are now the **only** toggles a bot may touch, and only ever to turn one on, since casting an active toggle turns it off.
+
+Up to three run at once, which is the engine's own limit (`EffectController` ends the oldest past three). The count is taken from the bot's own book by stack group rather than read off the effect controller, whose aura list is private. Highest id first, as elsewhere, so the most recently learned mantras win the three slots.
+
+## What is still missing
+
+A genuine rotation per `PlayerClass` — openers into chains into finishers, conditional skills, cost weighed against damage. What exists now is a set of tiers that hold for every class because they come from the data; a real rotation is a design decision per class, and a different kind of work.
