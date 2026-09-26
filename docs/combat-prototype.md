@@ -20,7 +20,9 @@ What the prototype deliberately does not do yet:
 
 - **Survive deliberately.** It never flees, heals or uses potions; it sits down where it stands to regenerate (resting multiplies hp regen by 8, so a standing bot takes minutes to heal what a seated one heals in seconds). It picks fights up to 3 levels above itself and only above 90% hp, leaves whatever killed it alone for 2 minutes, and on death resurrects after 10 s at its anchor with 25% hp/mp and soul sickness, like a player picking the obelisk. Those last rules exist because a bot reviving at 25% hp next to the mob that killed it dies again on a loop. Defending itself is never gated: the limits only apply to fights it starts.
 - **Rotate skills per class** (M7). It casts the highest-id usable skill, which is a decent proxy for "strongest available" but not a real rotation.
-- **Anything outside combat** — no looting, resting, grouping, economy or social behavior.
+- **Anything outside combat besides looting and resting** — no grouping, economy or social behavior.
+
+Looting works like the client's second half only: `CM_START_LOOT` opens the corpse and cancels its decay task, `CM_LOOT_ITEM` takes a line. Bots skip the opening, because `DropService.requestDropItem` does not need an open drop list and a bot that failed to close one would leave the corpse lying around forever. After a kill the bot walks within 4 m of the corpse (only the client enforces looting range, so the server would happily let it vacuum from 25 m) and takes every line it is entitled to.
 
 Two lessons worth carrying forward:
 

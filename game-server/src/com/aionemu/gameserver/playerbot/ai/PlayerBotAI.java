@@ -10,8 +10,10 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.ai.AIState;
 import com.aionemu.gameserver.ai.AITemplate;
 import com.aionemu.gameserver.model.gameobjects.Creature;
+import com.aionemu.gameserver.model.gameobjects.VisibleObject;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
+import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
@@ -21,6 +23,7 @@ import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
+import com.aionemu.gameserver.world.World;
 
 /**
  * Brain of a player bot. The engine fires creature events on whatever AI is attached to a creature, so a bot receives ATTACK, MOVE_ARRIVED and
@@ -68,6 +71,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long chaseStartTime;
 	private volatile long lastChaseRoute;
 	private volatile long standUpTime;
+	/** Object id of the corpse left by the bot's last kill, 0 when there is nothing to pick up. */
+	private volatile int pendingCorpse;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
 
@@ -102,7 +107,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
 		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
-			if (!isHealthyEnoughToFight())
+			if (collectLoot()) {
+				// busy with a corpse, everything else can wait
+			} else if (!isHealthyEnoughToFight())
 				recover();
 			else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
 				Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
@@ -163,6 +170,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Player bot = getOwner();
 		Creature target = bot.getTarget() instanceof Creature creature ? creature : null;
 		if (!BotAttackManager.canKeepFighting(bot, target)) {
+			if (target != null && target.isDead() && BotLootManager.hasLootFor(bot, target.getObjectId()))
+				pendingCorpse = target.getObjectId(); // the decision tick walks over and picks it up
 			log.info("Bot {} stops attacking", bot.getName());
 			stopAttacking();
 			return;
@@ -254,6 +263,43 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 *
 	 * @return true if it was resting and has just stood up, in which case the caller should not act yet.
 	 */
+	/**
+	 * Walks to the corpse of what the bot just killed and takes what is on it.
+	 *
+	 * @return true while the bot is busy looting, so nothing else is decided this tick.
+	 */
+	private boolean collectLoot() {
+		int corpseId = pendingCorpse;
+		if (corpseId == 0)
+			return false;
+
+		VisibleObject corpse = World.getInstance().findVisibleObject(corpseId);
+		if (corpse == null || !BotLootManager.hasLootFor(getOwner(), corpseId)) { // decayed, empty, or nothing the bot may take
+			pendingCorpse = 0;
+			return false;
+		}
+		if (standUp())
+			return true; // on its feet first, so it does not slide to the corpse
+
+		if (PositionUtil.getDistance(getOwner(), corpse) > BotLootManager.LOOT_RANGE) {
+			if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
+				return false;
+			if (moveController.isInMove())
+				return true;
+			if (moveController.isBlocked() || !moveController.moveToPoint(corpse.getX(), corpse.getY(), corpse.getZ())) {
+				log.info("Bot {} cannot reach the corpse it wanted to loot", getOwner().getName());
+				pendingCorpse = 0;
+				return false;
+			}
+			return true;
+		}
+
+		int looted = BotLootManager.lootAll(getOwner(), corpseId);
+		pendingCorpse = 0;
+		log.info("Bot {} looted {} item(s)", getOwner().getName(), looted);
+		return false;
+	}
+
 	private boolean standUp() {
 		if (!BotRestManager.standUp(getOwner()))
 			return false;
