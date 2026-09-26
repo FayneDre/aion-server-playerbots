@@ -1,5 +1,9 @@
 package com.aionemu.gameserver.playerbot.navmesh;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -10,6 +14,7 @@ import java.util.Map;
 import javax.imageio.ImageIO;
 
 import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 
 /**
  * Offline entry point of the navmesh toolchain. Run it from the server directory, where {@code data/geo} lives:
@@ -25,10 +30,16 @@ public class NavmeshTool {
 	private static final byte TOWN_OBJECT = 5; // DespawnableNode.DespawnableType.TOWN_OBJECT
 
 	public static void main(String[] args) throws IOException {
+		if (args.length == 6 && args[1].equals("path")) {
+			planRoute(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]),
+				Float.parseFloat(args[5]));
+			return;
+		}
 		if (args.length != 1 && args.length != 2 && args.length != 3) {
 			System.out.println("Usage: NavmeshTool <mapId>|all");
 			System.out.println("       NavmeshTool <mapId> <x> <y>   inspect one spot");
 			System.out.println("       NavmeshTool <mapId> <text>    inspect the props whose model name contains that text");
+			System.out.println("       NavmeshTool <mapId> path <x1> <y1> <x2> <y2>   plan a route and draw it");
 			return;
 		}
 
@@ -81,6 +92,88 @@ public class NavmeshTool {
 		System.out.printf("Wrote %s (%.1f MB) in %d ms%n", navmesh.toAbsolutePath(), Files.size(navmesh) / 1048576f,
 			System.currentTimeMillis() - start);
 		verifyRoundTrip(mapId, field);
+	}
+
+	/**
+	 * Plans a route over the generated file and draws it, which is the only honest way to judge one: a list of coordinates tells you nothing about
+	 * whether the bot went around the building or through it.
+	 */
+	private static void planRoute(int mapId, float startX, float startY, float goalX, float goalY) throws IOException {
+		Navmesh mesh = Navmesh.load(mapId);
+		float startZ = groundAt(mesh, startX, startY), goalZ = groundAt(mesh, goalX, goalY);
+		System.out.printf("From %.1f %.1f %.1f to %.1f %.1f %.1f%n", startX, startY, startZ, goalX, goalY, goalZ);
+
+		long start = System.currentTimeMillis();
+		BotPathFinder.Route result = BotPathFinder.findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
+		long elapsed = System.currentTimeMillis() - start;
+		if (result.isEmpty()) {
+			System.out.println((result.gaveUp() ? "Gave up searching after " : "No route exists, established in ") + elapsed + " ms");
+			return;
+		}
+		List<Vector3f> route = result.waypoints();
+
+		float length = 0;
+		for (int i = 1; i < route.size(); i++)
+			length += route.get(i).distance(route.get(i - 1));
+		float direct = route.get(0).distance(route.get(route.size() - 1));
+		System.out.printf("Route of %d waypoints, %.0f m walked for %.0f m as the crow flies, in %d ms%n", route.size(), length, direct, elapsed);
+		for (Vector3f waypoint : route)
+			System.out.printf("  %.1f %.1f %.1f%n", waypoint.x, waypoint.y, waypoint.z);
+		System.out.println("Wrote " + writeRouteImage(mapId, mesh, route).toAbsolutePath());
+	}
+
+	private static float groundAt(Navmesh mesh, float x, float y) {
+		int cellX = mesh.cellX(x), cellY = mesh.cellY(y);
+		for (int surface = mesh.surfaceCount(cellX, cellY) - 1; surface >= 0; surface--)
+			if (mesh.isWalkable(cellX, cellY, surface))
+				return mesh.surfaceZ(cellX, cellY, surface);
+		return Float.NaN;
+	}
+
+	/** Draws the route over the walkability of the area it crosses, cropped so the result is actually readable. */
+	private static Path writeRouteImage(int mapId, Navmesh mesh, List<Vector3f> route) throws IOException {
+		int minX = mesh.width(), maxX = 0, minY = mesh.height(), maxY = 0;
+		for (Vector3f waypoint : route) {
+			minX = Math.min(minX, mesh.cellX(waypoint.x));
+			maxX = Math.max(maxX, mesh.cellX(waypoint.x));
+			minY = Math.min(minY, mesh.cellY(waypoint.y));
+			maxY = Math.max(maxY, mesh.cellY(waypoint.y));
+		}
+		int margin = 40;
+		minX = Math.max(0, minX - margin);
+		minY = Math.max(0, minY - margin);
+		maxX = Math.min(mesh.width() - 1, maxX + margin);
+		maxY = Math.min(mesh.height() - 1, maxY + margin);
+
+		BufferedImage image = new BufferedImage(maxX - minX + 1, maxY - minY + 1, BufferedImage.TYPE_INT_RGB);
+		for (int y = minY; y <= maxY; y++)
+			for (int x = minX; x <= maxX; x++)
+				image.setRGB(x - minX, y - minY, mesh.surfaceCount(x, y) == 0 ? 0x000080 : mesh.hasFooting(x, y) ? 0x30A030 : 0xC02020);
+
+		Graphics2D graphics = image.createGraphics();
+		graphics.setColor(Color.WHITE);
+		graphics.setStroke(new BasicStroke(2));
+		for (int i = 1; i < route.size(); i++)
+			graphics.drawLine(mesh.cellX(route.get(i - 1).x) - minX, mesh.cellY(route.get(i - 1).y) - minY, mesh.cellX(route.get(i).x) - minX,
+				mesh.cellY(route.get(i).y) - minY);
+		graphics.setColor(Color.YELLOW);
+		for (Vector3f waypoint : route)
+			graphics.fillOval(mesh.cellX(waypoint.x) - minX - 2, mesh.cellY(waypoint.y) - minY - 2, 5, 5);
+		graphics.dispose();
+		return write(mapId, "route", zoomToReadable(image));
+	}
+
+	/** Blows up a small crop so single cells stay visible, keeping hard edges rather than blurring them. */
+	private static BufferedImage zoomToReadable(BufferedImage image) {
+		int zoom = Math.max(1, Math.min(8, 600 / Math.max(image.getWidth(), image.getHeight())));
+		if (zoom == 1)
+			return image;
+		BufferedImage zoomed = new BufferedImage(image.getWidth() * zoom, image.getHeight() * zoom, BufferedImage.TYPE_INT_RGB);
+		Graphics2D graphics = zoomed.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+		graphics.drawImage(image, 0, 0, zoomed.getWidth(), zoomed.getHeight(), null);
+		graphics.dispose();
+		return zoomed;
 	}
 
 	/**

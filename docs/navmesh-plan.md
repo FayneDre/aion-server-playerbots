@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 to N3 done**, the rest is the design.
+Replacing reactive steering with real path planning. **N0 to N4 done**, the rest is the design.
 
 ## Why
 
@@ -53,7 +53,8 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 ### Runtime
 
 - Load lazily, per map, on first use. Keep it out of the startup path.
-- `BotPathFinder.findPath(from, to)` — A\* over spans, then funnel smoothing into a waypoint list.
+- `BotPathFinder.findPath(from, to)` — A\* over spans, then string pulling into a waypoint list. String pulling replaced the funnel: without polygon portals there is nothing to funnel through, and dropping every waypoint a straight walk can skip gives the same result in a fraction of the code.
+- It returns a `Route` that says whether the search **gave up** rather than proved the place unreachable. A bot must treat those differently: one means try another way, the other means stop trying.
 - `BotMoveController` walks waypoints **unchanged**: legs, arrival, stuck detection and the client packets all stay as they are. This is the seam the current design was built around.
 - `BotGeoHelper` keeps its corridor probe for the last few metres and for dynamic obstacles (gatherables, other players), which no static mesh can know about.
 
@@ -65,7 +66,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 | N1 | Rasterise one map to spans, dump images | **Done.** Poeta is 6144x6144 columns holding 39.4 M surfaces, rasterized in 1.4 s. The height image shows its valleys, ridges and river, the structure image shows its buildings clustered in the built up area |
 | N2 | Walkability rules (slope, headroom, WALK volumes) | **Done.** 25.7 M of Poeta's 39.4 M surfaces are walkable, and the blocked ones trace its ridges and cliffs exactly. Its tree stumps, the kind of low prop the runtime probes cannot see at all, each block 8 to 15 cells and leave the ground under them unstandable for want of head room |
 | N3 | Binary format, write and read back | **Done.** Poeta is a 38 MB file, written in 4.3 s, read back in 0.35 s into 117 MB of heap, with all 39.4 M surfaces compared and no mismatch |
-| N4 | A\* plus funnel smoothing, `//bot path <x> <y>` prints the route | A route around a building, not through it |
+| N4 | A\* plus string pulling, `NavmeshTool <mapId> path <x1> <y1> <x2> <y2>` draws the route | **Done.** A 20 m route between two houses bends around the first one instead of crossing its wall, in 8 ms. Routes of 50 to 100 m take 8 to 17 ms and come back as 2 to 4 waypoints |
 | N5 | `BotMoveController` follows a planned route | A bot walks around the log instead of into it |
 | N6 | Long route inside a map, then the vendor run | A bot reaches a town npc and comes back |
 
@@ -92,4 +93,5 @@ These are for validating the generator, not for surveying the world: one known o
 2. **The span format is a new file format to maintain.** Version it from the first byte, and keep the generator able to rebuild everything.
 3. **Multi-level geometry** (bridges, buildings, the Abyss) is where span linking gets subtle. N1's per-level images are what makes this debuggable.
 4. **Dynamic obstacles stay unsolved by the mesh** — players, npcs, gatherables, doors. The existing reactive layer keeps handling the last few metres.
-5. **Flight.** Aion is three dimensional and a ground navmesh ignores it. Out of scope here; flying bots are a separate design.
+5. **Long routes exhaust the search.** A 970 m crossing of Poeta burns the million node budget in 1.5 s and gives up: at 0.5 m cells, open ground makes A\* explore a very wide area. Anything past a few hundred metres needs either a coarse pass over a downsampled grid, refined afterwards, or fixed waypoints between regions. That is N6's problem, and it is why `Route` reports giving up.
+6. **Flight.** Aion is three dimensional and a ground navmesh ignores it. Out of scope here; flying bots are a separate design.
