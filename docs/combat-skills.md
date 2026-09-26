@@ -59,6 +59,20 @@ The approach also had to be taken away from two rules that would have claimed it
 
 Attacks were tried highest id first. Skills are learned in level order, so that reads as "the strongest one available" and is a fair approximation — but it ignored the thing Aion combat is actually built on.
 
+### The strongest, not the newest
+
+Ranking by the highest skill id was meant to read as "the strongest one available", since skills are learned in level order. Against the data it is badly wrong, because the most recently learned skill is not the best one:
+
+| Class | It led with | While this sat unused |
+|---|---|---|
+| Gladiator | Body Smash, 322 | Sure Strike, **2519** |
+| Sorcerer | Soul Freeze, 1055 | Storm Strike, **5292** |
+| Cleric | Enfeebling Burst, 255 | Call Lightning, **3190** |
+
+Attacks and heals are now ordered by the number the data states — damage as the percentage of the bot's attack the client shows, healing in points. Every damaging effect in the game states its value as a percentage, so they compare directly; classes are dominated by one damage type each (a chanter has 197 physical against 17 magical, a cleric 175 magical against 12 physical), so the two scales barely meet.
+
+Heals over time are excluded, and by the class hierarchy rather than by a rule of ours: `HealEffect` descends from `HealOverTimeEffect`, not from `AbstractHealEffect`. That is the right answer for the right reason — their value is one tick, not a total, so it was never comparable.
+
 ### Chains come first, and not as a preference
 
 **716 of the skills a class can learn continue a chain**, against 727 that open one, and every class has them — 96 for a chanter, 88 for a gladiator, 57 for a cleric. A continuation is a window that closes on its own, and the engine closes it the moment the bot does anything else: `Skill.canUseSkill` resets the chain whenever a non-chain skill passes its checks, and `ChainCondition.validate` resets a chain in progress merely because the bot *tried* another chain's opening link. Asking in the wrong order destroyed the very thing being asked about, so this is a correctness rule and not a matter of taste.
@@ -75,6 +89,12 @@ A chanter's mantras are toggles, and the rule that stops a bot switching its own
 
 Up to three run at once, which is the engine's own limit (`EffectController` ends the oldest past three). The count is taken from the bot's own book by stack group rather than read off the effect controller, whose aura list is private. Highest id first, as elsewhere, so the most recently learned mantras win the three slots.
 
+## Procs, and what is left unlabelled
+
+A proc arms something that fires later, so its own effects say nothing about which way it points. What decides is the blow that sets it off: `ProvokerEffect` installs an observer on the bearer's **attacks** for `NMLATK` and `BACKATK`, and on the bearer being **hit** for everything else. That single line is mirrored rather than guessed at, which took 29 more abilities off the unlabelled pile — 20 offensive, 9 defensive. It needed one accessor in the engine, `EffectTemplate.getHitType()`, over a field that was already there.
+
+53 abilities are still left alone, and deliberately. They are travel and utility rather than combat: movement and flight speed, scouting sight, flight-point heals, escape teleports. A bot has no behaviour these would serve, and guessing a side for them would only make it spend a cooldown on nothing.
+
 ## What is still missing
 
-A genuine rotation per `PlayerClass` — openers into chains into finishers, conditional skills, cost weighed against damage. What exists now is a set of tiers that hold for every class because they come from the data; a real rotation is a design decision per class, and a different kind of work.
+An authored rotation per `PlayerClass` — a named opener into a named chain into a named finisher, skills conditional on the fight's state, mana cost weighed against damage. Everything here is read from the data instead, which is why it holds for all fifteen classes at once and needs no table to keep in step with upstream. An authored rotation would beat it for the classes someone sits down and writes, and rot for the rest; it is worth doing once bots have been watched fighting long enough to say which classes actually play badly.

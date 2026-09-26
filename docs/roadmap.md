@@ -18,7 +18,7 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 
 ## Then
 
-**Skill rotation (M7), started.** Bots heal, buff, cast from a skill's own range rather than walking into melee first, shield themselves when a fight turns, and open with a burst — they open with a class's own move — a leap, or a walk in under stealth — and they no longer pick the attacks that leap backwards. They follow their skill chains, do not re-apply a debuff already on the target, and chanters run their mantras. See [combat-skills.md](combat-skills.md). Still missing: a genuine rotation per class — what exists is a set of tiers read from the data, not an authored order.
+**Skill rotation (M7), started.** Bots heal, buff, cast from a skill's own range rather than walking into melee first, shield themselves when a fight turns, and open with a burst — they open with a class's own move — a leap, or a walk in under stealth — and they no longer pick the attacks that leap backwards. They follow their skill chains, do not re-apply a debuff already on the target, and chanters run their mantras. See [combat-skills.md](combat-skills.md). They lead with their strongest skill rather than their newest, which the id ordering had badly wrong. Still missing: an authored rotation per class — what exists is a set of tiers read from the data.
 
 **Groups.** `model/team/group/` works on `Player` objects, so a headless bot should join like anyone else. Group loot rules already treat bots correctly, and `BotTargetSelector` already spares a team mate's target. This is the gateway to instanced PvE.
 

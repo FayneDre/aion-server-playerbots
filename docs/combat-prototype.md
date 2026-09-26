@@ -109,14 +109,14 @@ Cooldowns are keyed by `template.getCooldownId()`, **not** by skill id — a fre
 
 ## M7 — Making the class matter
 
-**Started.** Two gaps were closed first, because both made every class play alike:
+**Done, as far as the data can carry it.** Two gaps were closed first, because both made every class play alike:
 
 - **Healing.** Skill selection only ever considered skills whose target relation is `ENEMY`, so everything aimed at oneself or an ally was filtered out by construction — a priest fought like a warrior and recovered by sitting in the grass. A bot now heals itself below 50% in a fight, and after one when the wound is worth the mana: below 70% health with over 30% mana. Otherwise it rests, which restores both at eight times the rate and is free. Heals are recognised by their effects (`EffectType.HEAL`, `HEALINSTANT`), so this holds for every healing class without a table of skill ids to maintain.
 - **Range.** Skills were only ever tried once the target was within **weapon** reach, so a caster walked into melee before casting a spell good from twenty five metres. It now tries to cast before closing, and stands still to do it. Which skills reach how far needs no table either: the engine validates each skill's range as it is cast, so trying is itself the question.
 - **Buffs.** Same blind spot as healing: a buff is cast on its caster, so the enemy-only filter hid every one of them. A bot now raises a missing buff out of combat, one per decision tick, asked **by stack group** rather than by skill id — two ranks of one buff share a group while their ids differ, so going by id had a bot raise its best rank and overwrite it with a weaker one a tick later, for ever.
 - **Cooldowns, kept and then spent**, and **class openers** — how each of those decides what to cast, and in which order, is its own topic: see [combat-skills.md](combat-skills.md).
 
-What is left: a genuine rotation per `PlayerClass`, and a classification for the abilities the stance pass leaves unlabelled.
+What is left: an authored rotation per `PlayerClass`. Everything the data can answer by itself is answered.
 
 ## Ending a fight against a player
 

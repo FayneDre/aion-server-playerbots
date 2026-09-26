@@ -81,6 +81,7 @@ Future subsystems plug in as: auction house / shops → `economy/` plus new beha
 |---|---|---|
 | `model/gameobjects/Creature.java` | `final` → `volatile` + `setAi()` | Minimal — these lines never change upstream |
 | `model/gameobjects/Creature.java` | `moveController` → `volatile` + `setMoveController()` | Minimal — same reasoning as `setAi()` |
+| `skillengine/effect/EffectTemplate.java` | One accessor: `getHitType()` | Minimal — a getter over an existing protected field, no behaviour |
 | `ShutdownHook.java` | One line: `PlayerBotService.despawnAll()` after the leave world tasks | Low — nothing else saves bots (see below) |
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. Defer while the prototype uses constants. |
 

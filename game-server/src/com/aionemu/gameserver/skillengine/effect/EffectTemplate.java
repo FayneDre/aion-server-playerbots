@@ -169,6 +169,14 @@ public abstract class EffectTemplate {
 	/**
 	 * @return the element
 	 */
+	/**
+	 * @return The kind of blow this effect reacts to. Decides whether an observer watches for blows the bearer lands or for blows it takes (see
+	 *         {@code ProvokerEffect}), which is the only thing that tells an offensive proc from a defensive one.
+	 */
+	public HitType getHitType() {
+		return hitType;
+	}
+
 	public SkillElement getElement() {
 		return element;
 	}

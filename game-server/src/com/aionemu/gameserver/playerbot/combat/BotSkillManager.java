@@ -12,9 +12,13 @@ import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.skillengine.change.Change;
 import com.aionemu.gameserver.skillengine.condition.ChainCondition;
+import com.aionemu.gameserver.skillengine.effect.AbstractHealEffect;
+import com.aionemu.gameserver.skillengine.effect.DamageEffect;
 import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.effect.EffectTemplate;
 import com.aionemu.gameserver.skillengine.effect.EffectType;
+import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
+import com.aionemu.gameserver.skillengine.model.HitType;
 import com.aionemu.gameserver.skillengine.model.Skill;
 import com.aionemu.gameserver.skillengine.model.SkillSubType;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
@@ -176,9 +180,7 @@ public class BotSkillManager {
 	public static boolean tryCastSkill(Player bot, Creature target) {
 		if (isSavingManaToHeal(bot))
 			return false; // the auto attack costs nothing, and the fight is not lost until the heal cannot be paid for
-		List<PlayerSkillEntry> candidates = skills(bot, BotSkillManager::isOffensive).stream()
-			.filter(entry -> !alreadyAfflicts(target, DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId()))).toList();
-		return cast(bot, target, candidates);
+		return cast(bot, target, skills(bot, BotSkillManager::isOffensive).stream().filter(template -> !alreadyAfflicts(target, template)).toList());
 	}
 
 	/**
@@ -309,7 +311,25 @@ public class BotSkillManager {
 			return Stance.DEFENSIVE;
 		if (template.hasAnyEffect(AGGRESSIVE_EFFECTS))
 			return Stance.OFFENSIVE;
-		return statStance(template);
+		Stance proc = procStance(template);
+		return proc != Stance.NEITHER ? proc : statStance(template);
+	}
+
+	/**
+	 * Reads a proc's side off the blow that sets it off.
+	 * <p>
+	 * A proc arms something that fires later, so its own effects say nothing about which way it points: what decides is whether it watches for blows
+	 * the bearer lands or blows it takes. The engine asks exactly this question when it installs the observer, and the answer is mirrored here rather
+	 * than guessed at, so the two cannot drift apart.
+	 */
+	private static Stance procStance(SkillTemplate template) {
+		if (template.getEffects() == null)
+			return Stance.NEITHER;
+		for (EffectTemplate effect : template.getEffects().getEffects()) {
+			if (effect instanceof ProvokerEffect)
+				return effect.getHitType() == HitType.NMLATK || effect.getHitType() == HitType.BACKATK ? Stance.OFFENSIVE : Stance.DEFENSIVE;
+		}
+		return Stance.NEITHER;
 	}
 
 	private static Stance statStance(SkillTemplate template) {
@@ -405,9 +425,8 @@ public class BotSkillManager {
 	}
 
 	/** Tries each candidate in turn and stops at the first one that actually goes off. */
-	private static boolean cast(Player bot, Creature target, List<PlayerSkillEntry> candidates) {
-		for (PlayerSkillEntry entry : candidates) {
-			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
+	private static boolean cast(Player bot, Creature target, List<SkillTemplate> candidates) {
+		for (SkillTemplate template : candidates) {
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			// useNoAnimationSkill validates mp, cooldown, range and target itself, and skips the client hit time checks a bot cannot satisfy
 			if (skill != null && skill.useNoAnimationSkill())
@@ -417,9 +436,8 @@ public class BotSkillManager {
 	}
 
 	/** @return The bot's usable skills of one kind, in the order it should try them. */
-	private static List<PlayerSkillEntry> skills(Player bot, SkillFilter filter) {
-		return bot.getSkillList().getAllSkills().stream().filter(entry -> {
-			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
+	private static List<SkillTemplate> skills(Player bot, SkillFilter filter) {
+		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId())).filter(template -> {
 			if (template == null || template.isPassive() || template.getProperties() == null)
 				return false;
 			// a toggle cast a second time turns itself off, so the only rule allowed near one is the mantra rule, which checks first that it is off
@@ -428,8 +446,7 @@ public class BotSkillManager {
 			if (bot.isSkillDisabled(template)) // cooldowns are keyed by cooldown id, not skill id, which this handles
 				return false;
 			return filter.matches(bot, template);
-		})
-			.sorted(CHAIN_FIRST_THEN_STRONGEST).toList();
+		}).sorted(CHAIN_FIRST_THEN_STRONGEST).toList();
 	}
 
 	/**
@@ -442,9 +459,32 @@ public class BotSkillManager {
 	 * Beyond that the highest id still wins. Skills are learned in level order, so it reads as "the strongest one available", which is a fair
 	 * approximation and not yet a rotation.
 	 */
-	private static final Comparator<PlayerSkillEntry> CHAIN_FIRST_THEN_STRONGEST = Comparator
-		.comparing((PlayerSkillEntry entry) -> !continuesAChain(DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId())))
-		.thenComparing(PlayerSkillEntry::getSkillId, Comparator.reverseOrder());
+	private static final Comparator<SkillTemplate> CHAIN_FIRST_THEN_STRONGEST = Comparator
+		.comparing((SkillTemplate template) -> !continuesAChain(template))
+		.thenComparing(Comparator.comparingInt(BotSkillManager::statedPower).reversed())
+		.thenComparing(SkillTemplate::getSkillId, Comparator.reverseOrder());
+
+	/**
+	 * What the data says a skill does: damage as the percentage of the bot's attack the client shows, healing in points. 0 for everything else, which
+	 * leaves those ordered by id as before.
+	 * <p>
+	 * This replaces the highest id as the way to say "the strongest one available", and the two disagree badly. A gladiator led with Body Smash (322)
+	 * while Sure Strike (2519) went unused, and a cleric with Enfeebling Burst (255) while Call Lightning (3190) sat in its book — the highest id is
+	 * the most recently learned skill, which is not at all the same thing as the best one.
+	 * <p>
+	 * Every damaging effect in the game states its value as a percentage, so they compare directly. Heals over time are excluded by the class
+	 * hierarchy rather than by a rule, and that is the right answer: their value is a tick, not a total, so it was never comparable to the rest.
+	 */
+	private static int statedPower(SkillTemplate template) {
+		if (template.getEffects() == null)
+			return 0;
+		int best = 0;
+		for (EffectTemplate effect : template.getEffects().getEffects()) {
+			if (effect instanceof DamageEffect || effect instanceof AbstractHealEffect)
+				best = Math.max(best, effect.getValue() + effect.getDelta() * template.getLvl());
+		}
+		return best;
+	}
 
 	private static boolean continuesAChain(SkillTemplate template) {
 		ChainCondition chain = template.getChainCondition();
