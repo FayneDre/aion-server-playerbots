@@ -16,8 +16,10 @@ import com.aionemu.gameserver.world.geo.GeoService;
  */
 public class BotTargetSelector {
 
-	/** How far a bot is willing to walk to engage something. */
+	/** How far a bot is willing to walk to engage something it spotted. */
 	public static final float CHASE_RADIUS = 25f;
+	/** The camp a bot works: it roams and fights inside this radius around its anchor, and never follows a target out of it. */
+	public static final float HOME_RADIUS = 60f;
 	/** Height difference above which a target is treated as being on another level (a cliff, a roof, the floor below) and left alone. */
 	private static final float MAX_Z_DELTA = 8f;
 	/** How far above its own level a bot will pick a fight it started. Anything higher kills it, and it would just keep dying. */
@@ -32,9 +34,16 @@ public class BotTargetSelector {
 	 * @param isIgnored Targets the bot already failed to reach, so it does not immediately pick them again.
 	 */
 	public static Creature findTarget(Player bot, Predicate<Creature> isIgnored) {
+		return findTargetWithin(bot, CHASE_RADIUS, isIgnored);
+	}
+
+	/**
+	 * Same search over a wider circle, used to find where the next fight is once the bot has cleared what is around it.
+	 */
+	public static Creature findTargetWithin(Player bot, float radius, Predicate<Creature> isIgnored) {
 		List<Npc> candidates = new ArrayList<>();
 		bot.getKnownList().forEachNpc(npc -> {
-			if (isAttackable(bot, npc) && !isIgnored.test(npc))
+			if (isAttackable(bot, npc, radius) && !isIgnored.test(npc))
 				candidates.add(npc);
 		});
 		return candidates.stream().min(Comparator.comparingDouble(npc -> PositionUtil.getDistance(bot, npc))).orElse(null);
@@ -53,7 +62,7 @@ public class BotTargetSelector {
 		return candidate instanceof Player other && !other.equals(bot) && !other.isInSameTeam(bot);
 	}
 
-	private static boolean isAttackable(Player bot, Npc npc) {
+	private static boolean isAttackable(Player bot, Npc npc, float radius) {
 		if (npc.isDead() || !npc.isSpawned() || !bot.isEnemy(npc))
 			return false;
 		if (Math.abs(bot.getZ() - npc.getZ()) > MAX_Z_DELTA)
@@ -63,6 +72,6 @@ public class BotTargetSelector {
 		if (isTakenByAnotherPlayer(bot, npc))
 			return false;
 		// line of sight is not just a targeting rule here: without it the bot would walk towards things behind walls it cannot reach
-		return PositionUtil.getDistance(bot, npc) <= CHASE_RADIUS && GeoService.getInstance().canSee(bot, npc);
+		return PositionUtil.getDistance(bot, npc) <= radius && GeoService.getInstance().canSee(bot, npc);
 	}
 }

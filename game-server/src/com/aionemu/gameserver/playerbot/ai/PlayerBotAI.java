@@ -36,8 +36,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final int THINK_INTERVAL_MILLIS = 1000;
 	/** A chase is abandoned after this long, whatever the reason it is not getting anywhere. */
 	private static final long MAX_CHASE_MILLIS = 15000;
-	/** How far from its anchor a bot may be dragged before it breaks off and comes back. */
-	private static final float LEASH_DISTANCE = 40f;
+	/**
+	 * How far from its anchor a bot may be dragged before it breaks off and comes back. It is the camp radius on purpose: the bot roams that far to
+	 * find fights, so a shorter leash would make it abandon the very mobs it just walked to.
+	 */
+	private static final float LEASH_DISTANCE = BotTargetSelector.HOME_RADIUS;
 	/** A chased target is only given a new route once it has moved this far, instead of on every tick. */
 	private static final float RETARGET_STEP = 3f;
 	/**
@@ -114,7 +117,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
 				Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 				if (target == null)
-					returnToAnchor();
+					roam();
 				else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
 					startAttacking(target);
 			}
@@ -239,6 +242,24 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void stopMoving() {
 		if (getOwner().getMoveController() instanceof BotMoveController moveController && moveController.isInMove())
 			moveController.stop();
+	}
+
+	/**
+	 * Nothing to fight within reach, so go looking. The bot heads for the nearest mob still inside its camp, and only falls back to its anchor when
+	 * the whole camp is clear. That is what turns a bot standing at a spawn point into one that works an area.
+	 */
+	private void roam() {
+		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
+			return; // already on its way somewhere
+
+		Creature target = BotTargetSelector.findTargetWithin(getOwner(), BotTargetSelector.HOME_RADIUS, this::isIgnored);
+		if (target == null || PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > BotTargetSelector.HOME_RADIUS) {
+			returnToAnchor(); // camp is empty, or the only mobs left belong to someone else's patch
+			return;
+		}
+		if (standUp())
+			return;
+		moveController.moveToPoint(target.getX(), target.getY(), target.getZ());
 	}
 
 	/** Brings the bot back where it belongs once it has nothing to fight, so a chase does not slowly displace it. */
