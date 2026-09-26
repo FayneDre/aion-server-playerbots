@@ -22,7 +22,7 @@ What the prototype deliberately does not do yet:
 - **Rotate skills per class** (M7). It casts the highest-id usable skill, which is a decent proxy for "strongest available" but not a real rotation.
 - **Anything outside combat besides looting and resting** — no grouping, economy or social behavior.
 
-Looting works like the client's second half only: `CM_START_LOOT` opens the corpse and cancels its decay task, `CM_LOOT_ITEM` takes a line. Bots skip the opening, because `DropService.requestDropItem` does not need an open drop list and a bot that failed to close one would leave the corpse lying around forever. After a kill the bot walks within 4 m of the corpse (only the client enforces looting range, so the server would happily let it vacuum from 25 m) and takes every line it is entitled to.
+Looting works like the client's second half only: `CM_START_LOOT` opens the corpse and cancels its decay task, `CM_LOOT_ITEM` takes a line. Bots skip the opening, because `DropService.requestDropItem` does not need an open drop list and a bot that failed to close one would leave the corpse lying around forever. Once the bag is 70% full the bot turns selective and only takes kinah, quest items and anything above ordinary quality: the rest is vendor fodder, and it cannot go and sell yet. After a kill the bot walks within 4 m of the corpse (only the client enforces looting range, so the server would happily let it vacuum from 25 m) and takes every line it is entitled to.
 
 Two lessons worth carrying forward:
 
