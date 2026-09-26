@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 to N6 done** for navigation; the vendor run itself is not started.
+Replacing reactive steering with real path planning. **N0 to N6 done** for navigation. The vendor run is half written, see [roadmap.md](roadmap.md).
 
 ## Why
 
