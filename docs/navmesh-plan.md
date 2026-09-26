@@ -61,7 +61,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 |---|---|---|
 | N0 | Offline tool loads one map's geometry and reports triangle and placement counts | **Done.** 20028 meshes and 419707 entities on 151 maps, plus 919 town level clones, matches the server's 20028 and 420626 exactly |
 | N1 | Rasterise one map to spans, dump images | **Done.** Poeta is 6144x6144 columns holding 39.4 M surfaces, rasterized in 1.4 s. The height image shows its valleys, ridges and river, the structure image shows its buildings clustered in the built up area |
-| N2 | Walkability rules (slope, headroom, WALK volumes) | **Done.** 25.7 M of Poeta's 39.4 M surfaces are walkable, and the blocked ones trace its ridges and cliffs exactly. Spot checks use `NavmeshTool <mapId> <x> <y>`, against coordinates read in game with `//coords` |
+| N2 | Walkability rules (slope, headroom, WALK volumes) | **Done.** 25.7 M of Poeta's 39.4 M surfaces are walkable, and the blocked ones trace its ridges and cliffs exactly. Its tree stumps, the kind of low prop the runtime probes cannot see at all, each block 8 to 15 cells and leave the ground under them unstandable for want of head room |
 | N3 | Binary format, write and read back | Round trip is identical, load time under a second |
 | N4 | A\* plus funnel smoothing, `//bot path <x> <y>` prints the route | A route around a building, not through it |
 | N5 | `BotMoveController` follows a planned route | A bot walks around the log instead of into it |
@@ -77,6 +77,12 @@ avmesh.ps1 all
 ```
 
 It runs from the server directory but against the jar built in this repository, and never writes into the server installation. Replacing a jar under a running JVM breaks it: classes load lazily, so anything not yet loaded is gone. That is a `NoClassDefFoundError` minutes later, in whatever task happens to need a new class first. `GeoDataReader` duplicates the format knowledge of `GeoWorldLoader` on purpose, because the offline tool cannot pull in `DataManager` and the world model. `all` exists to catch format drift: its totals must keep matching the server's startup log.
+
+## Checking a result
+
+`NavmeshTool <mapId> <x> <y>` prints one column, and `NavmeshTool <mapId> <text>` does the same around every prop whose model name contains that text. In game, `//coords` gives the position to check.
+
+These are for validating the generator, not for surveying the world: one known obstacle is enough, because the same code rasterizes all of them.
 
 ## Risks
 

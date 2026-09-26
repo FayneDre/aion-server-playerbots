@@ -25,9 +25,10 @@ public class NavmeshTool {
 	private static final byte TOWN_OBJECT = 5; // DespawnableNode.DespawnableType.TOWN_OBJECT
 
 	public static void main(String[] args) throws IOException {
-		if (args.length != 1 && args.length != 3) {
+		if (args.length != 1 && args.length != 2 && args.length != 3) {
 			System.out.println("Usage: NavmeshTool <mapId>|all");
 			System.out.println("       NavmeshTool <mapId> <x> <y>   inspect one spot");
+			System.out.println("       NavmeshTool <mapId> <text>    inspect the props whose model name contains that text");
 			return;
 		}
 
@@ -51,6 +52,10 @@ public class NavmeshTool {
 		}
 
 		int mapId = Integer.parseInt(args[0]);
+		if (args.length == 2) {
+			inspectProps(mapId, args[1]);
+			return;
+		}
 		if (args.length == 3) {
 			inspect(mapId, Float.parseFloat(args[1]), Float.parseFloat(args[2]));
 			return;
@@ -73,6 +78,25 @@ public class NavmeshTool {
 	}
 
 	/**
+	 * Finds the props whose model name contains the given text and reports what the generator made of the ground around them. Checking the pipeline
+	 * against a real obstacle needs one example, not a catalogue: the same code rasterizes every other prop on the map.
+	 */
+	private static void inspectProps(int mapId, String nameFilter) throws IOException {
+		List<GeoPlacement> matches = GeoDataReader.readPlacements(mapId).stream()
+			.filter(placement -> placement.modelName().toLowerCase().contains(nameFilter.toLowerCase())).toList();
+		System.out.printf("%d placements of a model matching '%s'%n", matches.size(), nameFilter);
+		if (matches.isEmpty())
+			return;
+
+		Heightfield field = HeightfieldBuilder.build(mapId);
+		for (GeoPlacement placement : matches.stream().limit(5).toList()) {
+			System.out.printf("%n%s at %.1f %.1f %.1f%n", placement.modelName(), placement.position().x, placement.position().y,
+				placement.position().z);
+			describe(field, placement.position().x, placement.position().y);
+		}
+	}
+
+	/**
 	 * Prints what the generator decided about one spot in the world, so a bot getting stuck somewhere can be checked against the data instead of
 	 * guessed at.
 	 */
@@ -83,11 +107,35 @@ public class NavmeshTool {
 			System.out.printf("%.1f %.1f is outside map %d%n", x, y, mapId);
 			return;
 		}
-		System.out.printf("Map %d at %.1f %.1f (cell %d %d):%n", mapId, x, y, cellX, cellY);
+		System.out.printf("Map %d at %.1f %.1f:%n", mapId, x, y);
+		describe(field, x, y);
+	}
+
+	/** Prints the column at that spot, and how much of the ground around it a bot may walk on. */
+	private static void describe(Heightfield field, float x, float y) {
+		int cellX = (int) (x / Heightfield.CELL_SIZE), cellY = (int) (y / Heightfield.CELL_SIZE);
+		if (cellX < 0 || cellY < 0 || cellX >= field.width() || cellY >= field.height()) {
+			System.out.println("  outside the map");
+			return;
+		}
 		for (int i = field.columnStart(cellX, cellY); i < field.columnEnd(cellX, cellY); i++)
 			System.out.printf("  surface z=%.2f %s%n", field.surfaceAt(i), field.isWalkable(i) ? "walkable" : "BLOCKED");
 		if (field.columnStart(cellX, cellY) == field.columnEnd(cellX, cellY))
 			System.out.println("  nothing at all");
+
+		int blocked = 0, total = 0;
+		int radius = (int) (3 / Heightfield.CELL_SIZE); // a 3 m circle, about the footprint of a prop plus a body
+		for (int dy = -radius; dy <= radius; dy++) {
+			for (int dx = -radius; dx <= radius; dx++) {
+				int nx = cellX + dx, ny = cellY + dy;
+				if (nx < 0 || ny < 0 || nx >= field.width() || ny >= field.height())
+					continue;
+				total++;
+				if (!field.hasFooting(nx, ny))
+					blocked++;
+			}
+		}
+		System.out.printf("  %d of %d cells within 3 m are blocked%n", blocked, total);
 	}
 
 	/**
