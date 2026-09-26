@@ -92,8 +92,13 @@ public class BotMoveController extends PlayerMoveController {
 		if (!sameJourney || route.isEmpty()) {
 			route = List.of();
 			routeIndex = 0;
-			// a long journey is planned on another thread, so the bot sets off straight away and adopts the route when it arrives
+			// a long journey is planned on another thread, so the bot sets off straight away and adopts the route when it arrives; a short one
+			// plans on this very call, in which case the result must be adopted right here or the first leg walks blind for nothing
 			NavmeshService.getInstance().planRoute(owner, x, y, z, planned -> offerRoute(planned, x, y));
+			if (pendingRoute != null) {
+				route = pendingRoute;
+				pendingRoute = null;
+			}
 		}
 		hasGoal = true;
 		aimAtNextWaypoint();
