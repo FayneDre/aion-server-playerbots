@@ -115,7 +115,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
 		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
-			if (collectLoot()) {
+			Creature attacker = findAttacker();
+			if (attacker != null)
+				startAttacking(attacker); // no health check: a bot being hit defends itself, it does not sit down
+			else if (collectLoot()) {
 				// busy with a corpse, everything else can wait
 			} else if (!isHealthyEnoughToFight())
 				recover();
@@ -351,12 +354,33 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	private void recover() {
-		if (!getOwner().getMoveController().isInMove())
-			BotRestManager.sitDown(getOwner());
+		if (getOwner().getMoveController().isInMove())
+			return;
+		if (combatEndedAt != 0) {
+			// put the weapon away before sitting: sheathing later, while seated, plays a standing animation on a seated body
+			combatEndedAt = 0;
+			BotAttackManager.leaveAttackMode(getOwner());
+			return; // next tick sits down, once that animation is over
+		}
+		BotRestManager.sitDown(getOwner());
 	}
 
 	private boolean isHealthyEnoughToFight() {
 		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT;
+	}
+
+	/**
+	 * @return An npc currently attacking the bot, or null. Being hit overrides every other consideration, including the health threshold that
+	 *         normally sends the bot resting: sitting down under fire is both suicidal and absurd to watch.
+	 */
+	private Creature findAttacker() {
+		Player bot = getOwner();
+		Creature[] attacker = { null };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (attacker[0] == null && !npc.isDead() && bot.equals(npc.getTarget()))
+				attacker[0] = npc;
+		});
+		return attacker[0];
 	}
 
 	private boolean isIgnored(Creature target) {
