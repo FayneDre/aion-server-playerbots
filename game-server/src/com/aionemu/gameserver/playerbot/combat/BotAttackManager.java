@@ -37,10 +37,15 @@ public class BotAttackManager {
 	}
 
 	/**
+	 * Tells whether the fight is over, which is not the same question as whether the bot can swing right now.
+	 * <p>
+	 * {@code Creature.canAttack()} must not be used here: it is false while casting, resting or under a stun, all of which are passing states. Using
+	 * it made the bot abandon every fight the moment it cast a spell, then re-engage the same mob when it got hit back.
+	 *
 	 * @return false if the fight is over and the caller should stop attacking.
 	 */
 	public static boolean canKeepFighting(Player bot, Creature target) {
-		if (!bot.isSpawned() || bot.isDead() || !bot.canAttack())
+		if (!bot.isSpawned() || bot.isDead())
 			return false;
 		return target != null && !target.isDead() && bot.canSee(target);
 	}
