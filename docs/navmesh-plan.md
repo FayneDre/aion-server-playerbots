@@ -76,7 +76,7 @@ avmesh.ps1 210010000
 avmesh.ps1 all
 ```
 
-It runs from the server directory against the deployed jar, so deploy after changing the generator. `GeoDataReader` duplicates the format knowledge of `GeoWorldLoader` on purpose, because the offline tool cannot pull in `DataManager` and the world model. `all` exists to catch format drift: its totals must keep matching the server's startup log.
+It runs from the server directory but against the jar built in this repository, and never writes into the server installation. Replacing a jar under a running JVM breaks it: classes load lazily, so anything not yet loaded is gone. That is a `NoClassDefFoundError` minutes later, in whatever task happens to need a new class first. `GeoDataReader` duplicates the format knowledge of `GeoWorldLoader` on purpose, because the offline tool cannot pull in `DataManager` and the world model. `all` exists to catch format drift: its totals must keep matching the server's startup log.
 
 ## Risks
 
