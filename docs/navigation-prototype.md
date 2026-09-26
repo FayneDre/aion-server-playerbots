@@ -23,6 +23,8 @@ Its angle is in **degrees**, matching `PositionUtil.calculateAngleFrom(x1, y1, x
 
 A geo probe is an infinitely thin line; the **client** collides a body-sized capsule. A post the ray passes 20 cm from blocks the client but not the server. The server then keeps walking the bot while the player's screen holds it against the obstacle, and the authoritative position sent on arrival snaps it forward — indistinguishable from a teleport.
 
+There is a second blind spot: `findMovementCollision` walks the ground, so a log or a low rock reads as a gentle incline it climbs over, while the client treats it as solid. A straight ray does see them, and `nearFieldClearance` casts one — but only 5 m ahead, because a straight ray over a long distance is exactly what tripped on slopes before. The engine raises both ends of that ray a metre above the ground, so over a short distance it stays clear of the terrain itself.
+
 `BotGeoHelper.walkableCorridor` therefore casts three probes: the centre one, plus two deviated by `atan(BOT_RADIUS / reach)` so they end up ±0.5 m aside at the far end. The shortest of the three wins. Cost is 3× a probe, paid once per leg, not per tick.
 
 ## Legs
@@ -41,7 +43,7 @@ Reactive steering **always** loses in concave geometry — a U-shaped corridor o
 
 | Bound | Where | Rule |
 |---|---|---|
-| No headway | `BotMoveController.checkProgress` | Gaining less than 1 m on the goal for 5 s abandons the route and sets `isBlocked()` |
+| No headway | `BotMoveController.checkProgress` | Gaining less than 1 m on the goal for 5 s abandons the route and sets `isBlocked()`. A re-route to nearly the same goal, as a chase issues every second, continues the same journey instead of resetting this: otherwise the safeguard is disabled for the case that needs it most |
 | Walled in | `BotMoveController.startNextLeg` | No direct way and no detour → give up immediately |
 | Chase timeout / leash | `PlayerBotAI.chase` | 15 s per chase, and the target must stay within 40 m of the bot's anchor |
 

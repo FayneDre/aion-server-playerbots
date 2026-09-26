@@ -45,6 +45,8 @@ public class BotMoveController extends PlayerMoveController {
 	private static final float PROGRESS_STEP = 1.0f;
 	/** Without that progress, the route is abandoned rather than letting the bot grind against an obstacle forever. */
 	private static final long PROGRESS_TIMEOUT = 5000;
+	/** A new destination this close to the previous one continues the same journey, typically a target that moved a little. */
+	private static final float SAME_JOURNEY_TOLERANCE = 10f;
 
 	private long nextGeoZUpdate;
 	/** Final destination, which may be several legs away from the point currently being walked to. */
@@ -70,14 +72,19 @@ public class BotMoveController extends PlayerMoveController {
 		// CM_MOVE does this for a real player: without it the bot stays blinking and untargetable for the full protection minute
 		if (owner.isProtectionActive())
 			owner.getController().stopProtectionActiveTask();
+		// a chased target is re-routed to every second or so: that is the same journey continuing, not a new one, and resetting the progress
+		// tracking on each update would disable the anti stuck safeguard for exactly the case that needs it most
+		boolean sameJourney = hasGoal && PositionUtil.getDistance(goalX, goalY, x, y) < SAME_JOURNEY_TOLERANCE;
 		goalX = x;
 		goalY = y;
 		goalZ = z;
 		hasGoal = true;
-		blocked = false;
-		detourSide = 0;
-		closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), x, y);
-		lastProgressTime = System.currentTimeMillis();
+		if (!sameJourney) {
+			blocked = false;
+			detourSide = 0;
+			closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), x, y);
+			lastProgressTime = System.currentTimeMillis();
+		}
 		return startNextLeg();
 	}
 
