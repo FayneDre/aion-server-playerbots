@@ -98,6 +98,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * is itself the answer, and retrying it every tick would spend it halfway through the fight where most of it is wasted.
 	 */
 	private volatile boolean openingSpent;
+	/** Whether this fight's approach has been tried. Separate from the opening, so hiding does not cost the bot its burst as well. */
+	private volatile boolean approachSpent;
 	/**
 	 * Set when sent somewhere by command rather than by its own decision, so the tick that runs a second later does not immediately hijack the trip
 	 * for whatever mob happens to be findable along the way. Self defence still overrides it: this only holds off the bot picking its own fights.
@@ -217,6 +219,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	public void startAttacking(Creature target) {
 		combatEndedAt = 0; // fighting again, so the pending sheathe is off
 		openingSpent = false;
+		approachSpent = false;
 		BotTargetRegistry.forceClaim(target, getOwner()); // retaliation and commands are not negotiable
 		boolean gettingUp = standUp(); // canAttack() is false while resting
 		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
@@ -327,6 +330,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
+		boolean closing = !BotAttackManager.isInAttackRange(bot, target);
+		if (closing && !approachSpent) {
+			approachSpent = true;
+			// only while there is still ground to cover: hiding on top of a target it is about to hit buys the bot nothing
+			if (BotSkillManager.tryApproachUnseen(bot))
+				return true;
+		}
 		if (!openingSpent) {
 			openingSpent = true;
 			// before the first blow, because a burst spent on a mob already dying is a burst thrown away — and self buffs need no range, so this works
@@ -335,8 +345,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 				return true;
 		}
 		// the defensive ability comes before the heal: it is cheaper in mana and it stops damage instead of repairing it, which only works in advance
-		return BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
-			|| BotSkillManager.tryCastSkill(bot, target);
+		if (BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT))
+			return true;
+		// a leap covers ground the bot would otherwise walk, and those last metres on foot are where bots get stuck
+		if (closing && BotSkillManager.tryGapCloser(bot, target))
+			return true;
+		return BotSkillManager.tryCastSkill(bot, target);
 	}
 
 	/**

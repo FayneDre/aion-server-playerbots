@@ -41,6 +41,11 @@ public class BotSkillManager {
 	 * that warrants it, and a bot has no way to tell that a given mob does — so it keeps it for the moment it is in trouble instead.
 	 */
 	private static final long ENGAGEMENT_COOLDOWN_MILLIS = 180_000;
+	/**
+	 * Shortest hide a bot will treat as a way to arrive unseen rather than as a way out. The data separates the two cleanly: the escapes last two or
+	 * three seconds, long enough to break contact and no longer, while the approach skills last from twenty seconds to five minutes.
+	 */
+	private static final long APPROACH_HIDE_MILLIS = 10_000;
 
 	/**
 	 * Effects whose whole purpose is to keep their bearer alive. Read from the data rather than from a curated list of skill ids, so a skill nobody
@@ -53,6 +58,13 @@ public class BotSkillManager {
 		EffectType.SANCTUARY, EffectType.LIMITEDREDUCEDAMAGE, EffectType.MAGICCOUNTERATK, EffectType.EVADE, EffectType.ALWAYSDODGE,
 		EffectType.ALWAYSBLOCK, EffectType.ALWAYSPARRY, EffectType.ALWAYSRESIST, EffectType.INVULNERABLEWING, EffectType.HIDE, EffectType.ESCAPE,
 		EffectType.REBIRTH, EffectType.DISPELDEBUFF, EffectType.DISPELDEBUFFPHYSICAL, EffectType.DISPELDEBUFFMENTAL };
+
+	/**
+	 * Effects that put ground between a bot and what it is fighting. They come attached to ordinary attacks — a ranger's Parting Shot, a gladiator's
+	 * Retreating Slash — so a bot picking skills for their damage alone leaps backwards mid fight and then walks the distance back, over and over.
+	 * Kiting is a real tactic, but it is one a bot does not have yet, and until it does these are simply a way of undoing its own chase.
+	 */
+	private static final EffectType[] RETREAT_EFFECTS = { EffectType.BACKDASH };
 
 	/** Effects that only make a bot hit harder, and are therefore worth nothing until it has something to hit. */
 	private static final EffectType[] AGGRESSIVE_EFFECTS = { EffectType.BOOSTSPELLATTACK, EffectType.ONETIMEBOOSTSKILLATTACK,
@@ -128,7 +140,7 @@ public class BotSkillManager {
 	}
 
 	private static boolean isMissingSelfBuff(Player bot, SkillTemplate template) {
-		return isSelfBuff(template) && isWorthKeepingUp(template) && !isAlreadyUp(bot, template);
+		return isSelfBuff(template) && isWorthKeepingUp(template) && !coversAnApproach(template) && !isAlreadyUp(bot, template);
 	}
 
 	private static boolean isSelfBuff(SkillTemplate template) {
@@ -205,7 +217,7 @@ public class BotSkillManager {
 	 * was not.
 	 */
 	private static boolean isDefensiveCooldown(Player bot, SkillTemplate template) {
-		if (!isHeldBackSelfBuff(bot, template) || stance(template) != Stance.DEFENSIVE)
+		if (!isHeldBackSelfBuff(bot, template) || stance(template) != Stance.DEFENSIVE || coversAnApproach(template))
 			return false;
 		if ((long) template.getCooldown() * 100 <= ENGAGEMENT_COOLDOWN_MILLIS)
 			return true;
@@ -284,7 +296,50 @@ public class BotSkillManager {
 
 
 	private static boolean isOffensive(Player bot, SkillTemplate template) {
-		return template.getProperties().getTargetRelation() == TargetRelationAttribute.ENEMY;
+		return template.getProperties().getTargetRelation() == TargetRelationAttribute.ENEMY && !template.hasAnyEffect(RETREAT_EFFECTS);
+	}
+
+	/**
+	 * Closes the distance with a leap instead of walking it.
+	 * <p>
+	 * This is the one opening that is genuinely the class's own: a gladiator springs, an assassin appears behind its target, while a caster simply
+	 * starts casting. Worth more than damage while still closing, because the seconds it saves are seconds the bot spends fighting rather than
+	 * jogging — and because the reactive steering that covers those last metres is where bots get stuck.
+	 *
+	 * @return true if the bot leapt.
+	 */
+	public static boolean tryGapCloser(Player bot, Creature target) {
+		return cast(bot, target, skills(bot, BotSkillManager::isGapCloser));
+	}
+
+	private static boolean isGapCloser(Player bot, SkillTemplate template) {
+		return isOffensive(bot, template) && template.hasAnyEffect(EffectType.DASH, EffectType.MOVEBEHIND);
+	}
+
+	/**
+	 * Hides the bot so it can walk in unseen.
+	 * <p>
+	 * An assassin that strolls up to its target in plain sight is throwing its class away. The engine drops the hide by itself on the first blow, so
+	 * there is nothing to undo afterwards.
+	 *
+	 * @return true if the bot went unseen.
+	 */
+	public static boolean tryApproachUnseen(Player bot) {
+		return cast(bot, bot, skills(bot, BotSkillManager::isApproachHide));
+	}
+
+	private static boolean isApproachHide(Player bot, SkillTemplate template) {
+		return isSelfBuff(template) && coversAnApproach(template) && !isAlreadyUp(bot, template);
+	}
+
+	/**
+	 * Tells a hide meant for arriving somewhere from one meant for getting out.
+	 * <p>
+	 * A long hide is neither upkeep nor a defensive button, whatever the other rules would make of it: kept up for its own sake it would leave bots
+	 * invisible for ever, wandering a world they were spawned to populate, and raised mid fight it does nothing a bot knows how to use.
+	 */
+	private static boolean coversAnApproach(SkillTemplate template) {
+		return template.hasAnyEffect(EffectType.HIDE) && buffDurationMillis(template) >= APPROACH_HIDE_MILLIS;
 	}
 
 	/** Tries each candidate in turn and stops at the first one that actually goes off. */

@@ -1,0 +1,54 @@
+# How a bot chooses a skill
+
+`BotSkillManager` picks the skills, `PlayerBotAI.useBestSkill` decides which question to ask first. Everything here is read from the skill data rather than from lists of skill ids, because a list is a thing to maintain and the data already knows. For where this sits in the wider plan see [combat-prototype.md](combat-prototype.md).
+
+## The order, in one place
+
+`useBestSkill(target)` is the whole of a bot's in-fight judgement, so it lives in one method rather than being restated wherever a skill might be cast: **approach, opening burst, defensive ability, heal, gap closer, attack.** A cast costs a swing either way, which is why staying alive comes before damage and why nothing is tried twice in the same tick.
+
+Mana is reserved as well: a class that can heal stops paying for attack skills below 25% mana, so a fight going badly does not find it unable to afford the heal. For everyone else, mana exists to be spent.
+
+## Upkeep, and abilities kept in hand
+
+A buff and a cooldown are the same kind of data and mean opposite things. Cast everything, and a scout burns its evasion window on an empty field. Cast nothing, and half of every class goes unused.
+
+**The data draws the line by itself**: a buff that lasts at least as long as its own cooldown can be kept up for ever, which is what makes it upkeep. One whose cooldown outlasts it cannot — it is a window a player opens on purpose, and spending it on nothing means not having it later. Measured over every buff a class can learn: **1906 are upkeep, 350 are kept in hand.** No list of skill ids to curate, which is the point.
+
+Those 350 then need a moment. `stance(SkillTemplate)` reads what an ability is *for*, again from the data, in two passes:
+
+1. **By effect type.** A shield, an evasion, a cleanse, a reflector is defensive; a cast-time or attack boost is offensive. Unambiguous, so it decides first.
+2. **By the stats it raises**, for the large family of plain stat buffs. Stat names are consistent across all 150-odd of them, so the naming classifies better than a list that would need revisiting every time one is added — `RESIST`, `DEFEN`, `EVASION`, `BLOCK`, `PARRY` against `ATTACK`, `CRITICAL`, `ACCURACY`. `PENETRATION` is tested first, because it reads as resistance while being its opposite.
+
+**Only bonuses are read, never penalties.** A penalty is what a skill costs, not what it is for: Berserking cuts defence by half and accuracy by 200 to buy 80% attack, and counting its penalties classified it as defensive — the exact opposite of what it is. That one rule moved 23 skills to the right side.
+
+The result over those 350: **187 defensive, 64 usable as an opener, 23 offensive but too rare to spend, 76 left alone** because neither pass could label them (procs, mostly: `ProvokerEffect` fires on attack or on being attacked depending on a `hitType` the template does not expose, so which side it is on cannot be read).
+
+When each fires:
+
+| | Trigger |
+|---|---|
+| Defensive, cooldown ≤ 3 min | Below 70% health in a fight — before the heal, since it prevents damage instead of repairing it, and only works in advance |
+| Defensive, cooldown > 3 min | Below 50% health: the rarer the ability, the deeper the trouble it is kept for |
+| Offensive, cooldown ≤ 3 min | The fight's first action, **once** — a burst spent on a mob already dying is thrown away, and one that will not fire now is on cooldown, which is its own answer |
+| Offensive, cooldown > 3 min | Never. A player keeps these for something that warrants it, and a bot cannot tell that a given mob does |
+
+Three minutes is the one judgement call here, and it is the same number both ways: long enough to matter in the fight it is spent on, short enough to be back before the next one that needs it.
+
+## Class openers
+
+How a fight starts was identical for every class: walk up, swing. Three families in the data fix that, and a fourth was actively hurting.
+
+**No learnable skill carries a `<back>` condition**, so there is nothing to gain from manoeuvring behind a target — the engine does the placement itself, through the `MOVEBEHIND` effect on Ambush, Blind Side and Fangdrop Stab. Positional play needs no pathing, only the right skill.
+
+| Family | Skills | What the bot does |
+|---|---|---|
+| `DASH`, `MOVEBEHIND` | 58 (Springing Slice, Steam Rush, Ambush, Whirling Strike…) | Preferred over damage **while still closing**: a leap costs the same cast and saves the walk |
+| `HIDE`, duration ≥ 10 s | 5 (Stealth, Hide, Shadow Walk, Wind Walk, Cloaking Word) | Cast once per fight while out of range, to walk in unseen. The engine drops it on the first blow |
+| `HIDE`, duration < 10 s | 3 (Night Haze, Shadow Illusion) | Left where it was, as a defensive button |
+| `BACKDASH` | 25 (Parting Shot, Retreating Slash, Fighting Withdrawal…) | **Never picked as an attack** |
+
+The hide durations split the two uses cleanly with nothing in between: the escapes last two or three seconds, the approach skills twenty and up.
+
+`BACKDASH` was a real bug, not a missing feature. These are ordinary attacks that happen to leap backwards, so a bot choosing skills for damage alone undid its own chase and walked the distance again, over and over. Kiting is a genuine tactic and one a bot may learn later; until then these only work against it.
+
+The approach also had to be taken away from two rules that would have claimed it. `Shadow Walk` lasts five minutes on a three-minute cooldown, which makes it upkeep by the duration rule — bots would have been permanently invisible, which is the opposite of populating a world. It is not a defensive button either. A long hide is its own thing, and the approach has its own once-per-fight flag so that hiding does not also cost the bot its opening burst.

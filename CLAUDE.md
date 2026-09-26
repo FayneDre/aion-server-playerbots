@@ -51,6 +51,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/roadmap.md](docs/roadmap.md) — **start here**: what works, what is half written, what is left, and the traps that already cost hours.
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
 - [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.
+- [docs/combat-skills.md](docs/combat-skills.md) — how a bot chooses a skill: the in-fight order, upkeep versus abilities kept in hand, class openers.
 - [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
 - [docs/navmesh-plan.md](docs/navmesh-plan.md) — design for real path planning, to replace reactive steering.
 
