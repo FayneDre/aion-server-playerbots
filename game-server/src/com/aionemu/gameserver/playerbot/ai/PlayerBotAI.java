@@ -50,6 +50,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long CHASE_REROUTE_INTERVAL = 600;
 	/** Roughly how long the client takes to play the stand up animation. Moving the bot before that makes it slide to its feet. */
 	private static final long STAND_UP_MILLIS = 1000;
+	/** How long the weapon stays drawn after a fight, so the bot does not sheathe it between two mobs of the same pull. */
+	private static final long SHEATHE_DELAY_MILLIS = 8000;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
 	private static final long UNREACHABLE_MILLIS = 10000;
 	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
@@ -76,6 +78,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long standUpTime;
 	/** Object id of the corpse left by the bot's last kill, 0 when there is nothing to pick up. */
 	private volatile int pendingCorpse;
+	/** When the last fight ended, 0 once the weapon has been put away. */
+	private volatile long combatEndedAt;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
 
@@ -107,6 +111,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
+		sheathWhenCalm();
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
 		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
@@ -133,6 +138,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	public void startAttacking(Creature target) {
+		combatEndedAt = 0; // fighting again, so the pending sheathe is off
 		BotTargetRegistry.forceClaim(target, getOwner()); // retaliation and commands are not negotiable
 		standUp(); // canAttack() is false while resting
 		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
@@ -158,7 +164,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			stopAttackTask();
 			chaseStartTime = 0;
 			stopMoving();
-			BotAttackManager.leaveAttackMode(getOwner());
+			// the weapon stays out for a moment: sheathing between two mobs of the same pull looks like a nervous tic, and a real player does not do it
+			combatEndedAt = System.currentTimeMillis();
 			getOwner().setTarget(null);
 		}
 	}
@@ -319,6 +326,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 		pendingCorpse = 0;
 		log.info("Bot {} looted {} item(s)", getOwner().getName(), looted);
 		return false;
+	}
+
+	/** Puts the weapon away once the bot has really stopped fighting, rather than at the end of every single kill. */
+	private void sheathWhenCalm() {
+		if (combatEndedAt == 0 || isAttacking())
+			return;
+		if (System.currentTimeMillis() - combatEndedAt < SHEATHE_DELAY_MILLIS)
+			return;
+		combatEndedAt = 0;
+		BotAttackManager.leaveAttackMode(getOwner());
 	}
 
 	private boolean standUp() {

@@ -23,7 +23,9 @@ Its angle is in **degrees**, matching `PositionUtil.calculateAngleFrom(x1, y1, x
 
 A geo probe is an infinitely thin line; the **client** collides a body-sized capsule. A post the ray passes 20 cm from blocks the client but not the server. The server then keeps walking the bot while the player's screen holds it against the obstacle, and the authoritative position sent on arrival snaps it forward — indistinguishable from a teleport.
 
-There is a second blind spot: `findMovementCollision` walks the ground, so a log or a low rock reads as a gentle incline it climbs over, while the client treats it as solid. A straight ray does see them, and `nearFieldClearance` casts one — but only 5 m ahead, because a straight ray over a long distance is exactly what tripped on slopes before. The engine raises both ends of that ray a metre above the ground, so over a short distance it stays clear of the terrain itself.
+**Obstacles under a metre are invisible to the server.** `GeoMap.COLLISION_CHECK_Z_OFFSET` is 1, and both `findMovementCollision` and `getClosestCollision` raise their ray by it at both ends, so a log or a branch lying on the ground passes underneath every probe the engine offers. The client still collides with it. The server walks the bot through while the client holds it back, and the next position packet snaps the model forward.
+
+Nothing in the geo API can be cast lower, so this cannot be fixed by probing differently — it needs collision data the engine does not expose for movement, which means the navmesh. Engine NPCs never hit this because they follow authored waypoints. It is a hard limit of the current approach, not a tuning problem.
 
 `BotGeoHelper.walkableCorridor` therefore casts three probes: the centre one, plus two deviated by `atan(BOT_RADIUS / reach)` so they end up ±0.5 m aside at the far end. The shortest of the three wins. Cost is 3× a probe, paid once per leg, not per tick.
 

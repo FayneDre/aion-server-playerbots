@@ -22,8 +22,6 @@ public class BotGeoHelper {
 	/** Ignore a marginally shorter side probe, which just means the corridor narrows a little without actually blocking the way. */
 	private static final float CLEARANCE_TOLERANCE = 0.5f;
 	private static final int[] SIDES = { 1, -1 };
-	/** How far ahead the straight ray cross check looks. Kept short so terrain curvature cannot be mistaken for an obstacle. */
-	private static final float NEAR_FIELD = 5f;
 	/** Deviations tried when the direct way is blocked, from the mildest to a full sidestep. */
 	private static final float[] DETOUR_ANGLES = { 40, 75, 110 };
 	private static final float DETOUR_DISTANCE = 8f;
@@ -103,31 +101,10 @@ public class BotGeoHelper {
 		float clearance = reach;
 		for (int side : SIDES)
 			clearance = Math.min(clearance, walkedDistance(bot, probe(bot, angle + side * spread, reach)));
-		clearance = Math.min(clearance, nearFieldClearance(bot, angle, Math.min(reach, NEAR_FIELD)));
 
 		if (clearance >= reach - CLEARANCE_TOLERANCE)
 			return ahead; // nothing narrows the way
 		return clearance < MIN_STEP ? new Vector3f(bot.getX(), bot.getY(), bot.getZ()) : probe(bot, angle, clearance);
-	}
-
-	/**
-	 * Catches waist high obstacles the ground following probe walks straight over: a log or a low rock reads as a gentle incline to it, while the
-	 * client refuses to climb them. The server then walks the bot through while the client holds it back, and the correction sent on arrival looks
-	 * like a teleport.
-	 * <p>
-	 * A straight ray is what spots them, but it is also what trips on slopes, which is why this only looks {@value #NEAR_FIELD} m ahead: the ray runs
-	 * a metre above the ground at both ends, so over that distance it stays clear of the terrain itself.
-	 *
-	 * @return How far the bot can go before hitting something solid, or {@link Float#MAX_VALUE} if the near field is clear.
-	 */
-	private static float nearFieldClearance(Player bot, float angle, float distance) {
-		if (distance < MIN_STEP)
-			return Float.MAX_VALUE;
-		Vector3f near = probe(bot, angle, distance);
-		float groundReach = walkedDistance(bot, near);
-		Vector3f straight = GeoService.getInstance().getClosestCollision(bot, near.getX(), near.getY(), near.getZ());
-		float straightReach = walkedDistance(bot, straight);
-		return straightReach < groundReach - CLEARANCE_TOLERANCE ? straightReach : Float.MAX_VALUE;
 	}
 
 	private static Vector3f probe(Player bot, float angle, float distance) {
