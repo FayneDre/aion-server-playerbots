@@ -24,6 +24,7 @@ public class Bot extends AdminCommand {
 			stop <characterName> - Makes the bot stop attacking.
 			come <characterName> - Makes the bot walk to your position.
 			auto <characterName> - Toggles autonomy (fights on its own) on and off.
+			bag <characterName> - Lists what the bot is carrying.
 			list - Lists all currently spawned bots.
 			""");
 	}
@@ -47,6 +48,7 @@ public class Bot extends AdminCommand {
 			case "come" -> withName(admin, params, name -> PlayerBotService.getInstance().come(name, admin));
 			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
 			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
+			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
 			default -> sendInfo(admin);
 		}

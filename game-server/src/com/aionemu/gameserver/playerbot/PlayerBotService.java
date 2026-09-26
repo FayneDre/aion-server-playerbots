@@ -12,6 +12,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
+import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
@@ -177,6 +178,21 @@ public class PlayerBotService {
 		if (!moveController.moveToPoint(commander.getX(), commander.getY(), commander.getZ()))
 			return characterName + " is blocked by an obstacle";
 		return characterName + " is on its way";
+	}
+
+	/**
+	 * Lists what a spawned bot carries. Reads live memory, not the database, which only ever sees a bot when it despawns.
+	 */
+	public String describeInventory(String characterName) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+
+		Storage inventory = bot.getInventory();
+		StringBuilder sb = new StringBuilder(
+			String.format("%s carries %d kinah in %d/%d slots:", bot.getName(), inventory.getKinah(), inventory.size(), inventory.getLimit()));
+		inventory.getItems().forEach(item -> sb.append(String.format("%n  %dx %s", item.getItemCount(), item.getItemTemplate().getL10n())));
+		return sb.toString();
 	}
 
 	public String listSpawnedBots() {

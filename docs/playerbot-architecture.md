@@ -80,6 +80,7 @@ Future subsystems plug in as: auction house / shops → `economy/` plus new beha
 |---|---|---|
 | `model/gameobjects/Creature.java` | `final` → `volatile` + `setAi()` | Minimal — these lines never change upstream |
 | `model/gameobjects/Creature.java` | `moveController` → `volatile` + `setMoveController()` | Minimal — same reasoning as `setAi()` |
+| `ShutdownHook.java` | One line: `PlayerBotService.despawnAll()` after the leave world tasks | Low — nothing else saves bots (see below) |
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. Defer while the prototype uses constants. |
 
 Nothing else. `services/player/MultiClientingService.java:24` dereferences the connection's IP/MAC and would NPE — it needs no patch, because `PlayerBotEnterWorldService` simply never calls it.
@@ -104,7 +105,8 @@ Nothing else. `services/player/MultiClientingService.java:24` dereferences the c
 2. **`isOnline()` doubles as a validity test.** It means "has a connection", but other systems use it as "is a real, valid player" and may silently exclude bots. Audit each call on any path a bot touches.
 3. **`PvpService` dereferences `getClientConnection().getIP()`** and will NPE the first time a bot kills or is killed by a real player. The prototype stays PvE; add a null guard before open-world PvP.
 4. **Tick reentrancy.** `AbstractAI` has a `thinking` latch, but our scheduled tick and engine-fired events (`MOVE_ARRIVED`, `ATTACK`) run on different pool threads. Guard behavior dispatch per bot; never mutate `Player` state from the tick thread while a cast is in flight.
-5. **Leaked bots on crash or shutdown.** World objects and object IDs persist if `storePlayer` never runs. Register a shutdown hook that drains the registry through the normal leave path.
+5. **Nothing saves a bot but the despawn path.** `PeriodicSaveService` only stores legion warehouses, and the shutdown path saves players through their connection, which a bot does not have. `PlayerBotLeaveWorldService` therefore calls `PlayerService.storePlayer`, and `ShutdownHook` despawns every bot so that path runs. A crash still loses everything a bot did since it spawned.
+6. **Leaked bots on crash or shutdown.** World objects and object IDs persist if `storePlayer` never runs. Register a shutdown hook that drains the registry through the normal leave path.
 
 ## Not yet designed
 
