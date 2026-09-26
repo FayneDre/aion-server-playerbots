@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 and N1 done**, the rest is the design.
+Replacing reactive steering with real path planning. **N0 to N2 done**, the rest is the design.
 
 ## Why
 
@@ -42,7 +42,7 @@ Offline, as a `main` reusing `GeoWorldLoader` so it reads exactly what the serve
 
 1. Load one map's meshes, placements and terrain.
 2. For each column on a 0.5 m grid, cast a downward ray and record every surface hit: that is the span list. Terrain gives the base surface, meshes give floors, roofs and props.
-3. Mark a span walkable when its slope is ≤ 45° (matching `findMovementCollision`), it has at least ~2 m of headroom, and no WALK volume covers it.
+3. Mark a span walkable when its slope is ≤ 45° (matching `findMovementCollision`), it has at least 2 m of headroom, and no WALK volume covers it. Slope comes from the triangle's own normal for meshes, and from the height gradient across the cell for terrain.
 4. Link neighbouring spans where the step is ≤ ~0.5 m, so stairs connect and ledges do not.
 5. Write a compact binary per map into `data/navmesh/<mapId>.nav`.
 
@@ -61,7 +61,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 |---|---|---|
 | N0 | Offline tool loads one map's geometry and reports triangle and placement counts | **Done.** 20028 meshes and 419707 entities on 151 maps, plus 919 town level clones, matches the server's 20028 and 420626 exactly |
 | N1 | Rasterise one map to spans, dump images | **Done.** Poeta is 6144x6144 columns holding 39.4 M surfaces, rasterized in 1.4 s. The height image shows its valleys, ridges and river, the structure image shows its buildings clustered in the built up area |
-| N2 | Walkability rules (slope, headroom, WALK volumes) | The known log and the known dead end appear as blocked |
+| N2 | Walkability rules (slope, headroom, WALK volumes) | **Done.** 25.7 M of Poeta's 39.4 M surfaces are walkable, and the blocked ones trace its ridges and cliffs exactly. Spot checks use `NavmeshTool <mapId> <x> <y>`, against coordinates read in game with `//coords` |
 | N3 | Binary format, write and read back | Round trip is identical, load time under a second |
 | N4 | A\* plus funnel smoothing, `//bot path <x> <y>` prints the route | A route around a building, not through it |
 | N5 | `BotMoveController` follows a planned route | A bot walks around the log instead of into it |

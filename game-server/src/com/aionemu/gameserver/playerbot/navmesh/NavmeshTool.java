@@ -25,8 +25,9 @@ public class NavmeshTool {
 	private static final byte TOWN_OBJECT = 5; // DespawnableNode.DespawnableType.TOWN_OBJECT
 
 	public static void main(String[] args) throws IOException {
-		if (args.length != 1) {
+		if (args.length != 1 && args.length != 3) {
 			System.out.println("Usage: NavmeshTool <mapId>|all");
+			System.out.println("       NavmeshTool <mapId> <x> <y>   inspect one spot");
 			return;
 		}
 
@@ -50,6 +51,11 @@ public class NavmeshTool {
 		}
 
 		int mapId = Integer.parseInt(args[0]);
+		if (args.length == 3) {
+			inspect(mapId, Float.parseFloat(args[1]), Float.parseFloat(args[2]));
+			return;
+		}
+
 		List<GeoPlacement> placements = GeoDataReader.readPlacements(mapId);
 		if (placements.isEmpty()) {
 			System.out.println("Map " + mapId + " has no geometry file");
@@ -59,10 +65,44 @@ public class NavmeshTool {
 
 		start = System.currentTimeMillis();
 		Heightfield field = HeightfieldBuilder.build(mapId);
-		System.out.printf("Rasterized %dx%d columns holding %d surfaces in %d ms%n", field.width(), field.height(), field.surfaceCount(),
-			System.currentTimeMillis() - start);
+		System.out.printf("Rasterized %dx%d columns holding %d surfaces (%d walkable) in %d ms%n", field.width(), field.height(),
+			field.surfaceCount(), field.walkableCount(), System.currentTimeMillis() - start);
 		System.out.println("Wrote " + writeHeightImage(mapId, field).toAbsolutePath());
 		System.out.println("Wrote " + writeStructureImage(mapId, field).toAbsolutePath());
+		System.out.println("Wrote " + writeWalkableImage(mapId, field).toAbsolutePath());
+	}
+
+	/**
+	 * Prints what the generator decided about one spot in the world, so a bot getting stuck somewhere can be checked against the data instead of
+	 * guessed at.
+	 */
+	private static void inspect(int mapId, float x, float y) throws IOException {
+		Heightfield field = HeightfieldBuilder.build(mapId);
+		int cellX = (int) (x / Heightfield.CELL_SIZE), cellY = (int) (y / Heightfield.CELL_SIZE);
+		if (cellX < 0 || cellY < 0 || cellX >= field.width() || cellY >= field.height()) {
+			System.out.printf("%.1f %.1f is outside map %d%n", x, y, mapId);
+			return;
+		}
+		System.out.printf("Map %d at %.1f %.1f (cell %d %d):%n", mapId, x, y, cellX, cellY);
+		for (int i = field.columnStart(cellX, cellY); i < field.columnEnd(cellX, cellY); i++)
+			System.out.printf("  surface z=%.2f %s%n", field.surfaceAt(i), field.isWalkable(i) ? "walkable" : "BLOCKED");
+		if (field.columnStart(cellX, cellY) == field.columnEnd(cellX, cellY))
+			System.out.println("  nothing at all");
+	}
+
+	/**
+	 * Dumps what a bot may stand on: green walkable, red solid but not standable, blue nothing at all. This is the map a path is planned over, so
+	 * anything wrong with slopes, head room or no-walk volumes shows here.
+	 */
+	private static Path writeWalkableImage(int mapId, Heightfield field) throws IOException {
+		BufferedImage image = new BufferedImage(field.width(), field.height(), BufferedImage.TYPE_INT_RGB);
+		for (int y = 0; y < field.height(); y++) {
+			for (int x = 0; x < field.width(); x++) {
+				boolean empty = field.columnStart(x, y) == field.columnEnd(x, y);
+				image.setRGB(x, y, empty ? 0x000080 : field.hasFooting(x, y) ? 0x30A030 : 0xC02020);
+			}
+		}
+		return write(mapId, "walkable", image);
 	}
 
 	/**
