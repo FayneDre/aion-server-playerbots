@@ -40,6 +40,19 @@ function Test-PortListening([int]$Port) {
     return [bool](Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
 }
 
+<#
+    Reads the java command out of start.bat, so the memory settings and classpath stay wherever the server keeps
+    them rather than being restated here.
+#>
+function Get-JavaArguments([string]$Script) {
+    foreach ($line in Get-Content $Script) {
+        if ($line -match '^\s*JAVA\s+(.+?)\s*$') {
+            return $Matches[1]
+        }
+    }
+    return $null
+}
+
 function Start-AionServer([string]$Name, [int]$Port) {
     if (Test-PortListening $Port) {
         Write-Host "$Name already running (port $Port)" -ForegroundColor Yellow
@@ -53,7 +66,18 @@ function Start-AionServer([string]$Name, [int]$Port) {
     }
 
     Write-Host "Starting $Name..." -ForegroundColor Cyan
-    Start-Process -FilePath $script -WorkingDirectory $folder
+    # Java is started directly rather than through start.bat, so that stopping the server also closes its window.
+    # A batch script cannot be interrupted quietly: cmd asks whether to terminate the job, and start.bat then waits
+    # on a PAUSE of its own, so both leave a console sitting there for someone to dismiss by hand. Without the batch
+    # there is no prompt at all — the window belongs to the JVM and goes when it goes. The cost is start.bat's
+    # restart-on-exit-code-2 loop, which a development server does not need.
+    $arguments = Get-JavaArguments $script
+    if ($arguments) {
+        Start-Process -FilePath 'java.exe' -ArgumentList $arguments -WorkingDirectory $folder
+    } else {
+        Write-Host "  no java command found in start.bat, falling back to it (its window will outlive the server)" -ForegroundColor Yellow
+        Start-Process -FilePath $script -WorkingDirectory $folder
+    }
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {

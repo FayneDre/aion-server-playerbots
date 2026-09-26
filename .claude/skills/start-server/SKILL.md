@@ -27,6 +27,20 @@ The game server connects to both the chat server and the login server while star
 
 The script starts each one, then polls until its port accepts connections before moving on. A server already listening is left alone rather than started twice.
 
+## Each server runs as a bare JVM, not through start.bat
+
+The script reads the `JAVA` line out of each server's `start.bat` and launches java itself, so memory settings stay
+where the server keeps them while the batch wrapper is skipped.
+
+That wrapper is skipped for one reason: **a batch script cannot be interrupted quietly.** CTRL+C makes cmd ask
+whether to terminate the job, and `start.bat` then ends on a `PAUSE` of its own, so its window outlives the server
+twice over, waiting for keypresses. Killing it instead does not help — start.bat relaunches itself in Windows
+Terminal, which keeps a tab open when its process dies with a non-zero exit code. Without the batch there is no
+prompt at all: the console belongs to the JVM and closes when it does.
+
+The cost is start.bat's restart-on-exit-code-2 loop, which a development server does not need. If the `JAVA` line
+cannot be found, the script falls back to running start.bat and says so.
+
 ## Stopping the server
 
 **Never kill the game server process.** It saves player data (positions, inventories, game time since the last periodic save) from a JVM shutdown hook that only runs on `System.exit` or a console CTRL+C. `Stop-Process` and `taskkill /F` call TerminateProcess, which skips it entirely and silently loses data.
@@ -35,7 +49,7 @@ The script starts each one, then polls until its port accepts connections before
 .\tools\stop-server.ps1
 ```
 
-It sends a real CTRL+C (via `tools/send-ctrl-c.ps1`, which must run in its own process because attaching to another console detaches the caller from its own) and waits for the exit. Shutdown is immediate when only staff is online, otherwise the server announces it and waits `gameserver.shutdown.delay` seconds (120 by default).
+It sends a real CTRL+C (via `tools/send-ctrl-c.ps1`, which must run in its own process because attaching to another console detaches the caller from its own) and waits for the exit. It also closes the console afterwards if a `cmd.exe` is hosting one, which covers a server someone started from start.bat by hand. Shutdown is immediate when only staff is online, otherwise the server announces it and waits `gameserver.shutdown.delay` seconds (120 by default).
 
 `deploy.ps1 -Restart` uses this path, so redeploying never loses data.
 
