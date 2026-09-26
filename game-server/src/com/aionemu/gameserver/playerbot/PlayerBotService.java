@@ -6,9 +6,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.dao.PlayerDAO;
+import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
+import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
@@ -61,6 +65,31 @@ public class PlayerBotService {
 		}
 		spawnedBots.put(bot.getObjectId(), bot);
 		return "Spawned " + bot.getName() + " (objId " + bot.getObjectId() + ")";
+	}
+
+	/**
+	 * Creates a new bot character in the database, cloned from an existing one which supplies the account, race, gender and looks.
+	 *
+	 * @return A human readable result message.
+	 */
+	public String create(String characterName, String className, int level, String templateName) {
+		PlayerClass playerClass;
+		try {
+			playerClass = PlayerClass.valueOf(className.toUpperCase());
+		} catch (IllegalArgumentException e) {
+			return "Unknown class " + className;
+		}
+		PlayerCommonData template = PlayerDAO.loadPlayerCommonDataByName(templateName);
+		if (template == null)
+			return "No character found with name " + templateName + " to copy from";
+
+		try {
+			Player bot = PlayerBotCreationService.create(characterName, playerClass, level, template);
+			return "Created " + bot.getName() + " (objId " + bot.getObjectId() + "): " + playerClass + " level " + level;
+		} catch (IllegalArgumentException | IllegalStateException e) {
+			log.warn("Could not create bot " + characterName, e);
+			return "Could not create " + characterName + ": " + e.getMessage();
+		}
 	}
 
 	public String despawn(String characterName) {
@@ -159,7 +188,8 @@ public class PlayerBotService {
 		return sb.toString();
 	}
 
-	public void despawnAll() {
+	public String despawnAll() {
+		int count = spawnedBots.size();
 		spawnedBots.values().forEach(bot -> {
 			try {
 				PlayerBotLeaveWorldService.leaveWorld(bot);
@@ -168,6 +198,7 @@ public class PlayerBotService {
 			}
 		});
 		spawnedBots.clear();
+		return "Despawned " + count + " bot(s)";
 	}
 
 	private Player loadAvailableBot(String characterName) {

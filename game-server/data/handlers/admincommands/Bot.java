@@ -14,9 +14,11 @@ public class Bot extends AdminCommand {
 
 	public Bot() {
 		super("bot", "Controls playerbots.", """
+			create <name> <class> <level> <templateName> - Creates a new bot character, copying account, race, gender and looks from an existing one.
 			load <characterName> - Loads a bot character from the database without spawning it.
 			spawn <characterName> - Loads a bot character and spawns it next to you.
 			despawn <characterName> - Removes a spawned bot from the world.
+			despawnall - Removes every spawned bot from the world.
 			duel <characterName> - Makes the bot accept your pending duel request.
 			attack <characterName> - Makes the bot attack your target, or you if you have none.
 			stop <characterName> - Makes the bot stop attacking.
@@ -34,6 +36,7 @@ public class Bot extends AdminCommand {
 		}
 
 		switch (params[0].toLowerCase()) {
+			case "create" -> create(admin, params);
 			case "load" -> withName(admin, params, name -> PlayerBotService.getInstance().describeLoadedBot(name));
 			case "spawn" -> withName(admin, params, name -> PlayerBotService.getInstance().spawn(name, admin));
 			case "despawn" -> withName(admin, params, name -> PlayerBotService.getInstance().despawn(name));
@@ -43,9 +46,25 @@ public class Bot extends AdminCommand {
 			case "stop" -> withName(admin, params, name -> PlayerBotService.getInstance().stopAttacking(name));
 			case "come" -> withName(admin, params, name -> PlayerBotService.getInstance().come(name, admin));
 			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
+			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
 			default -> sendInfo(admin);
 		}
+	}
+
+	private void create(Player admin, String[] params) {
+		if (params.length < 5) {
+			sendInfo(admin, "Usage: //bot create <name> <class> <level> <templateName>");
+			return;
+		}
+		int level;
+		try {
+			level = Integer.parseInt(params[3]);
+		} catch (NumberFormatException e) {
+			sendInfo(admin, "Level must be a number");
+			return;
+		}
+		sendInfo(admin, PlayerBotService.getInstance().create(params[1], params[2], level, params[4]));
 	}
 
 	private void withName(Player admin, String[] params, Function<String, String> action) {
