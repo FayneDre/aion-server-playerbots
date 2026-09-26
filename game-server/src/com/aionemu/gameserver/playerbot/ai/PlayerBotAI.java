@@ -94,6 +94,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Where the bot is headed to sell, non null only while a trip is in progress. */
 	private volatile Vector3f vendorDestination;
 	/**
+	 * Whether this fight's opening has been tried. One attempt per fight and no more: an opening burst that will not go off now is on cooldown, which
+	 * is itself the answer, and retrying it every tick would spend it halfway through the fight where most of it is wasted.
+	 */
+	private volatile boolean openingSpent;
+	/**
 	 * Set when sent somewhere by command rather than by its own decision, so the tick that runs a second later does not immediately hijack the trip
 	 * for whatever mob happens to be findable along the way. Self defence still overrides it: this only holds off the bot picking its own fights.
 	 * <p>
@@ -173,11 +178,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (isRunningErrand()) {
 				// an operator sent it somewhere on purpose; let it arrive before it goes looking for its own fights
 			} else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
-				Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
-				if (target == null)
-					roam();
-				else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
-					startAttacking(target);
+				// buffs go up before a fight is picked, never during one, where the cast would cost a swing. Not an early return: the tick reschedules
+				// itself at the end of this method, and leaving by any other door stops the bot for good.
+				if (!BotSkillManager.tryBuffSelf(getOwner())) {
+					Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
+					if (target == null)
+						roam();
+					else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
+						startAttacking(target);
+				}
 			}
 		}
 		synchronized (combatLock) {
@@ -207,6 +216,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	public void startAttacking(Creature target) {
 		combatEndedAt = 0; // fighting again, so the pending sheathe is off
+		openingSpent = false;
 		BotTargetRegistry.forceClaim(target, getOwner()); // retaliation and commands are not negotiable
 		boolean gettingUp = standUp(); // canAttack() is false while resting
 		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
@@ -261,8 +271,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
 			chaseStartTime = 0;
 			stopMoving();
-			// staying alive outranks landing a hit, and a cast costs one swing either way
-			if (!BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT) && !BotSkillManager.tryCastSkill(bot, target))
+			if (!useBestSkill(target))
 				BotAttackManager.autoAttack(bot, target);
 		} else if (castFromAfar(target)) {
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
@@ -300,12 +309,34 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * @return true if a skill went off, in which case the bot holds its ground for the cast.
 	 */
 	private boolean castFromAfar(Creature target) {
-		Player bot = getOwner();
-		if (!BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT) && !BotSkillManager.tryCastSkill(bot, target))
+		if (!useBestSkill(target))
 			return false;
 		chaseStartTime = 0;
 		stopMoving(); // a cast roots a real player, and sliding through one is the animation fault we keep paying for elsewhere
 		return true;
+	}
+
+	/**
+	 * Picks the one thing the bot does with this moment of the fight, most urgent first.
+	 * <p>
+	 * The order is the whole of the bot's combat judgement, so it lives in one place rather than being restated wherever a skill might be cast. It
+	 * reads as a set of priorities: survive, then keep the advantage the class was given, then deal damage. A cast costs a swing either way, which is
+	 * why staying alive comes first and why nothing here is tried twice in the same tick.
+	 *
+	 * @return true if a skill went off, in which case the bot is busy and should not also swing.
+	 */
+	private boolean useBestSkill(Creature target) {
+		Player bot = getOwner();
+		if (!openingSpent) {
+			openingSpent = true;
+			// before the first blow, because a burst spent on a mob already dying is a burst thrown away — and self buffs need no range, so this works
+			// while still closing in
+			if (BotSkillManager.tryOpeningCooldown(bot))
+				return true;
+		}
+		// the defensive ability comes before the heal: it is cheaper in mana and it stops damage instead of repairing it, which only works in advance
+		return BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
+			|| BotSkillManager.tryCastSkill(bot, target);
 	}
 
 	/**

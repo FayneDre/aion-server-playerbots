@@ -19,7 +19,7 @@ Bots also move: they walk to a commanded point, chase a target out of weapon rea
 What the prototype deliberately does not do yet:
 
 - **Survive deliberately.** It never flees and never uses potions; it sits down where it stands to regenerate (resting multiplies hp regen by 8, so a standing bot takes minutes to heal what a seated one heals in seconds). It picks fights up to 3 levels above itself and only above 90% hp, leaves whatever killed it alone for 2 minutes, and on death resurrects after 10 s at its anchor with 25% hp/mp and soul sickness, like a player picking the obelisk. Those last rules exist because a bot reviving at 25% hp next to the mob that killed it dies again on a loop. Defending itself is never gated: the limits only apply to fights it starts, and an npc currently attacking the bot is picked before anything else, so a bot pulled by several mobs finishes them off instead of sitting down between two kills.
-- **Rotate skills per class** (M7, started). It heals itself and casts from whatever range a skill has, but still picks the highest-id usable skill, which is a decent proxy for "strongest available" and not a real rotation. Buffs are still never cast.
+- **Rotate skills per class** (M7, started). It heals, buffs, shields and opens with a burst, but among skills of the same kind it still picks the highest usable id, which is a decent proxy for "strongest available" and not a real rotation.
 - **Anything outside combat besides looting and resting** — no grouping, economy or social behavior.
 
 Looting works like the client's second half only: `CM_START_LOOT` opens the corpse and cancels its decay task, `CM_LOOT_ITEM` takes a line. Bots skip the opening, because `DropService.requestDropItem` does not need an open drop list and a bot that failed to close one would leave the corpse lying around forever. Once the bag is 70% full the bot turns selective and only takes kinah, quest items and anything above ordinary quality: the rest is vendor fodder, and it cannot go and sell yet. After a kill the bot walks within 4 m of the corpse (only the client enforces looting range, so the server would happily let it vacuum from 25 m) and takes every line it is entitled to.
@@ -114,7 +114,38 @@ Cooldowns are keyed by `template.getCooldownId()`, **not** by skill id — a fre
 - **Healing.** Skill selection only ever considered skills whose target relation is `ENEMY`, so everything aimed at oneself or an ally was filtered out by construction — a priest fought like a warrior and recovered by sitting in the grass. A bot now heals itself below 50% in a fight, and after one when the wound is worth the mana: below 70% health with over 30% mana. Otherwise it rests, which restores both at eight times the rate and is free. Heals are recognised by their effects (`EffectType.HEAL`, `HEALINSTANT`), so this holds for every healing class without a table of skill ids to maintain.
 - **Range.** Skills were only ever tried once the target was within **weapon** reach, so a caster walked into melee before casting a spell good from twenty five metres. It now tries to cast before closing, and stands still to do it. Which skills reach how far needs no table either: the engine validates each skill's range as it is cast, so trying is itself the question.
 
-What is left: a real priority order per `PlayerClass` instead of the highest usable id, self buffs (same blind spot healing had — they target the caster), and openers.
+- **Buffs.** Same blind spot as healing: a buff is cast on its caster, so the enemy-only filter hid every one of them. A bot now raises a missing buff out of combat, one per decision tick, asked **by stack group** rather than by skill id — two ranks of one buff share a group while their ids differ, so going by id had a bot raise its best rank and overwrite it with a weaker one a tick later, for ever.
+- **Cooldowns, kept and then spent.** See below.
+
+What is left: a real priority order per `PlayerClass` instead of the highest usable id, mantras (`SkillSubType.CHANT` toggles, excluded by the toggle filter and needing on/off management), and a classification for the abilities the stance pass leaves unlabelled.
+
+## Upkeep, and abilities kept in hand
+
+A buff and a cooldown are the same kind of data and mean opposite things. Cast everything, and a scout burns its evasion window on an empty field. Cast nothing, and half of every class goes unused.
+
+**The data draws the line by itself**: a buff that lasts at least as long as its own cooldown can be kept up for ever, which is what makes it upkeep. One whose cooldown outlasts it cannot — it is a window a player opens on purpose, and spending it on nothing means not having it later. Measured over every buff a class can learn: **1906 are upkeep, 350 are kept in hand.** No list of skill ids to curate, which is the point.
+
+Those 350 then need a moment. `stance(SkillTemplate)` reads what an ability is *for*, again from the data, in two passes:
+
+1. **By effect type.** A shield, an evasion, a cleanse, a reflector is defensive; a cast-time or attack boost is offensive. Unambiguous, so it decides first.
+2. **By the stats it raises**, for the large family of plain stat buffs. Stat names are consistent across all 150-odd of them, so the naming classifies better than a list that would need revisiting every time one is added — `RESIST`, `DEFEN`, `EVASION`, `BLOCK`, `PARRY` against `ATTACK`, `CRITICAL`, `ACCURACY`. `PENETRATION` is tested first, because it reads as resistance while being its opposite.
+
+**Only bonuses are read, never penalties.** A penalty is what a skill costs, not what it is for: Berserking cuts defence by half and accuracy by 200 to buy 80% attack, and counting its penalties classified it as defensive — the exact opposite of what it is. That one rule moved 23 skills to the right side.
+
+The result over those 350: **187 defensive, 64 usable as an opener, 23 offensive but too rare to spend, 76 left alone** because neither pass could label them (procs, mostly: `ProvokerEffect` fires on attack or on being attacked depending on a `hitType` the template does not expose, so which side it is on cannot be read).
+
+When each fires:
+
+| | Trigger |
+|---|---|
+| Defensive, cooldown ≤ 3 min | Below 70% health in a fight — before the heal, since it prevents damage instead of repairing it, and only works in advance |
+| Defensive, cooldown > 3 min | Below 50% health: the rarer the ability, the deeper the trouble it is kept for |
+| Offensive, cooldown ≤ 3 min | The fight's first action, **once** — a burst spent on a mob already dying is thrown away, and one that will not fire now is on cooldown, which is its own answer |
+| Offensive, cooldown > 3 min | Never. A player keeps these for something that warrants it, and a bot cannot tell that a given mob does |
+
+Three minutes is the one judgement call here, and it is the same number both ways: long enough to matter in the fight it is spent on, short enough to be back before the next one that needs it.
+
+`useBestSkill(target)` holds the whole order in one place — opening, defensive ability, heal, attack — rather than restating it wherever a skill might be cast. Mana is reserved too: a class that can heal stops paying for attack skills below 25% mana, so a fight going badly does not find it unable to afford the heal.
 
 ## Ending a fight against a player
 
