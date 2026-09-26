@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.controllers.movement.PlayerMoveController;
+import java.util.List;
+
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.EmotionType;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -13,6 +15,7 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.taskmanager.tasks.MoveTaskManager;
 import com.aionemu.gameserver.utils.PacketSendUtility;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -49,8 +52,13 @@ public class BotMoveController extends PlayerMoveController {
 	private static final float SAME_JOURNEY_TOLERANCE = 10f;
 
 	private long nextGeoZUpdate;
-	/** Final destination, which may be several legs away from the point currently being walked to. */
+	/** Where the bot is ultimately going. */
+	private volatile float finalX, finalY, finalZ;
+	/** The point currently being walked to: a waypoint of the planned route, or the destination itself. */
 	private volatile float goalX, goalY, goalZ;
+	/** Waypoints from the navmesh, empty when walking without a plan. */
+	private volatile List<Vector3f> route = List.of();
+	private int routeIndex;
 	private volatile boolean hasGoal;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
@@ -74,15 +82,19 @@ public class BotMoveController extends PlayerMoveController {
 			owner.getController().stopProtectionActiveTask();
 		// a chased target is re-routed to every second or so: that is the same journey continuing, not a new one, and resetting the progress
 		// tracking on each update would disable the anti stuck safeguard for exactly the case that needs it most
-		boolean sameJourney = hasGoal && PositionUtil.getDistance(goalX, goalY, x, y) < SAME_JOURNEY_TOLERANCE;
-		goalX = x;
-		goalY = y;
-		goalZ = z;
+		boolean sameJourney = hasGoal && PositionUtil.getDistance(finalX, finalY, x, y) < SAME_JOURNEY_TOLERANCE;
+		finalX = x;
+		finalY = y;
+		finalZ = z;
+		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
+		route = sameJourney && !route.isEmpty() ? route : NavmeshService.getInstance().findRoute(owner, x, y, z);
+		routeIndex = sameJourney && !route.isEmpty() ? routeIndex : 0;
 		hasGoal = true;
+		aimAtNextWaypoint();
 		if (!sameJourney) {
 			blocked = false;
 			detourSide = 0;
-			closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), x, y);
+			closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
 			lastProgressTime = System.currentTimeMillis();
 		}
 		return startNextLeg();
@@ -95,7 +107,7 @@ public class BotMoveController extends PlayerMoveController {
 
 	/** @return true if the bot is already on its way to that point, so a moving target does not need a new route on every tick. */
 	public boolean isHeadingTo(float x, float y, float tolerance) {
-		return hasGoal && PositionUtil.getDistance(goalX, goalY, x, y) < tolerance;
+		return hasGoal && PositionUtil.getDistance(finalX, finalY, x, y) < tolerance;
 	}
 
 	/**
@@ -104,14 +116,45 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return true if the bot keeps moving.
 	 */
 	public boolean continueToGoal() {
+		if (hasGoal && reachedWaypoint() && aimAtNextWaypoint()) {
+			closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
+			lastProgressTime = System.currentTimeMillis();
+		}
 		if (hasGoal && startNextLeg())
 			return true;
 		stop();
 		return false;
 	}
 
+	private boolean reachedWaypoint() {
+		return PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY) < ARRIVE_OFFSET;
+	}
+
+	/**
+	 * Points the leg machinery at the next waypoint of the planned route, or straight at the destination when there is no route left.
+	 *
+	 * @return true if it moved on to a new waypoint.
+	 */
+	private boolean aimAtNextWaypoint() {
+		while (routeIndex < route.size()) {
+			Vector3f waypoint = route.get(routeIndex++);
+			// the first waypoint is the bot's own cell, and a route may pass close to where it already stands
+			if (PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
+				continue;
+			goalX = waypoint.getX();
+			goalY = waypoint.getY();
+			goalZ = waypoint.getZ();
+			return true;
+		}
+		boolean changed = goalX != finalX || goalY != finalY;
+		goalX = finalX;
+		goalY = finalY;
+		goalZ = finalZ;
+		return changed;
+	}
+
 	private boolean startNextLeg() {
-		if (PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY) < ARRIVE_OFFSET) {
+		if (reachedWaypoint() && routeIndex >= route.size()) {
 			hasGoal = false;
 			return false;
 		}
@@ -150,6 +193,8 @@ public class BotMoveController extends PlayerMoveController {
 	 */
 	public void stop() {
 		hasGoal = false;
+		route = List.of();
+		routeIndex = 0;
 		MoveTaskManager.getInstance().removeCreature(owner);
 		if (started.compareAndSet(true, false))
 			setAndSendStopMove(owner);

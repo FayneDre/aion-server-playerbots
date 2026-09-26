@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 to N4 done**, the rest is the design.
+Replacing reactive steering with real path planning. **N0 to N4 done, N5 deployed and awaiting an in game check.**
 
 ## Why
 
@@ -55,7 +55,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 - Load lazily, per map, on first use. Keep it out of the startup path.
 - `BotPathFinder.findPath(from, to)` — A\* over spans, then string pulling into a waypoint list. String pulling replaced the funnel: without polygon portals there is nothing to funnel through, and dropping every waypoint a straight walk can skip gives the same result in a fraction of the code.
 - It returns a `Route` that says whether the search **gave up** rather than proved the place unreachable. A bot must treat those differently: one means try another way, the other means stop trying.
-- `BotMoveController` walks waypoints **unchanged**: legs, arrival, stuck detection and the client packets all stay as they are. This is the seam the current design was built around.
+- `BotMoveController` walks waypoints through its existing leg machinery: arrival, stuck detection and the client packets all stay as they were, and the controller only gained the notion of a current waypoint separate from the final destination. This is the seam the earlier design was built around, and it held.
 - `BotGeoHelper` keeps its corridor probe for the last few metres and for dynamic obstacles (gatherables, other players), which no static mesh can know about.
 
 ## Milestones
@@ -67,7 +67,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 | N2 | Walkability rules (slope, headroom, WALK volumes) | **Done.** 25.7 M of Poeta's 39.4 M surfaces are walkable, and the blocked ones trace its ridges and cliffs exactly. Its tree stumps, the kind of low prop the runtime probes cannot see at all, each block 8 to 15 cells and leave the ground under them unstandable for want of head room |
 | N3 | Binary format, write and read back | **Done.** Poeta is a 38 MB file, written in 4.3 s, read back in 0.35 s into 117 MB of heap, with all 39.4 M surfaces compared and no mismatch |
 | N4 | A\* plus string pulling, `NavmeshTool <mapId> path <x1> <y1> <x2> <y2>` draws the route | **Done.** A 20 m route between two houses bends around the first one instead of crossing its wall, in 8 ms. Routes of 50 to 100 m take 8 to 17 ms and come back as 2 to 4 waypoints |
-| N5 | `BotMoveController` follows a planned route | A bot walks around the log instead of into it |
+| N5 | `BotMoveController` follows a planned route | **Deployed.** `NavmeshService` loads a map on a pool thread the first time a bot needs it, the controller walks the waypoints through its existing leg machinery, and falls back to walking straight at the goal whenever there is no plan. In game check pending |
 | N6 | Long route inside a map, then the vendor run | A bot reaches a town npc and comes back |
 
 ## Running it
