@@ -22,6 +22,7 @@ import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -162,9 +163,24 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return false;
 	}
 
+	/**
+	 * Joins whoever invites the bot, and makes its camp follow its group leader.
+	 * <p>
+	 * Moving the anchor is the whole of "follow": every rule the bot already had — roam the camp, come back when it is clear, break off a chase that
+	 * leaves it — is written against the anchor, so pointing that at the leader makes the camp travel with the group without a second set of rules
+	 * to keep in step with the first.
+	 */
+	private void followTheGroup() {
+		BotGroupManager.acceptPendingInvite(getOwner());
+		Player leader = BotGroupManager.leaderToFollow(getOwner());
+		if (leader != null)
+			setAnchor(leader.getX(), leader.getY(), leader.getZ());
+	}
+
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
 		sheathWhenCalm();
+		followTheGroup();
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
 		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
@@ -183,11 +199,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing. Not an early return: the tick reschedules
 				// itself at the end of this method, and leaving by any other door stops the bot for good.
 				if (!BotSkillManager.tryBuffSelf(getOwner()) && !BotSkillManager.tryChantMantra(getOwner())) {
-					Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
-					if (target == null)
-						roam();
-					else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
-						startAttacking(target);
+					Creature assisted = BotGroupManager.targetToAssist(getOwner());
+					if (assisted != null) {
+						BotTargetRegistry.forceClaim(assisted, getOwner()); // the group piles on together, which is the point of being one
+						startAttacking(assisted);
+					} else {
+						Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
+						if (target == null)
+							roam();
+						else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
+							startAttacking(target);
+					}
 				}
 			}
 		}

@@ -20,7 +20,17 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 
 **Skill rotation (M7), started.** Bots heal, buff, cast from a skill's own range rather than walking into melee first, shield themselves when a fight turns, and open with a burst — they open with a class's own move — a leap, or a walk in under stealth — and they no longer pick the attacks that leap backwards. They follow their skill chains, do not re-apply a debuff already on the target, and chanters run their mantras. See [combat-skills.md](combat-skills.md). They lead with their strongest skill rather than their newest, which the id ordering had badly wrong. Still missing: an authored rotation per class — what exists is a set of tiers read from the data.
 
-**Groups.** `model/team/group/` works on `Player` objects, so a headless bot should join like anyone else. Group loot rules already treat bots correctly, and `BotTargetSelector` already spares a team mate's target. This is the gateway to instanced PvE.
+## Done: groups
+
+Invite a bot from the client like anyone else and it joins: the decision tick answers the question window it can never see. `ResponseRequester.respond` returns false when nothing is pending, so asking is the whole test and no engine api had to be widened.
+
+**Following is the anchor, not a new behaviour.** A grouped bot points its camp anchor at its leader every tick, and every rule it already had — roam the camp, come back when it is clear, break off a chase that leaves it — travels with the group for free. There is no second set of movement rules to keep in step with the first. A leader on another map is ignored rather than walked to: that is travel, not navigation, and bots cannot travel yet. `//bot come` has no effect on a grouped bot, since the leader sets the anchor a tick later.
+
+**Assisting comes before picking a fight**, the leader's target first so a group converges instead of each member helping whoever is nearest. The level gap a bot applies to its own fights is deliberately not applied here: the group chose this fight, and refusing to help because the mob is big is the one thing a member must not do. Bots pile onto the same target through `forceClaim`, which is the point of being grouped.
+
+A bot is passed over when a group looks for a new leader — leading means answering invitations and setting loot rules.
+
+**Left for later:** nothing makes a bot follow through a teleporter, and a group of bots alone has no one to decide for it.
 
 **Economy.** Selling is the first step. Then the broker (`BrokerService`), then player shops. `PvpService` dereferences `getClientConnection().getIP()` and will throw the first time a bot kills a real player, so guard it before open world PvP.
 
