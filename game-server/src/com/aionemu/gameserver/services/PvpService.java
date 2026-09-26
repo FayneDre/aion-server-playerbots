@@ -196,7 +196,7 @@ public class PvpService {
 				log.info("[KILL] " + winner + " killed " + victim);
 		}
 
-		if (LoggingConfig.LOG_PL) {
+		if (LoggingConfig.LOG_PL && winner.getClientConnection() != null && victim.getClientConnection() != null) {
 			String ip1 = winner.getClientConnection().getIP();
 			String mac1 = winner.getClientConnection().getMacAddress();
 			String ip2 = victim.getClientConnection().getIP();

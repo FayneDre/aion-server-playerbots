@@ -27,6 +27,8 @@ public class MultiClientingService {
 			String hdd = con.getHddSerial();
 			String ip = con.getIP();
 			for (Player onlinePlayer : World.getInstance().getAllPlayers()) {
+				if (onlinePlayer.getClientConnection() == null)
+					continue; // bots share the world list but no machine, so they can never be a second client of one
 				boolean sameIp = ip.equals(onlinePlayer.getClientConnection().getIP());
 				boolean sameMac = !mac.isEmpty() && mac.equals(onlinePlayer.getClientConnection().getMacAddress());
 				boolean sameHdd = !hdd.isEmpty() && hdd.equals(onlinePlayer.getClientConnection().getHddSerial());

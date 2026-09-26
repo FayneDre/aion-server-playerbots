@@ -43,7 +43,7 @@ public class PunishmentService {
 
 		// if player is online - kick him
 		Player player = World.getInstance().getPlayer(playerId);
-		if (player != null)
+		if (player != null && player.getClientConnection() != null)
 			player.getClientConnection().close(new SM_QUIT_RESPONSE());
 	}
 

@@ -132,7 +132,7 @@ Programmatic creation via `PlayerService.newPlayer` / `storeNewPlayer` is the ri
 
 | Trap | Symptom | Fast check |
 |---|---|---|
-| `isOnline()` used as a validity test | Bot ignored by aggro, chat, visibility | `grep -rn "isOnline()"` and audit the combat path |
+| `isOnline()` used as a validity test | Bot ignored by rewards, groups, trade | Fixed at the root: it now means "is present". See [roadmap.md](roadmap.md) |
 | Connection NPE in the world-entry path | Stack trace on `//bot spawn` | Wrap M2 in try/catch and log the full trace |
 | Skills not learned | `getSkillFor` returns null, bot only auto-attacks | Log skill count in M1; fix with `SkillLearnService.learnNewSkills` |
 | Cooldown keyed by `getCooldownId()` | Bot spams or never re-casts | Log the cooldown each tick |

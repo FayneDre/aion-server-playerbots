@@ -17,12 +17,20 @@ public abstract class ChangeLeaderEvent<T extends TemporaryPlayerTeam<?>> extend
 	 */
 	@Override
 	public boolean checkCondition() {
-		return eventPlayer == null || eventPlayer.isOnline();
+		return eventPlayer == null || canLead(eventPlayer);
+	}
+
+	/**
+	 * A bot is present enough to be rewarded and counted, but it has nobody to decide for: leading a group means answering invitations and setting
+	 * loot rules, which it cannot do. So it is passed over, and a group of bots alone simply keeps the leader it has.
+	 */
+	private static boolean canLead(Player player) {
+		return player.isOnline() && !player.isBot();
 	}
 
 	protected final void changeLeaderToNextAvailablePlayer() {
 		team.applyOnMembers(member -> {
-			if (member.isOnline() && !member.equals(team.getLeader().getObject())) {
+			if (canLead(member) && !member.equals(team.getLeader().getObject())) {
 				changeLeaderTo(member);
 				return false;
 			}

@@ -35,6 +35,8 @@ public class PlayerBotEnterWorldService {
 	 * this way resumes exactly where it stood, and its ai anchors its camp there on the spawn event.
 	 */
 	public static void enterWorld(Player bot) {
+		// before anything else: it is what makes the engine treat this character as present despite having no connection
+		bot.setBot();
 		applyPassiveSkillEffects(bot);
 		bot.setAi(new PlayerBotAI(bot));
 		bot.setMoveController(new BotMoveController(bot));

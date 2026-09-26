@@ -72,8 +72,10 @@ public class PacketSendUtility {
 	 * Sends a packet to the given player
 	 */
 	public static void sendPacket(Player player, AionServerPacket packet) {
-		if (player.isOnline())
-			player.getClientConnection().sendPacket(packet);
+		// the connection itself, not isOnline(): that asks whether the character is present, which a bot is, while this needs a socket to write to
+		var connection = player.getClientConnection();
+		if (connection != null)
+			connection.sendPacket(packet);
 	}
 
 	/**

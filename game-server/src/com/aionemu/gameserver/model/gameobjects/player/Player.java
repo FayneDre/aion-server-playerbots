@@ -408,8 +408,30 @@ public class Player extends Creature {
 		return requester;
 	}
 
+	private volatile boolean bot;
+
+	/**
+	 * Marks this character as driven by server side ai rather than by a client. Set once, before it enters the world, and never cleared.
+	 */
+	public void setBot() {
+		bot = true;
+	}
+
+	public boolean isBot() {
+		return bot;
+	}
+
+	/**
+	 * Tells whether this character is present and can be dealt with — given a reward, counted in a group, offered a trade. That is the question
+	 * nearly every one of this method's callers is really asking, and until bots existed "has a client connection" answered it correctly.
+	 * <p>
+	 * It no longer does: a bot is in the world, acts in it and can be handed things, and has no connection by design. Callers that genuinely need
+	 * the socket must test {@link #getClientConnection()} for null instead of asking this.
+	 *
+	 * @return true for a connected player, and for a bot.
+	 */
 	public boolean isOnline() {
-		return getClientConnection() != null;
+		return bot || getClientConnection() != null;
 	}
 
 	public int getQuestExpands() {
