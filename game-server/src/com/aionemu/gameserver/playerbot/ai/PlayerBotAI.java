@@ -261,7 +261,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
 			chaseStartTime = 0;
 			stopMoving();
-			if (!BotSkillManager.tryCastSkill(bot, target))
+			// staying alive outranks landing a hit, and a cast costs one swing either way
+			if (!BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT) && !BotSkillManager.tryCastSkill(bot, target))
 				BotAttackManager.autoAttack(bot, target);
 		} else if (!chase(target)) {
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
@@ -459,6 +460,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	private void recover() {
 		if (getOwner().getMoveController().isInMove())
+			return;
+		// Healing is far quicker than resting, but it spends mana that resting would have restored alongside the health. So it is worth a cast only
+		// when there is a real wound to close and the mana to spare; a scratch, or an empty mana bar, and sitting down wins on both counts.
+		if (getOwner().getLifeStats().getMpPercentage() >= BotSkillManager.HEAL_MIN_MP_PERCENT
+			&& BotSkillManager.tryHealSelf(getOwner(), BotSkillManager.HEAL_AFTER_COMBAT_PERCENT))
 			return;
 		if (combatEndedAt != 0) {
 			// put the weapon away before sitting: sheathing later, while seated, plays a standing animation on a seated body
