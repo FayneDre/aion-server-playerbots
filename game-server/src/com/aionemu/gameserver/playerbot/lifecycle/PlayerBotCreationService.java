@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.commons.database.DatabaseFactory;
 import com.aionemu.gameserver.dao.PlayerAppearanceDAO;
 import com.aionemu.gameserver.dao.PlayerDAO;
+import com.aionemu.gameserver.dao.PlayerQuestListDAO;
 import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.account.Account;
 import com.aionemu.gameserver.model.account.PlayerAccountData;
@@ -19,6 +20,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerAppearance;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.services.AccountService;
+import com.aionemu.gameserver.services.ClassChangeService;
 import com.aionemu.gameserver.services.NameRestrictionService;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.utils.idfactory.IDFactory;
@@ -63,7 +65,10 @@ public class PlayerBotCreationService {
 		commonData.setRace(template.getRace());
 		commonData.setGender(template.getGender());
 		commonData.setPlayerClass(playerClass);
-		commonData.setLevel(level); // after the class, since experience is class dependent
+		// levels above 9 are gated on daeva status, which a bot will never earn by running the ascension quest
+		if (!playerClass.isStartingClass())
+			commonData.setDaeva(true);
+		commonData.setLevel(level); // after the class and daeva status, both of which cap the experience it accepts
 
 		PlayerAccountData accountData = new PlayerAccountData(commonData, randomizeColors(PlayerAppearanceDAO.load(template.getPlayerObjId())));
 		Player bot = PlayerService.newPlayer(accountData, account);
@@ -73,6 +78,12 @@ public class PlayerBotCreationService {
 			throw new IllegalStateException("Could not store new bot " + name);
 		}
 		PlayerService.storeCreationTime(bot.getObjectId(), new Timestamp(System.currentTimeMillis()));
+
+		if (commonData.isDaeva()) { // daeva status is not a column: it is recomputed from the ascension quest on every load
+			ClassChangeService.completeAscensionQuest(bot);
+			PlayerQuestListDAO.store(bot);
+		}
+		PlayerDAO.storePlayer(bot); // the creation insert has no exp column, so the level would be lost on the next load
 		return bot;
 	}
 
