@@ -1,8 +1,13 @@
 package com.aionemu.gameserver.playerbot.navmesh;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+
+import javax.imageio.ImageIO;
 
 import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
 
@@ -51,6 +56,77 @@ public class NavmeshTool {
 			return;
 		}
 		report(mapId, models, placements);
+
+		start = System.currentTimeMillis();
+		Heightfield field = HeightfieldBuilder.build(mapId);
+		System.out.printf("Rasterized %dx%d columns holding %d surfaces in %d ms%n", field.width(), field.height(), field.surfaceCount(),
+			System.currentTimeMillis() - start);
+		System.out.println("Wrote " + writeHeightImage(mapId, field).toAbsolutePath());
+		System.out.println("Wrote " + writeStructureImage(mapId, field).toAbsolutePath());
+	}
+
+	/**
+	 * Dumps where columns hold more than one surface, which is everything standing on the ground: buildings, bridges, props. Separating it from the
+	 * height image is what tells terrain rasterization and mesh rasterization apart when one of them is wrong.
+	 */
+	private static Path writeStructureImage(int mapId, Heightfield field) throws IOException {
+		BufferedImage image = new BufferedImage(field.width(), field.height(), BufferedImage.TYPE_INT_RGB);
+		for (int y = 0; y < field.height(); y++) {
+			for (int x = 0; x < field.width(); x++) {
+				int layers = field.columnEnd(x, y) - field.columnStart(x, y);
+				int rgb = switch (Math.min(layers, 3)) {
+					case 0 -> 0x000080; // nothing at all
+					case 1 -> 0x202020; // bare ground
+					case 2 -> 0xFF8000; // one thing standing on it
+					default -> 0xFF0000; // stacked geometry: a building, a bridge, a cliff overhang
+				};
+				image.setRGB(x, y, rgb);
+			}
+		}
+		return write(mapId, "structures", image);
+	}
+
+	/**
+	 * Dumps the top surface of every column as a grey image, dark low and bright high. This is the whole point of this stage: a generation bug is
+	 * something you see here, instead of something you infer from a bot walking into a wall an hour later.
+	 */
+	private static Path writeHeightImage(int mapId, Heightfield field) throws IOException {
+		float min = Float.MAX_VALUE, max = -Float.MAX_VALUE;
+		for (int y = 0; y < field.height(); y++) {
+			for (int x = 0; x < field.width(); x++) {
+				float z = field.topSurface(x, y);
+				if (Float.isNaN(z))
+					continue;
+				min = Math.min(min, z);
+				max = Math.max(max, z);
+			}
+		}
+
+		BufferedImage image = new BufferedImage(field.width(), field.height(), BufferedImage.TYPE_INT_RGB);
+		float span = Math.max(1, max - min);
+		for (int y = 0; y < field.height(); y++) {
+			for (int x = 0; x < field.width(); x++) {
+				float z = field.topSurface(x, y);
+				int rgb;
+				if (Float.isNaN(z)) {
+					rgb = 0x000080; // no ground at all, drawn blue so holes stand out from low ground
+				} else {
+					int grey = Math.round((z - min) / span * 255);
+					rgb = grey << 16 | grey << 8 | grey;
+				}
+				image.setRGB(x, y, rgb);
+			}
+		}
+
+		return write(mapId, "height", image);
+	}
+
+	private static Path write(int mapId, String kind, BufferedImage image) throws IOException {
+		Path out = Path.of("data/navmesh");
+		Files.createDirectories(out);
+		Path file = out.resolve(mapId + "-" + kind + ".png");
+		ImageIO.write(image, "png", file.toFile());
+		return file;
 	}
 
 	private static void report(int mapId, Map<String, List<GeoModel>> models, List<GeoPlacement> placements) {

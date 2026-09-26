@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 done**, the rest is the design.
+Replacing reactive steering with real path planning. **N0 and N1 done**, the rest is the design.
 
 ## Why
 
@@ -60,7 +60,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 | | Goal | Verification |
 |---|---|---|
 | N0 | Offline tool loads one map's geometry and reports triangle and placement counts | **Done.** 20028 meshes and 419707 entities on 151 maps, plus 919 town level clones, matches the server's 20028 and 420626 exactly |
-| N1 | Rasterise one map to spans, dump a PNG per level | The image looks like the map: roads, buildings, water edges |
+| N1 | Rasterise one map to spans, dump images | **Done.** Poeta is 6144x6144 columns holding 39.4 M surfaces, rasterized in 1.4 s. The height image shows its valleys, ridges and river, the structure image shows its buildings clustered in the built up area |
 | N2 | Walkability rules (slope, headroom, WALK volumes) | The known log and the known dead end appear as blocked |
 | N3 | Binary format, write and read back | Round trip is identical, load time under a second |
 | N4 | A\* plus funnel smoothing, `//bot path <x> <y>` prints the route | A route around a building, not through it |
@@ -80,7 +80,7 @@ It runs from the server directory against the deployed jar, so deploy after chan
 
 ## Risks
 
-1. **Generation time and memory.** Millions of rays per map. Mitigate by generating offline, one map at a time, in parallel, and only for maps in use.
+1. **Memory, confirmed by N1.** Poeta needs ~160 MB of surfaces and ~150 MB of column offsets, and it is a small map. The offsets array is the problem: one int per column whether or not anything is there. N3 must store columns sparsely, and generation already needs `-Xmx4g`.
 2. **The span format is a new file format to maintain.** Version it from the first byte, and keep the generator able to rebuild everything.
 3. **Multi-level geometry** (bridges, buildings, the Abyss) is where span linking gets subtle. N1's per-level images are what makes this debuggable.
 4. **Dynamic obstacles stay unsolved by the mesh** — players, npcs, gatherables, doors. The existing reactive layer keeps handling the last few metres.
