@@ -52,6 +52,7 @@ com.aionemu.gameserver.playerbot/
   PlayerBotRegistry           ConcurrentHashMap<Integer, PlayerBot>, lookup by objId/name, iteration on shutdown
 
   lifecycle/
+    PlayerBotCreationService    Headless CM_CREATE_CHARACTER: new characters on reserved bot accounts
     PlayerBotLoader             accountId -> AccountService.loadAccount + PlayerService.getPlayer
     PlayerBotEnterWorldService  Headless subset of PlayerEnterWorldService (state only, zero packets)
     PlayerBotLeaveWorldService  Headless subset of PlayerLeaveWorldService (cleanup + controller.delete())
@@ -84,6 +85,12 @@ Future subsystems plug in as: auction house / shops → `economy/` plus new beha
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. Defer while the prototype uses constants. |
 
 Nothing else. `services/player/MultiClientingService.java:24` dereferences the connection's IP/MAC and would NPE — it needs no patch, because `PlayerBotEnterWorldService` simply never calls it.
+
+## Bot characters
+
+Bots live on their own accounts, ids from **900000** up, one per bot. Accounts belong to the login server and `players.account_id` has no foreign key, so those ids never need to exist there. This keeps bots off the player's real accounts, where they would fill the character selection screen, and makes them a single `WHERE account_id >= 900000` away in the database — which is also what makes `//bot delete` safe to restrict.
+
+Creation clones an existing character's race, gender and appearance, because a default `PlayerAppearance` is all zeroes including a height of 0, which the client cannot render. Two traps found the hard way: the creation insert has **no `exp` column**, so the level must be written separately, and levels above 9 are gated on daeva status, which only the ascension quest grants.
 
 ## Reuse map
 

@@ -1,5 +1,7 @@
 package com.aionemu.gameserver.playerbot;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,6 +20,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
+import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.world.World;
 
 /**
@@ -91,6 +94,49 @@ public class PlayerBotService {
 			log.warn("Could not create bot " + characterName, e);
 			return "Could not create " + characterName + ": " + e.getMessage();
 		}
+	}
+
+	/**
+	 * Creates several bots at once with generated names, for populating an area.
+	 */
+	public String populate(int count, String className, int level, String templateName) {
+		List<String> created = new ArrayList<>();
+		for (int i = 0; i < count; i++) {
+			String name;
+			try {
+				name = PlayerBotCreationService.generateName();
+			} catch (IllegalStateException e) {
+				return report(created, "ran out of free names");
+			}
+			String result = create(name, className, level, templateName);
+			if (!result.startsWith("Created "))
+				return report(created, result);
+			created.add(name);
+		}
+		return report(created, null);
+	}
+
+	private String report(List<String> created, String failure) {
+		String summary = created.isEmpty() ? "Created no bot" : "Created " + created.size() + " bots: " + String.join(", ", created);
+		return failure == null ? summary : summary + " (stopped: " + failure + ")";
+	}
+
+	/**
+	 * Deletes a bot character and everything attached to it. Restricted to the reserved bot accounts, so a mistyped name can never wipe a real
+	 * character.
+	 */
+	public String delete(String characterName) {
+		if (findSpawnedBot(characterName) != null)
+			return characterName + " is spawned, despawn it first";
+
+		int objectId = PlayerDAO.getPlayerIdByName(characterName);
+		if (objectId == 0)
+			return "No character found with name " + characterName;
+		if (PlayerDAO.getAccountId(objectId) < PlayerBotCreationService.BOT_ACCOUNT_ID_BASE)
+			return characterName + " is not on a bot account, refusing to delete it";
+
+		PlayerService.deletePlayerFromDB(objectId);
+		return "Deleted " + characterName;
 	}
 
 	public String despawn(String characterName) {

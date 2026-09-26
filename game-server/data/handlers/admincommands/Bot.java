@@ -12,9 +12,14 @@ import com.aionemu.gameserver.utils.chathandlers.AdminCommand;
  */
 public class Bot extends AdminCommand {
 
+	/** Creating characters hits the database once per bot, so a typo in the count must not lock the server up. */
+	private static final int MAX_POPULATE = 20;
+
 	public Bot() {
 		super("bot", "Controls playerbots.", """
 			create <name> <class> <level> <templateName> - Creates a new bot character, copying account, race, gender and looks from an existing one.
+			populate <count> <class> <level> <templateName> - Creates several bots at once with generated names.
+			delete <characterName> - Deletes a bot character from the database.
 			load <characterName> - Loads a bot character from the database without spawning it.
 			spawn <characterName> - Loads a bot character and spawns it next to you.
 			despawn <characterName> - Removes a spawned bot from the world.
@@ -38,6 +43,8 @@ public class Bot extends AdminCommand {
 
 		switch (params[0].toLowerCase()) {
 			case "create" -> create(admin, params);
+			case "populate" -> populate(admin, params);
+			case "delete" -> withName(admin, params, name -> PlayerBotService.getInstance().delete(name));
 			case "load" -> withName(admin, params, name -> PlayerBotService.getInstance().describeLoadedBot(name));
 			case "spawn" -> withName(admin, params, name -> PlayerBotService.getInstance().spawn(name, admin));
 			case "despawn" -> withName(admin, params, name -> PlayerBotService.getInstance().despawn(name));
@@ -67,6 +74,26 @@ public class Bot extends AdminCommand {
 			return;
 		}
 		sendInfo(admin, PlayerBotService.getInstance().create(params[1], params[2], level, params[4]));
+	}
+
+	private void populate(Player admin, String[] params) {
+		if (params.length < 5) {
+			sendInfo(admin, "Usage: //bot populate <count> <class> <level> <templateName>");
+			return;
+		}
+		int count, level;
+		try {
+			count = Integer.parseInt(params[1]);
+			level = Integer.parseInt(params[3]);
+		} catch (NumberFormatException e) {
+			sendInfo(admin, "Count and level must be numbers");
+			return;
+		}
+		if (count < 1 || count > MAX_POPULATE) {
+			sendInfo(admin, "Count must be between 1 and " + MAX_POPULATE);
+			return;
+		}
+		sendInfo(admin, PlayerBotService.getInstance().populate(count, params[2], level, params[4]));
 	}
 
 	private void withName(Player admin, String[] params, Function<String, String> action) {
