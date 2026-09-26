@@ -40,6 +40,15 @@ public class BotTargetSelector {
 		return candidates.stream().min(Comparator.comparingDouble(npc -> PositionUtil.getDistance(bot, npc))).orElse(null);
 	}
 
+	/**
+	 * Leaves alone what someone else is already fighting, so several bots in the same spot spread over the mobs around them instead of piling onto
+	 * the nearest one. Team mates are excluded: helping them is the whole point of being grouped. This also stops bots from stealing kills from real
+	 * players.
+	 */
+	private static boolean isTakenByAnotherPlayer(Player bot, Npc npc) {
+		return npc.getTarget() instanceof Player other && !other.equals(bot) && !other.isInSameTeam(bot);
+	}
+
 	private static boolean isAttackable(Player bot, Npc npc) {
 		if (npc.isDead() || !npc.isSpawned() || !bot.isEnemy(npc))
 			return false;
@@ -47,6 +56,8 @@ public class BotTargetSelector {
 			return false;
 		if (npc.getLevel() > bot.getLevel() + MAX_LEVEL_GAP)
 			return false; // this only limits what the bot picks: it still fights back against anything that attacks it
+		if (isTakenByAnotherPlayer(bot, npc))
+			return false;
 		// line of sight is not just a targeting rule here: without it the bot would walk towards things behind walls it cannot reach
 		return PositionUtil.getDistance(bot, npc) <= CHASE_RADIUS && GeoService.getInstance().canSee(bot, npc);
 	}
