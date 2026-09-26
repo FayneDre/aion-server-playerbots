@@ -48,8 +48,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * every attack tick turns a run into a stutter.
 	 */
 	private static final long CHASE_REROUTE_INTERVAL = 600;
-	/** Roughly how long the client takes to play the stand up animation. Moving the bot before that makes it slide to its feet. */
-	private static final long STAND_UP_MILLIS = 1000;
+	/**
+	 * How long the client needs to play the stand up animation before the bot may do anything else. Moving during it makes the bot slide to its
+	 * feet, drawing during it leaves it floating between two poses. Purely empirical: the animation length is client side and not exposed anywhere
+	 * server side, so this is tuned by watching.
+	 */
+	private static final long STAND_UP_MILLIS = 2000;
 	/** How long the weapon stays drawn after a fight, so the bot does not sheathe it between two mobs of the same pull. */
 	private static final long SHEATHE_DELAY_MILLIS = 8000;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
