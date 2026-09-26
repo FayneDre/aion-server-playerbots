@@ -1,15 +1,22 @@
 package com.aionemu.gameserver.playerbot.lifecycle;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Random;
 
+import org.slf4j.LoggerFactory;
+
+import com.aionemu.commons.database.DatabaseFactory;
 import com.aionemu.gameserver.dao.PlayerAppearanceDAO;
 import com.aionemu.gameserver.dao.PlayerDAO;
+import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.account.Account;
 import com.aionemu.gameserver.model.account.PlayerAccountData;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerAppearance;
-import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.services.AccountService;
 import com.aionemu.gameserver.services.NameRestrictionService;
@@ -46,9 +53,10 @@ public class PlayerBotCreationService {
 			throw new IllegalArgumentException("Name already taken: " + name);
 
 		int accountId = PlayerDAO.getAccountId(template.getPlayerObjId());
+		String accountName = loadAccountName(template.getPlayerObjId());
+		if (accountName == null)
+			throw new IllegalArgumentException("No account found for template " + template.getName());
 		Account account = AccountService.loadAccount(accountId);
-		if (account == null)
-			throw new IllegalArgumentException("No account " + accountId + " for template " + template.getName());
 
 		PlayerCommonData commonData = new PlayerCommonData(IDFactory.getInstance().nextId());
 		commonData.setName(name);
@@ -59,12 +67,31 @@ public class PlayerBotCreationService {
 
 		PlayerAccountData accountData = new PlayerAccountData(commonData, randomizeColors(PlayerAppearanceDAO.load(template.getPlayerObjId())));
 		Player bot = PlayerService.newPlayer(accountData, account);
-		if (!PlayerService.storeNewPlayer(bot, account.getName(), account.getId())) {
+		// the account name is only ever written to the players table, never read back, so it has to come from the template's own row
+		if (!PlayerService.storeNewPlayer(bot, accountName, accountId)) {
 			IDFactory.getInstance().releaseId(commonData.getPlayerObjId());
 			throw new IllegalStateException("Could not store new bot " + name);
 		}
 		PlayerService.storeCreationTime(bot.getObjectId(), new Timestamp(System.currentTimeMillis()));
 		return bot;
+	}
+
+	/**
+	 * {@code Account} carries no name when loaded by id (it normally comes from the login server handshake), and no DAO reads the column back, so
+	 * the denormalized copy stored on the template's own row is the only source available here.
+	 */
+	private static String loadAccountName(int playerId) {
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT `account_name` FROM `players` WHERE `id` = ?")) {
+			stmt.setInt(1, playerId);
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next())
+					return rs.getString("account_name");
+			}
+		} catch (SQLException e) {
+			LoggerFactory.getLogger(PlayerBotCreationService.class).error("Could not read the account name of player " + playerId, e);
+		}
+		return null;
 	}
 
 	private static PlayerAppearance randomizeColors(PlayerAppearance appearance) {
