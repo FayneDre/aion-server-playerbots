@@ -49,11 +49,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private static final long CHASE_REROUTE_INTERVAL = 600;
 	/**
-	 * How long the client needs to play the stand up animation before the bot may do anything else. Moving during it makes the bot slide to its
-	 * feet, drawing during it leaves it floating between two poses. Purely empirical: the animation length is client side and not exposed anywhere
-	 * server side, so this is tuned by watching.
+	 * How long after standing up the bot may move again, or the client shows it sliding to its feet.
+	 * <p>
+	 * Both delays below are empirical: animation lengths live in the client and are exposed nowhere server side, so they are tuned by watching.
 	 */
-	private static final long STAND_UP_MILLIS = 2000;
+	private static final long STAND_UP_MILLIS = 1000;
+	/** Drawing the weapon blends worse with standing up than walking does, so it waits a little longer. */
+	private static final long DRAW_AFTER_STAND_MILLIS = 1500;
 	/** How long the weapon stays drawn after a fight, so the bot does not sheathe it between two mobs of the same pull. */
 	private static final long SHEATHE_DELAY_MILLIS = 8000;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
@@ -155,7 +157,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			getOwner().setTarget(target);
 			setStateIfNot(AIState.FIGHT);
 			// drawing the weapon in the same breath as standing up leaves the client blending two poses, which shows as a floating character
-			scheduleAttackTick(gettingUp ? (int) STAND_UP_MILLIS : 0);
+			scheduleAttackTick(gettingUp ? (int) DRAW_AFTER_STAND_MILLIS : 0);
 		}
 		log.info("Bot {} starts attacking {}", getOwner().getName(), target.getName());
 	}
