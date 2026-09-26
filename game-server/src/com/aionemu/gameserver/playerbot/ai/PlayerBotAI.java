@@ -140,15 +140,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 	public void startAttacking(Creature target) {
 		combatEndedAt = 0; // fighting again, so the pending sheathe is off
 		BotTargetRegistry.forceClaim(target, getOwner()); // retaliation and commands are not negotiable
-		standUp(); // canAttack() is false while resting
+		boolean gettingUp = standUp(); // canAttack() is false while resting
 		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
 			getOwner().getController().stopProtectionActiveTask();
 		synchronized (combatLock) {
 			stopAttackTask();
 			getOwner().setTarget(target);
 			setStateIfNot(AIState.FIGHT);
-			BotAttackManager.enterAttackMode(getOwner(), target);
-			scheduleAttackTick(0);
+			// drawing the weapon in the same breath as standing up leaves the client blending two poses, which shows as a floating character
+			scheduleAttackTick(gettingUp ? (int) STAND_UP_MILLIS : 0);
 		}
 		log.info("Bot {} starts attacking {}", getOwner().getName(), target.getName());
 	}
@@ -187,6 +187,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 
+		BotAttackManager.enterAttackMode(bot, target); // idempotent, and deferred to here so it never overlaps the stand up animation
 		if (bot.getCastingSkill() != null) {
 			// casting roots a real player, so the bot neither moves nor starts another action until the cast is over
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {

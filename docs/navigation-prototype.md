@@ -25,6 +25,8 @@ A geo probe is an infinitely thin line; the **client** collides a body-sized cap
 
 **Obstacles under a metre are invisible to the server.** `GeoMap.COLLISION_CHECK_Z_OFFSET` is 1, and both `findMovementCollision` and `getClosestCollision` raise their ray by it at both ends, so a log or a branch lying on the ground passes underneath every probe the engine offers. The client still collides with it. The server walks the bot through while the client holds it back, and the next position packet snaps the model forward.
 
+**Gatherables are not in the geo data at all.** They are spawned objects, so no ray reports them, yet the client collides with them. `gatherableClearance` handles them without geo: the bot already knows the ones around it, so each leg is clamped against any gatherable within 1.5 m of its path.
+
 Nothing in the geo API can be cast lower, so this cannot be fixed by probing differently — it needs collision data the engine does not expose for movement, which means the navmesh. Engine NPCs never hit this because they follow authored waypoints. It is a hard limit of the current approach, not a tuning problem.
 
 `BotGeoHelper.walkableCorridor` therefore casts three probes: the centre one, plus two deviated by `atan(BOT_RADIUS / reach)` so they end up ±0.5 m aside at the far end. The shortest of the three wins. Cost is 3× a probe, paid once per leg, not per tick.

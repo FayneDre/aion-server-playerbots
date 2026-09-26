@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot.movement;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.model.gameobjects.Gatherable;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.geo.GeoService;
@@ -22,6 +23,10 @@ public class BotGeoHelper {
 	/** Ignore a marginally shorter side probe, which just means the corridor narrows a little without actually blocking the way. */
 	private static final float CLEARANCE_TOLERANCE = 0.5f;
 	private static final int[] SIDES = { 1, -1 };
+	/** Room to leave around a gatherable. Their exact footprint is not exposed, and brushing past one is what gets bots stuck. */
+	private static final float GATHERABLE_CLEARANCE = 1.5f;
+	/** Above this height difference a gatherable is on another level and cannot be in the way. */
+	private static final float GATHERABLE_MAX_Z_DELTA = 3f;
 	/** Deviations tried when the direct way is blocked, from the mildest to a full sidestep. */
 	private static final float[] DETOUR_ANGLES = { 40, 75, 110 };
 	private static final float DETOUR_DISTANCE = 8f;
@@ -101,10 +106,34 @@ public class BotGeoHelper {
 		float clearance = reach;
 		for (int side : SIDES)
 			clearance = Math.min(clearance, walkedDistance(bot, probe(bot, angle + side * spread, reach)));
+		clearance = Math.min(clearance, gatherableClearance(bot, angle, reach));
 
 		if (clearance >= reach - CLEARANCE_TOLERANCE)
 			return ahead; // nothing narrows the way
 		return clearance < MIN_STEP ? new Vector3f(bot.getX(), bot.getY(), bot.getZ()) : probe(bot, angle, clearance);
+	}
+
+	/**
+	 * Gatherables are spawned objects, not geo data, so no ray ever reports them — yet the client collides with them, which leaves the bot stuck in
+	 * a plant while the server walks on. They are cheap to handle without geo: the bot already knows the ones around it.
+	 *
+	 * @return How far the bot can walk along that direction before reaching one, or the full distance if the way is clear.
+	 */
+	private static float gatherableClearance(Player bot, float angle, float distance) {
+		double rad = Math.toRadians(angle);
+		float dirX = (float) Math.cos(rad), dirY = (float) Math.sin(rad);
+		float[] limit = { distance };
+		bot.getKnownList().forEachObject(object -> {
+			if (!(object instanceof Gatherable) || Math.abs(object.getZ() - bot.getZ()) > GATHERABLE_MAX_Z_DELTA)
+				return;
+			float offsetX = object.getX() - bot.getX(), offsetY = object.getY() - bot.getY();
+			float along = offsetX * dirX + offsetY * dirY;
+			if (along <= 0 || along > limit[0])
+				return; // behind the bot, or further than something already blocking
+			if (Math.abs(offsetX * -dirY + offsetY * dirX) < GATHERABLE_CLEARANCE)
+				limit[0] = along - GATHERABLE_CLEARANCE;
+		});
+		return limit[0];
 	}
 
 	private static Vector3f probe(Player bot, float angle, float distance) {
