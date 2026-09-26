@@ -29,6 +29,7 @@ public class Bot extends AdminCommand {
 			stop <characterName> - Makes the bot stop attacking.
 			come <characterName> - Makes the bot walk to your position.
 			auto <characterName> - Toggles autonomy (fights on its own) on and off.
+			sell <characterName> - Sends the bot to sell right away, without waiting for a full bag.
 			bag <characterName> - Lists what the bot is carrying.
 			nav - Lists the navmeshes loaded in memory.
 			list - Lists all currently spawned bots.
@@ -55,6 +56,7 @@ public class Bot extends AdminCommand {
 			case "stop" -> withName(admin, params, name -> PlayerBotService.getInstance().stopAttacking(name));
 			case "come" -> withName(admin, params, name -> PlayerBotService.getInstance().come(name, admin));
 			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
+			case "sell" -> withName(admin, params, name -> PlayerBotService.getInstance().sell(name));
 			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
 			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));
 			case "nav" -> sendInfo(admin, PlayerBotService.getInstance().describeNavmeshes());

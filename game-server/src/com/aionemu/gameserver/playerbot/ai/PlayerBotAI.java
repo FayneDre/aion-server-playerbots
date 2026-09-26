@@ -9,7 +9,9 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.ai.AIState;
 import com.aionemu.gameserver.ai.AITemplate;
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
+import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.VisibleObject;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
@@ -18,6 +20,7 @@ import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
+import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
@@ -88,6 +91,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long combatEndedAt;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
+	/** Where the bot is headed to sell, non null only while a trip is in progress. */
+	private volatile Vector3f vendorDestination;
 
 	public PlayerBotAI(Player owner) {
 		super(owner);
@@ -128,7 +133,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// busy with a corpse, everything else can wait
 			} else if (!isHealthyEnoughToFight())
 				recover();
-			else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
+			else if (runVendorTrip()) {
+				// bag is full and a shop is being walked to or worked, everything else waits
+			} else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
 				Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 				if (target == null)
 					roam();
@@ -144,6 +151,21 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	private void scheduleBotTick() {
 		thinkTask = ThreadPoolManager.getInstance().schedule(this::botTick, THINK_INTERVAL_MILLIS);
+	}
+
+	/**
+	 * Sends the bot to sell right away, skipping the full bag check — for testing the trip without farming a bag full first.
+	 *
+	 * @return false if there is nothing worth selling, or the bot's map has no shop to walk to.
+	 */
+	public boolean forceSellTrip() {
+		if (!BotVendorManager.hasJunk(getOwner()))
+			return false;
+		Vector3f vendor = BotVendorManager.findVendor(getOwner());
+		if (vendor == null)
+			return false;
+		vendorDestination = vendor;
+		return true;
 	}
 
 	public void startAttacking(Creature target) {
@@ -336,6 +358,45 @@ public class PlayerBotAI extends AITemplate<Player> {
 		pendingCorpse = 0;
 		log.info("Bot {} looted {} item(s)", getOwner().getName(), looted);
 		return false;
+	}
+
+	/**
+	 * Walks a full bag to the nearest shop and sells what the bot has no use for, then lets it drift back to its anchor on its own.
+	 *
+	 * @return true while a trip is starting or under way, so nothing else is decided this tick.
+	 */
+	private boolean runVendorTrip() {
+		Player bot = getOwner();
+		if (vendorDestination == null) {
+			// a full bag alone is not enough: one full of gear, quest items or anything rare never empties and would loop forever
+			if (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot))
+				return false;
+			vendorDestination = BotVendorManager.findVendor(bot);
+			if (vendorDestination == null) // this map has no shop to walk to
+				return false;
+			log.info("Bot {} heads to a shop to sell", bot.getName());
+		}
+
+		Npc vendor = BotVendorManager.findVendorNearby(bot);
+		if (vendor != null) {
+			int sold = BotVendorManager.sellJunk(bot, vendor);
+			log.info("Bot {} sold {} stack(s)", bot.getName(), sold);
+			vendorDestination = null;
+			return false; // roams or fights again from here, and drifts back to its anchor like after any other trip
+		}
+
+		if (standUp())
+			return true; // on its feet first, so it does not slide off
+		if (!(bot.getMoveController() instanceof BotMoveController moveController))
+			return false;
+		if (moveController.isInMove())
+			return true;
+		if (moveController.isBlocked() || !moveController.moveToPoint(vendorDestination.x, vendorDestination.y, vendorDestination.z)) {
+			log.info("Bot {} cannot reach a shop and gives up selling", bot.getName());
+			vendorDestination = null;
+			return false;
+		}
+		return true;
 	}
 
 	/** Puts the weapon away once the bot has really stopped fighting, rather than at the end of every single kill. */

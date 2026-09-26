@@ -12,20 +12,29 @@ import com.aionemu.gameserver.model.DialogAction;
 import com.aionemu.gameserver.model.gameobjects.Item;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
-import com.aionemu.gameserver.model.trade.TradeList;
-import com.aionemu.gameserver.services.TradeService;
+import com.aionemu.gameserver.services.RepurchaseService;
+import com.aionemu.gameserver.services.item.ItemFactory;
+import com.aionemu.gameserver.services.item.ItemPacketService.ItemDeleteType;
+import com.aionemu.gameserver.services.item.ItemPacketService.ItemUpdateType;
+import com.aionemu.gameserver.services.player.PlayerLimitService;
+import com.aionemu.gameserver.services.trade.PricesService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
  * Turns a bag full of drops into kinah.
  * <p>
  * Vendors are found in the spawn data rather than in what the bot can see: a shop is in town and a bot farms in the fields, so it has to know where
- * to walk before it can see anything. The actual selling then goes through the same service the client's own packet calls.
+ * to walk before it can see anything.
+ * <p>
+ * Selling does not go through {@code TradeService.performSellToShop}: it gates on {@code PlayerRestrictions.canTrade}, which rejects anything that
+ * is not {@code isOnline()} — true of every real connection, never true of a bot. Rather than patch a restriction 79 call sites rely on, the small
+ * amount of business logic for a plain, template-less sale is redone here.
  */
 public class BotVendorManager {
 
@@ -42,6 +51,17 @@ public class BotVendorManager {
 
 	public static boolean hasFullBag(Player bot) {
 		return bot.getInventory().size() >= bot.getInventory().getLimit() * BAG_FULL_THRESHOLD;
+	}
+
+	/**
+	 * @return true if the bag holds at least one item {@link #sellJunk} would actually sell. A full bag is not enough on its own to justify a trip:
+	 *         one full of equipped gear, quest items or anything rare never empties, and would otherwise send the bot walking forever for nothing.
+	 */
+	public static boolean hasJunk(Player bot) {
+		for (Item item : bot.getInventory().getItems())
+			if (isJunk(item))
+				return true;
+		return false;
 	}
 
 	/**
@@ -77,23 +97,48 @@ public class BotVendorManager {
 
 	/**
 	 * Sells everything the bot has no use for: ordinary quality, not a quest item, not equipped, and sellable at all.
+	 * <p>
+	 * Mirrors the template-less branch of {@code TradeService.performSellToShop} (price, sell limit, repurchase list, kinah), the one a general
+	 * vendor takes because it accepts anything sellable rather than a fixed goods list.
 	 *
 	 * @return How many stacks were sold.
 	 */
 	public static int sellJunk(Player bot, Npc vendor) {
-		List<Item> junk = new ArrayList<>();
-		for (Item item : bot.getInventory().getItems()) {
-			if (isJunk(item))
-				junk.add(item);
-		}
-		if (junk.isEmpty())
+		if (bot.isDead())
 			return 0;
 
-		TradeList tradeList = new TradeList(vendor.getObjectId());
-		for (Item item : junk)
-			tradeList.addItem(item.getObjectId(), item.getItemCount()); // a sell list is keyed by object id, not item id
-		// a general vendor has no purchase template, which is what lets it take anything sellable
-		return TradeService.performSellToShop(bot, tradeList, DataManager.TRADE_LIST_DATA.getPurchaseTemplate(vendor.getNpcId())) ? junk.size() : 0;
+		Storage inventory = bot.getInventory();
+		List<Item> sold = new ArrayList<>();
+		long kinahReward = 0;
+		for (Item item : inventory.getItems()) {
+			if (!isJunk(item))
+				continue;
+
+			long count = item.getItemCount();
+			long sellReward = PricesService.getSellReward(item.getItemTemplate().getPrice(), PricesService.getVendorSellModifier());
+			count = PlayerLimitService.updateSellLimit(bot, sellReward, count);
+			if (count == 0)
+				continue;
+
+			long realReward = sellReward * count;
+			Item repurchaseItem;
+			if (item.getItemCount() - count == 0) {
+				inventory.delete(item, ItemDeleteType.SELL);
+				repurchaseItem = item;
+			} else {
+				repurchaseItem = ItemFactory.newItem(item.getItemId(), count);
+				inventory.decreaseItemCount(item, count);
+			}
+			kinahReward += realReward;
+			repurchaseItem.setRepurchasePrice(realReward);
+			sold.add(repurchaseItem);
+		}
+		if (sold.isEmpty())
+			return 0;
+
+		RepurchaseService.getInstance().addRepurchaseItems(bot, sold);
+		inventory.increaseKinah(kinahReward, ItemUpdateType.INC_KINAH_SELL);
+		return sold.size();
 	}
 
 	private static boolean isJunk(Item item) {

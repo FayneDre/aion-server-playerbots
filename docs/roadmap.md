@@ -8,23 +8,13 @@ Bots are real `Player` objects with no connection, driven by `PlayerBotAI`. They
 
 Verified in game. Run `//bot` for the command list.
 
-## Next: the vendor run
+## Done: the vendor run
 
-**Half written.** `playerbot/economy/BotVendorManager` exists and compiles, but **nothing calls it yet**. It can already:
+Wired into `PlayerBotAI.botTick`, right after the health check and before roaming, so a bot heals before travelling and never abandons a fight to go shopping. `//bot sell <name>` forces a trip for testing without waiting for a bag to fill. Verified in game: a bot walks to the nearest shop, sells, returns to its anchor.
 
-- find where shops are (`findVendor`), from the spawn data rather than from what the bot can see, because a shop is in town and a bot farms in the fields;
-- recognise a shop it is standing next to (`findVendorNearby`);
-- sell ordinary, unequipped, non-quest items (`sellJunk`), through the same `TradeService.performSellToShop` the client's packet calls.
+The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops forever on a bag full of gear, quest items or anything rare, since nothing there is ever sold. `BotVendorManager.hasJunk(bot)` is required too.
 
-What remains is the behaviour, in `PlayerBotAI.botTick`. The decision order there matters and is already load bearing: an attacker comes first, then loot, then health. The vendor run belongs **after the health check and before roaming**, so a bot heals before travelling and does not abandon a fight to go shopping.
-
-Roughly:
-
-1. `BotVendorManager.hasFullBag(bot)` and no vendor trip in progress → remember `findVendor(bot)`, or give up if the map has none.
-2. Further than `TRADE_RANGE` → `moveToPoint` at it. Long trips are planned in the background already; give up if `moveController.isBlocked()`.
-3. Within range → `findVendorNearby`, `sellJunk`, forget the trip. The bot then returns to its anchor by itself.
-
-Traps to expect: the bot must **stand up** before travelling (`standUp()`, see the animation delays), the shop may be on another island (`NavmeshTool <mapId> components` says so), and `//bot sell <name>` would make this testable without waiting for a bag to fill.
+**Selling does not go through `TradeService.performSellToShop`.** It gates on `PlayerRestrictions.canTrade`, which rejects anything not `isOnline()` — true of every real connection, never true of a bot, so every sale silently failed. Rather than patch a restriction 79 call sites rely on, `BotVendorManager.sellJunk` redoes the small amount of business logic itself (price, sell limit, repurchase list, kinah), mirroring the template-less branch a general vendor takes.
 
 ## Then
 
@@ -38,7 +28,7 @@ Traps to expect: the bot must **stand up** before travelling (`standUp()`, see t
 
 ## Known limits, in order of how much they will bite
 
-1. **Obstacles under a metre are invisible to the engine's own probes.** The navmesh sees them; the reactive fallback never will. A bot walking without a plan can still wedge itself.
+1. **Obstacles under a metre are invisible to the engine's own probes.** The navmesh sees them, but every leg still walks on the reactive probes even along a planned route — `BotMoveController.startNextLeg` calls `BotGeoHelper`, not the navmesh, between two waypoints. Camp scenery (crates, barrels) is short enough to hit this; a bot gets stuck on one and rubber-bands back, which reads as a teleport.
 2. **Walkable ground comes in islands.** A route between two of them does not exist. Check with `NavmeshTool <mapId> components` before suspecting the search.
 3. **Only maps with a generated file are planned on.** Run `tools/navmesh.ps1 <mapId>`; the rest fall back to reactive steering. Only Poeta (210010000) is generated.
 4. **Crossing maps is not a navigation problem.** It needs teleporters and flight paths, like a player.

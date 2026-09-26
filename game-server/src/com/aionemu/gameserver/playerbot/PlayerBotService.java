@@ -15,6 +15,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.model.items.storage.Storage;
+import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
@@ -225,6 +226,21 @@ public class PlayerBotService {
 		if (!moveController.moveToPoint(commander.getX(), commander.getY(), commander.getZ()))
 			return characterName + " is blocked by an obstacle";
 		return characterName + " is on its way";
+	}
+
+	/**
+	 * Sends the bot to sell right away, skipping the full bag check, so the vendor trip can be tested without farming first.
+	 */
+	public String sell(String characterName) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+		if (!(bot.getAi() instanceof PlayerBotAI botAi))
+			return characterName + " has no bot AI attached";
+		if (!BotVendorManager.hasJunk(bot))
+			return characterName + " has nothing worth selling";
+
+		return botAi.forceSellTrip() ? characterName + " is heading to sell" : "No shop found on " + characterName + "'s map";
 	}
 
 	/**
