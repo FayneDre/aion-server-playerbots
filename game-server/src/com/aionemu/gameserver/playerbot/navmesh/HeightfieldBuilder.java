@@ -113,16 +113,17 @@ public class HeightfieldBuilder {
 	}
 
 	private void sample(SurfaceSink sink) {
-		float half = Heightfield.CELL_SIZE / 2;
+		float half = Heightfield.SLOPE_WINDOW / 2;
 		for (int cellY = 0; cellY < height; cellY++) {
 			for (int cellX = 0; cellX < width; cellX++) {
 				float x = centre(cellX), y = centre(cellY);
 				float z = terrain.heightAt(x, y);
 				if (Float.isNaN(z))
 					continue;
-				// terrain slope from the gradient across this cell, which stays inside one terrain triangle at this resolution
-				float slopeX = (terrain.heightAt(x + half, y) - terrain.heightAt(x - half, y)) / Heightfield.CELL_SIZE;
-				float slopeY = (terrain.heightAt(x, y + half) - terrain.heightAt(x, y - half)) / Heightfield.CELL_SIZE;
+				// slope measured over a stride rather than a cell: the heightmap is defined every two metres, so a half metre window reports the
+				// steepest single triangle and severs a walkable hillside wherever one triangle happens to tip past the limit
+				float slopeX = (terrain.heightAt(x + half, y) - terrain.heightAt(x - half, y)) / Heightfield.SLOPE_WINDOW;
+				float slopeY = (terrain.heightAt(x, y + half) - terrain.heightAt(x, y - half)) / Heightfield.SLOPE_WINDOW;
 				float normalZ = 1 / (float) Math.sqrt(slopeX * slopeX + slopeY * slopeY + 1);
 				sink.accept(cellY * width + cellX, z, normalZ >= Heightfield.MAX_SLOPE_COSINE);
 			}

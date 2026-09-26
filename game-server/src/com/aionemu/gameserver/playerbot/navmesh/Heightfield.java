@@ -16,6 +16,8 @@ public class Heightfield {
 	public static final float CELL_SIZE = 0.5f;
 	/** Head room a bot needs to stand. Anything lower is a crawl space, not a floor. */
 	public static final float AGENT_HEIGHT = 2f;
+	/** Distance the terrain slope is measured over, about a stride. */
+	public static final float SLOPE_WINDOW = 2f;
 	/** Steepest ground a bot may walk on, matching the 45° the engine's own movement probe allows. */
 	public static final float MAX_SLOPE_COSINE = (float) Math.cos(Math.toRadians(45));
 	/** How many cells of walkable ground to shave off along every edge, so routes keep a body's width from what a body cannot pass. */

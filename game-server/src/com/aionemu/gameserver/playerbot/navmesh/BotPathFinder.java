@@ -17,8 +17,16 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
  */
 public class BotPathFinder {
 
-	/** How high a bot steps up between two neighbouring cells. Higher than this is a wall or a jump, and neither is walking. */
-	public static final float MAX_STEP = 0.5f;
+	/**
+	 * Extra height a bot may climb between two neighbouring cells, on top of what the slope between them already allows.
+	 * <p>
+	 * A flat limit does not work here. Cells are half a metre apart, so ground at the 45° the walkability rules accept already rises half a metre
+	 * between orthogonal neighbours and seven tenths between diagonal ones. A flat half metre therefore severed every moderately steep hillside into
+	 * strips: Poeta came out as eleven thousand islands, the largest covering an eighth of the map.
+	 */
+	public static final float STEP_TOLERANCE = 0.15f;
+	/** Tangent of the steepest walkable slope, matching the 45° the generator accepts. */
+	private static final float MAX_WALKABLE_TANGENT = 1f;
 	/** How far above or below the requested height a start or goal surface may be found. */
 	private static final float SNAP_RANGE = 3f;
 	/** How many cells outwards to look for walkable ground when the exact spot is not, about six metres. */
@@ -26,14 +34,14 @@ public class BotPathFinder {
 	/** Search budget for one stretch of fine grid. A stretch spans tens of metres, so this is already generous. */
 	private static final int MAX_NODES = 150_000;
 	/**
-	 * How long a whole journey may be planned for. Planning runs on a movement thread, so a hopeless route has to fail quickly rather than
-	 * eventually: the bot then walks straight at its goal, which is what it did before any of this existed.
+	 * How long a whole journey may be planned for. A 1.4 km crossing of Poeta takes about 1.4 s, which is why long journeys are planned off the
+	 * movement threads; this only stops a hopeless one from running forever.
 	 */
-	private static final long PLAN_BUDGET_MILLIS = 250;
+	private static final long PLAN_BUDGET_MILLIS = 3000;
 	/** Budget for the rough pass, which covers far more ground per node. */
 	private static final int MAX_COARSE_NODES = 500_000;
 	/** Past this, planning goes through the coarse grid first. Below it, fine A\* is quick enough on its own. */
-	private static final float LONG_DISTANCE = 150f;
+	public static final float LONG_DISTANCE = 150f;
 	/** Coarse cells between two guide points, so each refined stretch stays about forty metres. */
 	private static final int GUIDE_SPACING = 10;
 	/** How far to look for a usable coarse cell, about twelve metres. */
@@ -228,7 +236,7 @@ public class BotPathFinder {
 					if (!mesh.isWalkable(nextX, nextY, surface))
 						continue;
 					float nextZ = mesh.surfaceZ(nextX, nextY, surface);
-					if (Math.abs(nextZ - z) > MAX_STEP)
+					if (Math.abs(nextZ - z) > maxClimb(mesh, NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0))
 						continue;
 					long next = key(mesh, nextX, nextY, surface);
 					float stepCost = cost + (NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0 ? 1.41421f : 1) * mesh.cellSize();
@@ -242,6 +250,15 @@ public class BotPathFinder {
 			}
 		}
 		return new Route(List.of(), expanded >= MAX_NODES);
+	}
+
+	/**
+	 * @return How much height may separate two neighbouring cells, which is what the steepest walkable slope produces over their distance, plus a
+	 *         little for the five centimetre quantization of stored heights.
+	 */
+	public static float maxClimb(Navmesh mesh, boolean diagonal) {
+		float distance = mesh.cellSize() * (diagonal ? 1.41421f : 1);
+		return distance * MAX_WALKABLE_TANGENT + STEP_TOLERANCE;
 	}
 
 	/** Straight line distance, which never overestimates and so keeps the search honest. */
@@ -299,7 +316,7 @@ public class BotPathFinder {
 			int cellX = mesh.cellX(x), cellY = mesh.cellY(y);
 			if (!mesh.contains(cellX, cellY))
 				return false;
-			float z = nearestWalkableZ(mesh, cellX, cellY, previousZ, MAX_STEP);
+			float z = nearestWalkableZ(mesh, cellX, cellY, previousZ, maxClimb(mesh, true));
 			if (Float.isNaN(z))
 				return false;
 			previousZ = z;

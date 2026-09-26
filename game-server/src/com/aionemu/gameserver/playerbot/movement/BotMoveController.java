@@ -59,6 +59,8 @@ public class BotMoveController extends PlayerMoveController {
 	/** Waypoints from the navmesh, empty when walking without a plan. */
 	private volatile List<Vector3f> route = List.of();
 	private int routeIndex;
+	/** A route that arrived from a planning thread, waiting for the next leg to adopt it. */
+	private volatile List<Vector3f> pendingRoute;
 	private volatile boolean hasGoal;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
@@ -88,10 +90,10 @@ public class BotMoveController extends PlayerMoveController {
 		finalZ = z;
 		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
 		if (!sameJourney || route.isEmpty()) {
-			route = NavmeshService.getInstance().findRoute(owner, x, y, z);
+			route = List.of();
 			routeIndex = 0;
-			log.info("Bot {} heads for {} {}", owner.getName(), String.format("%.1f %.1f", x, y),
-				route.isEmpty() ? "with no plan" : "along " + route.size() + " waypoints");
+			// a long journey is planned on another thread, so the bot sets off straight away and adopts the route when it arrives
+			NavmeshService.getInstance().planRoute(owner, x, y, z, planned -> offerRoute(planned, x, y));
 		}
 		hasGoal = true;
 		aimAtNextWaypoint();
@@ -120,6 +122,13 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return true if the bot keeps moving.
 	 */
 	public boolean continueToGoal() {
+		List<Vector3f> planned = pendingRoute;
+		if (planned != null) {
+			pendingRoute = null;
+			route = planned;
+			routeIndex = 0;
+			aimAtNextWaypoint();
+		}
 		if (hasGoal && reachedWaypoint() && aimAtNextWaypoint()) {
 			closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
 			lastProgressTime = System.currentTimeMillis();
@@ -128,6 +137,17 @@ public class BotMoveController extends PlayerMoveController {
 			return true;
 		stop();
 		return false;
+	}
+
+	/**
+	 * Takes a route planned elsewhere, if the bot is still going where it was asked to. Stored rather than applied: the movement thread picks it up
+	 * at the end of the current leg, which keeps a background thread from rewriting the destination mid-stride.
+	 */
+	private void offerRoute(List<Vector3f> planned, float forX, float forY) {
+		if (planned.isEmpty() || !hasGoal || forX != finalX || forY != finalY)
+			return;
+		pendingRoute = planned;
+		log.info("Bot {} has a route of {} waypoints to {}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY));
 	}
 
 	private boolean reachedWaypoint() {
@@ -198,6 +218,7 @@ public class BotMoveController extends PlayerMoveController {
 	public void stop() {
 		hasGoal = false;
 		route = List.of();
+		pendingRoute = null;
 		routeIndex = 0;
 		MoveTaskManager.getInstance().removeCreature(owner);
 		if (started.compareAndSet(true, false))

@@ -8,6 +8,8 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -31,6 +33,13 @@ public class NavmeshTool {
 	private static final byte TOWN_OBJECT = 5; // DespawnableNode.DespawnableType.TOWN_OBJECT
 
 	public static void main(String[] args) throws IOException {
+		if (args.length >= 2 && args[1].equals("components")) {
+			float[] probes = new float[args.length - 2];
+			for (int i = 2; i < args.length; i++)
+				probes[i - 2] = Float.parseFloat(args[i]);
+			reportComponents(Integer.parseInt(args[0]), probes);
+			return;
+		}
 		if (args.length == 6 && args[1].equals("path")) {
 			planRoute(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]),
 				Float.parseFloat(args[5]));
@@ -41,6 +50,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> <x> <y>   inspect one spot");
 			System.out.println("       NavmeshTool <mapId> <text>    inspect the props whose model name contains that text");
 			System.out.println("       NavmeshTool <mapId> path <x1> <y1> <x2> <y2>   plan a route and draw it");
+			System.out.println("       NavmeshTool <mapId> components   find what is reachable from what");
 			return;
 		}
 
@@ -94,6 +104,104 @@ public class NavmeshTool {
 			System.currentTimeMillis() - start);
 		verifyRoundTrip(mapId, field);
 		System.out.println("Wrote " + writeCoarseImage(mapId, Navmesh.open(mapId)).toAbsolutePath());
+	}
+
+	/**
+	 * Splits the walkable ground into islands of mutually reachable cells, using the same step rule the path finder does.
+	 * <p>
+	 * This answers the question a failed long route raises and a path finder cannot: is there no way, or did the search merely not find one. A map
+	 * cut into pieces by a stream or a ledge shows up here as several large islands instead of one.
+	 */
+	private static void reportComponents(int mapId, float... probes) throws IOException {
+		Heightfield field = HeightfieldBuilder.build(mapId);
+		int width = field.width(), height = field.height();
+		int[] island = new int[width * height];
+		int[] stack = new int[width * height];
+		int[] neighbourX = { 1, 1, 0, -1, -1, -1, 0, 1 }, neighbourY = { 0, 1, 1, 1, 0, -1, -1, -1 };
+
+		List<int[]> islands = new ArrayList<>(); // id and size
+		int nextIsland = 0;
+		for (int origin = 0; origin < island.length; origin++) {
+			if (island[origin] != 0 || !hasFooting(field, origin % width, origin / width))
+				continue;
+			int id = ++nextIsland, size = 0, top = 0;
+			stack[top++] = origin;
+			island[origin] = id;
+			while (top > 0) {
+				int column = stack[--top];
+				size++;
+				int x = column % width, y = column / width;
+				float z = topWalkable(field, x, y);
+				for (int direction = 0; direction < neighbourX.length; direction++) {
+					int nextX = x + neighbourX[direction], nextY = y + neighbourY[direction];
+					if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height)
+						continue;
+					int next = nextY * width + nextX;
+					if (island[next] != 0 || !hasFooting(field, nextX, nextY))
+						continue;
+					boolean diagonal = neighbourX[direction] != 0 && neighbourY[direction] != 0;
+					float climb = Heightfield.CELL_SIZE * (diagonal ? 1.41421f : 1) + BotPathFinder.STEP_TOLERANCE;
+					if (Math.abs(topWalkable(field, nextX, nextY) - z) > climb)
+						continue;
+					island[next] = id;
+					stack[top++] = next;
+				}
+			}
+			islands.add(new int[] { id, size });
+		}
+
+		islands.sort((a, b) -> Integer.compare(b[1], a[1]));
+		System.out.printf("%d islands of walkable ground%n", islands.size());
+		for (int[] entry : islands.subList(0, Math.min(8, islands.size())))
+			System.out.printf("  island %d: %d cells (%.1f%% of the map)%n", entry[0], entry[1], entry[1] * 100f / island.length);
+
+		int[] palette = { 0x30A030, 0x3060C0, 0xC0A030, 0xA030C0, 0x30C0C0, 0xC06030 };
+		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		Map<Integer, Integer> colours = new HashMap<>();
+		for (int rank = 0; rank < Math.min(palette.length, islands.size()); rank++)
+			colours.put(islands.get(rank)[0], palette[rank]);
+		for (int column = 0; column < island.length; column++)
+			image.setRGB(column % width, column / width, island[column] == 0 ? 0x202020 : colours.getOrDefault(island[column], 0xC02020));
+		for (int i = 0; i + 1 < probes.length; i += 2) {
+			int cellX = (int) (probes[i] / Heightfield.CELL_SIZE), cellY = (int) (probes[i + 1] / Heightfield.CELL_SIZE);
+			int id = cellX >= 0 && cellY >= 0 && cellX < width && cellY < height ? island[cellY * width + cellX] : 0;
+			System.out.printf("  %.0f %.0f is on island %s%n", probes[i], probes[i + 1], id == 0 ? "none, it has no footing" : String.valueOf(id));
+			if (id != 0)
+				describeIsland(island, width, height, id);
+		}
+		System.out.println("Wrote " + write(mapId, "islands", image).toAbsolutePath());
+	}
+
+	/** Prints how far an island reaches, which is what says whether a long route across it is even meaningful. */
+	private static void describeIsland(int[] island, int width, int height, int id) {
+		int minX = width, maxX = 0, minY = height, maxY = 0;
+		int farthestX = 0, farthestY = 0;
+		for (int column = 0; column < island.length; column++) {
+			if (island[column] != id)
+				continue;
+			int x = column % width, y = column / width;
+			minX = Math.min(minX, x);
+			maxX = Math.max(maxX, x);
+			minY = Math.min(minY, y);
+			maxY = Math.max(maxY, y);
+			farthestX = x;
+			farthestY = y;
+		}
+		System.out.printf("    it spans %.0f by %.0f m, from %.0f %.0f to %.0f %.0f, and reaches %.0f %.0f%n",
+			(maxX - minX) * Heightfield.CELL_SIZE, (maxY - minY) * Heightfield.CELL_SIZE, minX * Heightfield.CELL_SIZE,
+			minY * Heightfield.CELL_SIZE, maxX * Heightfield.CELL_SIZE, maxY * Heightfield.CELL_SIZE, farthestX * Heightfield.CELL_SIZE,
+			farthestY * Heightfield.CELL_SIZE);
+	}
+
+	private static boolean hasFooting(Heightfield field, int x, int y) {
+		return field.hasFooting(x, y);
+	}
+
+	private static float topWalkable(Heightfield field, int x, int y) {
+		for (int i = field.columnEnd(x, y) - 1; i >= field.columnStart(x, y); i--)
+			if (field.isWalkable(i))
+				return field.surfaceAt(i);
+		return Float.NaN;
 	}
 
 	/** Dumps the rough grid long routes are planned on, where a hole means bots cannot route through even if they could walk there. */

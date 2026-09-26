@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -12,6 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.utils.PositionUtil;
+import com.aionemu.gameserver.utils.ThreadPoolManager;
 
 /**
  * Serves generated maps to the bots that need them.
@@ -49,6 +52,26 @@ public class NavmeshService {
 			return List.of();
 		}
 		return route.waypoints();
+	}
+
+	/**
+	 * Plans a journey and hands the result back when it is ready.
+	 * <p>
+	 * Short journeys are planned on the spot, in a few tens of milliseconds. A long one takes over a second, which no movement thread can wait for,
+	 * so it is planned on a pool thread while the bot walks straight at its goal. It picks the route up at the end of its current leg.
+	 */
+	public void planRoute(Player bot, float goalX, float goalY, float goalZ, Consumer<List<Vector3f>> whenReady) {
+		if (get(bot.getWorldId()) == null)
+			return;
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), goalX, goalY) <= BotPathFinder.LONG_DISTANCE) {
+			whenReady.accept(findRoute(bot, goalX, goalY, goalZ));
+			return;
+		}
+		ThreadPoolManager.getInstance().executeLongRunning(() -> {
+			List<Vector3f> route = findRoute(bot, goalX, goalY, goalZ);
+			if (!route.isEmpty())
+				whenReady.accept(route);
+		});
 	}
 
 	/** @return The map, opening it on first use, or null when it has no generated file. */
