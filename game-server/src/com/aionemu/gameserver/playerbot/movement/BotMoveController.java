@@ -50,6 +50,14 @@ public class BotMoveController extends PlayerMoveController {
 	private static final long PROGRESS_TIMEOUT = 5000;
 	/** A new destination this close to the previous one continues the same journey, typically a target that moved a little. */
 	private static final float SAME_JOURNEY_TOLERANCE = 10f;
+	/**
+	 * How far the destination must drift from what the route in hand was planned for before that route is thrown away.
+	 * <p>
+	 * Planning afresh on every call looks harmless and is not: the two ways round an obstacle usually cost within a few metres of each other, so
+	 * successive plans pick opposite sides and the bot walks back and forth between them. A plan is kept until it no longer leads where the bot is
+	 * going, which is what makes its walk look decided rather than hesitant.
+	 */
+	private static final float REPLAN_DISTANCE = 2f;
 
 	private long nextGeoZUpdate;
 	/** Where the bot is ultimately going. */
@@ -61,6 +69,10 @@ public class BotMoveController extends PlayerMoveController {
 	private int routeIndex;
 	/** A route that arrived from a planning thread, waiting for the next leg to adopt it. */
 	private volatile List<Vector3f> pendingRoute;
+	/** Whether the point being walked to came from the navmesh, and so needs no second opinion on the ground between here and there. */
+	private volatile boolean onPlannedWaypoint;
+	/** Where the route in hand was planned to, which is what says whether it still leads anywhere useful. */
+	private volatile float plannedForX, plannedForY;
 	private volatile boolean hasGoal;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
@@ -83,15 +95,22 @@ public class BotMoveController extends PlayerMoveController {
 		if (owner.isProtectionActive())
 			owner.getController().stopProtectionActiveTask();
 		// a chased target is re-routed to every second or so: that is the same journey continuing, not a new one, and resetting the progress
-		// tracking on each update would disable the anti stuck safeguard for exactly the case that needs it most
+		// tracking on each update would disable the anti stuck safeguard for exactly the case that needs it most. This is the only thing that
+		// distance decides now: two points ten metres apart can still be on opposite sides of a fence, so closeness alone never excuses skipping a
+		// fresh plan, only planning is cheap enough that it never needed to be skipped for its own sake.
 		boolean sameJourney = hasGoal && PositionUtil.getDistance(finalX, finalY, x, y) < SAME_JOURNEY_TOLERANCE;
 		finalX = x;
 		finalY = y;
 		finalZ = z;
+		// set before planning: offerRoute discards its result as stale once hasGoal no longer matches this call, and a plan that resolves
+		// synchronously (any short distance) runs inside planRoute below, before this method would otherwise have set it
+		hasGoal = true;
 		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
-		if (!sameJourney || route.isEmpty()) {
+		if (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE) {
 			route = List.of();
 			routeIndex = 0;
+			plannedForX = x;
+			plannedForY = y;
 			// a long journey is planned on another thread, so the bot sets off straight away and adopts the route when it arrives; a short one
 			// plans on this very call, in which case the result must be adopted right here or the first leg walks blind for nothing
 			NavmeshService.getInstance().planRoute(owner, x, y, z, planned -> offerRoute(planned, x, y));
@@ -99,9 +118,11 @@ public class BotMoveController extends PlayerMoveController {
 				route = pendingRoute;
 				pendingRoute = null;
 			}
+			aimAtNextWaypoint();
+		} else if (routeIndex >= route.size()) {
+			// keeping the route, but its waypoints are all behind us: the last stretch is walked at the destination itself, which may have shifted
+			aimAtNextWaypoint();
 		}
-		hasGoal = true;
-		aimAtNextWaypoint();
 		if (!sameJourney) {
 			blocked = false;
 			detourSide = 0;
@@ -114,6 +135,14 @@ public class BotMoveController extends PlayerMoveController {
 	/** @return true if the last route was abandoned because the bot could not find a way through. */
 	public boolean isBlocked() {
 		return blocked;
+	}
+
+	/**
+	 * @return true while the bot still has somewhere to be. Goes false the moment a journey ends, however it ends — arrived, abandoned for lack of
+	 *         progress, walled in, stopped, or interrupted — which makes it the one honest answer to "is this bot still on its way".
+	 */
+	public boolean isTravelling() {
+		return hasGoal;
 	}
 
 	/** @return true if the bot is already on its way to that point, so a moving target does not need a new route on every tick. */
@@ -173,12 +202,15 @@ public class BotMoveController extends PlayerMoveController {
 			goalX = waypoint.getX();
 			goalY = waypoint.getY();
 			goalZ = waypoint.getZ();
+			onPlannedWaypoint = true;
 			return true;
 		}
 		boolean changed = goalX != finalX || goalY != finalY;
 		goalX = finalX;
 		goalY = finalY;
 		goalZ = finalZ;
+		// the destination itself is whatever the caller asked for — a creature's live position, a spot in a town — and no waypoint the mesh vetted
+		onPlannedWaypoint = false;
 		return changed;
 	}
 
@@ -187,6 +219,18 @@ public class BotMoveController extends PlayerMoveController {
 			hasGoal = false;
 			return false;
 		}
+		// A planned waypoint is already proven: the search only ever stepped between walkable cells, and string pulling only kept this segment
+		// because a straight walk down it stays on eroded ground the whole way. Re-deriving that from raycasts raised a metre off the ground can
+		// only make it worse — they miss anything shorter than that, so the bot walks into it, and they flag what the route already went around,
+		// so the bot leaves a good plan to sidestep into geometry nobody planned for.
+		if (onPlannedWaypoint) {
+			Vector3f step = BotGeoHelper.clearOfSpawnedObstacles(owner, goalX, goalY, goalZ);
+			if (BotGeoHelper.isWorthMovingTo(owner, step)) {
+				moveToReachablePoint(step.getX(), step.getY(), step.getZ());
+				return true;
+			}
+			// something spawned across the way: that genuinely is the reactive layer's problem, so fall through to it
+		}
 		Vector3f reachable = BotGeoHelper.reachablePointToward(owner, goalX, goalY, goalZ);
 		if (BotGeoHelper.isWorthMovingTo(owner, reachable)) {
 			moveToReachablePoint(reachable.getX(), reachable.getY(), reachable.getZ());
@@ -194,6 +238,13 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		Detour detour = BotGeoHelper.detourPointToward(owner, goalX, goalY, goalZ, detourSide);
 		if (detour == null) {
+			if (onPlannedWaypoint) {
+				// The probes see no way out at all, which is what being wedged inside geometry looks like from the inside. The mesh still says
+				// this waypoint is ground a body fits on, and the server drives the bot's position, so walking the plan is what frees it. Without
+				// this, any disagreement between the two leaves a bot standing still for good.
+				moveToReachablePoint(goalX, goalY, goalZ);
+				return true;
+			}
 			log.info("Bot {} is walled in and gives up moving", owner.getName());
 			blocked = true;
 			hasGoal = false;

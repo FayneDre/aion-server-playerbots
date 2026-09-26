@@ -18,7 +18,6 @@ import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
-import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
@@ -218,12 +217,11 @@ public class PlayerBotService {
 		Player bot = findSpawnedBot(characterName);
 		if (bot == null)
 			return "No bot spawned with name " + characterName;
-		if (!(bot.getMoveController() instanceof BotMoveController moveController))
-			return characterName + " has no bot move controller attached";
+		if (!(bot.getAi() instanceof PlayerBotAI botAi))
+			return characterName + " has no bot AI attached";
 
-		if (bot.getAi() instanceof PlayerBotAI botAi) // being sent somewhere makes it the bot's new home, otherwise it would walk back
-			botAi.setAnchor(commander.getX(), commander.getY(), commander.getZ());
-		if (!moveController.moveToPoint(commander.getX(), commander.getY(), commander.getZ()))
+		botAi.setAnchor(commander.getX(), commander.getY(), commander.getZ()); // being sent somewhere makes it the bot's new home
+		if (!botAi.walkTo(commander.getX(), commander.getY(), commander.getZ()))
 			return characterName + " is blocked by an obstacle";
 		return characterName + " is on its way";
 	}

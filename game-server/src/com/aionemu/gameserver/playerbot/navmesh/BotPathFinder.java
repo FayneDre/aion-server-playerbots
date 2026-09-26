@@ -305,7 +305,13 @@ public class BotPathFinder {
 		return pulled;
 	}
 
-	/** @return true if a straight walk between the two points stays on walkable ground the whole way. */
+	/**
+	 * @return true if a straight walk between the two points stays on walkable ground the whole way.
+	 *         <p>
+	 *         One line is enough, because the ground it walks is already eroded by a body's width: every cell it may cross is a cell a body fits
+	 *         in. Checking parallel lines either side of it on top of that asks for two bodies' width, which found far fewer corners worth cutting
+	 *         and left routes stepping half a metre at a time through gaps a player strolls through.
+	 */
 	private static boolean hasClearLine(Navmesh mesh, Vector3f from, Vector3f to) {
 		float distance = (float) Math.sqrt((to.x - from.x) * (to.x - from.x) + (to.y - from.y) * (to.y - from.y));
 		int steps = Math.max(1, (int) (distance / (mesh.cellSize() / 2)));

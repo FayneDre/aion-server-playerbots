@@ -93,6 +93,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
 	/** Where the bot is headed to sell, non null only while a trip is in progress. */
 	private volatile Vector3f vendorDestination;
+	/**
+	 * Set when sent somewhere by command rather than by its own decision, so the tick that runs a second later does not immediately hijack the trip
+	 * for whatever mob happens to be findable along the way. Self defence still overrides it: this only holds off the bot picking its own fights.
+	 * <p>
+	 * Never read directly — {@link #isRunningErrand()} pairs it with the move controller, which is what actually knows whether the bot is still on
+	 * its way. A flag cleared by hand instead would have to be cleared on every way a journey can end, and missing one leaves a bot standing still
+	 * for good.
+	 */
+	private volatile boolean manualErrand;
 
 	public PlayerBotAI(Player owner) {
 		super(owner);
@@ -120,6 +129,32 @@ public class PlayerBotAI extends AITemplate<Player> {
 			stopAttacking();
 	}
 
+	/**
+	 * Sends the bot walking to a point on command, protected from the next decision tick picking a fight along the way instead. Self defence is
+	 * exempt on purpose: a bot that ignored being hit while running an errand would be worse than one that took a short detour.
+	 *
+	 * @return false if the bot could not set off at all, in which case nothing is being protected.
+	 */
+	public boolean walkTo(float x, float y, float z) {
+		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
+			return false;
+		manualErrand = moveController.moveToPoint(x, y, z);
+		return manualErrand;
+	}
+
+	/**
+	 * @return true while the bot is still walking somewhere it was sent by command. Asks the move controller rather than trusting the flag on its
+	 *         own, so an errand that ended in any way at all — arrival, an obstacle, a stop, death — ends here too.
+	 */
+	private boolean isRunningErrand() {
+		if (!manualErrand)
+			return false;
+		if (getOwner().getMoveController() instanceof BotMoveController moveController && moveController.isTravelling())
+			return true;
+		manualErrand = false;
+		return false;
+	}
+
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
 		sheathWhenCalm();
@@ -135,6 +170,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				recover();
 			else if (runVendorTrip()) {
 				// bag is full and a shop is being walked to or worked, everything else waits
+			} else if (isRunningErrand()) {
+				// an operator sent it somewhere on purpose; let it arrive before it goes looking for its own fights
 			} else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
 				Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 				if (target == null)

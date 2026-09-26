@@ -17,8 +17,21 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
  */
 public class HeightfieldBuilder {
 
-	/** Physical obstacles only. Skill and see-through volumes do not stop a body, and MOVEABLE geometry is ships and boxes that come and go. */
-	private static final byte SOLID = (byte) (CollisionIntention.PHYSICAL.getId() | CollisionIntention.DOOR.getId());
+	/**
+	 * What stops a body, taken from the engine's own movement mask instead of being restated here, so a generated map cannot describe different
+	 * geometry from the raycasts the server walks bots by.
+	 * <p>
+	 * It was restated once, as physical and doors only, on the assumption that see-through volumes do not stop anyone. They do:
+	 * {@code DEFAULT_COLLISIONS} includes {@code PHYSICAL_SEE_THROUGH}, which is how fences, railings and stacked crates are flagged — solid to
+	 * walk into, transparent to look through. Leaving them out made routes run straight through palisades the engine then refused to let anyone
+	 * cross, and a bot following such a route wedged itself in the fence it could not see coming.
+	 */
+	private static final int SOLID = CollisionIntention.DEFAULT_COLLISIONS.getId() & 0xFF;
+	/**
+	 * Tallest vertical face a body simply steps over rather than walks around, matching the climb the route search itself allows between two
+	 * neighbouring cells. Below it lies the rise of a stair, a kerb, a root; above it, a fence.
+	 */
+	private static final float STEPPABLE_RISE = 0.6f;
 
 	private final TerrainData terrain;
 	private final List<PlacedMesh> solids, noWalkVolumes;
@@ -48,9 +61,11 @@ public class HeightfieldBuilder {
 			if (parts == null)
 				continue;
 			for (GeoModel part : parts) {
-				if ((part.collisionIntentions() & CollisionIntention.WALK.getId()) != 0)
+				// masked to a byte's worth of bits: the intentions are stored in a byte, and PHYSICAL_SEE_THROUGH is its sign bit
+				int intentions = part.collisionIntentions() & 0xFF;
+				if ((intentions & CollisionIntention.WALK.getId()) != 0)
 					noWalkVolumes.add(place(part, placement));
-				else if ((part.collisionIntentions() & SOLID) != 0)
+				else if ((intentions & SOLID) != 0)
 					solids.add(place(part, placement));
 			}
 		}
@@ -92,20 +107,85 @@ public class HeightfieldBuilder {
 		Heightfield field = new Heightfield(width, height, offsets, surfaces, walkable);
 		field.sortColumns();
 		field.applyHeadroom();
-		field.block(noWalkColumns());
+		field.block(blockedColumns());
 		field.erode(Heightfield.AGENT_RADIUS_CELLS);
 		return field;
 	}
 
 	/**
-	 * The game authors its own invisible walls, meshes flagged {@link CollisionIntention#WALK}. The engine only consults them for npc random walk;
-	 * they are exactly what tells a bot where the designers did not want anyone to go.
+	 * Every column something stands across: the invisible walls the game authors itself (meshes flagged {@link CollisionIntention#WALK}, which the
+	 * engine only consults for npc random walk and which say exactly where the designers did not want anyone to go), and the walls of ordinary
+	 * solid geometry.
+	 * <p>
+	 * This cannot go through {@link #forEachCoveredCell}, which answers a different question. That one asks what a body can stand on, so it drops
+	 * triangles with no footprint — correctly, since nobody stands on a wall. But a fence, a palisade, a railing, the side of a crate: those are
+	 * all walls, all vertical, all dropped, and a map built that way says the ground through a barricade is open. Routes then ran straight through
+	 * fences the engine refused to let anyone cross, and a bot following one wedged itself into the timber it never saw coming.
 	 */
-	private BitSet noWalkColumns() {
+	private BitSet blockedColumns() {
 		BitSet blocked = new BitSet(width * height);
 		for (PlacedMesh volume : noWalkVolumes)
-			forEachCoveredCell(volume, (column, z, walkable) -> blocked.set(column));
+			markFootprint(volume, false, blocked); // authored no-walk volumes block everything they cover, whichever way their faces point
+		for (PlacedMesh solid : solids)
+			markFootprint(solid, true, blocked);
 		return blocked;
+	}
+
+	/**
+	 * Marks every cell a mesh's triangles cross, by filling the ones their footprint contains and then walking their edges — which is all a
+	 * vertical triangle has to offer.
+	 *
+	 * @param wallsOnly Keep only faces tall enough to stop a body. Floors, roofs and the rise of a step are what a bot walks on and over, so
+	 *          blocking those would wall it into every staircase in the game.
+	 */
+	private void markFootprint(PlacedMesh mesh, boolean wallsOnly, BitSet blocked) {
+		float[] vertices = mesh.vertices();
+		for (int i = 0; i < mesh.indices().length; i += 3) {
+			int a = mesh.indices()[i] * 3, b = mesh.indices()[i + 1] * 3, c = mesh.indices()[i + 2] * 3;
+			float ax = vertices[a], ay = vertices[a + 1], az = vertices[a + 2];
+			float bx = vertices[b], by = vertices[b + 1], bz = vertices[b + 2];
+			float cx = vertices[c], cy = vertices[c + 1], cz = vertices[c + 2];
+
+			if (wallsOnly) {
+				float rise = Math.max(az, Math.max(bz, cz)) - Math.min(az, Math.min(bz, cz));
+				if (rise < STEPPABLE_RISE)
+					continue;
+			}
+			float footprint = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+			if (Math.abs(footprint) >= 1e-6f)
+				fillFootprint(ax, ay, bx, by, cx, cy, footprint, blocked);
+			markEdge(ax, ay, bx, by, blocked);
+			markEdge(bx, by, cx, cy, blocked);
+			markEdge(cx, cy, ax, ay, blocked);
+		}
+	}
+
+	private void fillFootprint(float ax, float ay, float bx, float by, float cx, float cy, float footprint, BitSet blocked) {
+		int minX = Math.max(0, cell(Math.min(ax, Math.min(bx, cx))));
+		int maxX = Math.min(width - 1, cell(Math.max(ax, Math.max(bx, cx))));
+		int minY = Math.max(0, cell(Math.min(ay, Math.min(by, cy))));
+		int maxY = Math.min(height - 1, cell(Math.max(ay, Math.max(by, cy))));
+		for (int cellY = minY; cellY <= maxY; cellY++) {
+			for (int cellX = minX; cellX <= maxX; cellX++) {
+				float x = centre(cellX), y = centre(cellY);
+				float w0 = ((bx - x) * (cy - y) - (by - y) * (cx - x)) / footprint;
+				float w1 = ((cx - x) * (ay - y) - (cy - y) * (ax - x)) / footprint;
+				if (w0 >= 0 && w1 >= 0 && 1 - w0 - w1 >= 0)
+					blocked.set(cellY * width + cellX);
+			}
+		}
+	}
+
+	/** Walks a triangle edge across the grid, so geometry too thin to contain any cell centre still blocks the cells it crosses. */
+	private void markEdge(float x0, float y0, float x1, float y1, BitSet blocked) {
+		float dx = x1 - x0, dy = y1 - y0;
+		int steps = Math.max(1, (int) (Math.sqrt(dx * dx + dy * dy) / (Heightfield.CELL_SIZE / 2)));
+		for (int step = 0; step <= steps; step++) {
+			float ratio = (float) step / steps;
+			int cellX = cell(x0 + dx * ratio), cellY = cell(y0 + dy * ratio);
+			if (cellX >= 0 && cellY >= 0 && cellX < width && cellY < height)
+				blocked.set(cellY * width + cellX);
+		}
 	}
 
 	private interface SurfaceSink {

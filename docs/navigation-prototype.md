@@ -1,12 +1,21 @@
 # Bot navigation
 
-How bots move, why it is reactive rather than planned, and what it cannot do.
+How bots move: what plans the way, what walks it, and where each one must not be trusted.
 
-## The constraint
+## Who decides what
 
-`geoEngine` answers only *"is this line blocked?"* and *"how high is the ground here?"*. There is no graph, no region decomposition, no neighbour query — so **A\* and every other path planner are out of reach** without building a navmesh first. The only paths in the engine are hand-authored waypoints (`spawnengine/WalkerGroup.java`) and flight routes.
+`geoEngine` answers only *"is this line blocked?"* and *"how high is the ground here?"*. There is no graph and no neighbour query, so path planning needs a navmesh built beforehand — that is [navmesh-plan.md](navmesh-plan.md), and it is done.
 
-Navigation is therefore **reactive steering**: walk as far towards the goal as the ground allows, sidestep what blocks the way, and give up when that stops working. This is a deliberate first stage, chosen over a navmesh so the rest of the bot system could be tested in game. Its failure modes are known and bounded, not accidental — see [Limits](#limits).
+Two layers now share the work, and **the whole class of bugs this system has produced came from blurring the line between them**:
+
+| | Knows | Owns |
+|---|---|---|
+| **Navmesh** (`BotPathFinder`) | The world's static geometry, sampled every 25 cm, on ground already eroded by a body's width | Where to go: the waypoints |
+| **Reactive probing** (`BotGeoHelper`) | Only what a ray one metre off the ground reports, plus spawned objects it can see | The gaps the mesh cannot cover |
+
+`BotMoveController.startNextLeg` applies that split literally. **Walking to a planned waypoint, it walks straight there** — the search only ever stepped between walkable cells and string pulling only kept the segment because a straight walk down it stays on walkable ground, so re-deriving that from raycasts can only make it worse. They miss anything shorter than a metre, so the bot walks into it; and they flag what the route already went around, so the bot abandons a good plan to sidestep into geometry nobody planned for. Both were observed, repeatedly, before the split was made explicit.
+
+The probes are used where the mesh genuinely has nothing to say: **maps with no generated file**, the **last stretch to a living creature** (which stands where it likes, not on a waypoint), and **objects spawned after generation** (gatherables). One safety net crosses the line on purpose: a bot the probes report as walled in on every side, while holding a planned waypoint, walks the plan anyway. That is what being wedged inside geometry looks like from the inside, and the server drives the bot's position, so trusting the mesh is what frees it.
 
 ## The two geo primitives, and which one to use
 
@@ -33,7 +42,9 @@ Nothing in the geo API can be cast lower, so this cannot be fixed by probing dif
 
 ## Legs
 
-`findMovementCollision` recurses one metre at a time, so its cost grows with distance. Routes are cut into legs of at most `MAX_LEG_DISTANCE` (25 m): on `MOVE_ARRIVED`, `BotMoveController.continueToGoal()` probes again and starts the next leg. The client sees continuous movement, since a new `SM_MOVE` goes out before the previous leg's stop.
+On `MOVE_ARRIVED`, `BotMoveController.continueToGoal()` moves on to the next waypoint. The client sees continuous movement, since a new `SM_MOVE` goes out before the previous leg's stop.
+
+Only **unplanned** legs are cut at `MAX_LEG_DISTANCE` (25 m), because `findMovementCollision` recurses a metre at a time and its cost grows with distance. A planned waypoint is walked in one go however far it is, which is also what makes the walk look decided: every leg boundary is a heading change, and a bot that changes heading every 25 m reads as hesitant.
 
 ## Sidestepping
 
@@ -52,6 +63,15 @@ Reactive steering **always** loses in concave geometry — a U-shaped corridor o
 | Chase timeout / leash | `PlayerBotAI.chase` | 15 s per chase, and the target must stay within 40 m of the bot's anchor |
 
 A target the bot failed to reach is ignored for 10 s (`PlayerBotAI.unreachableTargets`), otherwise the very next think tick picks the same unreachable mob again.
+
+## A plan is kept, not redone
+
+`moveToPoint` only plans when it has no route, or when the destination has drifted more than `REPLAN_DISTANCE` (2 m) from what the route in hand was planned for. Planning on every call looks harmless and is not: the two ways round an obstacle usually cost within a few metres of each other, so successive plans pick opposite sides and **the bot walks back and forth between them**. Observed, and unmistakable once seen.
+
+Two ordering details in the same method are load bearing:
+
+- `hasGoal` is set **before** planning. Any distance under `BotPathFinder.LONG_DISTANCE` (150 m) plans inline, and `offerRoute` discards a result that no longer matches the journey in hand — so with the old ordering, every plan made for a bot that was not already moving was thrown away as stale the instant it arrived. That is most first legs: after an arrival, after a stop, after any command.
+- A synchronous result is adopted **in that same call**. It lands in `pendingRoute`, which is otherwise only read at the next leg boundary, so the opening stretch would walk blind past the very obstacles the plan had just mapped.
 
 ## Engine plumbing
 
@@ -76,9 +96,8 @@ Idle bots return to their **anchor**, set at spawn and moved by `//bot come`, so
 
 ## Limits
 
-- No planning: anything needing more than one sidestep to get around (buildings, ravines, U-shaped walls) is abandoned by design.
+- **Only maps with a generated file are planned on.** Elsewhere every leg is reactive, and anything needing more than one sidestep — a building, a ravine, a U-shaped wall — is abandoned by design.
 - Chases are bounded by time and leash, so a fleeing target escapes.
 - Bots do not use the Z axis: no jumping, no flying, and targets more than 8 m above or below are ignored.
-- The client may still disagree briefly on narrow ground props; the corridor probe makes it rare, not impossible.
-
-Lifting these means building a navmesh (offline, from the geo data) and running A\* over it. The interfaces above are the seam where that would land: `BotGeoHelper` would become a path source, and `BotMoveController` would walk the resulting waypoints unchanged.
+- The last few metres to a creature are reactive, so a mob standing tight against a low prop can still be approached badly.
+- Crossing maps is not a navigation problem: it needs teleporters and flight paths, like a player.

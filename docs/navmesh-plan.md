@@ -42,6 +42,7 @@ Offline, as a `main` reusing `GeoWorldLoader` so it reads exactly what the serve
 
 1. Load one map's meshes, placements and terrain.
 2. For each column on a 0.5 m grid, cast a downward ray and record every surface hit: that is the span list. Terrain gives the base surface, meshes give floors, roofs and props.
+2b. **Separately**, mark every column any geometry *crosses*, walls included. This is not the same question as step 2 and must not share its code — see [The mistake that cost a day](#the-mistake-that-cost-a-day).
 3. Erode the result by a body's width. Skipping this was the one mistake that showed in game: without it a bot climbed a fallen trunk by its branches, because the grid only ever asked whether ground was flat, never whether a body fitted. Eroding removes narrow footholds by construction, with nothing to recognise.
 4. Mark a span walkable when its slope is ≤ 45° (matching `findMovementCollision`), it has at least 2 m of headroom, and no WALK volume covers it. Slope comes from the triangle's own normal for meshes, and from the height gradient across the cell for terrain.
 5. Link neighbouring spans where the step is ≤ ~0.5 m, so stairs connect and ledges do not.
@@ -88,6 +89,21 @@ It runs from the server directory but against the jar built in this repository, 
 `NavmeshTool <mapId> <x> <y>` prints one column, and `NavmeshTool <mapId> <text>` does the same around every prop whose model name contains that text. In game, `//coords` gives the position to check.
 
 These are for validating the generator, not for surveying the world: one known obstacle is enough, because the same code rasterizes all of them.
+
+## The mistake that cost a day
+
+Step 2 answers *"what can a body stand on?"*. A triangle contributes a surface to each column whose centre falls inside its footprint — and a vertical triangle has no footprint, so it contributes nothing. That is correct: nobody stands on a wall.
+
+The same routine was then reused to answer *"what blocks a body?"*. It is the wrong question for it, and the failure is total rather than partial: **a fence, a palisade, a railing, the side of a crate are all walls, all vertical, all silently dropped.** Poeta carries 1007 parts flagged `WALK, PHYSICAL_SEE_THROUGH` — its camp barricades — and not one of them blocked anything.
+
+The generated map therefore described a world without fences, while the engine's own raycasts described one with them. Every navigation symptom chased for a day came from that single disagreement: routes plotted straight through palisades, bots running along a fence unable to reach a point three metres beyond it, "walled in" reported while a perfectly good route sat in hand, bots wedging themselves into crates and snapping back. Worse, it was self-concealing — the reactive layer refused the impossible legs and made the bot merely *unreliable* instead of obviously broken, which is why it read as a hundred small bugs rather than one big one.
+
+Two rules follow, both now in the code:
+
+- **Obstruction is rasterised by footprint *and* by edge walking**, so geometry too thin to contain any cell centre still blocks the cells it crosses. For solids, only faces rising more than `STEPPABLE_RISE` (0.6 m) count, or every staircase in the game becomes a wall.
+- **The collision mask is taken from `CollisionIntention.DEFAULT_COLLISIONS`, never restated.** It was restated once, as physical and doors, on the assumption that see-through volumes do not stop a body. They do. Binding to the engine's own constant is what stops the two from ever drifting again.
+
+**Any change to the generator means regenerating every map.** A stale `.nav` file is indistinguishable from a correct one until a bot walks into something.
 
 ## Risks
 

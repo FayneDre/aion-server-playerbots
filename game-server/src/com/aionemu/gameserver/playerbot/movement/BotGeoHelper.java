@@ -90,6 +90,20 @@ public class BotGeoHelper {
 	}
 
 	/**
+	 * Clamps a leg the navmesh already vouched for to whatever spawned into it since. The static geometry along such a leg needs no second opinion
+	 * — the mesh sampled it every quarter metre, over ground eroded by a body's width, which no raycast raised a metre off the ground can match —
+	 * but a plant that grew there after the map was generated is exactly what no mesh can know.
+	 *
+	 * @return The point to walk to, which is the goal itself when nothing has spawned in the way.
+	 */
+	public static Vector3f clearOfSpawnedObstacles(Player bot, float x, float y, float z) {
+		float angle = PositionUtil.calculateAngleFrom(bot.getX(), bot.getY(), x, y);
+		float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), x, y);
+		float clearance = gatherableClearance(bot, angle, distance);
+		return clearance >= distance ? new Vector3f(x, y, z) : probe(bot, angle, clearance);
+	}
+
+	/**
 	 * Probes how far the bot can walk in the given direction, as a body wide corridor rather than as a line.
 	 * <p>
 	 * A single probe is an infinitely thin ray, so it happily passes a hand's breadth from a post or a rock the client then refuses to walk through.

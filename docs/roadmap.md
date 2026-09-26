@@ -28,7 +28,7 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 
 ## Known limits, in order of how much they will bite
 
-1. **Obstacles under a metre are invisible to the engine's own probes.** The navmesh sees them, but every leg still walks on the reactive probes even along a planned route — `BotMoveController.startNextLeg` calls `BotGeoHelper`, not the navmesh, between two waypoints. Camp scenery (crates, barrels) is short enough to hit this; a bot gets stuck on one and rubber-bands back, which reads as a teleport.
+1. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the navmesh does not answer — an ungenerated map, the last few metres to a creature — a bot can still wedge itself on one. Along a planned route it no longer applies: those legs are walked on the mesh, which sees them.
 2. **Walkable ground comes in islands.** A route between two of them does not exist. Check with `NavmeshTool <mapId> components` before suspecting the search.
 3. **Only maps with a generated file are planned on.** Run `tools/navmesh.ps1 <mapId>`; the rest fall back to reactive steering. Only Poeta (210010000) is generated.
 4. **Crossing maps is not a navigation problem.** It needs teleporters and flight paths, like a player.
@@ -42,3 +42,6 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 - **Never replace the server jar while it runs.** Classes load lazily, so anything not yet loaded disappears. `deploy.ps1` refuses for this reason; `navmesh.ps1` uses the repository's jar.
 - **Maven's incremental build can miss a change** and leave the IDE's error stubs in place, reporting success. Use `clean package` when a build result looks impossible.
 - **Nothing but the despawn path saves a bot.** `PeriodicSaveService` only handles legion warehouses.
+- **Two systems describing the same world will disagree, and the disagreement will not announce itself.** The navmesh generator dropped every wall while the engine's raycasts kept them, and that one fact produced a day of symptoms that each looked like its own small bug. When bots misbehave near geometry, first ask whether the mesh and the engine agree — `NavmeshTool <mapId> path x1 y1 x2 y2` against what the bot actually does is the fastest way to find out.
+- **A plan that is redone every tick is not a plan.** Both ways round an obstacle cost about the same, so fresh plans alternate and the bot paces back and forth.
+- **State kept in two places drifts.** A flag cleared by hand on every way a journey can end will miss one — it missed the abandon path, and the bot stood still for good. Derive it from the thing that already knows (`BotMoveController.isTravelling()`).
