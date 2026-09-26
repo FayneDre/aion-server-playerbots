@@ -46,7 +46,7 @@ Offline, as a `main` reusing `GeoWorldLoader` so it reads exactly what the serve
 4. Link neighbouring spans where the step is ≤ ~0.5 m, so stairs connect and ledges do not.
 5. Write a compact binary per map into `data/navmesh/<mapId>.nav`.
 
-The format is tiled, 64 columns square, deflated. Two decisions carry it: heights are quantized to 5 cm, which halves them into unsigned shorts, and each tile carries an offset per **row** instead of per column, so a lookup adds up at most one row of counts. That is what turns 151 MB of offsets into 1 MB. Tiles are also the unit lazy loading would use later, though whole maps load fast enough for now.
+The format is tiled, 64 columns square. Three decisions carry it: heights are quantized to 5 cm, which halves them into unsigned shorts; each tile carries an offset per **row** instead of per column, turning 151 MB of offsets into 1 MB; and each tile is **compressed separately** behind a directory at the head of the file, so the server reads a tile without reading the map. Opening a map is then instant, and a bot working a camp holds four tiles instead of 117 MB.
 
 Rays are independent, so the whole thing parallelises. Only the maps in use need generating at first — Poeta (210010000) is the test bed.
 
@@ -89,7 +89,7 @@ These are for validating the generator, not for surveying the world: one known o
 
 ## Risks
 
-1. **Memory, addressed in N3.** The generator's own heightfield still needs `-Xmx4g`, but that is offline. At runtime a map costs 117 MB, so a handful can stay loaded and the rest must be loaded on demand. Sparse storage was the wrong answer: with 1.04 surfaces per column the grid is dense, and the cost was the bookkeeping, not the data.
+1. **Memory, addressed in N3.** The generator's own heightfield still needs `-Xmx4g`, but that is offline. At runtime tiles are read as they are walked into, so a camp costs a few megabytes rather than the 117 MB a whole map holds. Sparse storage was the wrong answer: with 1.04 surfaces per column the grid is dense, and the cost was the bookkeeping, not the data.
 2. **The span format is a new file format to maintain.** Version it from the first byte, and keep the generator able to rebuild everything.
 3. **Multi-level geometry** (bridges, buildings, the Abyss) is where span linking gets subtle. N1's per-level images are what makes this debuggable.
 4. **Dynamic obstacles stay unsolved by the mesh** — players, npcs, gatherables, doors. The existing reactive layer keeps handling the last few metres.

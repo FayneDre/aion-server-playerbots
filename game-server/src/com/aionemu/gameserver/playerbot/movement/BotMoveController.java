@@ -87,8 +87,12 @@ public class BotMoveController extends PlayerMoveController {
 		finalY = y;
 		finalZ = z;
 		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
-		route = sameJourney && !route.isEmpty() ? route : NavmeshService.getInstance().findRoute(owner, x, y, z);
-		routeIndex = sameJourney && !route.isEmpty() ? routeIndex : 0;
+		if (!sameJourney || route.isEmpty()) {
+			route = NavmeshService.getInstance().findRoute(owner, x, y, z);
+			routeIndex = 0;
+			log.info("Bot {} heads for {} {}", owner.getName(), String.format("%.1f %.1f", x, y),
+				route.isEmpty() ? "with no plan" : "along " + route.size() + " waypoints");
+		}
 		hasGoal = true;
 		aimAtNextWaypoint();
 		if (!sameJourney) {

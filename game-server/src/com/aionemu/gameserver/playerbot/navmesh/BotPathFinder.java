@@ -21,6 +21,8 @@ public class BotPathFinder {
 	public static final float MAX_STEP = 0.5f;
 	/** How far above or below the requested height a start or goal surface may be found. */
 	private static final float SNAP_RANGE = 3f;
+	/** How many cells outwards to look for walkable ground when the exact spot is not, about six metres. */
+	private static final int SNAP_RINGS = 12;
 	/** Search budget. A route that needs more than this is either impossible or long enough to want waypoints of its own. */
 	private static final int MAX_NODES = 1_000_000;
 
@@ -169,16 +171,39 @@ public class BotPathFinder {
 		return best;
 	}
 
+	/**
+	 * Finds the node to start from or aim at.
+	 * <p>
+	 * The exact spot is often not walkable: a player stands on a rock or against a wall, and the grid is deliberately conservative about head room
+	 * and slopes. Snapping outwards to the nearest walkable cell is what makes "come here" work at all, and the last few metres are the reactive
+	 * layer's job anyway.
+	 */
 	private static long nodeAt(Navmesh mesh, float x, float y, float z) {
-		int cellX = mesh.cellX(x), cellY = mesh.cellY(y);
-		if (!mesh.contains(cellX, cellY))
-			return -1;
-		float surfaceZ = nearestWalkableZ(mesh, cellX, cellY, z, SNAP_RANGE);
-		if (Float.isNaN(surfaceZ))
-			return -1;
-		for (int surface = 0; surface < mesh.surfaceCount(cellX, cellY); surface++)
-			if (mesh.isWalkable(cellX, cellY, surface) && mesh.surfaceZ(cellX, cellY, surface) == surfaceZ)
-				return key(mesh, cellX, cellY, surface);
+		int centreX = mesh.cellX(x), centreY = mesh.cellY(y);
+		for (int ring = 0; ring <= SNAP_RINGS; ring++) {
+			long found = -1;
+			float closest = Float.MAX_VALUE;
+			for (int offsetY = -ring; offsetY <= ring; offsetY++) {
+				for (int offsetX = -ring; offsetX <= ring; offsetX++) {
+					if (ring > 0 && Math.abs(offsetX) != ring && Math.abs(offsetY) != ring)
+						continue; // already covered by a smaller ring
+					int cellX = centreX + offsetX, cellY = centreY + offsetY;
+					if (!mesh.contains(cellX, cellY))
+						continue;
+					for (int surface = 0; surface < mesh.surfaceCount(cellX, cellY); surface++) {
+						if (!mesh.isWalkable(cellX, cellY, surface))
+							continue;
+						float gap = Math.abs(mesh.surfaceZ(cellX, cellY, surface) - z);
+						if (gap > SNAP_RANGE || gap >= closest)
+							continue;
+						closest = gap;
+						found = key(mesh, cellX, cellY, surface);
+					}
+				}
+			}
+			if (found != -1)
+				return found;
+		}
 		return -1;
 	}
 

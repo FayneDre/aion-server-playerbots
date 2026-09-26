@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import javax.imageio.ImageIO;
 
@@ -99,7 +100,7 @@ public class NavmeshTool {
 	 * whether the bot went around the building or through it.
 	 */
 	private static void planRoute(int mapId, float startX, float startY, float goalX, float goalY) throws IOException {
-		Navmesh mesh = Navmesh.load(mapId);
+		Navmesh mesh = Navmesh.open(mapId);
 		float startZ = groundAt(mesh, startX, startY), goalZ = groundAt(mesh, goalX, goalY);
 		System.out.printf("From %.1f %.1f %.1f to %.1f %.1f %.1f%n", startX, startY, startZ, goalX, goalY, goalZ);
 
@@ -182,7 +183,7 @@ public class NavmeshTool {
 	 */
 	private static void verifyRoundTrip(int mapId, Heightfield field) throws IOException {
 		long start = System.currentTimeMillis();
-		Navmesh navmesh = Navmesh.load(mapId);
+		Navmesh navmesh = Navmesh.open(mapId);
 		long loadTime = System.currentTimeMillis() - start;
 
 		if (navmesh.width() != field.width() || navmesh.height() != field.height())
@@ -206,7 +207,7 @@ public class NavmeshTool {
 				}
 			}
 		}
-		System.out.printf("Loaded back in %d ms holding %.0f MB, %d surfaces compared, %d mismatches%n", loadTime,
+		System.out.printf("Read back in %d ms, %d tiles holding %.0f MB, %d surfaces compared, %d mismatches%n", loadTime, navmesh.loadedTiles(),
 			navmesh.memoryFootprint() / 1048576f, compared, mismatches);
 		if (mismatches > 0)
 			throw new IllegalStateException("The navmesh file does not match what was generated");
@@ -368,6 +369,17 @@ public class NavmeshTool {
 		}
 		System.out.printf("Map %d: %d placements (%d despawnable, %d with no mesh)%n", mapId, placements.size(), despawnable, missing);
 		System.out.printf("  %d triangles once placed, %d parts carrying a WALK volume%n", triangles, walkableVolumes);
+
+		Map<String, Long> byIntention = new TreeMap<>();
+		for (GeoPlacement placement : placements) {
+			List<GeoModel> parts = models.get(placement.modelName());
+			if (parts == null)
+				continue;
+			for (GeoModel part : parts)
+				byIntention.merge(CollisionIntention.toString(part.collisionIntentions()), 1L, Long::sum);
+		}
+		System.out.println("  placed parts by collision intention:");
+		byIntention.forEach((intentions, count) -> System.out.printf("    %-60s %d%n", intentions.isEmpty() ? "(none)" : intentions, count));
 	}
 
 	/**
