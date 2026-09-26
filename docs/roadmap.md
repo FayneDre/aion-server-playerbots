@@ -24,7 +24,9 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 
 **Economy.** Selling is the first step. Then the broker (`BrokerService`), then player shops. `PvpService` dereferences `getClientConnection().getIP()` and will throw the first time a bot kills a real player, so guard it before open world PvP.
 
-**Bot population.** `//bot populate` creates them on reserved accounts from id 900000. Nothing spawns them automatically at server start, and nothing spreads them over several camps.
+**Bot population.** `//bot populate` creates them on reserved accounts from id 900000. `GameServer` then calls `PlayerBotService.onStartUp()`, which puts back whatever was in the world before, each bot at its own saved position — so a restart resumes rather than resets, and nothing has to place them by hand. The roster is a list of names in `server_variables`, written on every spawn and despawn because the case it exists for is a shutdown that never ran.
+
+**Saving.** Spawned bots are written every 5 minutes, and on a clean shutdown. Nothing else writes them: the engine's `PeriodicSaveService` covers legion warehouses only, and real players are saved when they log out, a door a bot never uses. This matters more than it used to, now that bots gain levels and skills unattended over hours.
 
 ## Known limits, in order of how much they will bite
 
@@ -32,7 +34,7 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 2. **Walkable ground comes in islands.** A route between two of them does not exist. Check with `NavmeshTool <mapId> components` before suspecting the search.
 3. **Only maps with a generated file are planned on.** Run `tools/navmesh.ps1 <mapId>`; the rest fall back to reactive steering. Only Poeta (210010000) is generated.
 4. **Crossing maps is not a navigation problem.** It needs teleporters and flight paths, like a player.
-5. **A crash loses whatever bots did since they spawned.** They are saved on despawn and on shutdown only.
+5. **A crash loses at most 5 minutes of what bots did.** That is the periodic save interval; nothing writes them between two sweeps.
 6. **Bots never flee and never use potions.** They heal themselves if their class can, and otherwise sit down to regenerate.
 
 ## Traps that cost hours, so they do not cost them twice

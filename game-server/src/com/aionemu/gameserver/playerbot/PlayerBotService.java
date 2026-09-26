@@ -1,9 +1,12 @@
 package com.aionemu.gameserver.playerbot;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,12 +19,14 @@ import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
+import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.services.player.PlayerService;
+import com.aionemu.gameserver.utils.ThreadPoolManager;
 import com.aionemu.gameserver.world.World;
 
 /**
@@ -31,10 +36,62 @@ public class PlayerBotService {
 
 	private static final Logger log = LoggerFactory.getLogger(PlayerBotService.class);
 
+	/**
+	 * How often spawned bots are written to the database. Bots now gain levels, skills and loot unattended over hours, and nothing else writes them:
+	 * the engine's own {@code PeriodicSaveService} handles legion warehouses only, and real players are saved when they log out — a door a bot never
+	 * uses. A clean shutdown still saves them; this is what stands between a crash and a day of progress.
+	 */
+	private static final long SAVE_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(5);
+
 	private final Map<Integer, Player> spawnedBots = new ConcurrentHashMap<>();
 
 	public static PlayerBotService getInstance() {
 		return SingletonHolder.INSTANCE;
+	}
+
+	/**
+	 * Puts the world back the way it was and starts saving it. Called once, from {@code GameServer}, after the world is loaded.
+	 */
+	public void onStartUp() {
+		ThreadPoolManager.getInstance().scheduleAtFixedRate(this::saveAll, SAVE_INTERVAL_MILLIS, SAVE_INTERVAL_MILLIS);
+		Set<String> roster = BotRoster.restore();
+		if (roster.isEmpty())
+			return;
+		int restored = 0;
+		for (String characterName : roster) {
+			Player bot = loadAvailableBot(characterName);
+			if (bot == null) {
+				log.warn("Bot {} is on the roster but no longer exists, dropping it", characterName);
+				continue;
+			}
+			try {
+				PlayerBotEnterWorldService.enterWorld(bot);
+				spawnedBots.put(bot.getObjectId(), bot);
+				restored++;
+			} catch (RuntimeException e) {
+				log.error("Could not restore bot " + characterName, e);
+			}
+		}
+		rememberRoster(); // drops whatever could not be restored, so a broken name is not retried every restart
+		log.info("Restored {} of {} bot(s) from the roster", restored, roster.size());
+	}
+
+	/** Writes every spawned bot to the database, in place, without taking it out of the world. */
+	public void saveAll() {
+		for (Player bot : spawnedBots.values()) {
+			try {
+				PlayerService.storePlayer(bot);
+			} catch (RuntimeException e) {
+				log.error("Could not save bot " + bot.getName(), e);
+			}
+		}
+	}
+
+	/** The roster is written on every change rather than at shutdown, because a shutdown that never runs is the case it exists for. */
+	private void rememberRoster() {
+		Set<String> names = new LinkedHashSet<>();
+		spawnedBots.values().forEach(bot -> names.add(bot.getName()));
+		BotRoster.remember(names);
 	}
 
 	/**
@@ -69,6 +126,7 @@ public class PlayerBotService {
 			return "Could not spawn " + characterName + " (see server log)";
 		}
 		spawnedBots.put(bot.getObjectId(), bot);
+		rememberRoster();
 		return "Spawned " + bot.getName() + " (objId " + bot.getObjectId() + ")";
 	}
 
@@ -146,6 +204,7 @@ public class PlayerBotService {
 			return "No bot spawned with name " + characterName;
 
 		spawnedBots.remove(bot.getObjectId());
+		rememberRoster(); // taken out on purpose, so a restart leaves it out too
 		try {
 			PlayerBotLeaveWorldService.leaveWorld(bot);
 		} catch (RuntimeException e) {
@@ -271,6 +330,24 @@ public class PlayerBotService {
 	}
 
 	public String despawnAll() {
+		int count = despawnEverything();
+		rememberRoster(); // emptied by hand, so the world comes back empty
+		return "Despawned " + count + " bot(s)";
+	}
+
+	/**
+	 * Takes every bot out of the world on the way down, leaving the roster alone so the next start puts them back.
+	 * <p>
+	 * Not {@link #despawnAll()}: that one is an operator emptying the world on purpose, and clearing the roster is the whole point of it. Going
+	 * through it here would mean every restart came back to an empty map.
+	 */
+	public void onShutdown() {
+		log.info("Despawning {} bot(s) for shutdown", spawnedBots.size());
+		despawnEverything();
+	}
+
+	/** @return How many bots were taken out. Leaves the roster untouched; the caller decides what it now means. */
+	private int despawnEverything() {
 		int count = spawnedBots.size();
 		spawnedBots.values().forEach(bot -> {
 			try {
@@ -280,7 +357,7 @@ public class PlayerBotService {
 			}
 		});
 		spawnedBots.clear();
-		return "Despawned " + count + " bot(s)";
+		return count;
 	}
 
 	private Player loadAvailableBot(String characterName) {

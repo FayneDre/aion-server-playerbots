@@ -25,11 +25,19 @@ public class PlayerBotEnterWorldService {
 	 * Places the bot next to the given player and spawns it, so real clients in range can see it.
 	 */
 	public static void enterWorld(Player bot, Player nextTo) {
+		bot.setPosition(World.getInstance().createPosition(nextTo.getWorldId(), nextTo.getX() + 2, nextTo.getY(), nextTo.getZ(), nextTo.getHeading(),
+			nextTo.getInstanceId()));
+		enterWorld(bot);
+	}
+
+	/**
+	 * Spawns the bot where it was last saved. {@code PlayerService.getPlayer} has already read that position into the character, so a bot put back
+	 * this way resumes exactly where it stood, and its ai anchors its camp there on the spawn event.
+	 */
+	public static void enterWorld(Player bot) {
 		applyPassiveSkillEffects(bot);
 		bot.setAi(new PlayerBotAI(bot));
 		bot.setMoveController(new BotMoveController(bot));
-		bot.setPosition(World.getInstance().createPosition(nextTo.getWorldId(), nextTo.getX() + 2, nextTo.getY(), nextTo.getZ(), nextTo.getHeading(),
-			nextTo.getInstanceId()));
 		World.getInstance().storeObject(bot);
 		bot.getLifeStats().updateCurrentStats();
 		World.getInstance().spawn(bot);

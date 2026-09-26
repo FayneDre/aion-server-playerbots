@@ -76,7 +76,7 @@ public class ShutdownHook extends Thread {
 
 		GameServer.shutdownNioServer(); // shuts down network, disconnects cs/ls/all players and schedules leaveWorld
 		PlayerLeaveWorldService.processPendingLeaveWorldTasks();
-		PlayerBotService.getInstance().despawnAll(); // bots have no connection, so the line above never reaches them
+		PlayerBotService.getInstance().onShutdown(); // bots have no connection, so the line above never reaches them
 
 		RunnableStatsManager.dumpClassStats(SortBy.AVG);
 		PeriodicSaveService.getInstance().onShutdown();

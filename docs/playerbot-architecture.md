@@ -82,7 +82,8 @@ Future subsystems plug in as: auction house / shops → `economy/` plus new beha
 | `model/gameobjects/Creature.java` | `final` → `volatile` + `setAi()` | Minimal — these lines never change upstream |
 | `model/gameobjects/Creature.java` | `moveController` → `volatile` + `setMoveController()` | Minimal — same reasoning as `setAi()` |
 | `skillengine/effect/EffectTemplate.java` | One accessor: `getHitType()` | Minimal — a getter over an existing protected field, no behaviour |
-| `ShutdownHook.java` | One line: `PlayerBotService.despawnAll()` after the leave world tasks | Low — nothing else saves bots (see below) |
+| `ShutdownHook.java` | One line: `PlayerBotService.onShutdown()` after the leave world tasks | Low — nothing else saves bots (see below) |
+| `GameServer.java` | One line: `PlayerBotService.onStartUp()` beside the shutdown hook registration | Low — the symmetric counterpart, on a line that rarely moves |
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. Defer while the prototype uses constants. |
 
 Nothing else. `services/player/MultiClientingService.java:24` dereferences the connection's IP/MAC and would NPE — it needs no patch, because `PlayerBotEnterWorldService` simply never calls it.
