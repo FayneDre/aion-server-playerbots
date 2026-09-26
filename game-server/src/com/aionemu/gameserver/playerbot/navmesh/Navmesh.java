@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.BitSet;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
@@ -23,14 +24,16 @@ import java.util.zip.Inflater;
  */
 public class Navmesh {
 
-	static final String MAGIC = "AINAV2";
+	static final String MAGIC = "AINAV3";
 	/** Height resolution. Aion heights span 0..2048 m, so this fits an unsigned short with room to spare. */
 	static final float Z_STEP = 0.05f;
 	/** Columns per tile side. Small enough that a camp loads few tiles and a row scan is cheap, large enough that per tile overhead stays small. */
 	static final int TILE_SIZE = 64;
 
-	private final int mapId, width, height, tilesX;
+	private final int mapId, width, height, tilesX, coarseFactor, coarseWidth;
 	private final float cellSize;
+	/** One bit per coarse cell, kept in memory always: it is tiny, and long routes are planned on it before any tile is read. */
+	private final BitSet coarseFooting;
 	private final int[] tileOffsets, tileLengths;
 	private final AtomicReferenceArray<Tile> tiles;
 	private final FileChannel channel;
@@ -43,8 +46,11 @@ public class Navmesh {
 		static final Tile EMPTY = new Tile(null, null, null, null);
 	}
 
-	private Navmesh(int mapId, int width, int height, float cellSize, int tilesX, int[] tileOffsets, int[] tileLengths, FileChannel channel,
-		long dataStart) {
+	private Navmesh(int mapId, int width, int height, float cellSize, int tilesX, int coarseFactor, BitSet coarseFooting, int[] tileOffsets,
+		int[] tileLengths, FileChannel channel, long dataStart) {
+		this.coarseFactor = coarseFactor;
+		this.coarseWidth = (width + coarseFactor - 1) / coarseFactor;
+		this.coarseFooting = coarseFooting;
 		this.mapId = mapId;
 		this.width = width;
 		this.height = height;
@@ -64,7 +70,7 @@ public class Navmesh {
 	/** Reads the header and the tile directory only. The tiles themselves are read as bots walk into them. */
 	public static Navmesh open(int mapId) throws IOException {
 		FileChannel channel = FileChannel.open(fileOf(mapId), StandardOpenOption.READ);
-		ByteBuffer header = ByteBuffer.allocate(MAGIC.length() + 4 * 6);
+		ByteBuffer header = ByteBuffer.allocate(MAGIC.length() + 4 * 8);
 		channel.read(header, 0);
 		header.flip();
 
@@ -77,16 +83,21 @@ public class Navmesh {
 		int storedMapId = header.getInt(), width = header.getInt(), height = header.getInt();
 		float cellSize = header.getFloat();
 		int tilesX = header.getInt(), tileCount = header.getInt();
+		int coarseFactor = header.getInt(), coarseBytes = header.getInt();
+
+		ByteBuffer coarse = ByteBuffer.allocate(coarseBytes);
+		channel.read(coarse, header.capacity());
 
 		ByteBuffer directory = ByteBuffer.allocate(tileCount * 8);
-		channel.read(directory, header.capacity());
+		channel.read(directory, header.capacity() + coarseBytes);
 		directory.flip();
 		int[] offsets = new int[tileCount], lengths = new int[tileCount];
 		for (int i = 0; i < tileCount; i++) {
 			offsets[i] = directory.getInt();
 			lengths[i] = directory.getInt();
 		}
-		return new Navmesh(storedMapId, width, height, cellSize, tilesX, offsets, lengths, channel, header.capacity() + directory.capacity());
+		return new Navmesh(storedMapId, width, height, cellSize, tilesX, coarseFactor, BitSet.valueOf(coarse.array()), offsets, lengths, channel,
+			header.capacity() + coarseBytes + directory.capacity());
 	}
 
 	public int mapId() {
@@ -141,6 +152,25 @@ public class Navmesh {
 			if (isWalkable(cellX, cellY, i))
 				return true;
 		return false;
+	}
+
+	public int coarseFactor() {
+		return coarseFactor;
+	}
+
+	public int coarseWidth() {
+		return coarseWidth;
+	}
+
+	public int coarseHeight() {
+		return (height + coarseFactor - 1) / coarseFactor;
+	}
+
+	/** @return true if that 4 m cell holds enough walkable ground to route through. Answered without reading any tile. */
+	public boolean isCoarseWalkable(int coarseX, int coarseY) {
+		if (coarseX < 0 || coarseY < 0 || coarseX >= coarseWidth || coarseY >= coarseHeight())
+			return false;
+		return coarseFooting.get(coarseY * coarseWidth + coarseX);
 	}
 
 	public int loadedTiles() {

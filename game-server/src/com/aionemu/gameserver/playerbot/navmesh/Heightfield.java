@@ -20,6 +20,10 @@ public class Heightfield {
 	public static final float MAX_SLOPE_COSINE = (float) Math.cos(Math.toRadians(45));
 	/** How many cells of walkable ground to shave off along every edge, so routes keep a body's width from what a body cannot pass. */
 	public static final int AGENT_RADIUS_CELLS = 1;
+	/** Fine cells per side of a coarse cell, making the coarse grid 4 m. */
+	public static final int COARSE_FACTOR = 8;
+	/** How much of a coarse cell must be walkable for it to count. Low on purpose: the coarse grid only guides, it never decides. */
+	private static final float COARSE_THRESHOLD = 0.25f;
 
 	private final int width, height;
 	private final int[] offsets; // width * height + 1 entries, so a column's samples are offsets[i] .. offsets[i + 1]
@@ -158,6 +162,32 @@ public class Heightfield {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Sums the grid up into 4 m cells, which is what makes long routes searchable.
+	 * <p>
+	 * A\* over half metre cells explores a hopeless area once a goal is a few hundred metres away. Planning roughly first and refining afterwards
+	 * costs one bit per 4 m of map, so the whole of Poeta guides in 72 KB, small enough to keep loaded while the detailed tiles stay on disk.
+	 */
+	BitSet coarseFooting() {
+		int coarseWidth = (width + COARSE_FACTOR - 1) / COARSE_FACTOR, coarseHeight = (height + COARSE_FACTOR - 1) / COARSE_FACTOR;
+		BitSet coarse = new BitSet(coarseWidth * coarseHeight);
+		for (int coarseY = 0; coarseY < coarseHeight; coarseY++) {
+			for (int coarseX = 0; coarseX < coarseWidth; coarseX++) {
+				int standable = 0, total = 0;
+				for (int y = coarseY * COARSE_FACTOR; y < Math.min(height, (coarseY + 1) * COARSE_FACTOR); y++) {
+					for (int x = coarseX * COARSE_FACTOR; x < Math.min(width, (coarseX + 1) * COARSE_FACTOR); x++) {
+						total++;
+						if (hasFooting(x, y))
+							standable++;
+					}
+				}
+				if (total > 0 && standable >= total * COARSE_THRESHOLD)
+					coarse.set(coarseY * coarseWidth + coarseX);
+			}
+		}
+		return coarse;
 	}
 
 	/** Clears every surface of the given columns, used for the no-walk volumes the game authors itself. */

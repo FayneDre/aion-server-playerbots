@@ -93,6 +93,24 @@ public class NavmeshTool {
 		System.out.printf("Wrote %s (%.1f MB) in %d ms%n", navmesh.toAbsolutePath(), Files.size(navmesh) / 1048576f,
 			System.currentTimeMillis() - start);
 		verifyRoundTrip(mapId, field);
+		System.out.println("Wrote " + writeCoarseImage(mapId, Navmesh.open(mapId)).toAbsolutePath());
+	}
+
+	/** Dumps the rough grid long routes are planned on, where a hole means bots cannot route through even if they could walk there. */
+	private static Path writeCoarseImage(int mapId, Navmesh mesh) throws IOException {
+		BufferedImage image = new BufferedImage(mesh.coarseWidth(), mesh.coarseHeight(), BufferedImage.TYPE_INT_RGB);
+		int walkable = 0;
+		for (int y = 0; y < mesh.coarseHeight(); y++) {
+			for (int x = 0; x < mesh.coarseWidth(); x++) {
+				boolean ok = mesh.isCoarseWalkable(x, y);
+				if (ok)
+					walkable++;
+				image.setRGB(x, y, ok ? 0x30A030 : 0xC02020);
+			}
+		}
+		System.out.printf("Coarse grid %dx%d, %d of %d cells routable%n", mesh.coarseWidth(), mesh.coarseHeight(), walkable,
+			mesh.coarseWidth() * mesh.coarseHeight());
+		return write(mapId, "coarse", image);
 	}
 
 	/**
@@ -109,6 +127,9 @@ public class NavmeshTool {
 		long elapsed = System.currentTimeMillis() - start;
 		if (result.isEmpty()) {
 			System.out.println((result.gaveUp() ? "Gave up searching after " : "No route exists, established in ") + elapsed + " ms");
+			List<Vector3f> guide = BotPathFinder.coarseRoute(mesh, startX, startY, goalX, goalY);
+			System.out.println(guide.isEmpty() ? "  the rough pass found nothing either"
+				: "  the rough pass did find a way, in " + guide.size() + " guide points, so a stretch of it failed to refine");
 			return;
 		}
 		List<Vector3f> route = result.waypoints();
@@ -123,11 +144,23 @@ public class NavmeshTool {
 		System.out.println("Wrote " + writeRouteImage(mapId, mesh, route).toAbsolutePath());
 	}
 
+	/** Looks outwards for walkable ground, the way the path finder does, so a spot on an eroded edge still reports a sensible height. */
 	private static float groundAt(Navmesh mesh, float x, float y) {
-		int cellX = mesh.cellX(x), cellY = mesh.cellY(y);
-		for (int surface = mesh.surfaceCount(cellX, cellY) - 1; surface >= 0; surface--)
-			if (mesh.isWalkable(cellX, cellY, surface))
-				return mesh.surfaceZ(cellX, cellY, surface);
+		int centreX = mesh.cellX(x), centreY = mesh.cellY(y);
+		for (int ring = 0; ring <= 12; ring++) {
+			for (int offsetY = -ring; offsetY <= ring; offsetY++) {
+				for (int offsetX = -ring; offsetX <= ring; offsetX++) {
+					if (ring > 0 && Math.abs(offsetX) != ring && Math.abs(offsetY) != ring)
+						continue;
+					int cellX = centreX + offsetX, cellY = centreY + offsetY;
+					if (!mesh.contains(cellX, cellY))
+						continue;
+					for (int surface = mesh.surfaceCount(cellX, cellY) - 1; surface >= 0; surface--)
+						if (mesh.isWalkable(cellX, cellY, surface))
+							return mesh.surfaceZ(cellX, cellY, surface);
+				}
+			}
+		}
 		return Float.NaN;
 	}
 

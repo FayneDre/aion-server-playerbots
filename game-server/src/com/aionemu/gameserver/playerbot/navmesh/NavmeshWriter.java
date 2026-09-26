@@ -35,10 +35,13 @@ public class NavmeshWriter {
 			for (int tileX = 0; tileX < tilesX; tileX++)
 				compressedTiles[tileY * tilesX + tileX] = compress(tile(field, tileX, tileY));
 
+		byte[] coarse = field.coarseFooting().toByteArray();
 		try (OutputStream out = Files.newOutputStream(file)) {
-			ByteBuffer header = ByteBuffer.allocate(Navmesh.MAGIC.length() + 4 * 6 + tileCount * 8);
+			ByteBuffer header = ByteBuffer.allocate(Navmesh.MAGIC.length() + 4 * 8 + coarse.length + tileCount * 8);
 			header.put(Navmesh.MAGIC.getBytes());
 			header.putInt(mapId).putInt(field.width()).putInt(field.height()).putFloat(Heightfield.CELL_SIZE).putInt(tilesX).putInt(tileCount);
+			header.putInt(Heightfield.COARSE_FACTOR).putInt(coarse.length);
+			header.put(coarse);
 			int offset = 0;
 			for (byte[] compressed : compressedTiles) {
 				header.putInt(offset).putInt(compressed.length);

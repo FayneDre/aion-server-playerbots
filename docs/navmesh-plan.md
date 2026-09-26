@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 to N5 done**, N6 is the remaining one.
+Replacing reactive steering with real path planning. **N0 to N5 done**, N6 partly.
 
 ## Why
 
@@ -70,7 +70,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 | N3 | Binary format, write and read back | **Done.** Poeta is a 38 MB file, written in 4.3 s, read back in 0.35 s into 117 MB of heap, with all 39.4 M surfaces compared and no mismatch |
 | N4 | A\* plus string pulling, `NavmeshTool <mapId> path <x1> <y1> <x2> <y2>` draws the route | **Done.** A 20 m route between two houses bends around the first one instead of crossing its wall, in 8 ms. Routes of 50 to 100 m take 8 to 17 ms and come back as 2 to 4 waypoints |
 | N5 | `BotMoveController` follows a planned route | **Done.** Bots walk around the fallen trunk they used to wedge themselves into, and a camp holds three or four tiles. Two fixes made it work: snapping start and goal to walkable ground, and eroding by a body's width |
-| N6 | Long route inside a map, then the vendor run | A bot reaches a town npc and comes back |
+| N6 | Long route inside a map, then the vendor run | **Half done.** Routes up to about 300 m plan in well under a second, including a 262 m one that walks 308 m around the terrain. A 970 m crossing still fails: the rough pass finds a way, but the detailed grid is more fragmented than the rough one and some stretch has no crossing. The vendor run itself is not started |
 
 ## Running it
 
@@ -95,5 +95,5 @@ These are for validating the generator, not for surveying the world: one known o
 2. **The span format is a new file format to maintain.** Version it from the first byte, and keep the generator able to rebuild everything.
 3. **Multi-level geometry** (bridges, buildings, the Abyss) is where span linking gets subtle. N1's per-level images are what makes this debuggable.
 4. **Dynamic obstacles stay unsolved by the mesh** — players, npcs, gatherables, doors. The existing reactive layer keeps handling the last few metres.
-5. **Long routes exhaust the search.** A 970 m crossing of Poeta burns the million node budget in 1.5 s and gives up: at 0.5 m cells, open ground makes A\* explore a very wide area. Anything past a few hundred metres needs either a coarse pass over a downsampled grid, refined afterwards, or fixed waypoints between regions. That is N6's problem, and it is why `Route` reports giving up.
+5. **A rough way through is not a promise.** The coarse grid calls a 4 m cell routable on a quarter of its ground, so it crosses places the detailed grid does not: a stream, a ledge, a gap erosion closed. Refinement therefore skips guide points it cannot reach, and the whole plan is bounded by a 250 ms deadline, because it runs on a movement thread and a hopeless route must fail fast rather than eventually. Beyond roughly 300 m that fragmentation wins, and the answer is fixed waypoints between regions rather than more search.
 6. **Flight.** Aion is three dimensional and a ground navmesh ignores it. Out of scope here; flying bots are a separate design.
