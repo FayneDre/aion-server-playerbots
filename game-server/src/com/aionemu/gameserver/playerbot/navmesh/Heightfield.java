@@ -18,6 +18,8 @@ public class Heightfield {
 	public static final float AGENT_HEIGHT = 2f;
 	/** Steepest ground a bot may walk on, matching the 45° the engine's own movement probe allows. */
 	public static final float MAX_SLOPE_COSINE = (float) Math.cos(Math.toRadians(45));
+	/** How many cells of walkable ground to shave off along every edge, so routes keep a body's width from what a body cannot pass. */
+	public static final int AGENT_RADIUS_CELLS = 1;
 
 	private final int width, height;
 	private final int[] offsets; // width * height + 1 entries, so a column's samples are offsets[i] .. offsets[i + 1]
@@ -115,6 +117,47 @@ public class Heightfield {
 					walkable.clear(i);
 			}
 		}
+	}
+
+	/**
+	 * Shaves walkable ground back from every edge by the width of a body.
+	 * <p>
+	 * Without this the grid says a bot may stand on anything flat enough, including the top of a fallen tree trunk it reaches by a gentle branch, or
+	 * the half metre of ledge against a wall. A route then leads somewhere a body does not fit and does not belong. Eroding is what turns "this cell
+	 * is flat" into "a body fits here", and it is why narrow features disappear on their own rather than needing to be recognised.
+	 */
+	void erode(int radius) {
+		BitSet footing = new BitSet(width * height);
+		for (int column = 0; column < width * height; column++) {
+			for (int i = offsets[column]; i < offsets[column + 1]; i++) {
+				if (walkable.get(i)) {
+					footing.set(column);
+					break;
+				}
+			}
+		}
+
+		BitSet eroded = new BitSet(width * height);
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				if (!footing.get(y * width + x))
+					continue;
+				if (hasEdgeNearby(footing, x, y, radius))
+					eroded.set(y * width + x);
+			}
+		}
+		block(eroded);
+	}
+
+	private boolean hasEdgeNearby(BitSet footing, int x, int y, int radius) {
+		for (int offsetY = -radius; offsetY <= radius; offsetY++) {
+			for (int offsetX = -radius; offsetX <= radius; offsetX++) {
+				int nextX = x + offsetX, nextY = y + offsetY;
+				if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height || !footing.get(nextY * width + nextX))
+					return true; // off the map counts as an edge, which keeps bots off the very rim
+			}
+		}
+		return false;
 	}
 
 	/** Clears every surface of the given columns, used for the no-walk volumes the game authors itself. */

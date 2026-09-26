@@ -93,6 +93,7 @@ public class HeightfieldBuilder {
 		field.sortColumns();
 		field.applyHeadroom();
 		field.block(noWalkColumns());
+		field.erode(Heightfield.AGENT_RADIUS_CELLS);
 		return field;
 	}
 
