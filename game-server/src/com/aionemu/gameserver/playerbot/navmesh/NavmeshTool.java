@@ -75,6 +75,48 @@ public class NavmeshTool {
 		System.out.println("Wrote " + writeHeightImage(mapId, field).toAbsolutePath());
 		System.out.println("Wrote " + writeStructureImage(mapId, field).toAbsolutePath());
 		System.out.println("Wrote " + writeWalkableImage(mapId, field).toAbsolutePath());
+
+		start = System.currentTimeMillis();
+		Path navmesh = NavmeshWriter.write(mapId, field);
+		System.out.printf("Wrote %s (%.1f MB) in %d ms%n", navmesh.toAbsolutePath(), Files.size(navmesh) / 1048576f,
+			System.currentTimeMillis() - start);
+		verifyRoundTrip(mapId, field);
+	}
+
+	/**
+	 * Reads the file back and compares it against what was generated, column by column. A format is only as good as the proof that it survives the
+	 * trip, and a silent corruption here would surface much later as a bot walking into a wall.
+	 */
+	private static void verifyRoundTrip(int mapId, Heightfield field) throws IOException {
+		long start = System.currentTimeMillis();
+		Navmesh navmesh = Navmesh.load(mapId);
+		long loadTime = System.currentTimeMillis() - start;
+
+		if (navmesh.width() != field.width() || navmesh.height() != field.height())
+			throw new IllegalStateException("Round trip changed the grid size");
+
+		long mismatches = 0, compared = 0;
+		float tolerance = Navmesh.Z_STEP; // heights are quantized on the way out, so they come back rounded
+		for (int y = 0; y < field.height(); y++) {
+			for (int x = 0; x < field.width(); x++) {
+				int expected = field.columnEnd(x, y) - field.columnStart(x, y);
+				if (navmesh.surfaceCount(x, y) != expected) {
+					mismatches++;
+					continue;
+				}
+				for (int i = 0; i < expected; i++) {
+					compared++;
+					int source = field.columnStart(x, y) + i;
+					if (Math.abs(navmesh.surfaceZ(x, y, i) - field.surfaceAt(source)) > tolerance
+						|| navmesh.isWalkable(x, y, i) != field.isWalkable(source))
+						mismatches++;
+				}
+			}
+		}
+		System.out.printf("Loaded back in %d ms holding %.0f MB, %d surfaces compared, %d mismatches%n", loadTime,
+			navmesh.memoryFootprint() / 1048576f, compared, mismatches);
+		if (mismatches > 0)
+			throw new IllegalStateException("The navmesh file does not match what was generated");
 	}
 
 	/**

@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 to N2 done**, the rest is the design.
+Replacing reactive steering with real path planning. **N0 to N3 done**, the rest is the design.
 
 ## Why
 
@@ -46,6 +46,8 @@ Offline, as a `main` reusing `GeoWorldLoader` so it reads exactly what the serve
 4. Link neighbouring spans where the step is ≤ ~0.5 m, so stairs connect and ledges do not.
 5. Write a compact binary per map into `data/navmesh/<mapId>.nav`.
 
+The format is tiled, 64 columns square, deflated. Two decisions carry it: heights are quantized to 5 cm, which halves them into unsigned shorts, and each tile carries an offset per **row** instead of per column, so a lookup adds up at most one row of counts. That is what turns 151 MB of offsets into 1 MB. Tiles are also the unit lazy loading would use later, though whole maps load fast enough for now.
+
 Rays are independent, so the whole thing parallelises. Only the maps in use need generating at first — Poeta (210010000) is the test bed.
 
 ### Runtime
@@ -62,7 +64,7 @@ Rays are independent, so the whole thing parallelises. Only the maps in use need
 | N0 | Offline tool loads one map's geometry and reports triangle and placement counts | **Done.** 20028 meshes and 419707 entities on 151 maps, plus 919 town level clones, matches the server's 20028 and 420626 exactly |
 | N1 | Rasterise one map to spans, dump images | **Done.** Poeta is 6144x6144 columns holding 39.4 M surfaces, rasterized in 1.4 s. The height image shows its valleys, ridges and river, the structure image shows its buildings clustered in the built up area |
 | N2 | Walkability rules (slope, headroom, WALK volumes) | **Done.** 25.7 M of Poeta's 39.4 M surfaces are walkable, and the blocked ones trace its ridges and cliffs exactly. Its tree stumps, the kind of low prop the runtime probes cannot see at all, each block 8 to 15 cells and leave the ground under them unstandable for want of head room |
-| N3 | Binary format, write and read back | Round trip is identical, load time under a second |
+| N3 | Binary format, write and read back | **Done.** Poeta is a 38 MB file, written in 4.3 s, read back in 0.35 s into 117 MB of heap, with all 39.4 M surfaces compared and no mismatch |
 | N4 | A\* plus funnel smoothing, `//bot path <x> <y>` prints the route | A route around a building, not through it |
 | N5 | `BotMoveController` follows a planned route | A bot walks around the log instead of into it |
 | N6 | Long route inside a map, then the vendor run | A bot reaches a town npc and comes back |
@@ -86,7 +88,7 @@ These are for validating the generator, not for surveying the world: one known o
 
 ## Risks
 
-1. **Memory, confirmed by N1.** Poeta needs ~160 MB of surfaces and ~150 MB of column offsets, and it is a small map. The offsets array is the problem: one int per column whether or not anything is there. N3 must store columns sparsely, and generation already needs `-Xmx4g`.
+1. **Memory, addressed in N3.** The generator's own heightfield still needs `-Xmx4g`, but that is offline. At runtime a map costs 117 MB, so a handful can stay loaded and the rest must be loaded on demand. Sparse storage was the wrong answer: with 1.04 surfaces per column the grid is dense, and the cost was the bookkeeping, not the data.
 2. **The span format is a new file format to maintain.** Version it from the first byte, and keep the generator able to rebuild everything.
 3. **Multi-level geometry** (bridges, buildings, the Abyss) is where span linking gets subtle. N1's per-level images are what makes this debuggable.
 4. **Dynamic obstacles stay unsolved by the mesh** — players, npcs, gatherables, doors. The existing reactive layer keeps handling the last few metres.
