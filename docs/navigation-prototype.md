@@ -27,7 +27,7 @@ A geo probe is an infinitely thin line; the **client** collides a body-sized cap
 
 **Gatherables are not in the geo data at all.** They are spawned objects, so no ray reports them, yet the client collides with them. `gatherableClearance` handles them without geo: the bot already knows the ones around it, so each leg is clamped against any gatherable within 1.5 m of its path.
 
-Nothing in the geo API can be cast lower, so this cannot be fixed by probing differently — it needs collision data the engine does not expose for movement, which means the navmesh. Engine NPCs never hit this because they follow authored waypoints. It is a hard limit of the current approach, not a tuning problem.
+Nothing in the geo API can be cast lower, so this cannot be fixed by probing differently. The geometry itself is loaded in full, so the fix is to use it directly rather than through rays: see [navmesh-plan.md](navmesh-plan.md). Engine NPCs never hit this because they follow authored waypoints. It is a hard limit of the current approach, not a tuning problem.
 
 `BotGeoHelper.walkableCorridor` therefore casts three probes: the centre one, plus two deviated by `atan(BOT_RADIUS / reach)` so they end up ±0.5 m aside at the far end. The shortest of the three wins. Cost is 3× a probe, paid once per leg, not per tick.
 
