@@ -182,6 +182,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean followTheGroup() {
 		BotGroupManager.acceptPendingInvite(getOwner());
+		BotGroupManager.leaveIfLeaderless(getOwner());
 		Player leader = BotGroupManager.leaderToFollow(getOwner());
 		if (leader == null)
 			return false;

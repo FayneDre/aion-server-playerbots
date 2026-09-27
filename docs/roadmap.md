@@ -50,7 +50,7 @@ Following also stops re-planning on every tick: a leader at a run drifts past th
 
 A bot that catches up from far away **appears rather than walks into view** for its leader, because a client is only told about characters in its known list; the group map dot comes from team updates, which have no such range. That is what a real player at the same distance would look like too.
 
-A bot is passed over when a group looks for a new leader — leading means answering invitations and setting loot rules.
+A bot is passed over when a group looks for a new leader — leading means answering invitations and setting loot rules. That has a tail: a team keeps its leader field when that member leaves, and nothing replaces a leader a bot may not become, so the group of a player who has just walked out still names them. Bots followed that ghost until `leaderToFollow` started checking the leader is still a member. A group with no player left in it is then left outright, rather than leaving bots counting each other as team mates for targeting and loot for ever.
 
 **Left for later:** nothing makes a bot follow through a teleporter, and a group of bots alone has no one to decide for it.
 

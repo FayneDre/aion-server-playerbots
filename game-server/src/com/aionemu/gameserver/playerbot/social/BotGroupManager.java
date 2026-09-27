@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
+import com.aionemu.gameserver.model.team.group.PlayerGroupService;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 
@@ -27,6 +28,29 @@ public class BotGroupManager {
 	private static final float FORMATION_RADIUS_SPREAD = 0.25f;
 
 	private BotGroupManager() {
+	}
+
+	/**
+	 * Leaves a group that has nobody left to lead it.
+	 * <p>
+	 * A bot cannot lead — leading means answering invitations and setting loot rules — so a group whose last player has gone is a group that will
+	 * never decide anything again. Staying in it would leave bots counting each other as team mates for targeting and loot for ever, so they walk
+	 * out and go back to their own business, which is what a player would do.
+	 *
+	 * @return true if the bot left, in which case it is no longer in a group.
+	 */
+	public static boolean leaveIfLeaderless(Player bot) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return false;
+		for (Player member : team.getMembers()) {
+			if (!member.isBot() && team.hasMember(member.getObjectId()))
+				return false; // someone is still there to lead
+		}
+		if (bot.getPlayerGroup() == null)
+			return false; // an alliance is not ours to dissolve, and bots are never invited into one on purpose
+		PlayerGroupService.removePlayer(bot);
+		return true;
 	}
 
 	/**
@@ -88,7 +112,9 @@ public class BotGroupManager {
 		if (team == null)
 			return null;
 		Player leader = team.getLeaderObject();
-		if (leader == null || leader.equals(bot) || leader.isBot())
+		// A team keeps its leader field when that member leaves, and nothing replaces a leader a bot is not allowed to become — so the group of a
+		// player who has just walked out still names them, and bots went on following someone who was no longer in it.
+		if (leader == null || leader.equals(bot) || leader.isBot() || !team.hasMember(leader.getObjectId()))
 			return null;
 		// another map is not a navigation problem but a travel one, and bots cannot travel yet
 		return leader.getWorldId() == bot.getWorldId() && leader.getInstanceId() == bot.getInstanceId() ? leader : null;
