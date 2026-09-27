@@ -1,10 +1,12 @@
 package com.aionemu.gameserver.playerbot.social;
 
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -17,6 +19,8 @@ public class BotGroupManager {
 
 	/** How far from itself a bot looks for a fight its group is already in. Beyond this it is someone else's problem, or the group is scattered. */
 	private static final float ASSIST_RADIUS = 25f;
+	/** How far from the leader a follower stands. Close enough to be with the group, far enough not to be inside it. */
+	private static final float FORMATION_RADIUS = 3f;
 
 	private BotGroupManager() {
 	}
@@ -32,6 +36,34 @@ public class BotGroupManager {
 	public static boolean acceptPendingInvite(Player bot) {
 		return bot.getResponseRequester().respond(SM_QUESTION_WINDOW.STR_PARTY_DO_YOU_ACCEPT_INVITATION, 1)
 			|| bot.getResponseRequester().respond(SM_QUESTION_WINDOW.STR_FORCE_DO_YOU_ACCEPT_INVITATION, 1);
+	}
+
+	/**
+	 * Where a bot stands when it has nothing to do but keep up: its own place around the leader rather than the leader's own feet.
+	 * <p>
+	 * Every follower aiming at the same point is what made them pile onto their leader and jostle each other for it. A slot each fixes both at once:
+	 * they stand beside rather than on top, and they stop competing for one spot, which is most of what read as restlessness.
+	 * <p>
+	 * The places are laid out in <b>world</b> directions, not relative to where the leader faces. Tied to a facing, the whole formation would swing
+	 * round every time the leader turned on the spot, and send everyone running for no reason — the opposite of what this is for. Members are ordered
+	 * by object id so a bot keeps the same place from one tick to the next.
+	 *
+	 * @return The point to stand on, or the leader's own position if the group cannot be read.
+	 */
+	public static Vector3f formationSpot(Player bot, Player leader) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return new Vector3f(leader.getX(), leader.getY(), leader.getZ());
+		List<Player> followers = new ArrayList<>();
+		for (Player member : team.getMembers()) {
+			if (!member.equals(leader))
+				followers.add(member);
+		}
+		followers.sort(Comparator.comparingInt(Player::getObjectId));
+		int slot = Math.max(0, followers.indexOf(bot));
+		double angle = followers.isEmpty() ? 0 : slot * 2 * Math.PI / followers.size();
+		return new Vector3f(leader.getX() + (float) Math.cos(angle) * FORMATION_RADIUS,
+			leader.getY() + (float) Math.sin(angle) * FORMATION_RADIUS, leader.getZ());
 	}
 
 	/**

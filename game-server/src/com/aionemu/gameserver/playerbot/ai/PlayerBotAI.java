@@ -74,8 +74,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final int MIN_ENGAGE_HP_PERCENT = 90;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	private static final float ANCHOR_TOLERANCE = 5f;
-	/** How close a bot keeps to its group leader. Tighter than the camp tolerance: a follower stands with its group, it does not merely nearby it. */
-	private static final float FOLLOW_DISTANCE = 3f;
+	/** How near its place in the formation a follower settles. Small, because that place is already set apart from the leader. */
+	private static final float FOLLOW_DISTANCE = 2f;
 	/** Roughly the time a player spends looking at the resurrection window. */
 	private static final int REVIVE_DELAY_MILLIS = 10000;
 
@@ -185,7 +185,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Player leader = BotGroupManager.leaderToFollow(getOwner());
 		if (leader == null)
 			return false;
-		setAnchor(leader.getX(), leader.getY(), leader.getZ());
+		// the bot's own place beside the leader, not the leader's feet: everything downstream already works off the anchor, so this is all "stand
+		// with the group" needs to be
+		Vector3f spot = BotGroupManager.formationSpot(getOwner(), leader);
+		setAnchor(spot.getX(), spot.getY(), spot.getZ());
 		return true;
 	}
 
@@ -497,6 +500,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
 			return;
 		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > FOLLOW_DISTANCE) {
+			// already on its way there, and the place has not drifted enough to be worth a new plan. Without this the bot re-plans every single tick
+			// while its leader runs, and every plan turns it a little differently, which is what the walk looks like from outside: restless.
+			if (moveController.isInMove() && moveController.isHeadingTo(anchorX, anchorY, RETARGET_STEP))
+				return;
 			moveController.moveToPoint(anchorX, anchorY, anchorZ);
 			return;
 		}
