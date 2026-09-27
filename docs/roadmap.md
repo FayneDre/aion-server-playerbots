@@ -109,7 +109,15 @@ Adventurers have no occupation. They hunt, which is how they level.
 
 **Settlements are read from the world, not authored.** `BotPlaces` clusters the spawns of peaceful npcs (tribe `GENERAL`) and keeps the gatherings of three or more. Poeta yields Akarios village and its three camps out of 43 townsfolk against 986 hostiles. A settlement becomes the bot's anchor while it is there, so everything that already works off the anchor keeps it in place without a second set of rules.
 
-**Still missing:** population seeding. `//bot populate` clones one template character, which is why every bot here is a priest wearing three pieces — it should draw a level from the region's own mobs, spread the classes, and fit gear to the level.
+### Filling a region with people who belong to it
+
+`//bot populate <count> <templateName>` used to clone one template character that many times: one class, one level, one set of training gear repeated. Nothing about it was a population.
+
+What a region needs is now taken from the region. The **level** comes from the creatures living there (`BotPlaces.levelOf`), drawn a couple either side so a crowd is not uniform. The **class** is spread over those a character of that level could actually be — below ten only the four starting classes exist, and a cleric of level six is a character the game itself cannot make. The **gear** is fitted per bot by `BotOutfitter`, which reads the item data for what that class may wear at that level, keeps nothing above superior quality, and picks at random among the best few so a village is not in uniform. Each piece is created already identified and already bound, since otherwise a new bot spends its first ten minutes reading and binding instead of living.
+
+They are **residents from birth**, so they stay the level their home is worth.
+
+Only the restrictions the engine enforces anyway are applied when choosing gear — class, race, required level, quality. A second copy of its rules would drift from it, which is the mistake this project keeps paying for elsewhere.
 
 ## Known limits, in order of how much they will bite
 

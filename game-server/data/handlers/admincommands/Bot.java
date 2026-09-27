@@ -101,23 +101,22 @@ public class Bot extends AdminCommand {
 	}
 
 	private void populate(Player admin, String[] params) {
-		if (params.length < 5) {
-			sendInfo(admin, "Usage: //bot populate <count> <class> <level> <templateName>");
+		if (params.length < 3) {
+			sendInfo(admin, "Usage: //bot populate <count> <templateName>   fills this map with people of its own level");
 			return;
 		}
-		int count, level;
+		int count;
 		try {
 			count = Integer.parseInt(params[1]);
-			level = Integer.parseInt(params[3]);
 		} catch (NumberFormatException e) {
-			sendInfo(admin, "Count and level must be numbers");
+			sendInfo(admin, "Count must be a number");
 			return;
 		}
 		if (count < 1 || count > MAX_POPULATE) {
 			sendInfo(admin, "Count must be between 1 and " + MAX_POPULATE);
 			return;
 		}
-		sendInfo(admin, PlayerBotService.getInstance().populate(count, params[2], level, params[4]));
+		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin, params[2]));
 	}
 
 	private void withName(Player admin, String[] params, Function<String, String> action) {

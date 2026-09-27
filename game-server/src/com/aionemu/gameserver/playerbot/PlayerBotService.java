@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.dao.PlayerDAO;
+import com.aionemu.commons.utils.Rnd;
 import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -19,10 +20,12 @@ import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
+import com.aionemu.gameserver.playerbot.lifecycle.BotOutfitter;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
+import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.services.player.PlayerService;
@@ -158,7 +161,25 @@ public class PlayerBotService {
 	/**
 	 * Creates several bots at once with generated names, for populating an area.
 	 */
-	public String populate(int count, String className, int level, String templateName) {
+	/**
+	 * Fills a region with people who belong to it.
+	 * <p>
+	 * The old version cloned one template character count times, so a map ended up with one class, one level and one set of training gear repeated.
+	 * Nothing about it was a population. What a region needs is taken from the region itself: the level band comes from the creatures living there,
+	 * the classes are spread over those a character of that level could be, and the gear is fitted to each one. They are residents from birth, so
+	 * they stay the level their home is worth.
+	 *
+	 * @param commander Whoever asked, whose map is populated and whose race and looks the new characters borrow.
+	 */
+	public String populate(int count, Player commander, String templateName) {
+		PlayerCommonData template = PlayerDAO.loadPlayerCommonDataByName(templateName);
+		if (template == null)
+			return "No character found with name " + templateName + " to copy from";
+		int worldId = commander.getWorldId();
+		int band = BotPlaces.levelOf(worldId);
+		if (BotPlaces.settlements(worldId).isEmpty())
+			return "Nobody lives on this map, so there is nowhere to put anyone";
+
 		List<String> created = new ArrayList<>();
 		for (int i = 0; i < count; i++) {
 			String name;
@@ -167,12 +188,33 @@ public class PlayerBotService {
 			} catch (IllegalStateException e) {
 				return report(created, "ran out of free names");
 			}
-			String result = create(name, className, level, templateName);
-			if (!result.startsWith("Created "))
-				return report(created, result);
-			created.add(name);
+			int level = Math.max(1, band + Rnd.get(-2, 2));
+			PlayerClass playerClass = classFor(level);
+			try {
+				Player bot = PlayerBotCreationService.create(name, playerClass, level, template);
+				BotRoster.setResident(name, true);
+				BotOutfitter.dress(bot);
+				PlayerService.storePlayer(bot);
+				created.add(name + " (" + playerClass + " " + level + ")");
+			} catch (IllegalArgumentException | IllegalStateException e) {
+				log.warn("Could not create bot " + name, e);
+				return report(created, e.getMessage());
+			}
 		}
-		return report(created, null);
+		return report(created, null) + ", around level " + band;
+	}
+
+	/**
+	 * @return A class a character of this level could actually be. Below ten only the four starting classes exist, and handing out a cleric of level
+	 *         six would be a character the game itself cannot make.
+	 */
+	private static PlayerClass classFor(int level) {
+		List<PlayerClass> choices = new ArrayList<>();
+		for (PlayerClass playerClass : PlayerClass.values()) {
+			if (playerClass.isStartingClass() == (level < 10))
+				choices.add(playerClass);
+		}
+		return choices.get(Rnd.get(0, choices.size() - 1));
 	}
 
 	private String report(List<String> created, String failure) {
