@@ -37,6 +37,11 @@ public class BotSkillManager {
 	/** Mana under which resting beats casting: it restores health and mana alike, and the next fight needs the mana either way. */
 	public static final int HEAL_MIN_MP_PERCENT = 30;
 	/**
+	 * Health under which a group mate is healed. Higher than the bar a bot uses for itself, because it is the only one that can help them: a bot can
+	 * sit down and regenerate what it does not heal, while an ally it leaves hurt stays hurt.
+	 */
+	public static final int HEAL_ALLY_PERCENT = 75;
+	/**
 	 * Health under which a bot spends a defensive ability it was otherwise saving. Deliberately above the healing threshold: damage prevented is worth
 	 * more than damage healed, and a shield raised at the last moment absorbs nothing.
 	 */
@@ -106,10 +111,10 @@ public class BotSkillManager {
 	public static boolean tryHealSelf(Player bot, int belowPercent) {
 		if (bot.getLifeStats().getHpPercentage() >= belowPercent || bot.getLifeStats().isDead())
 			return false;
-		return cast(bot, bot, skills(bot, BotSkillManager::isSelfHeal));
+		return cast(bot, bot, skills(bot, BotSkillManager::isHeal));
 	}
 
-	private static boolean isSelfHeal(Player bot, SkillTemplate template) {
+	private static boolean isHeal(Player bot, SkillTemplate template) {
 		// FRIEND covers self and allies alike; what matters is that it is not aimed at an enemy
 		if (template.getProperties().getTargetRelation() == TargetRelationAttribute.ENEMY)
 			return false;
@@ -165,11 +170,11 @@ public class BotSkillManager {
 	 * Asked by stack group rather than by skill id, because two ranks of the same buff share a group while their ids differ: going by id, a bot would
 	 * put its best rank up and overwrite it with a weaker one a tick later, forever.
 	 */
-	private static boolean isAlreadyUp(Player bot, SkillTemplate template) {
+	private static boolean isAlreadyUp(Creature target, SkillTemplate template) {
 		String stack = template.getStack();
 		if (stack != null)
-			return bot.getEffectController().getAbnormalEffect(stack) != null;
-		return bot.getEffectController().hasAbnormalEffect(template.getSkillId());
+			return target.getEffectController().getAbnormalEffect(stack) != null;
+		return target.getEffectController().hasAbnormalEffect(template.getSkillId());
 	}
 
 	/**
@@ -177,6 +182,33 @@ public class BotSkillManager {
 	 *
 	 * @return true if a skill was cast.
 	 */
+	/**
+	 * Heals a group mate.
+	 * <p>
+	 * The same skills the bot heals itself with: which of them can reach someone else is the engine's question, not ours, and it answers it as each
+	 * one is cast. A class with nothing but self heals simply never lands one here.
+	 *
+	 * @return true if a heal was cast, in which case the bot is busy with it.
+	 */
+	public static boolean tryHealAlly(Player bot, Player ally) {
+		if (ally == null || ally.getLifeStats().isDead() || ally.getLifeStats().getHpPercentage() >= HEAL_ALLY_PERCENT)
+			return false;
+		return cast(bot, ally, skills(bot, BotSkillManager::isHeal));
+	}
+
+	/**
+	 * Puts one of the bot's buffs on a group mate who is missing it. Self only buffs fail their own target check and are skipped, so no list of which
+	 * buffs reach a party has to be kept.
+	 *
+	 * @return true if one was cast.
+	 */
+	public static boolean tryBuffAlly(Player bot, Player ally) {
+		if (ally == null || ally.getLifeStats().isDead())
+			return false;
+		return cast(bot, ally, skills(bot, (caster, template) -> isSelfBuff(template) && isWorthKeepingUp(template)
+			&& !coversAnApproach(template) && !isAlreadyUp(ally, template)));
+	}
+
 	public static boolean tryCastSkill(Player bot, Creature target) {
 		if (isSavingManaToHeal(bot))
 			return false; // the auto attack costs nothing, and the fight is not lost until the heal cannot be paid for
@@ -244,7 +276,7 @@ public class BotSkillManager {
 			return false;
 		for (PlayerSkillEntry entry : bot.getSkillList().getAllSkills()) {
 			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
-			if (template != null && template.getProperties() != null && !template.isPassive() && isSelfHeal(bot, template))
+			if (template != null && template.getProperties() != null && !template.isPassive() && isHeal(bot, template))
 				return true;
 		}
 		return false;

@@ -32,6 +32,10 @@ Invite a bot from the client like anyone else and it joins: the decision tick an
 
 The leader's target is taken first so a group converges instead of each member helping whoever is nearest, and bots pile onto it through `forceClaim`. The level gap a bot applies to its own fights is deliberately not applied: the group chose this fight, and refusing to help because the mob is big is the one thing a member must not do.
 
+**A group mate's attacker is assisted, not just the leader's selection.** Reading `getTarget()` alone left a bot standing by while its leader was being eaten, because a player whose selection is elsewhere — or who never clicked the mob that jumped them — is being attacked all the same. The mob's aggro list is asked instead: it remembers who it is fighting whatever anyone has selected. The leader's attacker comes first, then any member's.
+
+**Healing and buffing reach the group.** The bot uses the same skills it heals and buffs itself with, aimed at a group mate; which of them can reach someone else is the engine's question, answered as each is cast, so no list of party-capable skills is kept. Allies are healed below 75%, a higher bar than the bot uses for itself, because a bot can sit down and regenerate what it does not heal while an ally it leaves hurt stays hurt. In a fight an ally's life comes before the bot's damage but after the bot's own survival.
+
 **Selecting a target is not fighting it.** Players click mobs to read their level, and a group whose bots pull whatever the leader looks at is unusable, so the mob's own aggro list decides: it holds a grudge against whoever hit it, and equally against whoever it chose to attack, which means a leader under attack is assisted too.
 
 Resting gives way to following: a bot that has fallen behind walks instead of sitting down, since resting takes it out of the fight for as long as it lasts.

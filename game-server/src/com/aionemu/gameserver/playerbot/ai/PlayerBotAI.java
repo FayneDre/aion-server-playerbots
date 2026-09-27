@@ -199,6 +199,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		if (BotSkillManager.tryBuffSelf(getOwner()) || BotSkillManager.tryChantMantra(getOwner()))
 			return;
+		if (tendToTheGroup())
+			return;
 		Creature assisted = BotGroupManager.targetToAssist(getOwner());
 		if (assisted == null) {
 			followLeader(); // standing by is the default, not looking for something to do
@@ -206,6 +208,22 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 		BotTargetRegistry.forceClaim(assisted, getOwner()); // the group piles on together, which is the point of being one
 		startAttacking(assisted);
+	}
+
+	/**
+	 * Looks after the group mates: the most hurt one first, then whoever is missing a buff.
+	 *
+	 * @return true if a skill was cast, in which case the bot is busy with it.
+	 */
+	private boolean tendToTheGroup() {
+		Player hurt = BotGroupManager.mostHurtMember(getOwner(), BotSkillManager.HEAL_ALLY_PERCENT);
+		if (BotSkillManager.tryHealAlly(getOwner(), hurt))
+			return true;
+		for (Player member : BotGroupManager.membersToTendTo(getOwner())) {
+			if (BotSkillManager.tryBuffAlly(getOwner(), member))
+				return true;
+		}
+		return false;
 	}
 
 	/**
@@ -403,6 +421,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 		// the defensive ability comes before the heal: it is cheaper in mana and it stops damage instead of repairing it, which only works in advance
 		if (BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT))
+			return true;
+		// a group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody
+		if (BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT)))
 			return true;
 		// a leap covers ground the bot would otherwise walk, and those last metres on foot are where bots get stuck
 		if (closing && BotSkillManager.tryGapCloser(bot, target))

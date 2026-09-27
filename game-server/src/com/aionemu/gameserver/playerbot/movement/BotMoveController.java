@@ -273,6 +273,9 @@ public class BotMoveController extends PlayerMoveController {
 			return false;
 		}
 		detourSide = detour.side();
+		if (!onDetour) // once per obstacle, not once per tick: enough to measure how wide a sidestep really goes
+			log.info("Bot {} steps aside at {} to {}, heading for {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
+				describe(detour.point().getX(), detour.point().getY(), detour.point().getZ()), describe(goalX, goalY, goalZ));
 		onDetour = true;
 		moveToReachablePoint(detour.point().getX(), detour.point().getY(), detour.point().getZ());
 		return true;
