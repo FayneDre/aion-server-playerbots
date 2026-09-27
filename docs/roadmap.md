@@ -103,6 +103,8 @@ The choice leans on a **temperament fixed to the bot's own id**, so one that lik
 
 Adventurers have no occupation. They hunt, which is how they level.
 
+**A resident has a home, and it is not simply the nearest place.** Loitering used to send a bot to whichever settlement it happened to be beside, which means a village nobody spawned next to is a village nobody ever visits: Akarios stayed empty while three camps were crowded. A home fixed to the bot's own id spreads a population over the places a map actually has, weighted by how many townsfolk stand in each — so most residents live where the world itself put most of its people.
+
 **Settlements are read from the world, not authored.** `BotPlaces` clusters the spawns of peaceful npcs (tribe `GENERAL`) and keeps the gatherings of three or more. Poeta yields Akarios village and its three camps out of 43 townsfolk against 986 hostiles. A settlement becomes the bot's anchor while it is there, so everything that already works off the anchor keeps it in place without a second set of rules.
 
 **Still missing:** population seeding. `//bot populate` clones one template character, which is why every bot here is a priest wearing three pieces — it should draw a level from the region's own mobs, spread the classes, and fit gear to the level.

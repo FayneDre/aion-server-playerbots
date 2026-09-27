@@ -28,19 +28,47 @@ public class BotPlaces {
 	/** How many of them make a settlement rather than a lone npc keeping a road. */
 	private static final int SETTLEMENT_SIZE = 3;
 
-	private static final Map<Integer, List<Vector3f>> settlementsByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Settlement>> settlementsByMap = new ConcurrentHashMap<>();
+
+	/** A place people gather, and how many of them do: the count is what makes a village draw more residents than a roadside camp. */
+	public record Settlement(Vector3f centre, int townsfolk) {
+	}
 
 	private BotPlaces() {
 	}
 
 	/** @return The settlements of a map, largest first, or an empty list where nobody lives. */
-	public static List<Vector3f> settlements(int worldId) {
+	public static List<Settlement> settlements(int worldId) {
 		return settlementsByMap.computeIfAbsent(worldId, BotPlaces::locateSettlements);
+	}
+
+	/**
+	 * Where a bot lives.
+	 * <p>
+	 * Loitering used to send a bot to the settlement nearest to wherever it happened to be, which means a village nobody spawned beside is a village
+	 * nobody ever visits — Akarios stayed empty while three camps were crowded. A home fixed to the bot's own id spreads a population over the places
+	 * a map actually has, and weighting by the number of townsfolk puts most of them where most of the world put its own people.
+	 *
+	 * @return The bot's home, or null on a map where nobody lives.
+	 */
+	public static Vector3f homeOf(int worldId, int objectId) {
+		List<Settlement> places = settlements(worldId);
+		if (places.isEmpty())
+			return null;
+		int total = places.stream().mapToInt(Settlement::townsfolk).sum();
+		int pick = Math.floorMod(Integer.hashCode(objectId * 0x9E3779B9), total);
+		for (Settlement settlement : places) {
+			pick -= settlement.townsfolk();
+			if (pick < 0)
+				return settlement.centre();
+		}
+		return places.get(0).centre();
 	}
 
 	/** @return The settlement nearest to a point, or null if the map has none. */
 	public static Vector3f nearestSettlement(int worldId, float x, float y) {
-		return settlements(worldId).stream().min(Comparator.comparingDouble(spot -> PositionUtil.getDistance(x, y, spot.x, spot.y))).orElse(null);
+		return settlements(worldId).stream().map(Settlement::centre)
+			.min(Comparator.comparingDouble(spot -> PositionUtil.getDistance(x, y, spot.x, spot.y))).orElse(null);
 	}
 
 	/**
@@ -48,10 +76,9 @@ public class BotPlaces {
 	 *         destination rather than a direction.
 	 */
 	public static Vector3f otherSettlement(int worldId, Vector3f current, int pick) {
-		List<Vector3f> places = settlements(worldId);
-		if (places.size() < 2)
-			return places.isEmpty() ? null : places.get(0);
-		List<Vector3f> others = new ArrayList<>(places);
+		List<Vector3f> others = new ArrayList<>(settlements(worldId).stream().map(Settlement::centre).toList());
+		if (others.size() < 2)
+			return others.isEmpty() ? null : others.get(0);
 		others.remove(current);
 		return others.get(Math.floorMod(pick, others.size()));
 	}
@@ -62,7 +89,7 @@ public class BotPlaces {
 	 * Greedy and good enough: townsfolk are few, and two clusters that should have been one merely give a wanderer two destinations a few paces
 	 * apart. Lone npcs are dropped — a road keeper is not a village.
 	 */
-	private static List<Vector3f> locateSettlements(int worldId) {
+	private static List<Settlement> locateSettlements(int worldId) {
 		List<List<Vector3f>> clusters = new ArrayList<>();
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
 			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
@@ -71,11 +98,11 @@ public class BotPlaces {
 			for (SpawnTemplate spawn : group.getSpawnTemplates())
 				addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
 		}
-		List<Vector3f> settlements = new ArrayList<>();
+		List<Settlement> settlements = new ArrayList<>();
 		clusters.sort(Comparator.comparingInt(List<Vector3f>::size).reversed());
 		for (List<Vector3f> cluster : clusters) {
 			if (cluster.size() >= SETTLEMENT_SIZE)
-				settlements.add(centreOf(cluster));
+				settlements.add(new Settlement(centreOf(cluster), cluster.size()));
 		}
 		return settlements;
 	}

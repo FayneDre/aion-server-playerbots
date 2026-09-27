@@ -551,7 +551,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean loiter() {
 		if (occupationDestination == null)
-			occupationDestination = BotPlaces.nearestSettlement(getOwner().getWorldId(), getOwner().getX(), getOwner().getY());
+			occupationDestination = BotPlaces.homeOf(getOwner().getWorldId(), getOwner().getObjectId());
 		if (occupationDestination == null)
 			return false; // nobody lives on this map, so there is nowhere to stand about
 		setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
@@ -563,7 +563,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private boolean wander() {
 		Player bot = getOwner();
 		if (occupationDestination == null) {
-			Vector3f here = BotPlaces.nearestSettlement(bot.getWorldId(), bot.getX(), bot.getY());
+			Vector3f here = BotPlaces.homeOf(bot.getWorldId(), bot.getObjectId());
 			occupationDestination = BotPlaces.otherSettlement(bot.getWorldId(), here, bot.getObjectId() + (int) occupationUntil);
 		}
 		if (occupationDestination == null)
