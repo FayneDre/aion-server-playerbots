@@ -18,6 +18,18 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 
 **Selling does not go through `TradeService.performSellToShop`.** It gates on `PlayerRestrictions.canTrade`, which used to reject anything not `isOnline()`, so every sale silently failed; `BotVendorManager.sellJunk` redoes the small amount of business logic itself (price, sell limit, repurchase list, kinah). Since `isOnline()` was fixed at the root (below), the engine's own path would now work — the duplicate is kept only because it is tested, and is the first thing to delete when that area is next touched.
 
+## Done: looking after itself
+
+**A bot wears the best of what it owns.** Without this it fights for hours in the gear it spawned with, looting better pieces and walking past them in its own bag. Whether it is *allowed* to wear something is never asked: `Equipment.equipItem` already weighs the abyss rank, the mastery skills, the class, the level, the race, the gender and the room left in the bag, so trying is the question — the same bargain the skill code makes, and for the same reason: a second copy of the engine's rules would drift from it.
+
+A weapon is only ever weighed against a weapon and armour against armour. Slots overlap in ways that make a free-for-all dangerous — a shield and a two handed weapon claim the same hand, so a shield that merely scored higher would strip the weapon and the weapon would not win it back. Anything finer than that is too strict: the first attempt insisted on the same item group, which is the *material*, and it blocked every real upgrade, since levelling gear crosses from leather to cloth and back with whatever drops.
+
+**Most looted gear cannot be worn by anyone yet.** A piece that rolls bonus stats drops unidentified (`tuneCount == -1`) and the engine refuses to equip it — for a player as much as for a bot. A player uses an Identification Scroll; bots own none and cannot buy one, so they wear only what needs no identifying. That is the next thing to close, and it belongs with the shop trip they already make.
+
+Which piece is better is judged on its level first and its quality second. That is a proxy and says so: comparing what items actually grant would mean weighing attack against defence against a resistance, which has no answer that holds for every class.
+
+**Bots drink.** A class with no heal of its own had nothing between being hurt and sitting down, and healers spent their last mana without ever reaching for the flask that would have given it back. Potions are found by what they do rather than by a list of item ids — an item whose use casts a skill that heals — and used through the same path the client packet takes, so the prison, the abnormal states, the cooldown and "this would do nothing at full health" are all still the engine's call. That path only became reachable once `isOnline()` stopped meaning "has a socket".
+
 ## Then
 
 **Skill rotation (M7), started.** Bots heal, buff, cast from a skill's own range rather than walking into melee first, shield themselves when a fight turns, and open with a burst — they open with a class's own move — a leap, or a walk in under stealth — and they no longer pick the attacks that leap backwards. They follow their skill chains, do not re-apply a debuff already on the target, and chanters run their mantras. See [combat-skills.md](combat-skills.md). They lead with their strongest skill rather than their newest, which the id ordering had badly wrong. Still missing: an authored rotation per class — what exists is a set of tiers read from the data.

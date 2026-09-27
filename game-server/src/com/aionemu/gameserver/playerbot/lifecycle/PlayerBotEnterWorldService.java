@@ -6,6 +6,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.services.SkillLearnService;
 import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.world.World;
@@ -37,6 +38,7 @@ public class PlayerBotEnterWorldService {
 	public static void enterWorld(Player bot) {
 		// before anything else: it is what makes the engine treat this character as present despite having no connection
 		bot.setBot();
+		learnMissingSkills(bot);
 		applyPassiveSkillEffects(bot);
 		bot.setAi(new PlayerBotAI(bot));
 		bot.setMoveController(new BotMoveController(bot));
@@ -46,6 +48,21 @@ public class PlayerBotEnterWorldService {
 		bot.getController().onEnterWorld();
 		// PlayerController never fires AI events, so the bot AI would stay in AIState.CREATED and ignore everything
 		bot.getAi().onGeneralEvent(AIEventType.SPAWNED);
+	}
+
+	/**
+	 * Teaches the bot everything its class learns by itself up to its level.
+	 * <p>
+	 * A real character collects these one level at a time from the moment it is created. A bot made at level twenty never lived through the first
+	 * nineteen, so it never received any of them, and nothing since would: {@code onLevelChange} only teaches the levels actually gained. What was
+	 * missing was not only damage — the armour and weapon masteries are learned at level one, and without them
+	 * {@code Equipment.equipItem} refuses every piece of gear a bot ever loots, silently, for ever.
+	 * <p>
+	 * Done on entering the world rather than at creation so that bots made before this existed are mended the next time they spawn. Asking twice
+	 * costs nothing: the service keeps only the highest rank of each skill.
+	 */
+	private static void learnMissingSkills(Player bot) {
+		SkillLearnService.learnNewSkills(bot, 1, bot.getLevel());
 	}
 
 	/**

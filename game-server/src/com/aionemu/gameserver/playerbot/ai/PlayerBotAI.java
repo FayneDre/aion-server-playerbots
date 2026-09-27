@@ -17,9 +17,11 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
+import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
+import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
@@ -252,6 +254,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				startAttacking(attacker); // no health check: a bot being hit defends itself, it does not sit down
 			else if (collectLoot()) {
 				// busy with a corpse, everything else can wait
+			} else if (BotEquipManager.equipUpgrades(getOwner())) {
+				// dressed itself a little better; grouped or not, that is worth the tick
 			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following))
 				recover();
 			else if (following) {
@@ -427,6 +431,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 		// the defensive ability comes before the heal: it is cheaper in mana and it stops damage instead of repairing it, which only works in advance
 		if (BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT))
+			return true;
+		// the flask is what a class with no heal of its own has instead, and what a healer reaches for when the heal is on cooldown
+		if (BotPotionManager.tryHealingPotion(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
+			|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT))
 			return true;
 		// a group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody
 		if (BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT)))
