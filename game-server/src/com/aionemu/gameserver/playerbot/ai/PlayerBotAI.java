@@ -234,6 +234,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return false;
 	}
 
+	private boolean isStandingStill() {
+		return !(getOwner().getMoveController() instanceof BotMoveController moveController) || !moveController.isInMove();
+	}
+
 	/**
 	 * @return true when the bot has fallen behind its group and should walk rather than sit down. Resting takes a bot out of the fight for as long as
 	 *         it lasts, which is fine alone in an empty camp and not fine when the group has moved on without it.
@@ -256,6 +260,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// busy with a corpse, everything else can wait
 			} else if (BotEquipManager.equipUpgrades(getOwner())) {
 				// dressed itself a little better; grouped or not, that is worth the tick
+			} else if (isStandingStill() && BotEquipManager.identifyUpgrade(getOwner())) {
+				// reading a piece is five seconds during which a single step, blow or cast throws it away, so it is only begun from a standstill
 			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following))
 				recover();
 			else if (following) {

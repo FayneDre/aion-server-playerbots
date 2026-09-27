@@ -1,5 +1,8 @@
 package com.aionemu.gameserver.playerbot.economy;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.model.TaskId;
@@ -29,12 +32,54 @@ public class BotEquipManager {
 	 * @return true if something was equipped. One per call, so a bagful is put on over several seconds rather than in one frame.
 	 */
 	public static boolean equipUpgrades(Player bot) {
-		// An identification is five seconds of standing still, watched by an observer that cancels it the moment its owner moves or fights. Claiming
-		// the tick while it runs is what lets it finish.
-		if (bot.getController().hasTask(TaskId.ITEM_USE))
+		if (isReading(bot))
 			return true;
+		// Every candidate is tried, not just the best one. The engine refuses plenty of them — a mace a priest has no mastery for, a piece for the
+		// other race — and stopping at the first refusal would leave the bot staring at the same unusable item for ever while the wearable one two
+		// places further down the bag went unnoticed.
+		for (Item upgrade : upgrades(bot, true)) {
+			if (bot.getEquipment().equipItem(upgrade.getObjectId(), upgrade.getItemTemplate().getItemSlot()) != null) {
+				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} puts on {}", bot.getName(), upgrade.getItemTemplate().getL10n());
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Starts reading an unidentified piece that would be an upgrade.
+	 * <p>
+	 * A piece that rolls bonus stats drops unidentified, and unidentified is unwearable — which is why the first version of this quietly wore
+	 * nothing at all. Reading one costs no scroll, only five seconds of standing perfectly still: the observer watching those seconds gives up on
+	 * movement, on a blow landed or taken, on a cast, even on sitting down. Picking a quiet moment is therefore the caller's job; this only says
+	 * whether there is anything worth reading.
+	 *
+	 * @return true if a reading was started, during which the bot must be left alone.
+	 */
+	public static boolean identifyUpgrade(Player bot) {
+		if (isReading(bot))
+			return true;
+		List<Item> unread = upgrades(bot, false);
+		if (unread.isEmpty())
+			return false;
+		// the judgement holds unread: identifying rolls bonus stats without touching the level or the quality it was judged on
+		ItemActionService.identifyItem(bot, unread.get(0));
+		return true;
+	}
+
+	/**
+	 * {@code hasScheduledTask}, not {@code hasTask}: the latter only asks whether that slot was ever filled, and nothing empties it when the task
+	 * finishes, so a bot that read one thing would have stood there claiming to be busy for the rest of its life.
+	 */
+	private static boolean isReading(Player bot) {
+		return bot.getController().hasScheduledTask(TaskId.ITEM_USE);
+	}
+
+	/** @return Every piece in the bag that beats what is worn in its place, among those already read or not. */
+	private static List<Item> upgrades(Player bot, boolean identified) {
+		List<Item> found = new ArrayList<>();
 		for (Item candidate : bot.getInventory().getItems()) {
-			if (!isGear(candidate) || candidate.isEquipped())
+			if (!isGear(candidate) || candidate.isEquipped() || candidate.isIdentified() != identified)
 				continue;
 			Item worn = wornInPlaceOf(bot, candidate);
 			// A weapon is only ever weighed against a weapon, and armour against armour. Slots overlap in ways that make a free-for-all dangerous:
@@ -43,19 +88,9 @@ public class BotEquipManager {
 			// levelling gear crosses from leather to cloth and back with whatever drops.
 			if (worn != null && (worn.getItemTemplate().isWeapon() != candidate.getItemTemplate().isWeapon() || score(worn) >= score(candidate)))
 				continue;
-			// A piece that rolls bonus stats drops unidentified, and unidentified is unwearable. Identifying costs nothing but the five seconds:
-			// the scroll a player buys is for re-rolling an identified piece, not for reading an unknown one. Only worthwhile pieces are read, and
-			// the judgement holds either way, since identifying rolls bonus stats without touching the level or the quality it was judged on.
-			if (!candidate.isIdentified()) {
-				ItemActionService.identifyItem(bot, candidate);
-				return true;
-			}
-			if (bot.getEquipment().equipItem(candidate.getObjectId(), candidate.getItemTemplate().getItemSlot()) != null) {
-				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} puts on {}", bot.getName(), candidate.getItemTemplate().getL10n());
-				return true;
-			}
+			found.add(candidate);
 		}
-		return false;
+		return found;
 	}
 
 	/** Weapons and armour, which here includes the accessories: stigmas and everything else are not this rule's business. */
