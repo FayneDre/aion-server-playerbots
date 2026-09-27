@@ -90,6 +90,23 @@ It runs from the server directory but against the jar built in this repository, 
 
 These are for validating the generator, not for surveying the world: one known obstacle is enough, because the same code rasterizes all of them.
 
+## The generator audits itself
+
+A mesh cannot be judged by looking at it. The canopy fault generated cleanly, every total looked plausible, the images looked right, and it surfaced weeks later as "the bot takes the long way round". That complaint is a number, and a number can be checked before anyone plays.
+
+Every generation now ends with an audit, and `NavmeshTool <mapId> audit` runs it alone. It plans 300 routes between walkable points 25 m apart: over that distance a straight line is usually the right answer, so a high median means the map is blocking ground that is not really blocked. Pairs more than 12 m apart in height are skipped, since cliffs and roofs legitimately have no short way across and would drown the signal.
+
+Poeta, after the fix:
+
+```
+Audit of 279 routes over 25 m: median 1,00x straight line, 90th percentile 1,07x, 8 beyond 1,5x, 21 unreachable
+  4,6x: 121 m for 27 m   NavmeshTool 210010000 path 2401 737 2389 759
+```
+
+The worst offenders are printed as ready-made `path` commands, so the next step is a paste away, and `inspect` on a point from that route names what sits above it. A median past 1.25x prints a warning naming the likely cause. The seed is the map id, so two runs of the same map are comparable.
+
+This is the check that was missing. **A future map is not finished when it generates; it is finished when its audit is boring.**
+
 ## Two questions, two answers, one routine — again
 
 Blocking walls needed a second look almost as soon as it worked. `Heightfield.block` clears **every** surface of a column, which is exactly right for the no-walk volumes it was written for: those forbid a place outright. Reusing it for solid geometry made a tree's leaves, twenty-seven metres up, delete the ground beneath the trunk.

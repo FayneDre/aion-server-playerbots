@@ -9,9 +9,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
 
 import javax.imageio.ImageIO;
@@ -31,6 +33,14 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 public class NavmeshTool {
 
 	private static final byte TOWN_OBJECT = 5; // DespawnableNode.DespawnableType.TOWN_OBJECT
+	/** How many sample routes the audit plans. Enough for a stable median, quick enough to run on every generation. */
+	private static final int AUDIT_SAMPLES = 300;
+	/** How far apart the sampled points are. Short enough that a straight line is usually the answer, long enough to leave room to wander. */
+	private static final float AUDIT_SPAN = 25;
+	/** A route worth naming: half as long again as the straight line. */
+	private static final float AUDIT_SUSPECT_RATIO = 1.5f;
+	/** A median worth a warning. Half the map's short routes wandering this much is not terrain, it is a fault in the mesh. */
+	private static final float AUDIT_SUSPECT_MEDIAN = 1.25f;
 
 	public static void main(String[] args) throws IOException {
 		if (args.length >= 2 && args[1].equals("components")) {
@@ -38,6 +48,10 @@ public class NavmeshTool {
 			for (int i = 2; i < args.length; i++)
 				probes[i - 2] = Float.parseFloat(args[i]);
 			reportComponents(Integer.parseInt(args[0]), probes);
+			return;
+		}
+		if (args.length == 2 && args[1].equals("audit")) {
+			audit(Integer.parseInt(args[0]));
 			return;
 		}
 		if (args.length == 6 && args[1].equals("path")) {
@@ -51,6 +65,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> <text>    inspect the props whose model name contains that text");
 			System.out.println("       NavmeshTool <mapId> path <x1> <y1> <x2> <y2>   plan a route and draw it");
 			System.out.println("       NavmeshTool <mapId> components   find what is reachable from what");
+			System.out.println("       NavmeshTool <mapId> audit        walk sample routes and report how far they wander");
 			return;
 		}
 
@@ -104,6 +119,73 @@ public class NavmeshTool {
 			System.currentTimeMillis() - start);
 		verifyRoundTrip(mapId, field);
 		System.out.println("Wrote " + writeCoarseImage(mapId, Navmesh.open(mapId)).toAbsolutePath());
+		audit(mapId);
+	}
+
+	/**
+	 * Walks sample routes over the finished map and reports how far they wander.
+	 * <p>
+	 * This exists because a mesh cannot be judged by looking at it. It was a tree's canopy deleting the ground beneath the trunk that prompted it:
+	 * the map generated cleanly, every total looked plausible, the images looked right, and the fault only surfaced weeks later as "the bot takes the
+	 * long way round" — 55 metres walked to cover 19. That is a number, and a number can be checked before anyone plays.
+	 * <p>
+	 * Pairs of walkable points {@value #AUDIT_SPAN} metres apart should mostly be joined by something close to a straight line: over that distance
+	 * real obstacles are rare, so a high median means the map is blocking ground that is not really blocked. The worst offenders are printed with
+	 * their coordinates, ready to paste into {@code path} and then {@code inspect}.
+	 */
+	private static void audit(int mapId) throws IOException {
+		Navmesh mesh = Navmesh.open(mapId);
+		Random random = new Random(mapId); // seeded on the map, so two runs of the same map are comparable
+		List<float[]> worst = new ArrayList<>();
+		List<Float> ratios = new ArrayList<>();
+		int unreachable = 0, attempts = 0;
+
+		while (ratios.size() + unreachable < AUDIT_SAMPLES && attempts++ < AUDIT_SAMPLES * 50) {
+			float startX = random.nextFloat() * mesh.width() * mesh.cellSize();
+			float startY = random.nextFloat() * mesh.height() * mesh.cellSize();
+			float startZ = groundAt(mesh, startX, startY);
+			if (Float.isNaN(startZ))
+				continue;
+			double angle = random.nextDouble() * Math.PI * 2;
+			float goalX = startX + (float) Math.cos(angle) * AUDIT_SPAN, goalY = startY + (float) Math.sin(angle) * AUDIT_SPAN;
+			float goalZ = groundAt(mesh, goalX, goalY);
+			if (Float.isNaN(goalZ) || Math.abs(goalZ - startZ) > AUDIT_SPAN / 2)
+				continue; // a cliff or a roof: those legitimately have no short way across, and would drown the signal
+
+			BotPathFinder.Route route = BotPathFinder.findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
+			if (route.isEmpty()) {
+				unreachable++;
+				continue;
+			}
+			float walked = 0;
+			for (int i = 1; i < route.waypoints().size(); i++)
+				walked += route.waypoints().get(i).distance(route.waypoints().get(i - 1));
+			float direct = route.waypoints().get(0).distance(route.waypoints().get(route.waypoints().size() - 1));
+			float ratio = direct > 1 ? walked / direct : 1;
+			ratios.add(ratio);
+			worst.add(new float[] { ratio, startX, startY, goalX, goalY, walked, direct });
+		}
+
+		if (ratios.isEmpty()) {
+			System.out.println("Audit: no sample route could be planned at all, which is itself the answer");
+			return;
+		}
+		Collections.sort(ratios);
+		float median = ratios.get(ratios.size() / 2), p90 = ratios.get(ratios.size() * 9 / 10);
+		long wandering = ratios.stream().filter(ratio -> ratio > AUDIT_SUSPECT_RATIO).count();
+		System.out.printf("Audit of %d routes over %.0f m: median %.2fx straight line, 90th percentile %.2fx, %d beyond %.1fx, %d unreachable%n",
+			ratios.size(), AUDIT_SPAN, median, p90, wandering, AUDIT_SUSPECT_RATIO, unreachable);
+
+		worst.sort((a, b) -> Float.compare(b[0], a[0]));
+		for (float[] sample : worst.subList(0, Math.min(5, worst.size()))) {
+			if (sample[0] <= AUDIT_SUSPECT_RATIO)
+				break;
+			System.out.printf("  %.1fx: %.0f m for %.0f m   NavmeshTool %d path %.0f %.0f %.0f %.0f%n", sample[0], sample[5], sample[6], mapId,
+				sample[1], sample[2], sample[3], sample[4]);
+		}
+		if (median > AUDIT_SUSPECT_MEDIAN)
+			System.out.printf("  WARNING: half the short routes wander more than %.0f%% past the straight line. Something is blocking open ground -"
+				+ " inspect a worst case above and check what sits above the surface it reports.%n", (AUDIT_SUSPECT_MEDIAN - 1) * 100);
 	}
 
 	/**
