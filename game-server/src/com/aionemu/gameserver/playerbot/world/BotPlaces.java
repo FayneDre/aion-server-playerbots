@@ -27,11 +27,22 @@ public class BotPlaces {
 	private static final float GATHERING_RADIUS = 50f;
 	/** How many of them make a settlement rather than a lone npc keeping a road. */
 	private static final int SETTLEMENT_SIZE = 3;
+	/** How far around a settlement to read the countryside for the level it is worth. */
+	private static final float COUNTRYSIDE_RADIUS = 150f;
+	/** How far a character may be from a region's own level and still belong in it. */
+	private static final int LEVEL_TOLERANCE = 4;
 
 	private static final Map<Integer, List<Settlement>> settlementsByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, Integer> levelByMap = new ConcurrentHashMap<>();
 
-	/** A place people gather, and how many of them do: the count is what makes a village draw more residents than a roadside camp. */
-	public record Settlement(Vector3f centre, int townsfolk) {
+	/**
+	 * A place people gather, how many of them do, and what the country around it is worth fighting at.
+	 *
+	 * @param townsfolk What makes a village draw more residents than a roadside camp.
+	 * @param level The middling level of the creatures within {@value #COUNTRYSIDE_RADIUS} metres, which is what says who belongs here. Poeta reads
+	 *          as Akarios 3, then camps at 5, 6 and 7 — a valley that steepens as you walk away from the village.
+	 */
+	public record Settlement(Vector3f centre, int townsfolk, int level) {
 	}
 
 	private BotPlaces() {
@@ -65,6 +76,37 @@ public class BotPlaces {
 		return places.get(0).centre();
 	}
 
+	/**
+	 * What a whole map is worth fighting at, which is the level its inhabitants should be.
+	 * <p>
+	 * The band belongs to the <b>region</b>, not to each camp within it: Poeta reads as Akarios 3 and its camps at 5, 6 and 7, but a character of
+	 * eight walks all of it, and one of thirty has no business anywhere in it. So this decides who lives on a map, and nothing decides where they go
+	 * once they do.
+	 *
+	 * @return The middling level of everything on the map that would fight back, or 1 where nothing does.
+	 */
+	public static int levelOf(int worldId) {
+		return levelByMap.computeIfAbsent(worldId, id -> {
+			List<Float> levels = new ArrayList<>();
+			for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(id)) {
+				NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
+				if (template == null || template.getTribe() == TribeClass.GENERAL || template.getLevel() <= 0)
+					continue;
+				for (int i = 0; i < group.getSpawnTemplates().size(); i++)
+					levels.add((float) template.getLevel());
+			}
+			if (levels.isEmpty())
+				return 1;
+			levels.sort(null);
+			return Math.round(levels.get(levels.size() / 2));
+		});
+	}
+
+	/** @return true if a character of this level belongs on this map at all. */
+	public static boolean suitsLevel(int worldId, int level) {
+		return Math.abs(levelOf(worldId) - level) <= LEVEL_TOLERANCE;
+	}
+
 	/** @return The settlement nearest to a point, or null if the map has none. */
 	public static Vector3f nearestSettlement(int worldId, float x, float y) {
 		return settlements(worldId).stream().map(Settlement::centre)
@@ -91,18 +133,25 @@ public class BotPlaces {
 	 */
 	private static List<Settlement> locateSettlements(int worldId) {
 		List<List<Vector3f>> clusters = new ArrayList<>();
+		List<float[]> countryside = new ArrayList<>(); // x, y and level of everything that would fight back
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
 			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
-			if (template == null || template.getTribe() != TribeClass.GENERAL)
+			if (template == null)
 				continue;
-			for (SpawnTemplate spawn : group.getSpawnTemplates())
-				addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
+			for (SpawnTemplate spawn : group.getSpawnTemplates()) {
+				if (template.getTribe() == TribeClass.GENERAL)
+					addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
+				else if (template.getLevel() > 0)
+					countryside.add(new float[] { spawn.getX(), spawn.getY(), template.getLevel() });
+			}
 		}
 		List<Settlement> settlements = new ArrayList<>();
 		clusters.sort(Comparator.comparingInt(List<Vector3f>::size).reversed());
 		for (List<Vector3f> cluster : clusters) {
-			if (cluster.size() >= SETTLEMENT_SIZE)
-				settlements.add(new Settlement(centreOf(cluster), cluster.size()));
+			if (cluster.size() >= SETTLEMENT_SIZE) {
+				Vector3f centre = centreOf(cluster);
+				settlements.add(new Settlement(centre, cluster.size(), levelAround(countryside, centre)));
+			}
 		}
 		return settlements;
 	}
@@ -116,6 +165,19 @@ public class BotPlaces {
 			}
 		}
 		clusters.add(new ArrayList<>(List.of(spot)));
+	}
+
+	/** @return The middling level of what lives around a place, which is what a character of that level would find a fair fight. */
+	private static int levelAround(List<float[]> countryside, Vector3f centre) {
+		List<Float> levels = new ArrayList<>();
+		for (float[] creature : countryside) {
+			if (PositionUtil.getDistance(centre.x, centre.y, creature[0], creature[1]) <= COUNTRYSIDE_RADIUS)
+				levels.add(creature[2]);
+		}
+		if (levels.isEmpty())
+			return 1;
+		levels.sort(null);
+		return Math.round(levels.get(levels.size() / 2));
 	}
 
 	private static Vector3f centreOf(List<Vector3f> cluster) {

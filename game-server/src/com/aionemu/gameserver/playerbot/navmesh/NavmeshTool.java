@@ -56,16 +56,20 @@ public class NavmeshTool {
 			audit(Integer.parseInt(args[0]));
 			return;
 		}
-		if (args.length == 6 && args[1].equals("path")) {
-			planRoute(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]),
-				Float.parseFloat(args[5]));
+		if ((args.length == 6 || args.length == 8) && args[1].equals("path")) {
+			// with heights when they are given: a spot can have walkable ground both at the valley floor and on the cliff forty metres above it, and
+			// taking the highest was how a camp at z=100 came to be judged unreachable by way of a ledge nobody stands on
+			boolean withHeights = args.length == 8;
+			planRoute(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]),
+				withHeights ? Float.parseFloat(args[4]) : Float.NaN, Float.parseFloat(args[withHeights ? 5 : 4]),
+				Float.parseFloat(args[withHeights ? 6 : 5]), withHeights ? Float.parseFloat(args[7]) : Float.NaN);
 			return;
 		}
 		if (args.length != 1 && args.length != 2 && args.length != 3) {
 			System.out.println("Usage: NavmeshTool <mapId>|all");
 			System.out.println("       NavmeshTool <mapId> <x> <y>   inspect one spot");
 			System.out.println("       NavmeshTool <mapId> <text>    inspect the props whose model name contains that text");
-			System.out.println("       NavmeshTool <mapId> path <x1> <y1> <x2> <y2>   plan a route and draw it");
+			System.out.println("       NavmeshTool <mapId> path <x1> <y1> [z1] <x2> <y2> [z2]   plan a route and draw it");
 			System.out.println("       NavmeshTool <mapId> components   find what is reachable from what");
 			System.out.println("       NavmeshTool <mapId> audit        walk sample routes and report how far they wander");
 			return;
@@ -317,9 +321,11 @@ public class NavmeshTool {
 	 * Plans a route over the generated file and draws it, which is the only honest way to judge one: a list of coordinates tells you nothing about
 	 * whether the bot went around the building or through it.
 	 */
-	private static void planRoute(int mapId, float startX, float startY, float goalX, float goalY) throws IOException {
+	private static void planRoute(int mapId, float startX, float startY, float wantedStartZ, float goalX, float goalY, float wantedGoalZ)
+		throws IOException {
 		Navmesh mesh = Navmesh.open(mapId);
-		float startZ = groundAt(mesh, startX, startY), goalZ = groundAt(mesh, goalX, goalY);
+		float startZ = Float.isNaN(wantedStartZ) ? groundAt(mesh, startX, startY) : wantedStartZ;
+		float goalZ = Float.isNaN(wantedGoalZ) ? groundAt(mesh, goalX, goalY) : wantedGoalZ;
 		System.out.printf("From %.1f %.1f %.1f to %.1f %.1f %.1f%n", startX, startY, startZ, goalX, goalY, goalZ);
 
 		long start = System.currentTimeMillis();

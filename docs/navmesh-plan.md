@@ -129,7 +129,11 @@ Measured on the four settlements of Poeta, twelve ordered journeys:
 | journeys that plan | **1 of 12** | **6 of 12** |
 | time when they fail | 800–1100 ms | 90–300 ms |
 
-Akarios village went from unreachable in both directions to 434 m from one camp and 853 m from another, planned in under a hundred milliseconds. What still fails is honest: the mushroom camp sits on a patch of ground 39 by 48 metres that touches nothing else, so there is no route to give.
+Akarios village went from unreachable in both directions to 434 m from one camp and 853 m from another, planned in under a hundred milliseconds.
+
+The mushroom camp appeared to stay cut off, and that was the **tool's** fault, not the map's. `path` took the highest walkable surface at a spot, and above that camp — which sits at z=100 — there is a ledge at z=143 that touches nothing. It was judging a route between cliff tops. Given the heights the bots actually use, **all twelve journeys between Poeta's four settlements plan, in 39 to 119 ms.** `path` now accepts heights: `NavmeshTool <mapId> path x1 y1 [z1] x2 y2 [z2]`.
+
+That is a lesson about the instrument rather than the thing measured: a diagnostic that quietly picks one of several answers will eventually pick the wrong one, and it will do it while looking authoritative.
 
 A caveat on the long audit: it samples any walkable surface, rooftops and ledges included, so its unreachable share counts places no bot would start from. Sampling only from the larger regions would make that number mean what it looks like it means.
 

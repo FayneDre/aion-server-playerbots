@@ -103,6 +103,8 @@ The choice leans on a **temperament fixed to the bot's own id**, so one that lik
 
 Adventurers have no occupation. They hunt, which is how they level.
 
+**A level belongs to a region, not to a camp.** Poeta reads as Akarios 3 and its camps at 5, 6 and 7, but a character of eight walks all of it and one of thirty has no business anywhere in it. So `BotPlaces.levelOf` gives a whole map its band and `suitsLevel` says who belongs on it; nothing restricts where a resident goes once it lives there. Filtering each camp separately was the first attempt and it was wrong — it would have kept a level six villager out of its own valley's village.
+
 **A resident has a home, and it is not simply the nearest place.** Loitering used to send a bot to whichever settlement it happened to be beside, which means a village nobody spawned next to is a village nobody ever visits: Akarios stayed empty while three camps were crowded. A home fixed to the bot's own id spreads a population over the places a map actually has, weighted by how many townsfolk stand in each — so most residents live where the world itself put most of its people.
 
 **Settlements are read from the world, not authored.** `BotPlaces` clusters the spawns of peaceful npcs (tribe `GENERAL`) and keeps the gatherings of three or more. Poeta yields Akarios village and its three camps out of 43 townsfolk against 986 hostiles. A settlement becomes the bot's anchor while it is there, so everything that already works off the anchor keeps it in place without a second set of rules.
