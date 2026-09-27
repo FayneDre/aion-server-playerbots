@@ -60,9 +60,29 @@ public class Bot extends AdminCommand {
 			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
 			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));
 			case "nav" -> sendInfo(admin, PlayerBotService.getInstance().describeNavmeshes());
+			case "kind" -> kind(admin, params);
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
 			default -> sendInfo(admin);
 		}
+	}
+
+	private void kind(Player admin, String[] params) {
+		if (params.length < 2) {
+			sendInfo(admin, "Usage: //bot kind <name> [resident|adventurer]");
+			return;
+		}
+		Boolean resident = null;
+		if (params.length >= 3) {
+			if (params[2].equalsIgnoreCase("resident"))
+				resident = true;
+			else if (params[2].equalsIgnoreCase("adventurer"))
+				resident = false;
+			else {
+				sendInfo(admin, "Usage: //bot kind <name> [resident|adventurer]");
+				return;
+			}
+		}
+		sendInfo(admin, PlayerBotService.getInstance().setKind(params[1], resident));
 	}
 
 	private void create(Player admin, String[] params) {

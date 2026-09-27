@@ -15,7 +15,7 @@ import com.aionemu.commons.database.DatabaseFactory;
 import com.aionemu.gameserver.dao.ServerVariablesDAO;
 
 /**
- * Remembers which bots belong in the world, so a restart puts back what was there rather than an empty map.
+ * The two lists the bot system keeps between runs: which bots belong in the world, and which of them are residents.
  * <p>
  * The roster is the set of names, nothing more: where each bot stands, what it carries and what it has learned are already saved with the character
  * itself, so a restored bot comes back exactly where it left off. That is also why the roster is written on every change rather than at shutdown —
@@ -28,21 +28,50 @@ import com.aionemu.gameserver.dao.ServerVariablesDAO;
 public class BotRoster {
 
 	private static final Logger log = LoggerFactory.getLogger(BotRoster.class);
-	private static final String VARIABLE = "playerbot.roster";
+	private static final String ROSTER = "playerbot.roster";
+	private static final String RESIDENTS = "playerbot.residents";
 	private static final String SEPARATOR = ",";
 
 	private BotRoster() {
 	}
 
 	public static void remember(Set<String> characterNames) {
-		ServerVariablesDAO.store(VARIABLE, String.join(SEPARATOR, characterNames));
+		ServerVariablesDAO.store(ROSTER, String.join(SEPARATOR, characterNames));
+	}
+
+	/**
+	 * Tells a bot that lives somewhere from one that is passing through.
+	 * <p>
+	 * A <b>resident</b> is part of a place: it is fixed at the level of the region it inhabits and gains no experience, so that region keeps
+	 * inhabitants who belong to it. Left to progress, every bot drifts upwards and the low zones empty — Poeta is a region of levels one to eight,
+	 * and five bots reached thirteen in a day, farming grey mobs in a valley meant for beginners.
+	 * <p>
+	 * An <b>adventurer</b> is a character: it levels, it can be grouped with, and one day it will travel. There are meant to be few of them.
+	 */
+	public static boolean isResident(String characterName) {
+		return residents().contains(characterName);
+	}
+
+	public static void setResident(String characterName, boolean resident) {
+		Set<String> names = residents();
+		if (resident ? !names.add(characterName) : !names.remove(characterName))
+			return; // already what it should be
+		ServerVariablesDAO.store(RESIDENTS, String.join(SEPARATOR, names));
+	}
+
+	public static Set<String> residents() {
+		return namesIn(RESIDENTS);
 	}
 
 	/** @return The names remembered by the last {@link #remember}, in the order they were written. Empty when nothing was ever stored. */
 	public static Set<String> restore() {
-		String stored = load();
+		return namesIn(ROSTER);
+	}
+
+	private static Set<String> namesIn(String variable) {
+		String stored = load(variable);
 		if (stored == null || stored.isBlank())
-			return Set.of();
+			return new LinkedHashSet<>();
 		return new LinkedHashSet<>(Arrays.asList(stored.split(SEPARATOR)));
 	}
 
@@ -50,16 +79,16 @@ public class BotRoster {
 	 * Reads the variable back. {@code ServerVariablesDAO} can store any value but only reads numbers back, its string loader being private, so the
 	 * one query lives here instead of widening the engine's api for a single caller.
 	 */
-	private static String load() {
+	private static String load(String variable) {
 		try (Connection con = DatabaseFactory.getConnection();
 				 PreparedStatement stmt = con.prepareStatement("SELECT `value` FROM `server_variables` WHERE `key` = ?")) {
-			stmt.setString(1, VARIABLE);
+			stmt.setString(1, variable);
 			try (ResultSet rs = stmt.executeQuery()) {
 				if (rs.next())
 					return rs.getString("value");
 			}
 		} catch (SQLException e) {
-			log.error("Could not read the bot roster", e);
+			log.error("Could not read " + variable, e);
 		}
 		return null;
 	}

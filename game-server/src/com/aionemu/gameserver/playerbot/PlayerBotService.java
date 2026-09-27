@@ -258,6 +258,22 @@ public class PlayerBotService {
 	/**
 	 * Toggles whether the bot acts on its own (engaging hostiles in reach, fighting back) or only follows commands.
 	 */
+	/**
+	 * Reads or sets what a bot is for: a resident of the place it stands in, or an adventurer.
+	 * <p>
+	 * A resident gains no experience, so the region it inhabits keeps inhabitants of its own level. Takes effect on the next spawn, since the flag is
+	 * set as a bot enters the world; a spawned bot is switched over on the spot as well.
+	 */
+	public String setKind(String characterName, Boolean resident) {
+		if (resident == null)
+			return characterName + " is " + (BotRoster.isResident(characterName) ? "a resident" : "an adventurer");
+		BotRoster.setResident(characterName, resident);
+		Player spawned = findSpawnedBot(characterName);
+		if (spawned != null)
+			spawned.getCommonData().setNoExp(resident);
+		return characterName + " is now " + (resident ? "a resident, and will not level any further" : "an adventurer, and levels normally");
+	}
+
 	public String toggleAutonomy(String characterName) {
 		Player bot = findSpawnedBot(characterName);
 		if (bot == null)

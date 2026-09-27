@@ -38,6 +38,8 @@ public class PlayerBotEnterWorldService {
 	public static void enterWorld(Player bot) {
 		// before anything else: it is what makes the engine treat this character as present despite having no connection
 		bot.setBot();
+		// a resident is fixed at the level of the place it inhabits: left to progress, every bot drifts upwards and the low regions empty
+		bot.getCommonData().setNoExp(BotRoster.isResident(bot.getName()));
 		learnMissingSkills(bot);
 		applyPassiveSkillEffects(bot);
 		bot.setAi(new PlayerBotAI(bot));

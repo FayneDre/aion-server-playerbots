@@ -80,6 +80,19 @@ A bot is passed over when a group looks for a new leader — leading means answe
 
 **Saving.** Spawned bots are written every 5 minutes, and on a clean shutdown. Nothing else writes them: the engine's `PeriodicSaveService` covers legion warehouses only, and real players are saved when they log out, a door a bot never uses. This matters more than it used to, now that bots gain levels and skills unattended over hours.
 
+## What a bot is for: residents and adventurers
+
+The fork was built to populate a world and produced five machines for killing things. Measured on the spawn data, **Poeta is a region of levels one to eight** (median 4, ninth decile 8) — and its five inhabitants reached thirteen in a day, farming grey mobs in a valley meant for beginners. Left to progress, every bot drifts upwards and the low regions empty. That is mechanical, not bad luck.
+
+So a bot is one of two things, and it is written down per name in `server_variables`:
+
+- A **resident** is part of a place. It gains no experience (`setNoExp`), so its region keeps inhabitants who belong to it. This is what populating a world means: a cast, not a set of careers.
+- An **adventurer** is a character. It levels, it is grouped with, and one day it will travel. There are meant to be few of them.
+
+`//bot kind <name> [resident|adventurer]` reads or sets it. The flag is applied as a bot enters the world, and to a spawned bot on the spot.
+
+**Still missing, and this is the larger half.** A resident that only farms is no more alive than before. What is wanted is an **occupation** — farming, loitering in a settlement, wandering between places — drawn with a duration and re-drawn when it expires, weighted by a temperament fixed to each bot so the same one tends to the same thing. The data supports it without a new table: a region's level band comes from the levels of the mobs spawned in it, and a settlement is a cluster of peaceful npc spawns (Poeta has 45 of those against 986 hostile ones, so they are few and easy to find). Population seeding is missing too: `//bot populate` clones one template character, which is why every bot here is a priest wearing three pieces — it should draw a level from the region, spread the classes, and fit gear to the level.
+
 ## Known limits, in order of how much they will bite
 
 1. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the navmesh does not answer — an ungenerated map, the last few metres to a creature — a bot can still wedge itself on one. Along a planned route it no longer applies: those legs are walked on the mesh, which sees them.
