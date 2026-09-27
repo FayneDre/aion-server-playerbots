@@ -71,6 +71,11 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile List<Vector3f> pendingRoute;
 	/** Whether the point being walked to came from the navmesh, and so needs no second opinion on the ground between here and there. */
 	private volatile boolean onPlannedWaypoint;
+	/**
+	 * Whether the leg being walked is a sidestep around an obstacle rather than a step towards the goal. A sidestep only makes sense walked to its
+	 * end, so this is what protects it from being reconsidered halfway.
+	 */
+	private volatile boolean onDetour;
 	/** Where the route in hand was planned to, which is what says whether it still leads anywhere useful. */
 	private volatile float plannedForX, plannedForY;
 	private volatile boolean hasGoal;
@@ -105,6 +110,12 @@ public class BotMoveController extends PlayerMoveController {
 		// set before planning: offerRoute discards its result as stale once hasGoal no longer matches this call, and a plan that resolves
 		// synchronously (any short distance) runs inside planRoute below, before this method would otherwise have set it
 		hasGoal = true;
+		// A sidestep is a commitment. Re-deciding one because the destination shifted a little — which is exactly what following a walking leader
+		// does, every tick — restarts it from a position already off to one side, and the fresh deviation is measured from a bearing that has itself
+		// rotated. The deviations then compound and the bot arcs further and further out for an obstacle it had already cleared. Solo movement never
+		// showed this because it waits for the leg to end before looking again, by which time the direct way is usually open.
+		if (sameJourney && onDetour && !isArrived())
+			return true;
 		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
 		if (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE) {
 			route = List.of();
@@ -126,6 +137,7 @@ public class BotMoveController extends PlayerMoveController {
 		if (!sameJourney) {
 			blocked = false;
 			detourSide = 0;
+			onDetour = false;
 			closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
 			lastProgressTime = System.currentTimeMillis();
 		}
@@ -230,6 +242,7 @@ public class BotMoveController extends PlayerMoveController {
 		if (onPlannedWaypoint) {
 			Vector3f step = BotGeoHelper.clearOfSpawnedObstacles(owner, goalX, goalY, goalZ);
 			if (BotGeoHelper.isWorthMovingTo(owner, step)) {
+				onDetour = false;
 				moveToReachablePoint(step.getX(), step.getY(), step.getZ());
 				return true;
 			}
@@ -237,6 +250,7 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		Vector3f reachable = BotGeoHelper.reachablePointToward(owner, goalX, goalY, goalZ);
 		if (BotGeoHelper.isWorthMovingTo(owner, reachable)) {
+			onDetour = false; // the way ahead is open again, so nothing is being walked around any more
 			moveToReachablePoint(reachable.getX(), reachable.getY(), reachable.getZ());
 			return true;
 		}
@@ -246,6 +260,7 @@ public class BotMoveController extends PlayerMoveController {
 				// The probes see no way out at all, which is what being wedged inside geometry looks like from the inside. The mesh still says
 				// this waypoint is ground a body fits on, and the server drives the bot's position, so walking the plan is what frees it. Without
 				// this, any disagreement between the two leaves a bot standing still for good.
+				onDetour = false;
 				moveToReachablePoint(goalX, goalY, goalZ);
 				return true;
 			}
@@ -258,6 +273,7 @@ public class BotMoveController extends PlayerMoveController {
 			return false;
 		}
 		detourSide = detour.side();
+		onDetour = true;
 		moveToReachablePoint(detour.point().getX(), detour.point().getY(), detour.point().getZ());
 		return true;
 	}

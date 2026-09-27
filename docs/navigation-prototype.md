@@ -52,6 +52,8 @@ When the direct way is blocked, `BotGeoHelper.detourPointToward` probes deviatio
 
 The chosen side is remembered in `BotMoveController.detourSide` and tried first on the next leg. Without that memory the bot alternates between two equally good detours and never leaves the spot.
 
+**A sidestep is a commitment, and is not reconsidered halfway.** Following a walking leader re-aims the destination on every tick, and each re-aim used to re-decide the leg in progress. Restarted from a position already off to one side, the fresh deviation is measured from a bearing that has itself rotated, so the deviations compound and the bot arcs ever wider around an obstacle it had already cleared. Solo movement never showed it, because it waits for the leg to end before looking again, by which time the direct way is usually open. `onDetour` now holds the leg until the bot reaches its sidestep point.
+
 **The sidestep is sized to the obstacle, not to a constant.** It used to be eight metres whatever was in the way, so a crate sent the bot lurching across the clearing. Lengths are now tried shortest first (2, 4, 8) and the first that gets anywhere wins. Starting short is enough because the bot decides again at the end of every leg and remembers which hand it is passing on: a large obstacle takes several short steps, which traces an arc around it instead of one lurch, while a small one costs a small step. The no-progress watchdog is satisfied either way, since it asks for a metre gained towards the goal every five seconds and even a two metre step at forty degrees gains more.
 
 ## The safeguards (not optional)
