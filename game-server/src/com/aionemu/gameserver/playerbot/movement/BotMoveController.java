@@ -132,6 +132,10 @@ public class BotMoveController extends PlayerMoveController {
 		return startNextLeg();
 	}
 
+	private static String describe(float x, float y, float z) {
+		return String.format("%.1f %.1f %.1f", x, y, z);
+	}
+
 	/** @return true if the last route was abandoned because the bot could not find a way through. */
 	public boolean isBlocked() {
 		return blocked;
@@ -245,7 +249,10 @@ public class BotMoveController extends PlayerMoveController {
 				moveToReachablePoint(goalX, goalY, goalZ);
 				return true;
 			}
-			log.info("Bot {} is walled in and gives up moving", owner.getName());
+			// with the position: the reactive probes are blind below a metre, so when they give up the only way to tell a real dead end from a
+			// low obstacle they cannot see is to ask the mesh about this exact pair of points afterwards (NavmeshTool <mapId> path x1 y1 x2 y2)
+			log.info("Bot {} is walled in at {} and gives up moving towards {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
+				describe(goalX, goalY, goalZ));
 			blocked = true;
 			hasGoal = false;
 			return false;
@@ -340,7 +347,8 @@ public class BotMoveController extends PlayerMoveController {
 			closestToGoal = distanceToGoal;
 			lastProgressTime = now;
 		} else if (now - lastProgressTime > PROGRESS_TIMEOUT) {
-			log.info("Bot {} makes no headway towards its goal and gives up moving", owner.getName());
+			log.info("Bot {} makes no headway from {} towards {} and gives up moving", owner.getName(),
+				describe(owner.getX(), owner.getY(), owner.getZ()), describe(goalX, goalY, goalZ));
 			blocked = true;
 			stop();
 		}
