@@ -21,6 +21,10 @@ public class BotGroupManager {
 	private static final float ASSIST_RADIUS = 25f;
 	/** How far from the leader a follower stands. Close enough to be with the group, far enough not to be inside it. */
 	private static final float FORMATION_RADIUS = 3f;
+	/** How far a bot may sit off its exact share of the circle, as a fraction of the gap to its neighbour. */
+	private static final float FORMATION_ANGLE_SPREAD = 0.35f;
+	/** How much nearer or further than the nominal radius a bot may stand. */
+	private static final float FORMATION_RADIUS_SPREAD = 0.25f;
 
 	private BotGroupManager() {
 	}
@@ -61,9 +65,19 @@ public class BotGroupManager {
 		}
 		followers.sort(Comparator.comparingInt(Player::getObjectId));
 		int slot = Math.max(0, followers.indexOf(bot));
-		double angle = followers.isEmpty() ? 0 : slot * 2 * Math.PI / followers.size();
-		return new Vector3f(leader.getX() + (float) Math.cos(angle) * FORMATION_RADIUS,
-			leader.getY() + (float) Math.sin(angle) * FORMATION_RADIUS, leader.getZ());
+		int count = Math.max(1, followers.size());
+		double share = 2 * Math.PI / count;
+		// An exact share of an exact circle is what a surveyor would lay out, and it reads that way. Each bot sits a little off its share and a
+		// little nearer or further than the rest, by an amount fixed to its own id: the group settles in a loose knot instead of on a ring, and the
+		// same bot takes the same liberty every time, so nothing drifts or swaps places from one tick to the next.
+		double angle = slot * share + share * FORMATION_ANGLE_SPREAD * spread(bot.getObjectId());
+		float radius = FORMATION_RADIUS * (1 + FORMATION_RADIUS_SPREAD * spread(bot.getObjectId() * 31));
+		return new Vector3f(leader.getX() + (float) Math.cos(angle) * radius, leader.getY() + (float) Math.sin(angle) * radius, leader.getZ());
+	}
+
+	/** @return A number between -1 and 1, the same one every time for a given seed. */
+	private static float spread(int seed) {
+		return Math.floorMod(Integer.hashCode(seed * 0x9E3779B9), 2000) / 1000f - 1;
 	}
 
 	/**
