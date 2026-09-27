@@ -14,6 +14,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.VisibleObject;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
@@ -234,8 +235,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return false;
 	}
 
-	private boolean isStandingStill() {
-		return !(getOwner().getMoveController() instanceof BotMoveController moveController) || !moveController.isInMove();
+	/**
+	 * @return true when the bot can be trusted to stand still long enough to fuss with its bag. Soul binding refuses outright unless the weapon is
+	 *         away and the bot is on its feet, and both binding and reading are undone by a single step.
+	 */
+	private boolean isCalmEnoughToDress() {
+		Player bot = getOwner();
+		if (bot.isInState(CreatureState.WEAPON_EQUIPPED) || !CreatureState.isStanding(bot.getState()))
+			return false;
+		return !(bot.getMoveController() instanceof BotMoveController moveController) || !moveController.isInMove();
 	}
 
 	/**
@@ -258,10 +266,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				startAttacking(attacker); // no health check: a bot being hit defends itself, it does not sit down
 			else if (collectLoot()) {
 				// busy with a corpse, everything else can wait
-			} else if (BotEquipManager.equipUpgrades(getOwner())) {
-				// dressed itself a little better; grouped or not, that is worth the tick
-			} else if (isStandingStill() && BotEquipManager.identifyUpgrade(getOwner())) {
-				// reading a piece is five seconds during which a single step, blow or cast throws it away, so it is only begun from a standstill
+			} else if (isCalmEnoughToDress() && (BotEquipManager.equipUpgrades(getOwner()) || BotEquipManager.identifyUpgrade(getOwner()))) {
+				// dressing itself: reading a piece and binding one each take five seconds that a single step, blow or cast throws away
 			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following))
 				recover();
 			else if (following) {

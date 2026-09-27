@@ -9,6 +9,7 @@ import com.aionemu.gameserver.model.TaskId;
 import com.aionemu.gameserver.model.gameobjects.Item;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
+import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 import com.aionemu.gameserver.services.item.ItemActionService;
 
 /**
@@ -40,6 +41,13 @@ public class BotEquipManager {
 		for (Item upgrade : upgrades(bot, true)) {
 			if (bot.getEquipment().equipItem(upgrade.getObjectId(), upgrade.getItemTemplate().getItemSlot()) != null) {
 				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} puts on {}", bot.getName(), upgrade.getItemTemplate().getL10n());
+				return true;
+			}
+			// A piece that binds to its owner is not refused, it is *asked about*: equipItem opens a confirmation window and returns null, which to a
+			// bot looks exactly like a refusal. That is why nothing was ever worn — every upgrade worth having is soul bound. Answering yes starts
+			// five seconds of binding that end by equipping the piece itself, so there is nothing more to do here.
+			if (bot.getResponseRequester().respond(SM_QUESTION_WINDOW.STR_SOUL_BOUND_ITEM_DO_YOU_WANT_SOUL_BOUND, 1)) {
+				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} binds {} to itself", bot.getName(), upgrade.getItemTemplate().getL10n());
 				return true;
 			}
 		}
