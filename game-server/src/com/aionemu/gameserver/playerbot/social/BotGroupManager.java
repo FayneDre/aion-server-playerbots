@@ -66,10 +66,17 @@ public class BotGroupManager {
 		return null;
 	}
 
+	/**
+	 * @return What this member is actually fighting, or null. Selecting a target is not fighting it: players click things to read their level all the
+	 *         time, and a group whose bots pull whatever the leader looks at is unusable. The mob's own aggro list settles it — it holds a grudge
+	 *         against whoever has hit it, and equally against whoever it decided to attack, so a leader under attack is assisted too.
+	 */
 	private static Creature engagedTarget(Player bot, Player member) {
 		if (member.equals(bot) || !(member.getTarget() instanceof Creature target))
 			return null;
 		if (target.isDead() || !target.isSpawned() || !bot.isEnemy(target) || target instanceof Player)
+			return null;
+		if (!target.getAggroList().isHating(member))
 			return null;
 		return bot.canSee(target) ? target : null;
 	}

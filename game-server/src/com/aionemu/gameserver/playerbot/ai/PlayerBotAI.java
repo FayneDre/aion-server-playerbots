@@ -164,23 +164,56 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
-	 * Joins whoever invites the bot, and makes its camp follow its group leader.
+	 * Joins whoever invites the bot, and keeps its anchor on its group leader.
 	 * <p>
-	 * Moving the anchor is the whole of "follow": every rule the bot already had — roam the camp, come back when it is clear, break off a chase that
-	 * leaves it — is written against the anchor, so pointing that at the leader makes the camp travel with the group without a second set of rules
-	 * to keep in step with the first.
+	 * Moving the anchor is the whole of "follow": every rule the bot already had — come back when there is nothing to do, break off a chase that
+	 * leaves the area — is written against the anchor, so pointing that at the leader makes it travel with the group without a second set of movement
+	 * rules to keep in step with the first.
+	 *
+	 * @return true while the bot has a leader to follow, which is also what makes it stop deciding things for itself.
 	 */
-	private void followTheGroup() {
+	private boolean followTheGroup() {
 		BotGroupManager.acceptPendingInvite(getOwner());
 		Player leader = BotGroupManager.leaderToFollow(getOwner());
-		if (leader != null)
-			setAnchor(leader.getX(), leader.getY(), leader.getZ());
+		if (leader == null)
+			return false;
+		setAnchor(leader.getX(), leader.getY(), leader.getZ());
+		return true;
+	}
+
+	/**
+	 * What a bot does while it belongs to someone else's group: the leader's fight, or the leader's heels. Nothing else.
+	 * <p>
+	 * A member that pulls what it likes is worse than no member at all — it brings a second mob into a fight the group did not choose, and wanders
+	 * off while it does. So the whole of the bot's own initiative is suspended here: no picking targets, no roaming the camp, no errands, no shop
+	 * runs. Defending itself is not initiative and stays where it was, ahead of everything, in {@link #botTick()}.
+	 */
+	private void serveTheGroup() {
+		if (standUp()) // one tick before acting, so the animation has played out by then
+			return;
+		if (BotSkillManager.tryBuffSelf(getOwner()) || BotSkillManager.tryChantMantra(getOwner()))
+			return;
+		Creature assisted = BotGroupManager.targetToAssist(getOwner());
+		if (assisted == null) {
+			returnToAnchor(); // which is the leader: standing by is the default, not looking for something to do
+			return;
+		}
+		BotTargetRegistry.forceClaim(assisted, getOwner()); // the group piles on together, which is the point of being one
+		startAttacking(assisted);
+	}
+
+	/**
+	 * @return true when the bot has fallen behind its group and should walk rather than sit down. Resting takes a bot out of the fight for as long as
+	 *         it lasts, which is fine alone in an empty camp and not fine when the group has moved on without it.
+	 */
+	private boolean mustCatchUp(boolean following) {
+		return following && PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > ANCHOR_TOLERANCE;
 	}
 
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
 		sheathWhenCalm();
-		followTheGroup();
+		boolean following = followTheGroup();
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
 		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
@@ -189,9 +222,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 				startAttacking(attacker); // no health check: a bot being hit defends itself, it does not sit down
 			else if (collectLoot()) {
 				// busy with a corpse, everything else can wait
-			} else if (!isHealthyEnoughToFight())
+			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following))
 				recover();
-			else if (runVendorTrip()) {
+			else if (following) {
+				serveTheGroup(); // a member has no business picking its own fights, so the rest of this chain is not its to run
+			} else if (runVendorTrip()) {
 				// bag is full and a shop is being walked to or worked, everything else waits
 			} else if (isRunningErrand()) {
 				// an operator sent it somewhere on purpose; let it arrive before it goes looking for its own fights
@@ -199,17 +234,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing. Not an early return: the tick reschedules
 				// itself at the end of this method, and leaving by any other door stops the bot for good.
 				if (!BotSkillManager.tryBuffSelf(getOwner()) && !BotSkillManager.tryChantMantra(getOwner())) {
-					Creature assisted = BotGroupManager.targetToAssist(getOwner());
-					if (assisted != null) {
-						BotTargetRegistry.forceClaim(assisted, getOwner()); // the group piles on together, which is the point of being one
-						startAttacking(assisted);
-					} else {
-						Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
-						if (target == null)
-							roam();
-						else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
-							startAttacking(target);
-					}
+					Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
+					if (target == null)
+						roam();
+					else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
+						startAttacking(target);
 				}
 			}
 		}

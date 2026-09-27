@@ -26,7 +26,13 @@ Invite a bot from the client like anyone else and it joins: the decision tick an
 
 **Following is the anchor, not a new behaviour.** A grouped bot points its camp anchor at its leader every tick, and every rule it already had — roam the camp, come back when it is clear, break off a chase that leaves it — travels with the group for free. There is no second set of movement rules to keep in step with the first. A leader on another map is ignored rather than walked to: that is travel, not navigation, and bots cannot travel yet. `//bot come` has no effect on a grouped bot, since the leader sets the anchor a tick later.
 
-**Assisting comes before picking a fight**, the leader's target first so a group converges instead of each member helping whoever is nearest. The level gap a bot applies to its own fights is deliberately not applied here: the group chose this fight, and refusing to help because the mob is big is the one thing a member must not do. Bots pile onto the same target through `forceClaim`, which is the point of being grouped.
+**A grouped bot has no initiative of its own.** It fights what the group fights and otherwise stands by the leader: no picking targets, no roaming, no errands, no shop runs. A member that pulls what it likes is worse than no member, since it brings a second mob into a fight nobody chose and wanders off while it does. Defending itself is not initiative and is untouched — it still comes ahead of everything.
+
+The leader's target is taken first so a group converges instead of each member helping whoever is nearest, and bots pile onto it through `forceClaim`. The level gap a bot applies to its own fights is deliberately not applied: the group chose this fight, and refusing to help because the mob is big is the one thing a member must not do.
+
+**Selecting a target is not fighting it.** Players click mobs to read their level, and a group whose bots pull whatever the leader looks at is unusable, so the mob's own aggro list decides: it holds a grudge against whoever hit it, and equally against whoever it chose to attack, which means a leader under attack is assisted too.
+
+Resting gives way to following: a bot that has fallen behind walks instead of sitting down, since resting takes it out of the fight for as long as it lasts.
 
 A bot is passed over when a group looks for a new leader — leading means answering invitations and setting loot rules.
 
