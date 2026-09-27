@@ -1,4 +1,10 @@
 {
+  // The language server and Maven both compile into game-server/target/classes. A terminal `mvn clean package` therefore deletes and rewrites the
+  // very files the language server is writing, which leaves its compiled state corrupt and floods the Problems panel with errors that do not exist
+  // in the source. Turning its own build off ends the collision: open files are still fully analysed, types still resolve, and the real compiler
+  // check is the Maven build that runs before every deploy anyway.
+  // If errors ever look stale again: Ctrl+Shift+P, "Java: Clean Java Language Server Workspace", then reload.
+  "java.autobuild.enabled": false,
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.compile.nullAnalysis.mode": "automatic",
   "maven.executable.preferMavenWrapper": false,
