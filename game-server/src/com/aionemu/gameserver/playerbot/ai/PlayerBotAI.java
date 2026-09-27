@@ -69,6 +69,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long UNREACHABLE_MILLIS = 10000;
 	/** Close enough to a shop's spawn point that a shop keeper would be in sight if there were one. */
 	private static final float VENDOR_SPOT_TOLERANCE = 10f;
+	/** How long the bot leaves its bag alone after a fruitless look. Long enough not to stutter, short enough to notice the next drop. */
+	private static final long DRESSING_RETRY_MILLIS = 60000;
 	/** How long a shop spot that turned out to be empty is left alone. Long: npcs do not appear and disappear minute by minute. */
 	private static final long EMPTY_SHOP_MILLIS = 600000;
 	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
@@ -101,6 +103,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long combatEndedAt;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
+	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
+	private volatile long dressingIdleUntil;
 	/** Shop spots that turned out to have no shop keeper standing on them, so the next trip goes somewhere else. */
 	private final Map<Vector3f, Long> ignoredVendors = new ConcurrentHashMap<>();
 	/** Where the bot is headed to sell, non null only while a trip is in progress. */
@@ -249,13 +253,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Player bot = getOwner();
 		if (BotEquipManager.isBusyDressing(bot))
 			return true;
-		if (!BotEquipManager.hasUpgradeWaiting(bot))
+		// A piece can score higher and still be unwearable for good — a mace a priest has no mastery for, a piece for the other race — and nothing
+		// short of trying says so. Without this the bot would stop and sheathe on every tick of its life for one such item sitting in its bag.
+		if (System.currentTimeMillis() < dressingIdleUntil || !BotEquipManager.hasUpgradeWaiting(bot))
 			return false;
 		stopMoving();
 		BotAttackManager.leaveAttackMode(bot);
 		if (standUp() || !CreatureState.isStanding(bot.getState()))
 			return true; // on its feet first, and the weapon is away as of this tick
-		return BotEquipManager.equipUpgrades(bot) || BotEquipManager.identifyUpgrade(bot);
+		if (BotEquipManager.equipUpgrades(bot) || BotEquipManager.identifyUpgrade(bot))
+			return true;
+		dressingIdleUntil = System.currentTimeMillis() + DRESSING_RETRY_MILLIS;
+		return false;
 	}
 
 	/**
