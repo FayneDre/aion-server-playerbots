@@ -25,6 +25,7 @@ import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
@@ -103,6 +104,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long combatEndedAt;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
+	/** What a resident is doing with its day, and until when. Adventurers have no occupation: they hunt, which is how they level. */
+	private volatile Occupation occupation = Occupation.FARMING;
+	private volatile long occupationUntil;
+	/** Where the current occupation is taking the bot, so it keeps going to the same place rather than re-choosing every tick. */
+	private volatile Vector3f occupationDestination;
 	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
 	private volatile long dressingIdleUntil;
 	/** Shop spots that turned out to have no shop keeper standing on them, so the next trip goes somewhere else. */
@@ -300,7 +306,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (!standUp()) { // stand up one tick before acting, so the animation has played out by then
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing. Not an early return: the tick reschedules
 				// itself at the end of this method, and leaving by any other door stops the bot for good.
-				if (!BotSkillManager.tryBuffSelf(getOwner()) && !BotSkillManager.tryChantMantra(getOwner())) {
+				if (!BotSkillManager.tryBuffSelf(getOwner()) && !BotSkillManager.tryChantMantra(getOwner()) && !pursueOccupation()) {
 					Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 					if (target == null)
 						roam();
@@ -509,6 +515,66 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void stopMoving() {
 		if (getOwner().getMoveController() instanceof BotMoveController moveController && moveController.isInMove())
 			moveController.stop();
+	}
+
+	/**
+	 * Keeps a resident's day going: renews the occupation when its time runs out, and carries out the ones that are not hunting.
+	 * <p>
+	 * Read from {@code noExp} rather than from the stored roster, because that flag is already on the character and says the same thing: a bot that
+	 * gains no experience is one that belongs to a place. An adventurer always falls through to hunting, which is how it levels.
+	 *
+	 * @return true if the occupation took this tick, false to go hunting as before.
+	 */
+	private boolean pursueOccupation() {
+		Player bot = getOwner();
+		if (!bot.getCommonData().getNoExp())
+			return false;
+		long now = System.currentTimeMillis();
+		if (now > occupationUntil) {
+			occupation = Occupation.drawFor(bot.getObjectId());
+			occupationUntil = now + occupation.draw();
+			occupationDestination = null;
+			log.info("Bot {} takes to {}", bot.getName(), occupation);
+		}
+		return switch (occupation) {
+			case FARMING -> false;
+			case LOITERING -> loiter();
+			case WANDERING -> wander();
+		};
+	}
+
+	/**
+	 * Stands about in the nearest settlement. Doing nothing is a thing people do, and it is most of what makes a village look inhabited.
+	 * <p>
+	 * The settlement becomes the bot's anchor, so everything that already works off the anchor — walking back, breaking off a chase that strays —
+	 * keeps it there without a second set of rules.
+	 */
+	private boolean loiter() {
+		if (occupationDestination == null)
+			occupationDestination = BotPlaces.nearestSettlement(getOwner().getWorldId(), getOwner().getX(), getOwner().getY());
+		if (occupationDestination == null)
+			return false; // nobody lives on this map, so there is nowhere to stand about
+		setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
+		returnToAnchor();
+		return true;
+	}
+
+	/** Walks to another settlement, and looks for something else to do once it arrives rather than waiting out the clock. */
+	private boolean wander() {
+		Player bot = getOwner();
+		if (occupationDestination == null) {
+			Vector3f here = BotPlaces.nearestSettlement(bot.getWorldId(), bot.getX(), bot.getY());
+			occupationDestination = BotPlaces.otherSettlement(bot.getWorldId(), here, bot.getObjectId() + (int) occupationUntil);
+		}
+		if (occupationDestination == null)
+			return false;
+		setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), occupationDestination.getX(), occupationDestination.getY()) <= ANCHOR_TOLERANCE) {
+			occupationUntil = 0; // arrived: something else next tick
+			return true;
+		}
+		returnToAnchor();
+		return true;
 	}
 
 	/**

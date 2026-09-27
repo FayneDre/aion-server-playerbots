@@ -91,7 +91,21 @@ So a bot is one of two things, and it is written down per name in `server_variab
 
 `//bot kind <name> [resident|adventurer]` reads or sets it. The flag is applied as a bot enters the world, and to a spawned bot on the spot.
 
-**Still missing, and this is the larger half.** A resident that only farms is no more alive than before. What is wanted is an **occupation** — farming, loitering in a settlement, wandering between places — drawn with a duration and re-drawn when it expires, weighted by a temperament fixed to each bot so the same one tends to the same thing. The data supports it without a new table: a region's level band comes from the levels of the mobs spawned in it, and a settlement is a cluster of peaceful npc spawns (Poeta has 45 of those against 986 hostile ones, so they are few and easy to find). Population seeding is missing too: `//bot populate` clones one template character, which is why every bot here is a priest wearing three pieces — it should draw a level from the region, spread the classes, and fit gear to the level.
+### A resident has a day, not a task
+
+Farming was the whole of a bot's life, which is why a populated map read as a hunting ground. A resident now draws an **occupation** with a duration and draws again when it runs out:
+
+- **Farming** — what every bot did all the time.
+- **Loitering** — standing about in a settlement. Doing nothing is a thing people do, and it is most of what makes a village look inhabited.
+- **Wandering** — walking to another settlement, ending on arrival rather than waiting out the clock.
+
+The choice leans on a **temperament fixed to the bot's own id**, so one that likes the fields keeps going back to them and one that likes company is usually found in a village. Without that a population averages out: every bot does a third of everything and none of them has a character. Every bot keeps a taste for all three, because a villager who never once leaves is as mechanical as one who never stops.
+
+Adventurers have no occupation. They hunt, which is how they level.
+
+**Settlements are read from the world, not authored.** `BotPlaces` clusters the spawns of peaceful npcs (tribe `GENERAL`) and keeps the gatherings of three or more. Poeta yields Akarios village and its three camps out of 43 townsfolk against 986 hostiles. A settlement becomes the bot's anchor while it is there, so everything that already works off the anchor keeps it in place without a second set of rules.
+
+**Still missing:** population seeding. `//bot populate` clones one template character, which is why every bot here is a priest wearing three pieces — it should draw a level from the region's own mobs, spread the classes, and fit gear to the level.
 
 ## Known limits, in order of how much they will bite
 
