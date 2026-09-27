@@ -116,7 +116,22 @@ Audit of 122 routes over 250 m: median 1,06x, 90th percentile 1,69x, 178 unreach
 
 Seven per cent unreachable up close, **fifty-nine per cent across the map**. Residents could reach the camp next door and never the village.
 
-The cause is the rough grid disagreeing with the fine one. A 4 m coarse cell counts as routable when a quarter of its ground is walkable, so a guide route happily crosses barriers the fine grid refuses; refinement then fails at the crossing, and three guide skips are not enough to step over it. Three ways out, none of them tried yet: raise the coarse threshold, build the coarse grid from the fine grid's connected components instead of its coverage, or allow more skips.
+The cause was the rough grid disagreeing with the fine one. A 4 m coarse cell counted as routable when a quarter of its ground was walkable — a bit, nothing more — so a rough route crossed freely between two stretches of ground the fine grid keeps apart, refinement failed at the crossing, and the journey died after the search budget rather than after the question.
+
+**The rough grid now carries a region, not a bit.** Every column is labelled with the stretch of walkable ground it belongs to, joining neighbours exactly as the path finder steps between them; each coarse cell takes the region holding most of it; and a rough route may only move between cells of the same region. That turns the rough grid from a hint into a promise — a rough route now stays inside one stretch of ground, and a stretch is by construction something a body can walk across.
+
+The labelling lives in `Heightfield.regions`, where both the generator and the island report read it. Two routines answering that question separately is how the mesh and the engine came to disagree in the first place.
+
+Measured on the four settlements of Poeta, twelve ordered journeys:
+
+| | before | after |
+|---|---|---|
+| journeys that plan | **1 of 12** | **6 of 12** |
+| time when they fail | 800–1100 ms | 90–300 ms |
+
+Akarios village went from unreachable in both directions to 434 m from one camp and 853 m from another, planned in under a hundred milliseconds. What still fails is honest: the mushroom camp sits on a patch of ground 39 by 48 metres that touches nothing else, so there is no route to give.
+
+A caveat on the long audit: it samples any walkable surface, rooftops and ledges included, so its unreachable share counts places no bot would start from. Sampling only from the larger regions would make that number mean what it looks like it means.
 
 This is the check that was missing. **A future map is not finished when it generates; it is finished when its audit is boring — at every range.**
 

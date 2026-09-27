@@ -24,7 +24,7 @@ import java.util.zip.Inflater;
  */
 public class Navmesh {
 
-	static final String MAGIC = "AINAV3";
+	static final String MAGIC = "AINAV4";
 	/** Height resolution. Aion heights span 0..2048 m, so this fits an unsigned short with room to spare. */
 	static final float Z_STEP = 0.05f;
 	/** Columns per tile side. Small enough that a camp loads few tiles and a row scan is cheap, large enough that per tile overhead stays small. */
@@ -32,8 +32,11 @@ public class Navmesh {
 
 	private final int mapId, width, height, tilesX, coarseFactor, coarseWidth;
 	private final float cellSize;
-	/** One bit per coarse cell, kept in memory always: it is tiny, and long routes are planned on it before any tile is read. */
-	private final BitSet coarseFooting;
+	/**
+	 * The region each coarse cell belongs to, kept in memory always: it is small, and long routes are planned on it before any tile is read. A
+	 * region is a stretch of ground a body can actually walk across, so a rough route that stays inside one is a route that can be refined.
+	 */
+	private final int[] coarseRegions;
 	private final int[] tileOffsets, tileLengths;
 	private final AtomicReferenceArray<Tile> tiles;
 	private final FileChannel channel;
@@ -46,11 +49,11 @@ public class Navmesh {
 		static final Tile EMPTY = new Tile(null, null, null, null);
 	}
 
-	private Navmesh(int mapId, int width, int height, float cellSize, int tilesX, int coarseFactor, BitSet coarseFooting, int[] tileOffsets,
+	private Navmesh(int mapId, int width, int height, float cellSize, int tilesX, int coarseFactor, int[] coarseRegions, int[] tileOffsets,
 		int[] tileLengths, FileChannel channel, long dataStart) {
 		this.coarseFactor = coarseFactor;
 		this.coarseWidth = (width + coarseFactor - 1) / coarseFactor;
-		this.coarseFooting = coarseFooting;
+		this.coarseRegions = coarseRegions;
 		this.mapId = mapId;
 		this.width = width;
 		this.height = height;
@@ -96,7 +99,10 @@ public class Navmesh {
 			offsets[i] = directory.getInt();
 			lengths[i] = directory.getInt();
 		}
-		return new Navmesh(storedMapId, width, height, cellSize, tilesX, coarseFactor, BitSet.valueOf(coarse.array()), offsets, lengths, channel,
+		int[] regions = new int[coarseBytes / 4];
+		coarse.flip();
+		coarse.asIntBuffer().get(regions);
+		return new Navmesh(storedMapId, width, height, cellSize, tilesX, coarseFactor, regions, offsets, lengths, channel,
 			header.capacity() + coarseBytes + directory.capacity());
 	}
 
@@ -168,9 +174,14 @@ public class Navmesh {
 
 	/** @return true if that 4 m cell holds enough walkable ground to route through. Answered without reading any tile. */
 	public boolean isCoarseWalkable(int coarseX, int coarseY) {
+		return coarseRegion(coarseX, coarseY) != 0;
+	}
+
+	/** @return The stretch of walkable ground this coarse cell belongs to, or 0 where too little of it can be stood on. */
+	public int coarseRegion(int coarseX, int coarseY) {
 		if (coarseX < 0 || coarseY < 0 || coarseX >= coarseWidth || coarseY >= coarseHeight())
-			return false;
-		return coarseFooting.get(coarseY * coarseWidth + coarseX);
+			return 0;
+		return coarseRegions[coarseY * coarseWidth + coarseX];
 	}
 
 	public int loadedTiles() {

@@ -141,6 +141,11 @@ public class BotPathFinder {
 		int goalCell = coarseCellNear(mesh, mesh.cellX(goalX) / factor, mesh.cellY(goalY) / factor);
 		if (startCell == -1 || goalCell == -1)
 			return List.of();
+		// Two places on different stretches of ground have no rough route either, and saying so here costs nothing. Before this the rough grid
+		// answered yes, the refinement then failed at the crossing, and the journey died after the budget rather than after the question.
+		int region = mesh.coarseRegion(startCell % mesh.coarseWidth(), startCell / mesh.coarseWidth());
+		if (region != mesh.coarseRegion(goalCell % mesh.coarseWidth(), goalCell / mesh.coarseWidth()))
+			return List.of();
 
 		Map<Integer, Float> costSoFar = new HashMap<>();
 		Map<Integer, Integer> cameFrom = new HashMap<>();
@@ -158,8 +163,8 @@ public class BotPathFinder {
 			int cellX = current % mesh.coarseWidth(), cellY = current / mesh.coarseWidth();
 			for (int direction = 0; direction < NEIGHBOUR_X.length; direction++) {
 				int nextX = cellX + NEIGHBOUR_X[direction], nextY = cellY + NEIGHBOUR_Y[direction];
-				if (!mesh.isCoarseWalkable(nextX, nextY))
-					continue;
+				if (mesh.coarseRegion(nextX, nextY) != region)
+					continue; // staying inside one stretch of ground is what makes a rough route refinable
 				int next = coarseKey(mesh, nextX, nextY);
 				float stepCost = cost + (NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0 ? 1.41421f : 1);
 				Float known = costSoFar.get(next);

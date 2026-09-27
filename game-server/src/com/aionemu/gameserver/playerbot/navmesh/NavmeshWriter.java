@@ -35,7 +35,10 @@ public class NavmeshWriter {
 			for (int tileX = 0; tileX < tilesX; tileX++)
 				compressedTiles[tileY * tilesX + tileX] = compress(tile(field, tileX, tileY));
 
-		byte[] coarse = field.coarseFooting().toByteArray();
+		// a region id per coarse cell rather than a bit: the rough grid has to know what the fine grid keeps apart, or it routes across it
+		int[] coarseRegions = field.coarseRegions(field.regions(BotPathFinder.STEP_TOLERANCE));
+		byte[] coarse = new byte[coarseRegions.length * 4];
+		ByteBuffer.wrap(coarse).asIntBuffer().put(coarseRegions);
 		try (OutputStream out = Files.newOutputStream(file)) {
 			ByteBuffer header = ByteBuffer.allocate(Navmesh.MAGIC.length() + 4 * 8 + coarse.length + tileCount * 8);
 			header.put(Navmesh.MAGIC.getBytes());

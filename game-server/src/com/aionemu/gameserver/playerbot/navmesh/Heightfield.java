@@ -1,6 +1,8 @@
 package com.aionemu.gameserver.playerbot.navmesh;
 
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Every surface of a map, sampled on a regular grid, each marked walkable or not.
@@ -24,6 +26,7 @@ public class Heightfield {
 	public static final int AGENT_RADIUS_CELLS = 1;
 	/** Fine cells per side of a coarse cell, making the coarse grid 4 m. */
 	public static final int COARSE_FACTOR = 8;
+	private static final int[] NEIGHBOUR_X = { 1, 1, 0, -1, -1, -1, 0, 1 }, NEIGHBOUR_Y = { 0, 1, 1, 1, 0, -1, -1, -1 };
 	/** How much of a coarse cell must be walkable for it to count. Low on purpose: the coarse grid only guides, it never decides. */
 	private static final float COARSE_THRESHOLD = 0.25f;
 
@@ -172,6 +175,97 @@ public class Heightfield {
 	 * A\* over half metre cells explores a hopeless area once a goal is a few hundred metres away. Planning roughly first and refining afterwards
 	 * costs one bit per 4 m of map, so the whole of Poeta guides in 72 KB, small enough to keep loaded while the detailed tiles stay on disk.
 	 */
+	/**
+	 * Labels every column with the region of walkable ground it belongs to, joining neighbours the same way the path finder steps between them.
+	 * <p>
+	 * Lives here rather than in the tool that reports it, so the map is generated from the same answer the analysis gives. Two routines answering
+	 * this question separately is how the mesh and the engine came to disagree in the first place.
+	 *
+	 * @param climbTolerance The height a body may gain over half a metre, which is the path finder's own {@code STEP_TOLERANCE}.
+	 * @return One region id per column, 0 where there is no footing. Ids start at 1 and count up.
+	 */
+	int[] regions(float climbTolerance) {
+		int[] region = new int[width * height];
+		int[] stack = new int[width * height];
+		int next = 0;
+		for (int origin = 0; origin < region.length; origin++) {
+			if (region[origin] != 0 || !hasFooting(origin % width, origin / width))
+				continue;
+			int id = ++next, top = 0;
+			stack[top++] = origin;
+			region[origin] = id;
+			while (top > 0) {
+				int column = stack[--top];
+				int x = column % width, y = column / width;
+				float z = topWalkable(x, y);
+				for (int direction = 0; direction < NEIGHBOUR_X.length; direction++) {
+					int nextX = x + NEIGHBOUR_X[direction], nextY = y + NEIGHBOUR_Y[direction];
+					if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height)
+						continue;
+					int neighbour = nextY * width + nextX;
+					if (region[neighbour] != 0 || !hasFooting(nextX, nextY))
+						continue;
+					boolean diagonal = NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0;
+					if (Math.abs(topWalkable(nextX, nextY) - z) > CELL_SIZE * (diagonal ? 1.41421f : 1) + climbTolerance)
+						continue;
+					region[neighbour] = id;
+					stack[top++] = neighbour;
+				}
+			}
+		}
+		return region;
+	}
+
+	/** @return The highest walkable surface of a column, which is the one a body arriving from a neighbour would stand on. */
+	float topWalkable(int cellX, int cellY) {
+		for (int i = offsets[cellY * width + cellX + 1] - 1; i >= offsets[cellY * width + cellX]; i--) {
+			if (walkable.get(i))
+				return surfaces[i];
+		}
+		return Float.NaN;
+	}
+
+	/**
+	 * Sums the fine grid up into 4 m cells carrying the region each one belongs to.
+	 * <p>
+	 * A plain "is there ground here" bit was not enough, and this is the whole reason long routes failed. A coarse cell counted as routable on a
+	 * quarter of its ground, so a rough route crossed freely between two regions the fine grid keeps apart — and every attempt to refine that
+	 * crossing came back empty. Carrying the region turns the rough grid from a hint into a promise: a rough route now stays inside one region, and
+	 * a region is by construction something a body can walk across.
+	 *
+	 * @return One region id per coarse cell, 0 where too little of it is walkable to plan through.
+	 */
+	int[] coarseRegions(int[] regions) {
+		int coarseWidth = (width + COARSE_FACTOR - 1) / COARSE_FACTOR, coarseHeight = (height + COARSE_FACTOR - 1) / COARSE_FACTOR;
+		int[] coarse = new int[coarseWidth * coarseHeight];
+		Map<Integer, Integer> tally = new HashMap<>();
+		for (int coarseY = 0; coarseY < coarseHeight; coarseY++) {
+			for (int coarseX = 0; coarseX < coarseWidth; coarseX++) {
+				tally.clear();
+				int total = 0;
+				for (int y = coarseY * COARSE_FACTOR; y < Math.min(height, (coarseY + 1) * COARSE_FACTOR); y++) {
+					for (int x = coarseX * COARSE_FACTOR; x < Math.min(width, (coarseX + 1) * COARSE_FACTOR); x++) {
+						total++;
+						int id = regions[y * width + x];
+						if (id != 0)
+							tally.merge(id, 1, Integer::sum);
+					}
+				}
+				// the region holding most of this cell, and only if it holds enough of it to be worth aiming at
+				int best = 0, bestCount = 0;
+				for (Map.Entry<Integer, Integer> entry : tally.entrySet()) {
+					if (entry.getValue() > bestCount) {
+						bestCount = entry.getValue();
+						best = entry.getKey();
+					}
+				}
+				if (total > 0 && bestCount >= total * COARSE_THRESHOLD)
+					coarse[coarseY * coarseWidth + coarseX] = best;
+			}
+		}
+		return coarse;
+	}
+
 	BitSet coarseFooting() {
 		int coarseWidth = (width + COARSE_FACTOR - 1) / COARSE_FACTOR, coarseHeight = (height + COARSE_FACTOR - 1) / COARSE_FACTOR;
 		BitSet coarse = new BitSet(coarseWidth * coarseHeight);
