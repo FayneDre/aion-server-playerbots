@@ -74,6 +74,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final int MIN_ENGAGE_HP_PERCENT = 90;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	private static final float ANCHOR_TOLERANCE = 5f;
+	/** How close a bot keeps to its group leader. Tighter than the camp tolerance: a follower stands with its group, it does not merely nearby it. */
+	private static final float FOLLOW_DISTANCE = 3f;
 	/** Roughly the time a player spends looking at the resurrection window. */
 	private static final int REVIVE_DELAY_MILLIS = 10000;
 
@@ -494,8 +496,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void followLeader() {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
 			return;
-		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > ANCHOR_TOLERANCE)
+		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > FOLLOW_DISTANCE) {
 			moveController.moveToPoint(anchorX, anchorY, anchorZ);
+			return;
+		}
+		// Arrived. The leg in progress is aimed at wherever the leader stood when it was issued, so letting it run walks the bot past a leader who
+		// has turned round, and the next tick walks it back: the small pacing of a follower forever arriving where its leader no longer is. Stopping
+		// is safe here and nothing hangs on it — the ai reads whether the bot is travelling from the move controller rather than from a flag of its
+		// own, so there is no state left believing the journey is still on.
+		stopMoving();
 	}
 
 	private void returnToAnchor() {

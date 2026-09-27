@@ -40,6 +40,8 @@ The leader's target is taken first so a group converges instead of each member h
 
 Resting gives way to following: a bot that has fallen behind walks instead of sitting down, since resting takes it out of the fight for as long as it lasts.
 
+**A follower stops when it arrives, rather than finishing its leg.** The leg in progress aims at wherever the leader stood when it was issued, so letting it run walks the bot past a leader who has turned round, and the next tick walks it back — the small pacing of a follower forever arriving where its leader no longer is. Stopping is safe because the ai reads whether the bot is travelling from the move controller rather than from a flag of its own, so nothing is left believing the journey is still on.
+
 **Following re-aims every tick**, unlike returning to a camp. `returnToAnchor` waits for the current leg to end before looking again, which is right for an anchor that does not move and wrong for a leader who is walking: the bot heads for where the leader stood a leg ago, so the longer the journey the further behind it arrives. `moveToPoint` is built to be called repeatedly and keeps its plan unless the destination shifted more than a couple of metres, so the lag is bounded by that distance instead of by the length of a leg.
 
 A bot that catches up from far away **appears rather than walks into view** for its leader, because a client is only told about characters in its known list; the group map dot comes from team updates, which have no such range. That is what a real player at the same distance would look like too.
