@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.economy;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.function.Predicate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,10 +68,10 @@ public class BotVendorManager {
 	/**
 	 * @return Where the nearest shop stands, or null if that map has none.
 	 */
-	public static Vector3f findVendor(Player bot) {
+	public static Vector3f findVendor(Player bot, Predicate<Vector3f> isIgnored) {
 		List<Vector3f> vendors = vendorsByMap.computeIfAbsent(bot.getWorldId(), BotVendorManager::locateVendors);
-		return vendors.stream().min(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y)))
-			.orElse(null);
+		return vendors.stream().filter(spot -> !isIgnored.test(spot))
+			.min(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y))).orElse(null);
 	}
 
 	private static List<Vector3f> locateVendors(int worldId) {
@@ -87,12 +88,31 @@ public class BotVendorManager {
 
 	/** @return The shop the bot is standing next to, or null. */
 	public static Npc findVendorNearby(Player bot) {
-		Npc[] found = { null };
+		Npc vendor = findKnownVendor(bot);
+		return vendor != null && isWithinTradeRange(bot, vendor) ? vendor : null;
+	}
+
+	/**
+	 * @return The nearest shop keeper the bot can see, however far, or null. Worth more than the spawn point it was found from: that point is where
+	 *         an npc was placed, not where it stands, and a bot that only ever walks to coordinates can end up beside a shop it never notices.
+	 */
+	public static Npc findKnownVendor(Player bot) {
+		Npc[] nearest = { null };
+		double[] nearestDistance = { Double.MAX_VALUE };
 		bot.getKnownList().forEachNpc(npc -> {
-			if (found[0] == null && npc.canBuy() && PositionUtil.getDistance(bot, npc) <= TRADE_RANGE)
-				found[0] = npc;
+			if (!npc.canBuy())
+				return;
+			double distance = PositionUtil.getDistance(bot, npc);
+			if (distance < nearestDistance[0]) {
+				nearestDistance[0] = distance;
+				nearest[0] = npc;
+			}
 		});
-		return found[0];
+		return nearest[0];
+	}
+
+	public static boolean isWithinTradeRange(Player bot, Npc vendor) {
+		return PositionUtil.getDistance(bot, vendor) <= TRADE_RANGE;
 	}
 
 	/**

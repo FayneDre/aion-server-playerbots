@@ -12,6 +12,8 @@ Verified in game. Run `//bot` for the command list.
 
 Wired into `PlayerBotAI.botTick`, right after the health check and before roaming, so a bot heals before travelling and never abandons a fight to go shopping. `//bot sell <name>` forces a trip for testing without waiting for a bag to fill. Verified in game: a bot walks to the nearest shop, sells, returns to its anchor.
 
+**Arriving is not finding.** The shop spots come from spawn data — where an npc was placed, not where it stands. A bot that reached a spot with nothing on it re-issued a move to the point it was already standing on, arrived instantly, found nothing again, and did that for ever. Two changes end it: the bot walks to a shop keeper it can actually see rather than to a recorded coordinate, and a spot it reaches with no keeper in sight is dropped for ten minutes so the next trip goes elsewhere.
+
 The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops forever on a bag full of gear, quest items or anything rare, since nothing there is ever sold. `BotVendorManager.hasJunk(bot)` is required too.
 
 **Selling does not go through `TradeService.performSellToShop`.** It gates on `PlayerRestrictions.canTrade`, which used to reject anything not `isOnline()`, so every sale silently failed; `BotVendorManager.sellJunk` redoes the small amount of business logic itself (price, sell limit, repurchase list, kinah). Since `isOnline()` was fixed at the root (below), the engine's own path would now work — the duplicate is kept only because it is tested, and is the first thing to delete when that area is next touched.
@@ -33,6 +35,10 @@ The leader's target is taken first so a group converges instead of each member h
 **Selecting a target is not fighting it.** Players click mobs to read their level, and a group whose bots pull whatever the leader looks at is unusable, so the mob's own aggro list decides: it holds a grudge against whoever hit it, and equally against whoever it chose to attack, which means a leader under attack is assisted too.
 
 Resting gives way to following: a bot that has fallen behind walks instead of sitting down, since resting takes it out of the fight for as long as it lasts.
+
+**Following re-aims every tick**, unlike returning to a camp. `returnToAnchor` waits for the current leg to end before looking again, which is right for an anchor that does not move and wrong for a leader who is walking: the bot heads for where the leader stood a leg ago, so the longer the journey the further behind it arrives. `moveToPoint` is built to be called repeatedly and keeps its plan unless the destination shifted more than a couple of metres, so the lag is bounded by that distance instead of by the length of a leg.
+
+A bot that catches up from far away **appears rather than walks into view** for its leader, because a client is only told about characters in its known list; the group map dot comes from team updates, which have no such range. That is what a real player at the same distance would look like too.
 
 A bot is passed over when a group looks for a new leader — leading means answering invitations and setting loot rules.
 

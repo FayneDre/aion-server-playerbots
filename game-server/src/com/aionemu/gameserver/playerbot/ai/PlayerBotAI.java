@@ -64,6 +64,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long SHEATHE_DELAY_MILLIS = 8000;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
 	private static final long UNREACHABLE_MILLIS = 10000;
+	/** Close enough to a shop's spawn point that a shop keeper would be in sight if there were one. */
+	private static final float VENDOR_SPOT_TOLERANCE = 10f;
+	/** How long a shop spot that turned out to be empty is left alone. Long: npcs do not appear and disappear minute by minute. */
+	private static final long EMPTY_SHOP_MILLIS = 600000;
 	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
 	private static final long KILLER_AVOIDED_MILLIS = 120000;
 	/** Health below which the bot waits to regenerate instead of looking for a fight. */
@@ -92,6 +96,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long combatEndedAt;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
+	/** Shop spots that turned out to have no shop keeper standing on them, so the next trip goes somewhere else. */
+	private final Map<Vector3f, Long> ignoredVendors = new ConcurrentHashMap<>();
 	/** Where the bot is headed to sell, non null only while a trip is in progress. */
 	private volatile Vector3f vendorDestination;
 	/**
@@ -195,7 +201,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		Creature assisted = BotGroupManager.targetToAssist(getOwner());
 		if (assisted == null) {
-			returnToAnchor(); // which is the leader: standing by is the default, not looking for something to do
+			followLeader(); // standing by is the default, not looking for something to do
 			return;
 		}
 		BotTargetRegistry.forceClaim(assisted, getOwner()); // the group piles on together, which is the point of being one
@@ -260,7 +266,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	public boolean forceSellTrip() {
 		if (!BotVendorManager.hasJunk(getOwner()))
 			return false;
-		Vector3f vendor = BotVendorManager.findVendor(getOwner());
+		Vector3f vendor = BotVendorManager.findVendor(getOwner(), this::isIgnoredVendor);
 		if (vendor == null)
 			return false;
 		vendorDestination = vendor;
@@ -456,6 +462,21 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/** Brings the bot back where it belongs once it has nothing to fight, so a chase does not slowly displace it. */
+	/**
+	 * Walks to the leader, re-aimed on every tick.
+	 * <p>
+	 * {@link #returnToAnchor()} waits for the current leg to end before looking again, which is right for a camp that does not move and wrong for a
+	 * leader who is walking: the bot heads for where the leader stood a leg ago, so the longer the journey the further behind it arrives.
+	 * {@code moveToPoint} is built to be called repeatedly — it keeps its plan unless the destination has shifted more than a couple of metres — so
+	 * re-aiming every tick costs nothing and bounds the lag by that distance instead of by the length of a leg.
+	 */
+	private void followLeader() {
+		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
+			return;
+		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > ANCHOR_TOLERANCE)
+			moveController.moveToPoint(anchorX, anchorY, anchorZ);
+	}
+
 	private void returnToAnchor() {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
 			return;
@@ -525,14 +546,14 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// a full bag alone is not enough: one full of gear, quest items or anything rare never empties and would loop forever
 			if (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot))
 				return false;
-			vendorDestination = BotVendorManager.findVendor(bot);
+			vendorDestination = BotVendorManager.findVendor(bot, this::isIgnoredVendor);
 			if (vendorDestination == null) // this map has no shop to walk to
 				return false;
 			log.info("Bot {} heads to a shop to sell", bot.getName());
 		}
 
-		Npc vendor = BotVendorManager.findVendorNearby(bot);
-		if (vendor != null) {
+		Npc vendor = BotVendorManager.findKnownVendor(bot);
+		if (vendor != null && BotVendorManager.isWithinTradeRange(bot, vendor)) {
 			int sold = BotVendorManager.sellJunk(bot, vendor);
 			log.info("Bot {} sold {} stack(s)", bot.getName(), sold);
 			vendorDestination = null;
@@ -543,14 +564,35 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return true; // on its feet first, so it does not slide off
 		if (!(bot.getMoveController() instanceof BotMoveController moveController))
 			return false;
-		if (moveController.isInMove())
-			return true;
-		if (moveController.isBlocked() || !moveController.moveToPoint(vendorDestination.x, vendorDestination.y, vendorDestination.z)) {
+		// Nothing in sight buys, and the bot is standing where the map said a shop would be. Before this, it re-issued a move to the spot it was
+		// already on, arrived instantly, found nothing again, and did that for ever — a bot frozen at a shop that never was. The spot is dropped
+		// instead, and the next trip goes to the next nearest one.
+		if (vendor == null && PositionUtil.getDistance(bot.getX(), bot.getY(), vendorDestination.x, vendorDestination.y) <= VENDOR_SPOT_TOLERANCE) {
+			log.info("Bot {} found no shop keeper where one was expected, trying another", bot.getName());
+			ignoredVendors.put(vendorDestination, System.currentTimeMillis() + EMPTY_SHOP_MILLIS);
+			vendorDestination = null;
+			return false;
+		}
+		// walk to the shop keeper itself when one is in sight, and only to the recorded spot while none is
+		float x = vendor != null ? vendor.getX() : vendorDestination.x;
+		float y = vendor != null ? vendor.getY() : vendorDestination.y;
+		float z = vendor != null ? vendor.getZ() : vendorDestination.z;
+		if (moveController.isBlocked() || !moveController.moveToPoint(x, y, z)) {
 			log.info("Bot {} cannot reach a shop and gives up selling", bot.getName());
 			vendorDestination = null;
 			return false;
 		}
 		return true;
+	}
+
+	private boolean isIgnoredVendor(Vector3f spot) {
+		Long until = ignoredVendors.get(spot);
+		if (until == null)
+			return false;
+		if (until > System.currentTimeMillis())
+			return true;
+		ignoredVendors.remove(spot);
+		return false;
 	}
 
 	/** Puts the weapon away once the bot has really stopped fighting, rather than at the end of every single kill. */
