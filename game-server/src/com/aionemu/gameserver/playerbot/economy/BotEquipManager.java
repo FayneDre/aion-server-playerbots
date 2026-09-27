@@ -75,6 +75,16 @@ public class BotEquipManager {
 		return true;
 	}
 
+	/** @return true if there is anything in the bag worth putting on, read or not. Lets the caller decide to make room for it before trying. */
+	public static boolean hasUpgradeWaiting(Player bot) {
+		return !upgrades(bot, true).isEmpty() || !upgrades(bot, false).isEmpty();
+	}
+
+	/** @return true while a reading or a binding is under way, five seconds the bot must spend doing nothing else. */
+	public static boolean isBusyDressing(Player bot) {
+		return isReading(bot);
+	}
+
 	/**
 	 * {@code hasScheduledTask}, not {@code hasTask}: the latter only asks whether that slot was ever filled, and nothing empties it when the task
 	 * finishes, so a bot that read one thing would have stood there claiming to be busy for the rest of its life.

@@ -24,9 +24,9 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 
 A weapon is only ever weighed against a weapon and armour against armour. Slots overlap in ways that make a free-for-all dangerous — a shield and a two handed weapon claim the same hand, so a shield that merely scored higher would strip the weapon and the weapon would not win it back. Anything finer than that is too strict: the first attempt insisted on the same item group, which is the *material*, and it blocked every real upgrade, since levelling gear crosses from leather to cloth and back with whatever drops.
 
-**Worthwhile gear is bound to the bot before it is worn.** This is what kept the first three attempts at equipping wearing nothing at all. A piece that binds to its owner is not *refused* by `equipItem`, it is **asked about**: the engine opens a confirmation window and returns null, which to a bot is indistinguishable from a refusal — and every upgrade worth having is soul bound. Answering yes starts five seconds of binding that end by equipping the piece itself. Binding also refuses outright unless the weapon is away and the bot is on its feet, so dressing only happens when the bot is calm and still.
+**Worthwhile gear is bound to the bot before it is worn**, and this is what kept three attempts at equipping wearing nothing at all — `equipItem` does not refuse a soul bound piece, it asks about it and returns null. See [engine-traps.md](engine-traps.md); it is the clearest example of the whole family.
 
-The lesson is an old one in a new coat: **a null return is not a reason.** Three wrong diagnoses came from reading the first half of `equipItem` and inferring the rest.
+**Dressing is committed to, not waited for.** Reading a piece and binding one each take five seconds with the weapon away, standing still, undone by a single step or blow. A bot that farms is in its weapon stance almost always and spends its idle moments walking, so the quiet window never came on its own. The bot now stops, sheathes and holds its tick until the piece is on. Measured: three pieces worn per bot before, four and climbing after.
 
 **Gear is identified before it is worn.** A piece that rolls bonus stats drops unidentified (`tuneCount == -1`) and the engine refuses to equip it, which is why the first version of this quietly wore nothing at all. Identifying costs nothing but five seconds: `CM_TUNE` calls `identifyItem` with no scroll when the item is unknown, and the scroll a player buys is for re-rolling a piece that has already been read. Only pieces worth wearing are read, and the judgement holds either way, since identifying rolls bonus stats without touching the level or quality it was judged on. Those five seconds are watched by an observer that cancels them if their owner moves or fights, so the bot holds its tick until they are over.
 
@@ -106,14 +106,6 @@ The counterpart is that **whatever needs the socket must test the socket**. Six 
 
 Three of those were already broken before any of this: they walk the world player list, which has contained bots all along. Legion and friend lists are untouched — they use a different `isOnline()`, on `PlayerCommonData`, fed by the database column, where a bot is correctly absent.
 
-## Traps that cost hours, so they do not cost them twice
+## Traps
 
-- **Whatever the client does by itself must be redone server side.** Drawing the weapon, ending spawn protection, standing up, sheathing. Each one was a bug that looked like something else.
-- **The server decides faster than the client can show.** Two animations in the same instant leave a bot sliding or floating. The delays in `PlayerBotAI` are empirical and named for it.
-- **Never replace the server jar while it runs.** Classes load lazily, so anything not yet loaded disappears. `deploy.ps1` refuses for this reason; `navmesh.ps1` uses the repository's jar.
-- **Maven's incremental build can miss a change** and leave the IDE's error stubs in place, reporting success. Use `clean package` when a build result looks impossible.
-- **Nothing but the despawn path saves a bot.** `PeriodicSaveService` only handles legion warehouses.
-- **A method whose name asks one question while its body answers another will be used for the question in its name.** `isOnline()` cost a workaround in the vendor code and would have silently starved every grouped bot of experience, because callers reasonably read it as "is present". Fixed at the root; see above.
-- **Two systems describing the same world will disagree, and the disagreement will not announce itself.** The navmesh generator dropped every wall while the engine's raycasts kept them, and that one fact produced a day of symptoms that each looked like its own small bug. When bots misbehave near geometry, first ask whether the mesh and the engine agree — `NavmeshTool <mapId> path x1 y1 x2 y2` against what the bot actually does is the fastest way to find out.
-- **A plan that is redone every tick is not a plan.** Both ways round an obstacle cost about the same, so fresh plans alternate and the bot paces back and forth.
-- **State kept in two places drifts.** A flag cleared by hand on every way a journey can end will miss one — it missed the abandon path, and the bot stood still for good. Derive it from the thing that already knows (`BotMoveController.isTravelling()`).
+Moved to [engine-traps.md](engine-traps.md), which is where to look first when a bot does nothing and says nothing about why.

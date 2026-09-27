@@ -236,14 +236,26 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
-	 * @return true when the bot can be trusted to stand still long enough to fuss with its bag. Soul binding refuses outright unless the weapon is
-	 *         away and the bot is on its feet, and both binding and reading are undone by a single step.
+	 * Puts on what the bag has to offer.
+	 * <p>
+	 * Reading a piece and binding one each take five seconds of standing still with the weapon away — binding refuses outright otherwise, and both
+	 * are undone by a single step or blow. Waiting for that to happen by chance never worked: a bot that farms is in its weapon stance almost always,
+	 * and the few idle moments were spent walking. So the bot commits to it instead, the way a player does: it stops, puts the weapon away, and
+	 * holds its tick until the piece is on.
+	 *
+	 * @return true if the bot is busy dressing, in which case it does nothing else this tick.
 	 */
-	private boolean isCalmEnoughToDress() {
+	private boolean dressUp() {
 		Player bot = getOwner();
-		if (bot.isInState(CreatureState.WEAPON_EQUIPPED) || !CreatureState.isStanding(bot.getState()))
+		if (BotEquipManager.isBusyDressing(bot))
+			return true;
+		if (!BotEquipManager.hasUpgradeWaiting(bot))
 			return false;
-		return !(bot.getMoveController() instanceof BotMoveController moveController) || !moveController.isInMove();
+		stopMoving();
+		BotAttackManager.leaveAttackMode(bot);
+		if (standUp() || !CreatureState.isStanding(bot.getState()))
+			return true; // on its feet first, and the weapon is away as of this tick
+		return BotEquipManager.equipUpgrades(bot) || BotEquipManager.identifyUpgrade(bot);
 	}
 
 	/**
@@ -266,8 +278,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				startAttacking(attacker); // no health check: a bot being hit defends itself, it does not sit down
 			else if (collectLoot()) {
 				// busy with a corpse, everything else can wait
-			} else if (isCalmEnoughToDress() && (BotEquipManager.equipUpgrades(getOwner()) || BotEquipManager.identifyUpgrade(getOwner()))) {
-				// dressing itself: reading a piece and binding one each take five seconds that a single step, blow or cast throws away
+			} else if (dressUp()) {
+				// dressing itself, which is five seconds of stillness the bot has to commit to rather than hope for
 			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following))
 				recover();
 			else if (following) {
