@@ -37,6 +37,8 @@ public class NavmeshTool {
 	private static final int AUDIT_SAMPLES = 300;
 	/** How far apart the sampled points are. Short enough that a straight line is usually the answer, long enough to leave room to wander. */
 	private static final float AUDIT_SPAN = 25;
+	/** A second span, well past {@code BotPathFinder.LONG_DISTANCE}, so the rough-grid planning is audited too and not only the fine search. */
+	private static final float AUDIT_LONG_SPAN = 250;
 	/** A route worth naming: half as long again as the straight line. */
 	private static final float AUDIT_SUSPECT_RATIO = 1.5f;
 	/** A median worth a warning. Half the map's short routes wandering this much is not terrain, it is a fault in the mesh. */
@@ -134,6 +136,14 @@ public class NavmeshTool {
 	 * their coordinates, ready to paste into {@code path} and then {@code inspect}.
 	 */
 	private static void audit(int mapId) throws IOException {
+		audit(mapId, AUDIT_SPAN);
+		// A second pass well past LONG_DISTANCE, because the two are not the same question and the first one cannot answer it. Short routes are one
+		// fine search; long ones are planned on the rough grid and refined stretch by stretch, and that refinement can fail everywhere while every
+		// short route on the map still reads as perfect. It did: Poeta audited at a median of 1.00x while no bot could plan its way across it.
+		audit(mapId, AUDIT_LONG_SPAN);
+	}
+
+	private static void audit(int mapId, float span) throws IOException {
 		Navmesh mesh = Navmesh.open(mapId);
 		Random random = new Random(mapId); // seeded on the map, so two runs of the same map are comparable
 		List<float[]> worst = new ArrayList<>();
@@ -147,9 +157,9 @@ public class NavmeshTool {
 			if (Float.isNaN(startZ))
 				continue;
 			double angle = random.nextDouble() * Math.PI * 2;
-			float goalX = startX + (float) Math.cos(angle) * AUDIT_SPAN, goalY = startY + (float) Math.sin(angle) * AUDIT_SPAN;
+			float goalX = startX + (float) Math.cos(angle) * span, goalY = startY + (float) Math.sin(angle) * span;
 			float goalZ = groundAt(mesh, goalX, goalY);
-			if (Float.isNaN(goalZ) || Math.abs(goalZ - startZ) > AUDIT_SPAN / 2)
+			if (Float.isNaN(goalZ) || Math.abs(goalZ - startZ) > span / 2)
 				continue; // a cliff or a roof: those legitimately have no short way across, and would drown the signal
 
 			BotPathFinder.Route route = BotPathFinder.findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
@@ -174,7 +184,7 @@ public class NavmeshTool {
 		float median = ratios.get(ratios.size() / 2), p90 = ratios.get(ratios.size() * 9 / 10);
 		long wandering = ratios.stream().filter(ratio -> ratio > AUDIT_SUSPECT_RATIO).count();
 		System.out.printf("Audit of %d routes over %.0f m: median %.2fx straight line, 90th percentile %.2fx, %d beyond %.1fx, %d unreachable%n",
-			ratios.size(), AUDIT_SPAN, median, p90, wandering, AUDIT_SUSPECT_RATIO, unreachable);
+			ratios.size(), span, median, p90, wandering, AUDIT_SUSPECT_RATIO, unreachable);
 
 		worst.sort((a, b) -> Float.compare(b[0], a[0]));
 		for (float[] sample : worst.subList(0, Math.min(5, worst.size()))) {

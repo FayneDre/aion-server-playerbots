@@ -81,7 +81,13 @@ public class BotPathFinder {
 		float distance = (float) Math.hypot(goalX - startX, goalY - startY);
 		if (distance > LONG_DISTANCE)
 			return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
-		return findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
+		Route direct = findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
+		if (!direct.isEmpty() || !direct.gaveUp())
+			return direct;
+		// The fine search ran out of room, which distance alone does not predict: thirty metres out of a thicket costs more of it than three hundred
+		// across open grass, because what it must explore grows with the clutter rather than with the journey. Bots walked into a wood in Poeta and
+		// could not plan their way out of it, at any range. The rough grid knows the way through, so it is worth asking even for a short hop.
+		return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
 	}
 
 	/**

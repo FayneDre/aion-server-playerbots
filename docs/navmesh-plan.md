@@ -105,7 +105,20 @@ Audit of 279 routes over 25 m: median 1,00x straight line, 90th percentile 1,07x
 
 The worst offenders are printed as ready-made `path` commands, so the next step is a paste away, and `inspect` on a point from that route names what sits above it. A median past 1.25x prints a warning naming the likely cause. The seed is the map id, so two runs of the same map are comparable.
 
-This is the check that was missing. **A future map is not finished when it generates; it is finished when its audit is boring.**
+The audit runs **twice**, at 25 m and at 250 m, because those are not the same question and the first cannot answer the second. A short route is one fine search; a long one is planned on the rough grid and refined stretch by stretch, and that refinement can fail everywhere while every short route on the map still reads as perfect.
+
+It did exactly that. Poeta audited at a median of 1.00x and was declared healthy while **no bot could plan its way across it**:
+
+```
+Audit of 280 routes over  25 m: median 1,00x, 90th percentile 1,07x,  20 unreachable
+Audit of 122 routes over 250 m: median 1,06x, 90th percentile 1,69x, 178 unreachable
+```
+
+Seven per cent unreachable up close, **fifty-nine per cent across the map**. Residents could reach the camp next door and never the village.
+
+The cause is the rough grid disagreeing with the fine one. A 4 m coarse cell counts as routable when a quarter of its ground is walkable, so a guide route happily crosses barriers the fine grid refuses; refinement then fails at the crossing, and three guide skips are not enough to step over it. Three ways out, none of them tried yet: raise the coarse threshold, build the coarse grid from the fine grid's connected components instead of its coverage, or allow more skips.
+
+This is the check that was missing. **A future map is not finished when it generates; it is finished when its audit is boring — at every range.**
 
 ## Two questions, two answers, one routine — again
 
