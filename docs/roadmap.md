@@ -74,7 +74,7 @@ A bot is passed over when a group looks for a new leader — leading means answe
 
 **Left for later:** nothing makes a bot follow through a teleporter, and a group of bots alone has no one to decide for it.
 
-**Economy.** Selling is the first step. Then the broker (`BrokerService`), then player shops. `PvpService` dereferences `getClientConnection().getIP()` and will throw the first time a bot kills a real player, so guard it before open world PvP.
+**Economy.** Selling is the first step. Then the broker (`BrokerService`), then player shops. (`PvpService` no longer throws when a bot kills a real player: that dereference was guarded along with the rest of the `isOnline()` work.)
 
 **Bot population.** `//bot populate` creates them on reserved accounts from id 900000. `GameServer` then calls `PlayerBotService.onStartUp()`, which puts back whatever was in the world before, each bot at its own saved position — so a restart resumes rather than resets, and nothing has to place them by hand. The roster is a list of names in `server_variables`, written on every spawn and despawn because the case it exists for is a shutdown that never ran.
 
@@ -87,7 +87,8 @@ A bot is passed over when a group looks for a new leader — leading means answe
 3. **Only maps with a generated file are planned on.** Run `tools/navmesh.ps1 <mapId>`; the rest fall back to reactive steering. Only Poeta (210010000) is generated.
 4. **Crossing maps is not a navigation problem.** It needs teleporters and flight paths, like a player.
 5. **A crash loses at most 5 minutes of what bots did.** That is the periodic save interval; nothing writes them between two sweeps.
-6. **Bots never flee and never use potions.** They heal themselves if their class can, and otherwise sit down to regenerate.
+6. **Bots never flee.** They heal, drink and shield themselves, and otherwise sit down to regenerate, but nothing makes them run from a fight they are losing.
+7. **Bots cannot leave the map they are on.** No teleporter, no flight path, so a group that changes zone leaves its bots behind.
 
 ## `isOnline()` means "is present", not "has a socket"
 
