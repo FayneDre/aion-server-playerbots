@@ -2,9 +2,11 @@ package com.aionemu.gameserver.playerbot.economy;
 
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.model.TaskId;
 import com.aionemu.gameserver.model.gameobjects.Item;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
+import com.aionemu.gameserver.services.item.ItemActionService;
 
 /**
  * Keeps a bot wearing the best of what it owns.
@@ -27,13 +29,12 @@ public class BotEquipManager {
 	 * @return true if something was equipped. One per call, so a bagful is put on over several seconds rather than in one frame.
 	 */
 	public static boolean equipUpgrades(Player bot) {
+		// An identification is five seconds of standing still, watched by an observer that cancels it the moment its owner moves or fights. Claiming
+		// the tick while it runs is what lets it finish.
+		if (bot.getController().hasTask(TaskId.ITEM_USE))
+			return true;
 		for (Item candidate : bot.getInventory().getItems()) {
 			if (!isGear(candidate) || candidate.isEquipped())
-				continue;
-			// A piece that rolls bonus stats drops unidentified, and unidentified is unwearable — for a player as much as for a bot, who simply has
-			// no scroll to identify it with and no way yet to buy one. Skipping them here keeps the loop from stopping on a pile of gear the engine
-			// will refuse for ever, so it reaches the pieces that can actually be worn.
-			if (!candidate.isIdentified())
 				continue;
 			Item worn = wornInPlaceOf(bot, candidate);
 			// A weapon is only ever weighed against a weapon, and armour against armour. Slots overlap in ways that make a free-for-all dangerous:
@@ -42,6 +43,13 @@ public class BotEquipManager {
 			// levelling gear crosses from leather to cloth and back with whatever drops.
 			if (worn != null && (worn.getItemTemplate().isWeapon() != candidate.getItemTemplate().isWeapon() || score(worn) >= score(candidate)))
 				continue;
+			// A piece that rolls bonus stats drops unidentified, and unidentified is unwearable. Identifying costs nothing but the five seconds:
+			// the scroll a player buys is for re-rolling an identified piece, not for reading an unknown one. Only worthwhile pieces are read, and
+			// the judgement holds either way, since identifying rolls bonus stats without touching the level or the quality it was judged on.
+			if (!candidate.isIdentified()) {
+				ItemActionService.identifyItem(bot, candidate);
+				return true;
+			}
 			if (bot.getEquipment().equipItem(candidate.getObjectId(), candidate.getItemTemplate().getItemSlot()) != null) {
 				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} puts on {}", bot.getName(), candidate.getItemTemplate().getL10n());
 				return true;
