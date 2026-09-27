@@ -90,6 +90,21 @@ It runs from the server directory but against the jar built in this repository, 
 
 These are for validating the generator, not for surveying the world: one known obstacle is enough, because the same code rasterizes all of them.
 
+## Two questions, two answers, one routine — again
+
+Blocking walls needed a second look almost as soon as it worked. `Heightfield.block` clears **every** surface of a column, which is exactly right for the no-walk volumes it was written for: those forbid a place outright. Reusing it for solid geometry made a tree's leaves, twenty-seven metres up, delete the ground beneath the trunk.
+
+Measured on the spot a player was standing: the mesh called it `BLOCKED`, with surfaces at z=120.7 (the grass), z=148.2 and z=148.5 (the canopy). A route across that clearing took **55 metres to cover 19**, looping round open grass. After the fix it is 19 metres in two waypoints.
+
+Two changes, both from notions the file already had:
+
+- **An obstacle only clears the surfaces it stands in the way of.** A body on a surface at `z` fills up to `z + AGENT_HEIGHT`; the obstacle must reach into that space and rise more than a step above it. Anything wholly above is a roof to walk under.
+- **A wall is steep, not merely tall.** Reading "tall" swept in the broad, gently sloped faces of canopies and roofs, whose footprint then blocked a wide disc of good ground. Steepness is measured against the same 45° `MAX_SLOPE_COSINE` the engine lets a body climb.
+
+Walkable surfaces: 24,292,915 with no blocking at all, 22,923,050 with the whole-column version, **24,070,512** now. Walls still block — about 222,000 surfaces — and trees no longer do.
+
+The lesson is the one below, word for word, and it took a second helping to land: **a routine that answers one question will be reused for another that merely sounds the same.** "Forbid this column" and "something solid stands here" are not the same sentence.
+
 ## The mistake that cost a day
 
 Step 2 answers *"what can a body stand on?"*. A triangle contributes a surface to each column whose centre falls inside its footprint — and a vertical triangle has no footprint, so it contributes nothing. That is correct: nobody stands on a wall.

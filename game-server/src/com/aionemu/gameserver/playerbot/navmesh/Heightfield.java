@@ -197,4 +197,22 @@ public class Heightfield {
 		for (int column = columns.nextSetBit(0); column >= 0; column = columns.nextSetBit(column + 1))
 			walkable.clear(offsets[column], offsets[column + 1]);
 	}
+
+	/**
+	 * Clears only the surfaces of a column that an obstacle actually stands in the way of.
+	 * <p>
+	 * A body on a surface at {@code z} fills the space up to {@code z + AGENT_HEIGHT}. An obstacle matters when it reaches into that space and rises
+	 * far enough above the surface to be more than a step. Anything entirely above it is a roof or a canopy the body walks under, and anything
+	 * entirely below is ground it stands on.
+	 * <p>
+	 * The difference is not academic: a tree's leaves sit twenty-seven metres up, and clearing whole columns for them deleted the ground under every
+	 * tree in the map. Routes then took fifty-five metres to cover nineteen, going the long way round open grass a player walks straight across.
+	 */
+	void blockSpan(int column, float low, float high, float steppableRise) {
+		for (int i = offsets[column]; i < offsets[column + 1]; i++) {
+			float z = surfaces[i];
+			if (high > z + steppableRise && low < z + AGENT_HEIGHT)
+				walkable.clear(i);
+		}
+	}
 }
