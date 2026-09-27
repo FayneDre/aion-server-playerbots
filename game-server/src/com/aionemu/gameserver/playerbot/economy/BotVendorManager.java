@@ -14,7 +14,12 @@ import com.aionemu.gameserver.model.gameobjects.Item;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.items.storage.Storage;
+import java.util.Set;
+
+import com.aionemu.gameserver.model.Gender;
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.templates.item.ItemQuality;
+import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
@@ -60,7 +65,7 @@ public class BotVendorManager {
 	 */
 	public static boolean hasJunk(Player bot) {
 		for (Item item : bot.getInventory().getItems())
-			if (isJunk(item))
+			if (isJunk(bot, item))
 				return true;
 		return false;
 	}
@@ -131,7 +136,7 @@ public class BotVendorManager {
 		List<Item> sold = new ArrayList<>();
 		long kinahReward = 0;
 		for (Item item : inventory.getItems()) {
-			if (!isJunk(item))
+			if (!isJunk(bot, item))
 				continue;
 
 			long count = item.getItemCount();
@@ -161,11 +166,54 @@ public class BotVendorManager {
 		return sold.size();
 	}
 
-	private static boolean isJunk(Item item) {
+	private static boolean isJunk(Player bot, Item item) {
 		if (item.isEquipped() || !item.isSellable())
 			return false;
 		if (item.getItemTemplate().getItemGroup() == ItemGroup.QUEST)
 			return false;
+		if (isForSomeoneElse(bot, item))
+			return true; // however fine it is, it will never be worn by this character
 		return item.getItemTemplate().getItemQuality().getQualityId() < ItemQuality.RARE.getQualityId();
+	}
+
+	/**
+	 * Gear this character can never wear, whatever its quality: the wrong class, the wrong race, the wrong gender.
+	 * <p>
+	 * Quality alone decided what to sell, and everything above ordinary was kept — so a green breastplate looted by a priest was neither worn nor
+	 * sold, and sat in the bag for good. Since a full bag is what sends a bot shopping, one such piece bought it an endless round of trips that sold
+	 * a handful of greys and changed nothing.
+	 * <p>
+	 * Only the restrictions that never lift are read. The level and the mastery skills are deliberately left out: a bot grows into both, and a piece
+	 * it cannot wear today is worth carrying to the day it can.
+	 */
+	private static boolean isForSomeoneElse(Player bot, Item item) {
+		ItemTemplate template = item.getItemTemplate();
+		if (template.getItemSlot() == 0 || !(template.isWeapon() || template.isArmor()))
+			return false;
+		if (!template.isClassSpecific(bot.getPlayerClass()))
+			return true;
+		if (willNeverMaster(bot, template))
+			return true;
+		if (template.getRace() != Race.PC_ALL && template.getRace() != bot.getRace())
+			return true;
+		Gender permitted = template.getUseLimits().getGenderPermitted();
+		return permitted != null && permitted != bot.getGender();
+	}
+
+	/**
+	 * @return true if nothing that would let this piece be worn appears anywhere in this class's skill tree — plate for a priest, a bow for a
+	 *         templar. Masteries are taught as late as level fifty, so "does not have it" is no answer at all; "will never be taught it" is.
+	 */
+	private static boolean willNeverMaster(Player bot, ItemTemplate template) {
+		Set<Integer> mastery = DataManager.SKILL_DATA.getMasterySkills(template.getItemGroup());
+		if (mastery.isEmpty())
+			return false; // nothing to master, anyone may wear it
+		for (int skillId : mastery) {
+			if (bot.getSkillList().isSkillPresent(skillId))
+				return false;
+			if (!DataManager.SKILL_TREE_DATA.getTemplatesForSkill(skillId, bot.getPlayerClass(), bot.getRace()).isEmpty())
+				return false; // it comes with a later level
+		}
+		return true;
 	}
 }
