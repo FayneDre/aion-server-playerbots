@@ -29,7 +29,15 @@ public class BotGeoHelper {
 	private static final float GATHERABLE_MAX_Z_DELTA = 3f;
 	/** Deviations tried when the direct way is blocked, from the mildest to a full sidestep. */
 	private static final float[] DETOUR_ANGLES = { 40, 75, 110 };
-	private static final float DETOUR_DISTANCE = 8f;
+	/**
+	 * How far a sidestep goes, shortest first.
+	 * <p>
+	 * A single fixed length made every obstacle cost the same swerve, so a crate sent the bot eight metres sideways. Starting short is enough because
+	 * the bot decides again at the end of every leg and remembers which hand it is passing on: a big obstacle simply takes several short steps, which
+	 * traces an arc around it rather than one lurch, while a small one now costs a small step. The watchdog is happy either way — it asks for a metre
+	 * gained towards the goal every five seconds, and even a two metre step at forty degrees gains more than that.
+	 */
+	private static final float[] DETOUR_DISTANCES = { 2f, 4f, 8f };
 	/** A detour may lose some ground to the goal, since walking around an obstacle is rarely a shortcut. */
 	private static final float DETOUR_MAX_LOSS = 3f;
 
@@ -69,15 +77,19 @@ public class BotGeoHelper {
 		Detour best = null;
 		double bestDistanceToGoal = Double.MAX_VALUE;
 		for (float angle : DETOUR_ANGLES) {
-			for (int side : sides) {
-				Vector3f point = walkableCorridor(bot, goalAngle + side * angle, DETOUR_DISTANCE);
-				if (!isWorthMovingTo(bot, point))
-					continue;
-				double distanceToGoal = PositionUtil.getDistance(point.getX(), point.getY(), x, y);
-				if (distanceToGoal > maxDistanceToGoal || distanceToGoal >= bestDistanceToGoal)
-					continue;
-				best = new Detour(point, side);
-				bestDistanceToGoal = distanceToGoal;
+			for (float detourDistance : DETOUR_DISTANCES) {
+				for (int side : sides) {
+					Vector3f point = walkableCorridor(bot, goalAngle + side * angle, detourDistance);
+					if (!isWorthMovingTo(bot, point))
+						continue;
+					double distanceToGoal = PositionUtil.getDistance(point.getX(), point.getY(), x, y);
+					if (distanceToGoal > maxDistanceToGoal || distanceToGoal >= bestDistanceToGoal)
+						continue;
+					best = new Detour(point, side);
+					bestDistanceToGoal = distanceToGoal;
+				}
+				if (best != null) // the shortest sidestep that gets anywhere at this angle
+					break;
 			}
 			if (best != null) // no point widening the deviation once a way around is found
 				break;

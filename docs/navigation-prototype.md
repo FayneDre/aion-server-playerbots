@@ -52,6 +52,8 @@ When the direct way is blocked, `BotGeoHelper.detourPointToward` probes deviatio
 
 The chosen side is remembered in `BotMoveController.detourSide` and tried first on the next leg. Without that memory the bot alternates between two equally good detours and never leaves the spot.
 
+**The sidestep is sized to the obstacle, not to a constant.** It used to be eight metres whatever was in the way, so a crate sent the bot lurching across the clearing. Lengths are now tried shortest first (2, 4, 8) and the first that gets anywhere wins. Starting short is enough because the bot decides again at the end of every leg and remembers which hand it is passing on: a large obstacle takes several short steps, which traces an arc around it instead of one lurch, while a small one costs a small step. The no-progress watchdog is satisfied either way, since it asks for a metre gained towards the goal every five seconds and even a two metre step at forty degrees gains more.
+
 ## The safeguards (not optional)
 
 Reactive steering **always** loses in concave geometry — a U-shaped corridor or a dead end makes it bounce between the same two detours forever. Three bounds keep that from becoming a frozen bot:
