@@ -2,9 +2,11 @@ package com.aionemu.gameserver.playerbot.economy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.TaskId;
 import com.aionemu.gameserver.model.gameobjects.Item;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -106,6 +108,40 @@ public class BotEquipManager {
 		return occupied;
 	}
 
+	/**
+	 * Tells gear made for players from gear that merely exists.
+	 * <p>
+	 * The item table holds guard equipment and development leftovers — "NPC Veteran Guard Chain Shoes Cleric" at level 65, "Test Spaulders Level 35"
+	 * — and they are dangerous precisely because nothing refuses them: they carry no level restriction, so they ask level one of every class, and
+	 * they sit in generic groups that name no armour type, so no mastery is required either. A bot dressed by score put them on in preference to
+	 * everything else.
+	 * <p>
+	 * What separates them is that the game does not know what mastery they would need. Every piece a player is meant to wear does: robe, leather,
+	 * chain, plate, or a weapon's own kind.
+	 *
+	 * @return true if this is gear a player could be handed.
+	 */
+	public static boolean isPlayerGear(ItemTemplate template) {
+		return !DataManager.SKILL_DATA.getMasterySkills(template.getItemGroup()).isEmpty();
+	}
+
+	/**
+	 * @return true if nothing that would let this piece be worn appears anywhere in this class's skill tree — plate for a priest, a bow for a
+	 *         templar. Masteries are taught as late as level fifty, so "does not have it" is no answer at all; "will never be taught it" is.
+	 */
+	public static boolean willNeverMaster(Player bot, ItemTemplate template) {
+		Set<Integer> mastery = DataManager.SKILL_DATA.getMasterySkills(template.getItemGroup());
+		if (mastery.isEmpty())
+			return false; // nothing to master, anyone may wear it
+		for (int skillId : mastery) {
+			if (bot.getSkillList().isSkillPresent(skillId))
+				return false;
+			if (!DataManager.SKILL_TREE_DATA.getTemplatesForSkill(skillId, bot.getPlayerClass(), bot.getRace()).isEmpty())
+				return false; // it comes with a later level
+		}
+		return true;
+	}
+
 	private static long firstSlot(long mask) {
 		ItemSlot[] slots = ItemSlot.getSlotsFor(mask);
 		return slots.length == 0 ? 0 : slots[0].getSlotIdMask();
@@ -155,6 +191,11 @@ public class BotEquipManager {
 		List<Item> found = new ArrayList<>();
 		for (Item candidate : bot.getInventory().getItems()) {
 			if (!isGear(candidate) || candidate.isEquipped() || candidate.isIdentified() != identified)
+				continue;
+			// A piece made for npcs asks level one of every class while being level sixty five, and sits in a generic group that needs no mastery, so
+			// neither the engine nor the score would ever turn it down. Judged on what it is rather than on what it asks for.
+			ItemTemplate template = candidate.getItemTemplate();
+			if (!isPlayerGear(template) || template.getLevel() > bot.getLevel())
 				continue;
 			Item worn = wornInPlaceOf(bot, candidate);
 			// A weapon is only ever weighed against a weapon, and armour against armour. Slots overlap in ways that make a free-for-all dangerous:

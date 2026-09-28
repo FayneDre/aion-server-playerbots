@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.templates.npc.NpcRating;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.geo.GeoService;
 
@@ -24,6 +25,8 @@ public class BotTargetSelector {
 	private static final float MAX_Z_DELTA = 8f;
 	/** How far above its own level a bot will pick a fight it started. Anything higher kills it, and it would just keep dying. */
 	private static final int MAX_LEVEL_GAP = 3;
+	/** How far beneath its own level a bot will still bother. Below that the fight is worth nothing and a player walks past it. */
+	private static final int MIN_LEVEL_GAP = 6;
 
 	private BotTargetSelector() {
 	}
@@ -69,6 +72,12 @@ public class BotTargetSelector {
 			return false;
 		if (npc.getLevel() > bot.getLevel() + MAX_LEVEL_GAP)
 			return false; // this only limits what the bot picks: it still fights back against anything that attacks it
+		// The little animals that wander through a village are scenery, not game. They are rated JUNK, which is the data saying exactly that, and a
+		// village of bots solemnly hunting qooqoos reads as broken however well the hunting works.
+		if (npc.getObjectTemplate().getRating() == NpcRating.JUNK)
+			return false;
+		if (npc.getLevel() < bot.getLevel() - MIN_LEVEL_GAP)
+			return false; // far enough beneath it to be worth nothing, and a player walks past those
 		if (isTakenByAnotherPlayer(bot, npc))
 			return false;
 		// line of sight is not just a targeting rule here: without it the bot would walk towards things behind walls it cannot reach

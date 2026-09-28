@@ -15,6 +15,7 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
+import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.taskmanager.tasks.MoveTaskManager;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
@@ -85,6 +86,9 @@ public class BotMoveController extends PlayerMoveController {
 	 * navmesh was in the middle of solving for it.
 	 */
 	private volatile boolean awaitingPlan;
+	/** The last destination the planner answered "no route" for, kept so the refusal can be given synchronously to whoever asks again. */
+	private volatile float noRouteX, noRouteY;
+	private volatile boolean hasNoRoute;
 	private volatile boolean hasGoal;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
@@ -102,6 +106,13 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return false if the bot is walled in, in which case it does not move at all.
 	 */
 	public boolean moveToPoint(float x, float y, float z) {
+		// Answering "no" to a destination already found to have no route, before doing anything else.
+		// A long route is planned on another thread, so by the time the answer comes back this method has long since returned "on its way". The
+		// caller therefore never hears the refusal, asks again on the next tick, and gets "on its way" again: two bots stood in a pocket of the map
+		// asking for the same village sixty-six times in three minutes. Remembering the refusal is what turns it into an answer.
+		if (hasNoRoute && PositionUtil.getDistance(noRouteX, noRouteY, x, y) < SAME_JOURNEY_TOLERANCE)
+			return false;
+		hasNoRoute = false; // somewhere else is being asked for, so the last refusal says nothing about it
 		BotRestManager.standUp(owner); // a seated bot would slide across the ground
 		// CM_MOVE does this for a real player: without it the bot stays blinking and untargetable for the full protection minute
 		if (owner.isProtectionActive())
@@ -214,6 +225,17 @@ public class BotMoveController extends PlayerMoveController {
 		awaitingPlan = false; // answered, whether or not it found a way: either way the bot stops waiting
 		if (planned.isEmpty()) {
 			log.info("Bot {} has no route to {}", owner.getName(), String.format("%.1f %.1f", forX, forY));
+			// Over a long distance, "no route" ends the journey rather than leaving the bot walking at it. The reactive layer can cross a field and
+			// step round a rock; it cannot find its way across a region the mesh says is not joined to this one. Left to walk anyway, the bot never
+			// arrives and never reports a failure either, so the ai keeps choosing the same destination — one villager in a pocket of the map asked
+			// for the same village sixty times in three minutes, and nothing above ever heard that it could not be had.
+			if (PositionUtil.getDistance(owner.getX(), owner.getY(), forX, forY) > BotPathFinder.LONG_DISTANCE) {
+				noRouteX = forX;
+				noRouteY = forY;
+				hasNoRoute = true;
+				blocked = true;
+				hasGoal = false;
+			}
 			return;
 		}
 		pendingRoute = planned;

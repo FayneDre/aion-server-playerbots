@@ -71,16 +71,58 @@ public class BotPlaces {
 	 * @return Villages first, then hunting grounds, every one of them somewhere a character could plausibly spend its day.
 	 */
 	public static List<Settlement> homes(int worldId) {
-		List<Settlement> places = new ArrayList<>();
-		// a village appears once per few townsfolk, a hunting ground once. Taken one after another by whoever populates a map, that gives Akarios a
-		// handful of inhabitants and the quarry one, which is the proportion the world itself was built in. One entry each would make the largest
-		// village as busy as the emptiest field.
+		List<Settlement> villages = new ArrayList<>();
+		// a village appears once per few townsfolk, so Akarios gets a handful of inhabitants and a roadside camp one, which is the proportion the
+		// world itself was built in. One entry each would make the largest village as busy as the emptiest field.
 		for (Settlement settlement : settlements(worldId)) {
 			for (int share = 0; share < Math.max(1, settlement.townsfolk() / SETTLEMENT_SIZE); share++)
-				places.add(settlement);
+				villages.add(settlement);
 		}
-		places.addAll(huntingGrounds(worldId));
-		return places;
+		return interleave(villages, spreadOut(huntingGrounds(worldId)));
+	}
+
+	/**
+	 * Reorders places so that each one is as far as possible from those already chosen.
+	 * <p>
+	 * There are always more places than people — Poeta has sixty and was given forty five — so whoever populates a map stops partway down the list,
+	 * and what the list is ordered by decides what gets left out. Ordered by size, the tail was the smallest grounds, and they are small because they
+	 * are the outlying ones: the lake and the farms had nobody at all while the same few busy fields had somebody each. Ordered by distance from what
+	 * is already taken, stopping anywhere leaves a population spread over the whole map.
+	 */
+	private static List<Settlement> spreadOut(List<Settlement> places) {
+		List<Settlement> remaining = new ArrayList<>(places);
+		List<Settlement> spread = new ArrayList<>();
+		while (!remaining.isEmpty()) {
+			Settlement farthest = remaining.get(0);
+			double bestDistance = -1;
+			for (Settlement candidate : remaining) {
+				double nearestTaken = spread.stream()
+					.mapToDouble(taken -> PositionUtil.getDistance(taken.centre().x, taken.centre().y, candidate.centre().x, candidate.centre().y)).min()
+					.orElse(Double.MAX_VALUE);
+				if (nearestTaken > bestDistance) {
+					bestDistance = nearestTaken;
+					farthest = candidate;
+				}
+			}
+			remaining.remove(farthest);
+			spread.add(farthest);
+		}
+		return spread;
+	}
+
+	/** Mixes two lists in proportion, so that stopping partway takes its share of each rather than all of the first. */
+	private static List<Settlement> interleave(List<Settlement> first, List<Settlement> second) {
+		List<Settlement> mixed = new ArrayList<>(first.size() + second.size());
+		float step = first.isEmpty() ? Float.MAX_VALUE : (float) second.size() / first.size();
+		int taken = 0;
+		for (int i = 0; i < first.size(); i++) {
+			mixed.add(first.get(i));
+			for (int upTo = Math.round((i + 1) * step); taken < upTo && taken < second.size(); taken++)
+				mixed.add(second.get(taken));
+		}
+		while (taken < second.size())
+			mixed.add(second.get(taken++));
+		return mixed;
 	}
 
 	/** @return The places where enough hostile creatures stand together to be worth working, largest first. */

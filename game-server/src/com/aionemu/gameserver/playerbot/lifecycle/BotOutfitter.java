@@ -102,6 +102,16 @@ public class BotOutfitter {
 			int required = template.getRequiredLevel(bot.getPlayerClass());
 			if (required < 1 || required > bot.getLevel() || required < bot.getLevel() - LEVEL_SLACK)
 				continue;
+			// Gear a player could be handed. Guard equipment and test pieces ask level one of every class and name no armour type, so neither the
+			// level filter nor the engine itself turns them down — which is how a village of level four characters came to be wearing "NPC Veteran
+			// Guard Chain Shoes Cleric" of level 65, and a songweaver chain. Which armour types this class may wear is left to the engine: it checks
+			// the mastery on equipping, and asking here instead refused every caster its weapon, since a mage is taught its spellbook only when it
+			// becomes a sorcerer.
+			if (!BotEquipManager.isPlayerGear(template))
+				continue;
+			// its own level as well as the level it asks for: the two are not the same question, and only one of them is what the piece is worth
+			if (template.getLevel() > bot.getLevel())
+				continue;
 			found.add(template);
 		}
 		found.sort(Comparator.comparingInt(ItemTemplate::getLevel).reversed());

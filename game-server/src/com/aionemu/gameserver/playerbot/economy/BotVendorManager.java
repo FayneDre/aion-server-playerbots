@@ -192,7 +192,7 @@ public class BotVendorManager {
 			return false;
 		if (!template.isClassSpecific(bot.getPlayerClass()))
 			return true;
-		if (willNeverMaster(bot, template))
+		if (BotEquipManager.willNeverMaster(bot, template))
 			return true;
 		if (template.getRace() != Race.PC_ALL && template.getRace() != bot.getRace())
 			return true;
@@ -200,20 +200,5 @@ public class BotVendorManager {
 		return permitted != null && permitted != bot.getGender();
 	}
 
-	/**
-	 * @return true if nothing that would let this piece be worn appears anywhere in this class's skill tree — plate for a priest, a bow for a
-	 *         templar. Masteries are taught as late as level fifty, so "does not have it" is no answer at all; "will never be taught it" is.
-	 */
-	private static boolean willNeverMaster(Player bot, ItemTemplate template) {
-		Set<Integer> mastery = DataManager.SKILL_DATA.getMasterySkills(template.getItemGroup());
-		if (mastery.isEmpty())
-			return false; // nothing to master, anyone may wear it
-		for (int skillId : mastery) {
-			if (bot.getSkillList().isSkillPresent(skillId))
-				return false;
-			if (!DataManager.SKILL_TREE_DATA.getTemplatesForSkill(skillId, bot.getPlayerClass(), bot.getRace()).isEmpty())
-				return false; // it comes with a later level
-		}
-		return true;
-	}
+
 }
