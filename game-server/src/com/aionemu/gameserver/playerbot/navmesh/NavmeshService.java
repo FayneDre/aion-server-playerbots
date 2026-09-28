@@ -67,11 +67,9 @@ public class NavmeshService {
 			whenReady.accept(findRoute(bot, goalX, goalY, goalZ));
 			return;
 		}
-		ThreadPoolManager.getInstance().executeLongRunning(() -> {
-			List<Vector3f> route = findRoute(bot, goalX, goalY, goalZ);
-			if (!route.isEmpty())
-				whenReady.accept(route);
-		});
+		// answered even when the search found nothing: "no way through" is an answer the caller waits for, and swallowing it left bots standing
+		// still for ever waiting for a plan that was never coming
+		ThreadPoolManager.getInstance().executeLongRunning(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ)));
 	}
 
 	/** @return The map, opening it on first use, or null when it has no generated file. */

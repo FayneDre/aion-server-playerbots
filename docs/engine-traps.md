@@ -46,7 +46,25 @@ And **the server decides faster than the client can show**: two animations in th
 
 A flag cleared by hand on every way a journey can end will miss one — it missed the abandon path, and the bot stood still for good. Derive it from the thing that already knows (`BotMoveController.isTravelling()`).
 
+**An unanswered question is not a no.** A long route is planned on another thread, so for a moment the bot has a destination and no plan; what the
+reactive probes see in that moment is a wall. Treating that as a dead end made the bot abandon the journey, which made the arriving route stale, which
+threw it away — forty five bots logged a thousand dead ends in five minutes for routes the mesh had solved. A planner must answer even when it finds
+nothing, and the caller must wait for that answer.
+
 **A plan that is redone every tick is not a plan.** Both ways round an obstacle cost about the same, so fresh plans alternate and the bot paces back and forth. The same applies to a leg in progress: re-deciding a sidestep halfway through measures the new deviation from a bearing that has itself rotated, and the bot arcs ever wider.
+
+## A half built object is what the creation path hands you
+
+`PlayerService.newPlayer` builds only what character creation has to store. The effect controller, the known list, the flight controller and the
+predefined stat functions are all still null, and `PlayerService.getPlayer` is what fills them. A client never sees that object either: it returns to
+character selection and enters the world through the load path. **Anything made programmatically is stored and then read back**, or the first passive
+skill applied to it dies on a null controller.
+
+## The database truncates what does not fit, and says nothing
+
+`server_variables.value` is a `varchar(30)`. A comma separated list of bot names fits three of them; the fourth was cut off by MySQL, so a population
+of forty five came back empty and the cause was a `MysqlDataTruncation` two hundred lines up the log. **State whose size grows with the number of bots
+gets its own table**, keyed by character id with a foreign key onto `players`, so deleting a character takes its row with it.
 
 ## When diagnosing, mind where the truth lives
 

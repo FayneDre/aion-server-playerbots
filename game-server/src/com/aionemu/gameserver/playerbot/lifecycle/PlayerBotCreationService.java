@@ -3,6 +3,8 @@ package com.aionemu.gameserver.playerbot.lifecycle;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Random;
@@ -56,7 +58,7 @@ public class PlayerBotCreationService {
 	 * colors so bots are told apart at a glance.
 	 *
 	 * @param template An existing character to copy account and appearance from.
-	 * @return The new character, already stored.
+	 * @return The new character, stored and then read back, so it is as complete as one that just logged in.
 	 * @throws IllegalArgumentException If the name or the template is unusable.
 	 * @throws IllegalStateException If storing fails, in which case the reserved object id is released again.
 	 */
@@ -93,7 +95,13 @@ public class PlayerBotCreationService {
 			PlayerQuestListDAO.store(bot);
 		}
 		storeExperience(bot.getObjectId(), commonData.getExp());
-		return bot;
+		// read the character back rather than hand out the one just built: PlayerService.newPlayer only fills in what the creation screen needs to
+		// store, and leaves the effect controller, the known list, the flight controller and the stat functions null. A client never sees that half
+		// built object either — it returns to character selection and enters the world through PlayerService.getPlayer, which is what this mirrors.
+		Player stored = PlayerBotLoader.load(name);
+		if (stored == null)
+			throw new IllegalStateException("Stored bot " + name + " could not be read back");
+		return stored;
 	}
 
 	/**
@@ -121,6 +129,22 @@ public class PlayerBotCreationService {
 	private static int allocateAccountId() {
 		nextBotAccountId.compareAndSet(0, highestBotAccountId() + 1);
 		return nextBotAccountId.getAndIncrement();
+	}
+
+	/** @return Every character standing on a reserved bot account, which is what "all the bots" means when starting a population over. */
+	public static List<String> botCharacterNames() {
+		List<String> names = new ArrayList<>();
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT `name` FROM `players` WHERE `account_id` >= ?")) {
+			stmt.setInt(1, BOT_ACCOUNT_ID_BASE);
+			try (ResultSet rs = stmt.executeQuery()) {
+				while (rs.next())
+					names.add(rs.getString("name"));
+			}
+		} catch (SQLException e) {
+			LoggerFactory.getLogger(PlayerBotCreationService.class).error("Could not list the bot characters", e);
+		}
+		return names;
 	}
 
 	private static int highestBotAccountId() {

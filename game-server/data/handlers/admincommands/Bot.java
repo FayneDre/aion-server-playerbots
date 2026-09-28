@@ -58,6 +58,7 @@ public class Bot extends AdminCommand {
 			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
 			case "sell" -> withName(admin, params, name -> PlayerBotService.getInstance().sell(name));
 			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
+			case "clear" -> sendInfo(admin, PlayerBotService.getInstance().clear());
 			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));
 			case "nav" -> sendInfo(admin, PlayerBotService.getInstance().describeNavmeshes());
 			case "kind" -> kind(admin, params);
@@ -116,7 +117,7 @@ public class Bot extends AdminCommand {
 			sendInfo(admin, "Count must be between 1 and " + MAX_POPULATE);
 			return;
 		}
-		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin, params[2]));
+		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin.getWorldId(), params[2]));
 	}
 
 	private void withName(Player admin, String[] params, Function<String, String> action) {

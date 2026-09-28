@@ -17,6 +17,7 @@ import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.taskmanager.tasks.MoveTaskManager;
+import com.aionemu.gameserver.utils.ThreadPoolManager;
 import com.aionemu.gameserver.utils.PacketSendUtility;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.utils.stats.StatFunctions;
@@ -78,6 +79,12 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile boolean onDetour;
 	/** Where the route in hand was planned to, which is what says whether it still leads anywhere useful. */
 	private volatile float plannedForX, plannedForY;
+	/**
+	 * Whether a route for the journey in hand has been asked for and not yet answered. A long route is planned on another thread, so for a moment the
+	 * bot has a destination and no plan, and what the reactive probes see in that moment is a wall — which is how a bot came to abandon a journey the
+	 * navmesh was in the middle of solving for it.
+	 */
+	private volatile boolean awaitingPlan;
 	private volatile boolean hasGoal;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
@@ -117,13 +124,21 @@ public class BotMoveController extends PlayerMoveController {
 		if (sameJourney && onDetour && !isArrived())
 			return true;
 		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
-		if (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE) {
+		if (pendingRoute != null && plannedForX == x && plannedForY == y) {
+			// the plan asked for on an earlier call has arrived: taking it is the whole point of having waited, and planning again here would throw
+			// the answer away and start the wait over
+			route = pendingRoute;
+			pendingRoute = null;
+			routeIndex = 0;
+			aimAtNextWaypoint();
+		} else if (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE) {
 			route = List.of();
 			routeIndex = 0;
 			plannedForX = x;
 			plannedForY = y;
-			// a long journey is planned on another thread, so the bot sets off straight away and adopts the route when it arrives; a short one
-			// plans on this very call, in which case the result must be adopted right here or the first leg walks blind for nothing
+			awaitingPlan = true; // before asking, so a plan that resolves synchronously clears it again inside the call below
+			// a long journey is planned on another thread, so the bot waits where it stands rather than setting off blind; a short one plans on this
+			// very call, in which case the result must be adopted right here or the first leg walks for nothing
 			NavmeshService.getInstance().planRoute(owner, x, y, z, planned -> offerRoute(planned, x, y));
 			if (pendingRoute != null) {
 				route = pendingRoute;
@@ -194,10 +209,20 @@ public class BotMoveController extends PlayerMoveController {
 	 * at the end of the current leg, which keeps a background thread from rewriting the destination mid-stride.
 	 */
 	private void offerRoute(List<Vector3f> planned, float forX, float forY) {
-		if (planned.isEmpty() || !hasGoal || forX != finalX || forY != finalY)
+		if (!hasGoal || forX != finalX || forY != finalY)
+			return; // an answer to a journey that is over, or to an older one
+		awaitingPlan = false; // answered, whether or not it found a way: either way the bot stops waiting
+		if (planned.isEmpty()) {
+			log.info("Bot {} has no route to {}", owner.getName(), String.format("%.1f %.1f", forX, forY));
 			return;
+		}
 		pendingRoute = planned;
 		log.info("Bot {} has a route of {} waypoints to {}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY));
+		// A bot that waited for this plan is standing still, so nothing will come back to pick it up: no leg is running, so continueToGoal is never
+		// called, and the ai only asks again while the bot is on its way somewhere. Restarting the journey on a task thread keeps this one off the
+		// movement state, which belongs to whoever calls moveToPoint.
+		if (!isInMove())
+			ThreadPoolManager.getInstance().execute(() -> moveToPoint(finalX, finalY, finalZ));
 	}
 
 	private boolean reachedWaypoint() {
@@ -264,6 +289,8 @@ public class BotMoveController extends PlayerMoveController {
 				moveToReachablePoint(goalX, goalY, goalZ);
 				return true;
 			}
+			if (awaitingPlan)
+				return true; // the mesh is still working on this journey: what the probes see now is not the way it will be walked
 			// with the position: the reactive probes are blind below a metre, so when they give up the only way to tell a real dead end from a
 			// low obstacle they cannot see is to ask the mesh about this exact pair of points afterwards (NavmeshTool <mapId> path x1 y1 x2 y2)
 			log.info("Bot {} is walled in at {} and gives up moving towards {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),

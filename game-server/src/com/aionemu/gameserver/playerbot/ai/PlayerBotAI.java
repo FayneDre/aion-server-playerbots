@@ -555,7 +555,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (occupationDestination == null)
 			return false; // nobody lives on this map, so there is nowhere to stand about
 		setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
-		returnToAnchor();
+		if (!returnToAnchor())
+			return giveUpOccupation();
 		return true;
 	}
 
@@ -573,7 +574,23 @@ public class PlayerBotAI extends AITemplate<Player> {
 			occupationUntil = 0; // arrived: something else next tick
 			return true;
 		}
-		returnToAnchor();
+		if (!returnToAnchor())
+			return giveUpOccupation();
+		return true;
+	}
+
+	/**
+	 * Drops what the bot was doing when the place it was doing it in turns out to be unreachable, so something else is drawn on the next tick.
+	 * <p>
+	 * Without this a bot keeps asking for the same impossible journey for as long as the occupation lasts — several minutes of planning a route that
+	 * does not exist, many times a second. The unreachable place stays unreachable, so retrying is not patience, it is a loop.
+	 *
+	 * @return true, because the occupation did decide what this tick does: nothing.
+	 */
+	private boolean giveUpOccupation() {
+		log.info("Bot {} cannot get to where {} would take it, and does something else", getOwner().getName(), occupation);
+		occupationUntil = 0;
+		occupationDestination = null;
 		return true;
 	}
 
@@ -622,11 +639,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 		stopMoving();
 	}
 
-	private void returnToAnchor() {
+	private boolean returnToAnchor() {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
-			return;
-		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > ANCHOR_TOLERANCE)
-			moveController.moveToPoint(anchorX, anchorY, anchorZ);
+			return true;
+		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) <= ANCHOR_TOLERANCE)
+			return true;
+		return moveController.moveToPoint(anchorX, anchorY, anchorZ);
 	}
 
 	/**

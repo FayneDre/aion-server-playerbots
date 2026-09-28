@@ -30,6 +30,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.world.World;
 
 /**
@@ -45,6 +46,8 @@ public class PlayerBotService {
 	 * uses. A clean shutdown still saves them; this is what stands between a crash and a day of progress.
 	 */
 	private static final long SAVE_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(5);
+	/** How far around its home a new resident may appear, so a village is not a stack of people on one spot. */
+	private static final float SETTLING_SPREAD = 15f;
 
 	private final Map<Integer, Player> spawnedBots = new ConcurrentHashMap<>();
 
@@ -57,6 +60,7 @@ public class PlayerBotService {
 	 */
 	public void onStartUp() {
 		ThreadPoolManager.getInstance().scheduleAtFixedRate(this::saveAll, SAVE_INTERVAL_MILLIS, SAVE_INTERVAL_MILLIS);
+		runStandingOrders();
 		Set<String> roster = BotRoster.restore();
 		if (roster.isEmpty())
 			return;
@@ -77,6 +81,32 @@ public class PlayerBotService {
 		}
 		rememberRoster(); // drops whatever could not be restored, so a broken name is not retried every restart
 		log.info("Restored {} of {} bot(s) from the roster", restored, roster.size());
+	}
+
+	/**
+	 * Carries out a clearing or a populating left for the next start, then forgets it.
+	 * <p>
+	 * Both are the work of one command typed in game, and that is still how a person does it. This exists because populating is a job done <b>for</b>
+	 * a server rather than <b>in</b> it: it wants a map with nobody on it, it takes a while, and whoever orders it may well not have a character
+	 * standing there — the person maintaining this one has no client at all. An order left in {@code server_variables} is carried out on the next
+	 * start and cleared, so it can never run twice.
+	 */
+	private void runStandingOrders() {
+		if (BotRoster.takeOrder(BotRoster.CLEAR_ORDER) != null)
+			log.info("Standing order: {}", clear());
+		String populate = BotRoster.takeOrder(BotRoster.POPULATE_ORDER);
+		if (populate == null)
+			return;
+		String[] parts = populate.split(":");
+		if (parts.length != 3) {
+			log.warn("Cannot read the populate order '{}', expected <mapId>:<count>:<templateName>", populate);
+			return;
+		}
+		try {
+			log.info("Standing order: {}", populate(Integer.parseInt(parts[1]), Integer.parseInt(parts[0]), parts[2]));
+		} catch (NumberFormatException e) {
+			log.warn("Cannot read the populate order '{}', expected <mapId>:<count>:<templateName>", populate);
+		}
 	}
 
 	/** Writes every spawned bot to the database, in place, without taking it out of the world. */
@@ -171,11 +201,10 @@ public class PlayerBotService {
 	 *
 	 * @param commander Whoever asked, whose map is populated and whose race and looks the new characters borrow.
 	 */
-	public String populate(int count, Player commander, String templateName) {
+	public String populate(int count, int worldId, String templateName) {
 		PlayerCommonData template = PlayerDAO.loadPlayerCommonDataByName(templateName);
 		if (template == null)
 			return "No character found with name " + templateName + " to copy from";
-		int worldId = commander.getWorldId();
 		int band = BotPlaces.levelOf(worldId);
 		if (BotPlaces.settlements(worldId).isEmpty())
 			return "Nobody lives on this map, so there is nowhere to put anyone";
@@ -193,6 +222,9 @@ public class PlayerBotService {
 			try {
 				Player bot = PlayerBotCreationService.create(name, playerClass, level, template);
 				BotRoster.setResident(name, true);
+				// into the world before it is dressed: equipping asks whether its wearer is spawned, and a character with no position yet is not a
+				// question that has an answer
+				settle(bot, worldId);
 				BotOutfitter.dress(bot);
 				PlayerService.storePlayer(bot);
 				created.add(name + " (" + playerClass + " " + level + ")");
@@ -202,6 +234,23 @@ public class PlayerBotService {
 			}
 		}
 		return report(created, null) + ", around level " + band;
+	}
+
+	/**
+	 * Puts a newly made resident into the world at the place it belongs, scattered a little so a village does not appear as a stack of people on one
+	 * spot. Creating without spawning would mean invoking forty five characters by hand afterwards.
+	 */
+	private void settle(Player bot, int worldId) {
+		Vector3f home = BotPlaces.homeOf(worldId, bot.getObjectId());
+		if (home != null) {
+			double angle = Math.random() * Math.PI * 2;
+			float spread = SETTLING_SPREAD * (float) Math.random();
+			bot.setPosition(World.getInstance().createPosition(worldId, home.getX() + (float) Math.cos(angle) * spread,
+				home.getY() + (float) Math.sin(angle) * spread, home.getZ(), (byte) 0, 0));
+		}
+		PlayerBotEnterWorldService.enterWorld(bot);
+		spawnedBots.put(bot.getObjectId(), bot);
+		rememberRoster();
 	}
 
 	/**
@@ -385,6 +434,24 @@ public class PlayerBotService {
 		spawnedBots.values().forEach(bot -> sb.append(String.format("%n  %s at %.1f %.1f %.1f%s", bot.getName(), bot.getX(), bot.getY(), bot.getZ(),
 			bot.getMoveController().isInMove() ? " (moving)" : "")));
 		return sb.toString();
+	}
+
+	/**
+	 * Empties the world of bots and deletes their characters.
+	 * <p>
+	 * Only characters on the reserved bot accounts are touched; the deletion path refuses anything else, which is what keeps a mistyped command from
+	 * reaching a real player. Nothing is done about the roster: it hangs off the characters themselves, so it goes with them.
+	 */
+	public String clear() {
+		despawnEverything();
+		int deleted = 0, kept = 0;
+		for (String name : PlayerBotCreationService.botCharacterNames()) {
+			if (delete(name).startsWith("Deleted "))
+				deleted++;
+			else
+				kept++;
+		}
+		return "Deleted " + deleted + " bot character(s)" + (kept > 0 ? ", " + kept + " refused" : "");
 	}
 
 	public String despawnAll() {

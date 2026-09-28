@@ -4,7 +4,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -12,31 +11,80 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.commons.database.DatabaseFactory;
+import com.aionemu.gameserver.dao.PlayerDAO;
 import com.aionemu.gameserver.dao.ServerVariablesDAO;
 
 /**
- * The two lists the bot system keeps between runs: which bots belong in the world, and which of them are residents.
+ * The two things the bot system remembers about a character between runs: whether it belongs in the world, and whether it is a resident.
  * <p>
- * The roster is the set of names, nothing more: where each bot stands, what it carries and what it has learned are already saved with the character
- * itself, so a restored bot comes back exactly where it left off. That is also why the roster is written on every change rather than at shutdown —
- * a shutdown that never runs is precisely the case this exists for.
+ * That is all: where each bot stands, what it carries and what it has learned are already saved with the character itself, so a restored bot comes
+ * back exactly where it left off. It is written on every change rather than at shutdown, because a shutdown that never runs is precisely the case it
+ * exists for.
  * <p>
- * It is kept out of the {@code players} table's {@code online} column on purpose. That column means "has a client connected", which no bot ever
- * does, and borrowing it would put a second, contradictory answer next to {@code Player.isOnline()} — the kind of disagreement that has already cost
- * this project a day.
+ * It lives in its own table keyed by character id, for two reasons. The first is that {@code server_variables} holds a {@code varchar(30)} — a list
+ * of names fits three bots and is then truncated <i>by the database</i>, which is how a population of forty five came back empty. The second is that
+ * a foreign key onto {@code players} removes the row with the character, so deleting a bot can never leave a name behind to be looked for at the
+ * next start.
+ * <p>
+ * It is deliberately not the {@code players.online} column: that one means "has a client connected", which no bot ever does, and borrowing it would
+ * put a second, contradictory answer next to {@code Player.isOnline()}.
  */
 public class BotRoster {
 
 	private static final Logger log = LoggerFactory.getLogger(BotRoster.class);
-	private static final String ROSTER = "playerbot.roster";
-	private static final String RESIDENTS = "playerbot.residents";
-	private static final String SEPARATOR = ",";
+	/** Orders left for the next start. Short values, and genuinely server settings, so these stay in {@code server_variables}. */
+	public static final String CLEAR_ORDER = "playerbot.order.clear";
+	public static final String POPULATE_ORDER = "playerbot.order.populate";
+
+	private static final String UPSERT = "INSERT INTO `playerbot_characters` (`player_id`, `%s`) VALUES (?, ?) "
+		+ "ON DUPLICATE KEY UPDATE `%s` = VALUES(`%s`)";
+	private static final String NAMES_WHERE = "SELECT p.`name` FROM `playerbot_characters` b JOIN `players` p ON p.`id` = b.`player_id` WHERE b.`%s` = 1";
 
 	private BotRoster() {
 	}
 
+	/**
+	 * Records exactly who is in the world, which is the set of bots the next start puts back.
+	 * <p>
+	 * The whole set is written rather than the one bot that changed: the caller holds the truth, and a single statement that says "these and nobody
+	 * else" cannot drift from it the way a sequence of additions and removals can.
+	 */
 	public static void remember(Set<String> characterNames) {
-		ServerVariablesDAO.store(ROSTER, String.join(SEPARATOR, characterNames));
+		try (Connection con = DatabaseFactory.getConnection()) {
+			boolean autoCommit = con.getAutoCommit();
+			con.setAutoCommit(false);
+			try {
+				try (PreparedStatement clear = con.prepareStatement("UPDATE `playerbot_characters` SET `in_world` = 0")) {
+					clear.executeUpdate();
+				}
+				try (PreparedStatement mark = con.prepareStatement(upsert("in_world"))) {
+					for (String characterName : characterNames) {
+						int playerId = PlayerDAO.getPlayerIdByName(characterName);
+						if (playerId == 0) {
+							log.warn("Cannot remember {}: no character by that name", characterName);
+							continue;
+						}
+						mark.setInt(1, playerId);
+						mark.setInt(2, 1);
+						mark.addBatch();
+					}
+					mark.executeBatch();
+				}
+				con.commit();
+			} catch (SQLException e) {
+				con.rollback();
+				throw e;
+			} finally {
+				con.setAutoCommit(autoCommit);
+			}
+		} catch (SQLException e) {
+			log.error("Could not remember the roster of " + characterNames.size() + " bot(s)", e);
+		}
+	}
+
+	/** @return The names of the bots that were in the world when the roster was last written. Empty when there were none. */
+	public static Set<String> restore() {
+		return namesFlagged("in_world");
 	}
 
 	/**
@@ -49,35 +97,73 @@ public class BotRoster {
 	 * An <b>adventurer</b> is a character: it levels, it can be grouped with, and one day it will travel. There are meant to be few of them.
 	 */
 	public static boolean isResident(String characterName) {
-		return residents().contains(characterName);
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT b.`resident` FROM `playerbot_characters` b "
+					 + "JOIN `players` p ON p.`id` = b.`player_id` WHERE p.`name` = ?")) {
+			stmt.setString(1, characterName);
+			try (ResultSet rs = stmt.executeQuery()) {
+				return rs.next() && rs.getBoolean(1);
+			}
+		} catch (SQLException e) {
+			log.error("Could not read whether " + characterName + " is a resident", e);
+			return false;
+		}
 	}
 
 	public static void setResident(String characterName, boolean resident) {
-		Set<String> names = residents();
-		if (resident ? !names.add(characterName) : !names.remove(characterName))
-			return; // already what it should be
-		ServerVariablesDAO.store(RESIDENTS, String.join(SEPARATOR, names));
+		int playerId = PlayerDAO.getPlayerIdByName(characterName);
+		if (playerId == 0) {
+			log.warn("Cannot set the kind of {}: no character by that name", characterName);
+			return;
+		}
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement(upsert("resident"))) {
+			stmt.setInt(1, playerId);
+			stmt.setInt(2, resident ? 1 : 0);
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			log.error("Could not record the kind of " + characterName, e);
+		}
 	}
 
 	public static Set<String> residents() {
-		return namesIn(RESIDENTS);
-	}
-
-	/** @return The names remembered by the last {@link #remember}, in the order they were written. Empty when nothing was ever stored. */
-	public static Set<String> restore() {
-		return namesIn(ROSTER);
-	}
-
-	private static Set<String> namesIn(String variable) {
-		String stored = load(variable);
-		if (stored == null || stored.isBlank())
-			return new LinkedHashSet<>();
-		return new LinkedHashSet<>(Arrays.asList(stored.split(SEPARATOR)));
+		return namesFlagged("resident");
 	}
 
 	/**
-	 * Reads the variable back. {@code ServerVariablesDAO} can store any value but only reads numbers back, its string loader being private, so the
-	 * one query lives here instead of widening the engine's api for a single caller.
+	 * Reads an order left for this start and forgets it, so it is carried out once and never again.
+	 *
+	 * @return What the order said, or null when none was left.
+	 */
+	public static String takeOrder(String order) {
+		String value = load(order);
+		if (value == null || value.isBlank())
+			return null;
+		ServerVariablesDAO.store(order, "");
+		return value.trim();
+	}
+
+	private static Set<String> namesFlagged(String column) {
+		Set<String> names = new LinkedHashSet<>();
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement(String.format(NAMES_WHERE, column));
+				 ResultSet rs = stmt.executeQuery()) {
+			while (rs.next())
+				names.add(rs.getString("name"));
+		} catch (SQLException e) {
+			log.error("Could not read the bots flagged " + column, e);
+		}
+		return names;
+	}
+
+	/** The column name never comes from outside this class, so formatting it into the statement is safe and keeps one query instead of three. */
+	private static String upsert(String column) {
+		return String.format(UPSERT, column, column, column);
+	}
+
+	/**
+	 * Reads a server variable back. {@code ServerVariablesDAO} can store any value but only reads numbers back, its string loader being private, so
+	 * the one query lives here instead of widening the engine's api for a single caller.
 	 */
 	private static String load(String variable) {
 		try (Connection con = DatabaseFactory.getConnection();
