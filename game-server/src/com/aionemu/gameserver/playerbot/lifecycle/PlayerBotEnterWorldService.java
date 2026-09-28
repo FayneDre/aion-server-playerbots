@@ -1,14 +1,20 @@
 package com.aionemu.gameserver.playerbot.lifecycle;
 
+import org.slf4j.LoggerFactory;
+
 import com.aionemu.gameserver.ai.event.AIEventType;
 import com.aionemu.gameserver.dataholders.DataManager;
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.services.SkillLearnService;
 import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
+import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.World;
 
 /**
@@ -38,6 +44,7 @@ public class PlayerBotEnterWorldService {
 	public static void enterWorld(Player bot) {
 		// before anything else: it is what makes the engine treat this character as present despite having no connection
 		bot.setBot();
+		standOnGround(bot);
 		// a resident is fixed at the level of the place it inhabits: left to progress, every bot drifts upwards and the low regions empty
 		bot.getCommonData().setNoExp(BotRoster.isResident(bot.getName()));
 		learnMissingSkills(bot);
@@ -50,6 +57,24 @@ public class PlayerBotEnterWorldService {
 		bot.getController().onEnterWorld();
 		// PlayerController never fires AI events, so the bot AI would stay in AIState.CREATED and ignore everything
 		bot.getAi().onGeneralEvent(AIEventType.SPAWNED);
+	}
+
+	/**
+	 * Moves the bot onto ground a body fits on, if it is not already.
+	 * <p>
+	 * A saved position can be inside the geometry — walked into by the reactive layer, scattered there before the mesh was consulted, or saved while
+	 * the map said something else. Such a bot is not merely misplaced, it is unroutable: nothing walkable is within reach, so every journey it ever
+	 * attempts is refused and it spends its life asking. Done on entering the world so that a bot stuck once is freed the next time it spawns, rather
+	 * than needing to be found and moved by hand.
+	 */
+	private static void standOnGround(Player bot) {
+		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
+		if (ground == null || PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), ground.getX(), ground.getY(), ground.getZ()) < Heightfield.CELL_SIZE)
+			return; // no mesh for this map, or it is already standing where it should be
+		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} was stuck in the scenery and starts at {} {} {} instead",
+			bot.getName(), String.format("%.1f", ground.getX()), String.format("%.1f", ground.getY()), String.format("%.1f", ground.getZ()));
+		bot.setPosition(World.getInstance().createPosition(bot.getWorldId(), ground.getX(), ground.getY(), ground.getZ(), bot.getHeading(),
+			bot.getInstanceId()));
 	}
 
 	/**

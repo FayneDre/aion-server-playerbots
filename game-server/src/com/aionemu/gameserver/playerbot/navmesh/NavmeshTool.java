@@ -211,40 +211,25 @@ public class NavmeshTool {
 	private static void reportComponents(int mapId, float... probes) throws IOException {
 		Heightfield field = HeightfieldBuilder.build(mapId);
 		int width = field.width(), height = field.height();
-		int[] island = new int[width * height];
-		int[] stack = new int[width * height];
-		int[] neighbourX = { 1, 1, 0, -1, -1, -1, 0, 1 }, neighbourY = { 0, 1, 1, 1, 0, -1, -1, -1 };
+		// the generator's own answer, not a second copy of it: this routine used to flood fill the grid again, by column and by its highest surface,
+		// and a report that disagrees with the map it is reporting on is worse than no report
+		int[] regionOfSurface = field.regions(BotPathFinder.STEP_TOLERANCE);
 
-		List<int[]> islands = new ArrayList<>(); // id and size
-		int nextIsland = 0;
-		for (int origin = 0; origin < island.length; origin++) {
-			if (island[origin] != 0 || !hasFooting(field, origin % width, origin / width))
-				continue;
-			int id = ++nextIsland, size = 0, top = 0;
-			stack[top++] = origin;
-			island[origin] = id;
-			while (top > 0) {
-				int column = stack[--top];
-				size++;
-				int x = column % width, y = column / width;
-				float z = topWalkable(field, x, y);
-				for (int direction = 0; direction < neighbourX.length; direction++) {
-					int nextX = x + neighbourX[direction], nextY = y + neighbourY[direction];
-					if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height)
-						continue;
-					int next = nextY * width + nextX;
-					if (island[next] != 0 || !hasFooting(field, nextX, nextY))
-						continue;
-					boolean diagonal = neighbourX[direction] != 0 && neighbourY[direction] != 0;
-					float climb = Heightfield.CELL_SIZE * (diagonal ? 1.41421f : 1) + BotPathFinder.STEP_TOLERANCE;
-					if (Math.abs(topWalkable(field, nextX, nextY) - z) > climb)
-						continue;
-					island[next] = id;
-					stack[top++] = next;
-				}
+		// projected onto the grid for drawing and for probing, lowest surface first, since that is the floor a person walks in on
+		int[] island = new int[width * height];
+		Map<Integer, Integer> sizes = new HashMap<>();
+		for (int column = 0; column < island.length; column++) {
+			for (int surface = field.columnStart(column % width, column / width); surface < field.columnEnd(column % width, column / width); surface++) {
+				if (regionOfSurface[surface] == 0)
+					continue;
+				island[column] = regionOfSurface[surface];
+				break;
 			}
-			islands.add(new int[] { id, size });
+			if (island[column] != 0)
+				sizes.merge(island[column], 1, Integer::sum);
 		}
+		List<int[]> islands = new ArrayList<>(); // id and size
+		sizes.forEach((id, size) -> islands.add(new int[] { id, size }));
 
 		islands.sort((a, b) -> Integer.compare(b[1], a[1]));
 		System.out.printf("%d islands of walkable ground%n", islands.size());
@@ -289,16 +274,6 @@ public class NavmeshTool {
 			farthestY * Heightfield.CELL_SIZE);
 	}
 
-	private static boolean hasFooting(Heightfield field, int x, int y) {
-		return field.hasFooting(x, y);
-	}
-
-	private static float topWalkable(Heightfield field, int x, int y) {
-		for (int i = field.columnEnd(x, y) - 1; i >= field.columnStart(x, y); i--)
-			if (field.isWalkable(i))
-				return field.surfaceAt(i);
-		return Float.NaN;
-	}
 
 	/** Dumps the rough grid long routes are planned on, where a hole means bots cannot route through even if they could walk there. */
 	private static Path writeCoarseImage(int mapId, Navmesh mesh) throws IOException {

@@ -134,7 +134,9 @@ public class BotPathFinder {
 		return new Route(smooth(mesh, full), false);
 	}
 
-	/** @return One point every {@link #GUIDE_SPACING} coarse cells along the rough route, or an empty list if there is none. */
+	/**
+	 * @return One point every {@link #GUIDE_SPACING} coarse cells along the rough route, or an empty list if there is none.
+	 */
 	public static List<Vector3f> coarseRoute(Navmesh mesh, float startX, float startY, float goalX, float goalY) {
 		int factor = mesh.coarseFactor();
 		int startCell = coarseCellNear(mesh, mesh.cellX(startX) / factor, mesh.cellY(startY) / factor);
@@ -143,10 +145,31 @@ public class BotPathFinder {
 			return List.of();
 		// Two places on different stretches of ground have no rough route either, and saying so here costs nothing. Before this the rough grid
 		// answered yes, the refinement then failed at the crossing, and the journey died after the budget rather than after the question.
-		int region = mesh.coarseRegion(startCell % mesh.coarseWidth(), startCell / mesh.coarseWidth());
-		if (region != mesh.coarseRegion(goalCell % mesh.coarseWidth(), goalCell / mesh.coarseWidth()))
-			return List.of();
+		//
+		// Both ends can stand in more than one region — a cell 4 m across holds a valley floor and the cliff top above it — so what is wanted is a
+		// region they share. Each is tried in turn: a handful at most, and the first that joins them is the route.
+		for (int region : sharedRegions(mesh, startCell, goalCell)) {
+			List<Vector3f> guide = coarseRoute(mesh, startCell, goalCell, region);
+			if (!guide.isEmpty())
+				return guide;
+		}
+		return List.of();
+	}
 
+	/** @return The stretches of ground both ends stand on, largest region id last; empty when they have none in common. */
+	private static List<Integer> sharedRegions(Navmesh mesh, int startCell, int goalCell) {
+		int startX = startCell % mesh.coarseWidth(), startY = startCell / mesh.coarseWidth();
+		int goalX = goalCell % mesh.coarseWidth(), goalY = goalCell / mesh.coarseWidth();
+		List<Integer> shared = new ArrayList<>();
+		for (int index = 0; index < mesh.coarseRegionCount(startX, startY); index++) {
+			int region = mesh.coarseRegion(startX, startY, index);
+			if (mesh.coarseHasRegion(goalX, goalY, region))
+				shared.add(region);
+		}
+		return shared;
+	}
+
+	private static List<Vector3f> coarseRoute(Navmesh mesh, int startCell, int goalCell, int region) {
 		Map<Integer, Float> costSoFar = new HashMap<>();
 		Map<Integer, Integer> cameFrom = new HashMap<>();
 		PriorityQueue<int[]> open = new PriorityQueue<>((a, b) -> Integer.compare(a[1], b[1]));
@@ -163,7 +186,7 @@ public class BotPathFinder {
 			int cellX = current % mesh.coarseWidth(), cellY = current / mesh.coarseWidth();
 			for (int direction = 0; direction < NEIGHBOUR_X.length; direction++) {
 				int nextX = cellX + NEIGHBOUR_X[direction], nextY = cellY + NEIGHBOUR_Y[direction];
-				if (mesh.coarseRegion(nextX, nextY) != region)
+				if (!mesh.coarseHasRegion(nextX, nextY, region))
 					continue; // staying inside one stretch of ground is what makes a rough route refinable
 				int next = coarseKey(mesh, nextX, nextY);
 				float stepCost = cost + (NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0 ? 1.41421f : 1);
@@ -353,6 +376,23 @@ public class BotPathFinder {
 			}
 		}
 		return best;
+	}
+
+	/**
+	 * Finds walkable ground near a spot, for putting a character down on it.
+	 * <p>
+	 * A spot picked on a map — a scattering of villagers around a village centre, a position saved before the mesh knew better — can land inside the
+	 * geometry: under a mushroom cap with no head room, inside a tree trunk, against a wall. A character left there is not merely misplaced, it is
+	 * unroutable: nothing walkable is within reach of it, so every journey it ever attempts is refused, and it spends its life asking.
+	 *
+	 * @return The nearest walkable ground within {@link #SNAP_RINGS} cells, or null when there is none.
+	 */
+	public static Vector3f nearestGround(Navmesh mesh, float x, float y, float z) {
+		long node = nodeAt(mesh, x, y, z, ANY_HEIGHT);
+		if (node == -1)
+			return null;
+		int cellX = keyX(mesh, node), cellY = keyY(mesh, node);
+		return new Vector3f((cellX + 0.5f) * mesh.cellSize(), (cellY + 0.5f) * mesh.cellSize(), mesh.surfaceZ(cellX, cellY, keySurface(node)));
 	}
 
 	/**

@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.zip.DataFormatException;
@@ -24,7 +25,7 @@ import java.util.zip.Inflater;
  */
 public class Navmesh {
 
-	static final String MAGIC = "AINAV4";
+	static final String MAGIC = "AINAV5";
 	/** Height resolution. Aion heights span 0..2048 m, so this fits an unsigned short with room to spare. */
 	static final float Z_STEP = 0.05f;
 	/** Columns per tile side. Small enough that a camp loads few tiles and a row scan is cheap, large enough that per tile overhead stays small. */
@@ -33,10 +34,13 @@ public class Navmesh {
 	private final int mapId, width, height, tilesX, coarseFactor, coarseWidth;
 	private final float cellSize;
 	/**
-	 * The region each coarse cell belongs to, kept in memory always: it is small, and long routes are planned on it before any tile is read. A
+	 * The regions passing through each coarse cell, kept in memory always: it is small, and long routes are planned on it before any tile is read. A
 	 * region is a stretch of ground a body can actually walk across, so a rough route that stays inside one is a route that can be refined.
+	 * <p>
+	 * Several per cell, flattened as a column's surfaces are: 4 m of map can hold two floors of ground, and keeping only the commonest of them hid
+	 * the lower one entirely — which is how a camp in a hollow became a place the planner refused every route to.
 	 */
-	private final int[] coarseRegions;
+	private final int[] coarseRegionOffsets, coarseRegionIds;
 	private final int[] tileOffsets, tileLengths;
 	private final AtomicReferenceArray<Tile> tiles;
 	private final FileChannel channel;
@@ -49,11 +53,12 @@ public class Navmesh {
 		static final Tile EMPTY = new Tile(null, null, null, null);
 	}
 
-	private Navmesh(int mapId, int width, int height, float cellSize, int tilesX, int coarseFactor, int[] coarseRegions, int[] tileOffsets,
-		int[] tileLengths, FileChannel channel, long dataStart) {
+	private Navmesh(int mapId, int width, int height, float cellSize, int tilesX, int coarseFactor, int[] coarseRegionOffsets, int[] coarseRegionIds,
+		int[] tileOffsets, int[] tileLengths, FileChannel channel, long dataStart) {
 		this.coarseFactor = coarseFactor;
 		this.coarseWidth = (width + coarseFactor - 1) / coarseFactor;
-		this.coarseRegions = coarseRegions;
+		this.coarseRegionOffsets = coarseRegionOffsets;
+		this.coarseRegionIds = coarseRegionIds;
 		this.mapId = mapId;
 		this.width = width;
 		this.height = height;
@@ -99,10 +104,14 @@ public class Navmesh {
 			offsets[i] = directory.getInt();
 			lengths[i] = directory.getInt();
 		}
-		int[] regions = new int[coarseBytes / 4];
+		int[] flat = new int[coarseBytes / 4];
 		coarse.flip();
-		coarse.asIntBuffer().get(regions);
-		return new Navmesh(storedMapId, width, height, cellSize, tilesX, coarseFactor, regions, offsets, lengths, channel,
+		coarse.asIntBuffer().get(flat);
+		// the offsets come first and their count follows from the map's own size, so the block needs no length of its own
+		int cells = ((width + coarseFactor - 1) / coarseFactor) * ((height + coarseFactor - 1) / coarseFactor);
+		int[] regionOffsets = Arrays.copyOfRange(flat, 0, cells + 1);
+		int[] regionIds = Arrays.copyOfRange(flat, cells + 1, flat.length);
+		return new Navmesh(storedMapId, width, height, cellSize, tilesX, coarseFactor, regionOffsets, regionIds, offsets, lengths, channel,
 			header.capacity() + coarseBytes + directory.capacity());
 	}
 
@@ -174,14 +183,30 @@ public class Navmesh {
 
 	/** @return true if that 4 m cell holds enough walkable ground to route through. Answered without reading any tile. */
 	public boolean isCoarseWalkable(int coarseX, int coarseY) {
-		return coarseRegion(coarseX, coarseY) != 0;
+		return coarseRegionCount(coarseX, coarseY) > 0;
 	}
 
-	/** @return The stretch of walkable ground this coarse cell belongs to, or 0 where too little of it can be stood on. */
-	public int coarseRegion(int coarseX, int coarseY) {
+	/** @return How many stretches of walkable ground pass through this coarse cell, 0 where too little of it can be stood on. */
+	public int coarseRegionCount(int coarseX, int coarseY) {
 		if (coarseX < 0 || coarseY < 0 || coarseX >= coarseWidth || coarseY >= coarseHeight())
 			return 0;
-		return coarseRegions[coarseY * coarseWidth + coarseX];
+		int cell = coarseY * coarseWidth + coarseX;
+		return coarseRegionOffsets[cell + 1] - coarseRegionOffsets[cell];
+	}
+
+	/** @return One of the stretches of walkable ground passing through this coarse cell. */
+	public int coarseRegion(int coarseX, int coarseY, int index) {
+		return coarseRegionIds[coarseRegionOffsets[coarseY * coarseWidth + coarseX] + index];
+	}
+
+	/** @return true if that stretch of ground passes through this coarse cell, which is what a rough route follows. */
+	public boolean coarseHasRegion(int coarseX, int coarseY, int region) {
+		int count = coarseRegionCount(coarseX, coarseY);
+		for (int index = 0; index < count; index++) {
+			if (coarseRegion(coarseX, coarseY, index) == region)
+				return true;
+		}
+		return false;
 	}
 
 	public int loadedTiles() {

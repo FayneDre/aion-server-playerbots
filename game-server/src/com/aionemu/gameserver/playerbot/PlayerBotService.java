@@ -245,8 +245,12 @@ public class PlayerBotService {
 		if (home != null) {
 			double angle = Math.random() * Math.PI * 2;
 			float spread = SETTLING_SPREAD * (float) Math.random();
-			bot.setPosition(World.getInstance().createPosition(worldId, home.getX() + (float) Math.cos(angle) * spread,
-				home.getY() + (float) Math.sin(angle) * spread, home.getZ(), (byte) 0, 0));
+			float x = home.getX() + (float) Math.cos(angle) * spread, y = home.getY() + (float) Math.sin(angle) * spread;
+			// scattered onto ground a body fits on, not merely scattered: a village has trees, huts and mushroom caps in it, and a villager dropped
+			// inside one of them is unroutable for ever — nothing walkable is within reach, so every journey it attempts is refused
+			Vector3f ground = NavmeshService.getInstance().groundNear(worldId, x, y, home.getZ());
+			bot.setPosition(World.getInstance().createPosition(worldId, ground != null ? ground.getX() : x, ground != null ? ground.getY() : y,
+				ground != null ? ground.getZ() : home.getZ(), (byte) 0, 0));
 		}
 		PlayerBotEnterWorldService.enterWorld(bot);
 		spawnedBots.put(bot.getObjectId(), bot);

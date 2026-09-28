@@ -1,8 +1,12 @@
 package com.aionemu.gameserver.playerbot.navmesh;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Every surface of a map, sampled on a regular grid, each marked walkable or not.
@@ -176,69 +180,93 @@ public class Heightfield {
 	 * costs one bit per 4 m of map, so the whole of Poeta guides in 72 KB, small enough to keep loaded while the detailed tiles stay on disk.
 	 */
 	/**
-	 * Labels every column with the region of walkable ground it belongs to, joining neighbours the same way the path finder steps between them.
+	 * Labels every walkable surface with the region of ground it belongs to, joining neighbours the same way the path finder steps between them.
+	 * <p>
+	 * Per surface, not per column, and that distinction is the whole point. A column can hold walkable ground at more than one height — a valley
+	 * floor and the cliff top above it, a camp and the mushroom canopy over it — and labelling the column could only ever describe one of them. It
+	 * described the highest, so a camp sunk at z=100 under a canopy at z=143 belonged to the canopy's region and no route to it existed: the rough
+	 * pass refused every journey there in nought milliseconds, for a place a player walks into.
 	 * <p>
 	 * Lives here rather than in the tool that reports it, so the map is generated from the same answer the analysis gives. Two routines answering
 	 * this question separately is how the mesh and the engine came to disagree in the first place.
 	 *
 	 * @param climbTolerance The height a body may gain over half a metre, which is the path finder's own {@code STEP_TOLERANCE}.
-	 * @return One region id per column, 0 where there is no footing. Ids start at 1 and count up.
+	 * @return One region id per surface, indexed as {@code surfaces} is, 0 for anything not walkable. Ids start at 1 and count up.
 	 */
 	int[] regions(float climbTolerance) {
-		int[] region = new int[width * height];
-		int[] stack = new int[width * height];
+		int[] region = new int[surfaces.length];
+		int[] stack = new int[surfaces.length];
 		int next = 0;
 		for (int origin = 0; origin < region.length; origin++) {
-			if (region[origin] != 0 || !hasFooting(origin % width, origin / width))
+			if (region[origin] != 0 || !walkable.get(origin))
 				continue;
 			int id = ++next, top = 0;
 			stack[top++] = origin;
 			region[origin] = id;
 			while (top > 0) {
-				int column = stack[--top];
+				int surface = stack[--top];
+				int column = columnOf(surface);
 				int x = column % width, y = column / width;
-				float z = topWalkable(x, y);
+				float z = surfaces[surface];
 				for (int direction = 0; direction < NEIGHBOUR_X.length; direction++) {
 					int nextX = x + NEIGHBOUR_X[direction], nextY = y + NEIGHBOUR_Y[direction];
 					if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height)
 						continue;
-					int neighbour = nextY * width + nextX;
-					if (region[neighbour] != 0 || !hasFooting(nextX, nextY))
-						continue;
 					boolean diagonal = NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0;
-					if (Math.abs(topWalkable(nextX, nextY) - z) > CELL_SIZE * (diagonal ? 1.41421f : 1) + climbTolerance)
-						continue;
-					region[neighbour] = id;
-					stack[top++] = neighbour;
+					float reach = CELL_SIZE * (diagonal ? 1.41421f : 1) + climbTolerance;
+					// every walkable height of the neighbouring column, not just its highest: which one a body steps onto depends on where it is
+					// standing, and that is exactly what a single label per column cannot say
+					for (int neighbour = columnStart(nextX, nextY); neighbour < columnEnd(nextX, nextY); neighbour++) {
+						if (region[neighbour] != 0 || !walkable.get(neighbour))
+							continue;
+						if (Math.abs(surfaces[neighbour] - z) > reach)
+							continue;
+						region[neighbour] = id;
+						stack[top++] = neighbour;
+					}
 				}
 			}
 		}
 		return region;
 	}
 
-	/** @return The highest walkable surface of a column, which is the one a body arriving from a neighbour would stand on. */
-	float topWalkable(int cellX, int cellY) {
-		for (int i = offsets[cellY * width + cellX + 1] - 1; i >= offsets[cellY * width + cellX]; i--) {
-			if (walkable.get(i))
-				return surfaces[i];
+	/**
+	 * @return The column a surface belongs to, found by binary search over the offsets. Storing it per surface would cost as much again as the heights
+	 *         themselves, on arrays of tens of millions of entries.
+	 */
+	private int columnOf(int surface) {
+		int low = 0, high = width * height - 1;
+		while (low < high) {
+			int middle = (low + high + 1) >>> 1;
+			if (offsets[middle] <= surface)
+				low = middle;
+			else
+				high = middle - 1;
 		}
-		return Float.NaN;
+		return low;
 	}
 
 	/**
-	 * Sums the fine grid up into 4 m cells carrying the region each one belongs to.
+	 * Sums the fine grid up into 4 m cells carrying every region present in each one.
 	 * <p>
 	 * A plain "is there ground here" bit was not enough, and this is the whole reason long routes failed. A coarse cell counted as routable on a
 	 * quarter of its ground, so a rough route crossed freely between two regions the fine grid keeps apart — and every attempt to refine that
-	 * crossing came back empty. Carrying the region turns the rough grid from a hint into a promise: a rough route now stays inside one region, and
-	 * a region is by construction something a body can walk across.
+	 * crossing came back empty. Carrying the region turns the rough grid from a hint into a promise: a rough route stays inside one region, and a
+	 * region is by construction something a body can walk across.
+	 * <p>
+	 * Every region rather than the majority one, because 4 m of map is wide enough to hold two floors of ground. Keeping only the commonest hid the
+	 * lower one entirely, which is how a camp in a hollow became a place with no route to it. A cell now says "these regions pass through here" and
+	 * the route picks one of them and stays in it.
 	 *
-	 * @return One region id per coarse cell, 0 where too little of it is walkable to plan through.
+	 * @param regions One region id per surface, as {@link #regions(float)} returns them.
+	 * @return The regions of each coarse cell, empty where too little of it is walkable to plan through.
 	 */
-	int[] coarseRegions(int[] regions) {
+	CoarseRegions coarseRegions(int[] regions) {
 		int coarseWidth = (width + COARSE_FACTOR - 1) / COARSE_FACTOR, coarseHeight = (height + COARSE_FACTOR - 1) / COARSE_FACTOR;
-		int[] coarse = new int[coarseWidth * coarseHeight];
+		int[] offsets = new int[coarseWidth * coarseHeight + 1];
+		List<Integer> ids = new ArrayList<>();
 		Map<Integer, Integer> tally = new HashMap<>();
+		Set<Integer> inColumn = new HashSet<>();
 		for (int coarseY = 0; coarseY < coarseHeight; coarseY++) {
 			for (int coarseX = 0; coarseX < coarseWidth; coarseX++) {
 				tally.clear();
@@ -246,24 +274,35 @@ public class Heightfield {
 				for (int y = coarseY * COARSE_FACTOR; y < Math.min(height, (coarseY + 1) * COARSE_FACTOR); y++) {
 					for (int x = coarseX * COARSE_FACTOR; x < Math.min(width, (coarseX + 1) * COARSE_FACTOR); x++) {
 						total++;
-						int id = regions[y * width + x];
-						if (id != 0)
+						// counted once per column, whatever the region: what matters is how much of the cell's floor plan a region covers, and a
+						// column with three surfaces of one region is still one column's worth of ground
+						inColumn.clear();
+						for (int surface = columnStart(x, y); surface < columnEnd(x, y); surface++) {
+							if (regions[surface] != 0)
+								inColumn.add(regions[surface]);
+						}
+						for (int id : inColumn)
 							tally.merge(id, 1, Integer::sum);
 					}
 				}
-				// the region holding most of this cell, and only if it holds enough of it to be worth aiming at
-				int best = 0, bestCount = 0;
 				for (Map.Entry<Integer, Integer> entry : tally.entrySet()) {
-					if (entry.getValue() > bestCount) {
-						bestCount = entry.getValue();
-						best = entry.getKey();
-					}
+					if (entry.getValue() >= total * COARSE_THRESHOLD)
+						ids.add(entry.getKey());
 				}
-				if (total > 0 && bestCount >= total * COARSE_THRESHOLD)
-					coarse[coarseY * coarseWidth + coarseX] = best;
+				offsets[coarseY * coarseWidth + coarseX + 1] = ids.size();
 			}
 		}
-		return coarse;
+		int[] flat = new int[ids.size()];
+		for (int i = 0; i < flat.length; i++)
+			flat[i] = ids.get(i);
+		return new CoarseRegions(coarseWidth, coarseHeight, offsets, flat);
+	}
+
+	/**
+	 * The regions of every coarse cell, flattened the same way the surfaces of a column are: a cell's ids are
+	 * {@code ids[offsets[cell] .. offsets[cell + 1]]}.
+	 */
+	record CoarseRegions(int width, int height, int[] offsets, int[] ids) {
 	}
 
 	BitSet coarseFooting() {

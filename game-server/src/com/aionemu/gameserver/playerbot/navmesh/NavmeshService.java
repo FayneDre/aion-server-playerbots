@@ -55,6 +55,16 @@ public class NavmeshService {
 	}
 
 	/**
+	 * Finds walkable ground near a spot, for putting a bot down on it.
+	 *
+	 * @return The nearest ground a body fits on, or null when the map has no mesh or nothing walkable is near enough.
+	 */
+	public Vector3f groundNear(int worldId, float x, float y, float z) {
+		Navmesh mesh = get(worldId);
+		return mesh == null ? null : BotPathFinder.nearestGround(mesh, x, y, z);
+	}
+
+	/**
 	 * Plans a journey and hands the result back when it is ready.
 	 * <p>
 	 * Short journeys are planned on the spot, in a few tens of milliseconds. A long one takes over a second, which no movement thread can wait for,
