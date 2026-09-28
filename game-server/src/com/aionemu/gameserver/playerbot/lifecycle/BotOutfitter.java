@@ -16,6 +16,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
+import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.services.item.ItemFactory;
 
 /**
@@ -60,7 +61,9 @@ public class BotOutfitter {
 			item.setSoulBound(true);
 			if (bot.getInventory().add(item) == null)
 				continue;
-			if (bot.getEquipment().equipItem(item.getObjectId(), template.getItemSlot()) != null)
+			// one slot, never the template's mask of every slot it could go in: a one handed weapon reads as "either hand", and a two slot mask is
+			// refused outright. That is why bots were created with armour and empty hands
+			if (BotEquipManager.wear(bot, item.getObjectId(), template))
 				worn++;
 		}
 		if (worn == 0)

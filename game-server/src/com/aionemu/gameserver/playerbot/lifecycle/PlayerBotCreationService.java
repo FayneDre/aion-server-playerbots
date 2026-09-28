@@ -81,6 +81,11 @@ public class PlayerBotCreationService {
 		if (!playerClass.isStartingClass())
 			commonData.setDaeva(true);
 		commonData.setLevel(level); // after the class and daeva status, both of which cap the experience it accepts
+		long exp = commonData.getExp();
+		// Created at level one, as the game creates every character, and brought up to its level by the experience written further down.
+		// PlayerService.newPlayer teaches a character everything it knows on the way in, and teaching anything to a half built object eventually
+		// reaches something it does not have: a recipe learned at a trade level went looking for a recipe list that only the load path fills in.
+		commonData.setLevel(1);
 
 		PlayerAccountData accountData = new PlayerAccountData(commonData, randomizeColors(PlayerAppearanceDAO.load(template.getPlayerObjId())));
 		Player bot = PlayerService.newPlayer(accountData, account);
@@ -94,7 +99,7 @@ public class PlayerBotCreationService {
 			ClassChangeService.completeAscensionQuest(bot);
 			PlayerQuestListDAO.store(bot);
 		}
-		storeExperience(bot.getObjectId(), commonData.getExp());
+		storeExperience(bot.getObjectId(), exp);
 		// read the character back rather than hand out the one just built: PlayerService.newPlayer only fills in what the creation screen needs to
 		// store, and leaves the effect controller, the known list, the flight controller and the stat functions null. A client never sees that half
 		// built object either — it returns to character selection and enters the world through PlayerService.getPlayer, which is what this mirrors.

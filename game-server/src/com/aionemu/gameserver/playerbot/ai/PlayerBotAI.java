@@ -24,6 +24,7 @@ import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
+import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
@@ -109,6 +110,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long occupationUntil;
 	/** Where the current occupation is taking the bot, so it keeps going to the same place rather than re-choosing every tick. */
 	private volatile Vector3f occupationDestination;
+	/** Where this bot lives, read from the roster on first use. A fact about the bot, not something recomputed from the map every time it is asked. */
+	private volatile Vector3f home;
 	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
 	private volatile long dressingIdleUntil;
 	/** Shop spots that turned out to have no shop keeper standing on them, so the next trip goes somewhere else. */
@@ -550,8 +553,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * keeps it there without a second set of rules.
 	 */
 	private boolean loiter() {
-		if (occupationDestination == null)
-			occupationDestination = BotPlaces.homeOf(getOwner().getWorldId(), getOwner().getObjectId());
+		if (occupationDestination == null) {
+			// the village nearest to where this bot lives, not the one a formula names: a bot that works the quarry goes and stands about in the
+			// camp beside it, and one that lives in a village stays in its own. Recomputing a home from the map put every bot in the biggest village
+			// on it, which is how Akarios came to be a crowd and everywhere else empty.
+			Vector3f home = homeOfThisBot();
+			occupationDestination = home == null ? null : BotPlaces.nearestSettlement(getOwner().getWorldId(), home.getX(), home.getY());
+		}
 		if (occupationDestination == null)
 			return false; // nobody lives on this map, so there is nowhere to stand about
 		setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
@@ -560,13 +568,25 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return true;
 	}
 
+	/**
+	 * Where this bot lives, read once and kept.
+	 * <p>
+	 * Read from the roster rather than worked out from the map: it is where the bot was actually put down, and that is a fact about the bot, not a
+	 * function of the map's list of villages. Falls back to where it stands, which is what a bot made before homes were recorded has.
+	 */
+	private Vector3f homeOfThisBot() {
+		if (home == null)
+			home = BotRoster.homeOf(getOwner().getName());
+		if (home == null)
+			home = new Vector3f(anchorX, anchorY, anchorZ);
+		return home;
+	}
+
 	/** Walks to another settlement, and looks for something else to do once it arrives rather than waiting out the clock. */
 	private boolean wander() {
 		Player bot = getOwner();
-		if (occupationDestination == null) {
-			Vector3f here = BotPlaces.homeOf(bot.getWorldId(), bot.getObjectId());
-			occupationDestination = BotPlaces.otherSettlement(bot.getWorldId(), here, bot.getObjectId() + (int) occupationUntil);
-		}
+		if (occupationDestination == null)
+			occupationDestination = BotPlaces.otherSettlement(bot.getWorldId(), homeOfThisBot(), bot.getObjectId() + (int) occupationUntil);
 		if (occupationDestination == null)
 			return false;
 		setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());

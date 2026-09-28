@@ -15,3 +15,8 @@ CREATE TABLE `playerbot_characters` (
 	PRIMARY KEY (`player_id`),
 	CONSTRAINT `playerbot_characters_ibfk_1` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `playerbot_characters`
+	ADD COLUMN `home_x` float NOT NULL DEFAULT '0' AFTER `in_world`,
+	ADD COLUMN `home_y` float NOT NULL DEFAULT '0' AFTER `home_x`,
+	ADD COLUMN `home_z` float NOT NULL DEFAULT '0' AFTER `home_y`;

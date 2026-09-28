@@ -27,6 +27,8 @@ public class BotPlaces {
 	private static final float GATHERING_RADIUS = 50f;
 	/** How many of them make a settlement rather than a lone npc keeping a road. */
 	private static final int SETTLEMENT_SIZE = 3;
+	/** How many creatures must stand together for the spot to be a place somebody works rather than two beetles by the roadside. */
+	private static final int HUNTING_GROUND_SIZE = 8;
 	/** How far around a settlement to read the countryside for the level it is worth. */
 	private static final float COUNTRYSIDE_RADIUS = 150f;
 	/** How far a character may be from a region's own level and still belong in it. */
@@ -34,6 +36,7 @@ public class BotPlaces {
 
 	private static final Map<Integer, List<Settlement>> settlementsByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, Integer> levelByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Settlement>> huntingByMap = new ConcurrentHashMap<>();
 
 	/**
 	 * A place people gather, how many of them do, and what the country around it is worth fighting at.
@@ -51,6 +54,37 @@ public class BotPlaces {
 	/** @return The settlements of a map, largest first, or an empty list where nobody lives. */
 	public static List<Settlement> settlements(int worldId) {
 		return settlementsByMap.computeIfAbsent(worldId, BotPlaces::locateSettlements);
+	}
+
+	/**
+	 * Every place on a map worth living at: the villages, and the hunting grounds between them.
+	 * <p>
+	 * A map has four villages and forty places where things worth killing stand together, and a population that only knows the villages is a
+	 * population in four heaps. Poeta showed it plainly: Akarios packed with bots shoulder to shoulder, and the farms, the lake, the plains and the
+	 * quarry — the places the map was actually built around — with nobody in them at all.
+	 * <p>
+	 * Each place carries the level of what lives there, which is the other half of the same problem: a resident belongs to its place, so the place
+	 * is what says what level it should be. Drawing a level first and a home afterwards is how a character of two came to stand in a forest of
+	 * eights.
+	 *
+	 * @return Villages first, then hunting grounds, every one of them somewhere a character could plausibly spend its day.
+	 */
+	public static List<Settlement> homes(int worldId) {
+		List<Settlement> places = new ArrayList<>();
+		// a village appears once per few townsfolk, a hunting ground once. Taken one after another by whoever populates a map, that gives Akarios a
+		// handful of inhabitants and the quarry one, which is the proportion the world itself was built in. One entry each would make the largest
+		// village as busy as the emptiest field.
+		for (Settlement settlement : settlements(worldId)) {
+			for (int share = 0; share < Math.max(1, settlement.townsfolk() / SETTLEMENT_SIZE); share++)
+				places.add(settlement);
+		}
+		places.addAll(huntingGrounds(worldId));
+		return places;
+	}
+
+	/** @return The places where enough hostile creatures stand together to be worth working, largest first. */
+	public static List<Settlement> huntingGrounds(int worldId) {
+		return huntingByMap.computeIfAbsent(worldId, BotPlaces::locateHuntingGrounds);
 	}
 
 	/**
@@ -156,6 +190,38 @@ public class BotPlaces {
 		return settlements;
 	}
 
+	/**
+	 * Groups the hostile spawns of a map into the grounds they are hunted on.
+	 * <p>
+	 * The same greedy clustering as the villages, on the other half of the spawn table. A ground is kept only once enough creatures stand together
+	 * to keep somebody busy: two roadside beetles are scenery, not a place to spend an afternoon, and a population scattered over every pair of them
+	 * would be a population standing alone in the grass.
+	 */
+	private static List<Settlement> locateHuntingGrounds(int worldId) {
+		List<List<Vector3f>> clusters = new ArrayList<>();
+		List<float[]> creatures = new ArrayList<>();
+		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
+			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
+			if (template == null || template.getTribe() == TribeClass.GENERAL || template.getLevel() <= 0)
+				continue;
+			for (SpawnTemplate spawn : group.getSpawnTemplates()) {
+				addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
+				creatures.add(new float[] { spawn.getX(), spawn.getY(), template.getLevel() });
+			}
+		}
+		List<Settlement> grounds = new ArrayList<>();
+		clusters.sort(Comparator.comparingInt(List<Vector3f>::size).reversed());
+		for (List<Vector3f> cluster : clusters) {
+			if (cluster.size() < HUNTING_GROUND_SIZE)
+				continue;
+			Vector3f centre = centreOf(cluster);
+			// the level of what stands here, not of the country around it: a ground is a handful of creatures in one spot, and averaging over a
+			// hundred and fifty metres of everything nearby is exactly how a place of eights came to read as a place of twos
+			grounds.add(new Settlement(centre, cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS)));
+		}
+		return grounds;
+	}
+
 	private static void addToCluster(List<List<Vector3f>> clusters, Vector3f spot) {
 		for (List<Vector3f> cluster : clusters) {
 			Vector3f centre = centreOf(cluster);
@@ -167,11 +233,15 @@ public class BotPlaces {
 		clusters.add(new ArrayList<>(List.of(spot)));
 	}
 
-	/** @return The middling level of what lives around a place, which is what a character of that level would find a fair fight. */
 	private static int levelAround(List<float[]> countryside, Vector3f centre) {
+		return levelAround(countryside, centre, COUNTRYSIDE_RADIUS);
+	}
+
+	/** @return The middling level of what lives within that reach of a place, which is what a character of that level would find a fair fight. */
+	private static int levelAround(List<float[]> countryside, Vector3f centre, float reach) {
 		List<Float> levels = new ArrayList<>();
 		for (float[] creature : countryside) {
-			if (PositionUtil.getDistance(centre.x, centre.y, creature[0], creature[1]) <= COUNTRYSIDE_RADIUS)
+			if (PositionUtil.getDistance(centre.x, centre.y, creature[0], creature[1]) <= reach)
 				levels.add(creature[2]);
 		}
 		if (levels.isEmpty())

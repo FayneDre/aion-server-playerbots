@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.commons.database.DatabaseFactory;
 import com.aionemu.gameserver.dao.PlayerDAO;
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.dao.ServerVariablesDAO;
 
 /**
@@ -128,6 +129,50 @@ public class BotRoster {
 
 	public static Set<String> residents() {
 		return namesFlagged("resident");
+	}
+
+	/**
+	 * Records where a bot lives.
+	 * <p>
+	 * Kept with the character rather than worked out again from the map, because working it out again is what put every bot in the same village. A
+	 * home derived from the bot's id and the list of settlements has no memory of where the bot was actually put down, so the moment it went
+	 * loitering it walked to whichever village the formula named — and the formula named the biggest one for most of them.
+	 */
+	public static void setHome(String characterName, Vector3f home) {
+		int playerId = PlayerDAO.getPlayerIdByName(characterName);
+		if (playerId == 0) {
+			log.warn("Cannot set the home of {}: no character by that name", characterName);
+			return;
+		}
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("INSERT INTO `playerbot_characters` (`player_id`, `home_x`, `home_y`, `home_z`) "
+					 + "VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE `home_x` = VALUES(`home_x`), `home_y` = VALUES(`home_y`), `home_z` = VALUES(`home_z`)")) {
+			stmt.setInt(1, playerId);
+			stmt.setFloat(2, home.getX());
+			stmt.setFloat(3, home.getY());
+			stmt.setFloat(4, home.getZ());
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			log.error("Could not record the home of " + characterName, e);
+		}
+	}
+
+	/** @return Where this bot lives, or null when it has never been given a home. */
+	public static Vector3f homeOf(String characterName) {
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT b.`home_x`, b.`home_y`, b.`home_z` FROM `playerbot_characters` b "
+					 + "JOIN `players` p ON p.`id` = b.`player_id` WHERE p.`name` = ?")) {
+			stmt.setString(1, characterName);
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (!rs.next())
+					return null;
+				float x = rs.getFloat(1), y = rs.getFloat(2), z = rs.getFloat(3);
+				return x == 0 && y == 0 ? null : new Vector3f(x, y, z);
+			}
+		} catch (SQLException e) {
+			log.error("Could not read the home of " + characterName, e);
+			return null;
+		}
 	}
 
 	/**

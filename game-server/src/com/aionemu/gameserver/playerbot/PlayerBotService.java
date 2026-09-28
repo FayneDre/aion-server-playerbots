@@ -205,9 +205,9 @@ public class PlayerBotService {
 		PlayerCommonData template = PlayerDAO.loadPlayerCommonDataByName(templateName);
 		if (template == null)
 			return "No character found with name " + templateName + " to copy from";
-		int band = BotPlaces.levelOf(worldId);
-		if (BotPlaces.settlements(worldId).isEmpty())
-			return "Nobody lives on this map, so there is nowhere to put anyone";
+		List<BotPlaces.Settlement> places = BotPlaces.homes(worldId);
+		if (places.isEmpty())
+			return "Nothing lives on this map, so there is nowhere to put anyone";
 
 		List<String> created = new ArrayList<>();
 		for (int i = 0; i < count; i++) {
@@ -217,14 +217,20 @@ public class PlayerBotService {
 			} catch (IllegalStateException e) {
 				return report(created, "ran out of free names");
 			}
-			int level = Math.max(1, band + Rnd.get(-2, 2));
+			// one place after another rather than a place drawn at random: with forty five characters over forty places, drawing leaves a third of
+			// the map empty and piles three of them on one spot. Going round the list covers the map by construction.
+			BotPlaces.Settlement home = places.get(i % places.size());
+			// the level of the place it lives at, not of the map: a map is one number, and living by it is what put a character of two in a forest
+			// of eights. A little spread so a camp is not a rank of identical characters.
+			int level = Math.max(1, home.level() + Rnd.get(-1, 1));
 			PlayerClass playerClass = classFor(level);
 			try {
 				Player bot = PlayerBotCreationService.create(name, playerClass, level, template);
 				BotRoster.setResident(name, true);
+				BotRoster.setHome(name, home.centre());
 				// into the world before it is dressed: equipping asks whether its wearer is spawned, and a character with no position yet is not a
 				// question that has an answer
-				settle(bot, worldId);
+				settle(bot, worldId, home.centre());
 				BotOutfitter.dress(bot);
 				PlayerService.storePlayer(bot);
 				created.add(name + " (" + playerClass + " " + level + ")");
@@ -233,15 +239,14 @@ public class PlayerBotService {
 				return report(created, e.getMessage());
 			}
 		}
-		return report(created, null) + ", around level " + band;
+		return report(created, null) + ", over " + places.size() + " places";
 	}
 
 	/**
 	 * Puts a newly made resident into the world at the place it belongs, scattered a little so a village does not appear as a stack of people on one
 	 * spot. Creating without spawning would mean invoking forty five characters by hand afterwards.
 	 */
-	private void settle(Player bot, int worldId) {
-		Vector3f home = BotPlaces.homeOf(worldId, bot.getObjectId());
+	private void settle(Player bot, int worldId, Vector3f home) {
 		if (home != null) {
 			double angle = Math.random() * Math.PI * 2;
 			float spread = SETTLING_SPREAD * (float) Math.random();

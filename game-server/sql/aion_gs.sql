@@ -963,6 +963,9 @@ CREATE TABLE `playerbot_characters` (
   `player_id` int NOT NULL,
   `resident` tinyint NOT NULL DEFAULT '0',
   `in_world` tinyint NOT NULL DEFAULT '0',
+  `home_x` float NOT NULL DEFAULT '0',
+  `home_y` float NOT NULL DEFAULT '0',
+  `home_z` float NOT NULL DEFAULT '0',
   PRIMARY KEY (`player_id`),
   CONSTRAINT `playerbot_characters_ibfk_1` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

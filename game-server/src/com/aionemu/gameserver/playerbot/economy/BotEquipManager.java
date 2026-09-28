@@ -8,9 +8,12 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.model.TaskId;
 import com.aionemu.gameserver.model.gameobjects.Item;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
+import com.aionemu.gameserver.network.aion.serverpackets.SM_UPDATE_PLAYER_APPEARANCE;
 import com.aionemu.gameserver.services.item.ItemActionService;
+import com.aionemu.gameserver.utils.PacketSendUtility;
 
 /**
  * Keeps a bot wearing the best of what it owns.
@@ -39,7 +42,7 @@ public class BotEquipManager {
 		// other race — and stopping at the first refusal would leave the bot staring at the same unusable item for ever while the wearable one two
 		// places further down the bag went unnoticed.
 		for (Item upgrade : upgrades(bot, true)) {
-			if (bot.getEquipment().equipItem(upgrade.getObjectId(), upgrade.getItemTemplate().getItemSlot()) != null) {
+			if (wear(bot, upgrade.getObjectId(), upgrade.getItemTemplate())) {
 				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} puts on {}", bot.getName(), upgrade.getItemTemplate().getL10n());
 				return true;
 			}
@@ -52,6 +55,60 @@ public class BotEquipManager {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Puts one piece on, in one place, and lets everyone watching see it.
+	 *
+	 * @return true if it went on.
+	 */
+	public static boolean wear(Player bot, int itemObjectId, ItemTemplate template) {
+		long slot = slotFor(bot, template);
+		if (slot == 0 || bot.getEquipment().equipItem(itemObjectId, slot) == null)
+			return false;
+		// what CM_EQUIP_ITEM does after a successful equip. Without it the piece is worn as far as the server is concerned and invisible to every
+		// client in range, which is how a village of bots came to be seen in the gear they were created with
+		PacketSendUtility.broadcastPacket(bot, new SM_UPDATE_PLAYER_APPEARANCE(bot.getObjectId(), bot.getEquipment().getEquippedForAppearance()),
+			true);
+		return true;
+	}
+
+	/**
+	 * Picks the one place a piece goes.
+	 * <p>
+	 * The template's slot is a <b>mask of every place the piece could go</b>, not a place: a one handed weapon reads as "either hand", a ring as
+	 * "either finger", a power shard as "either side". Handing that mask to {@code Equipment.equipItem} is what the client never does — it sends the
+	 * single slot the player dropped the item on — and the engine refuses a two slot mask outright unless the piece is a two handed weapon. It
+	 * refuses it into the audit log, which is why dressing bots printed accusations of cheating into the chat, and why no bot ever held a weapon.
+	 *
+	 * @return The single slot to equip into, or 0 when there is nowhere this can go.
+	 */
+	public static long slotFor(Player bot, ItemTemplate template) {
+		long mask = template.getItemSlot();
+		if (mask == 0)
+			return 0;
+		if (template.isTwoHandWeapon())
+			return mask; // it claims both hands, and the engine expects to be told exactly that
+		// a weapon goes in the main hand. The off hand holds a second weapon, which needs a dual wield skill, and filling it by accident costs the
+		// bot its shield
+		if (template.isWeapon())
+			return (mask & ItemSlot.MAIN_HAND.getSlotIdMask()) != 0 ? ItemSlot.MAIN_HAND.getSlotIdMask() : firstSlot(mask);
+		long occupied = 0;
+		for (ItemSlot slot : ItemSlot.getSlotsFor(mask)) {
+			long id = slot.getSlotIdMask();
+			if ((id & ItemSlot.MAIN_OFF_OR_SUB_OFF.getSlotIdMask()) != 0)
+				continue; // the engine refuses these outright: they are filled by switching hands, never directly
+			if (!bot.getEquipment().isSlotEquipped(id))
+				return id; // a free ear, finger or side before one that is already taken
+			if (occupied == 0)
+				occupied = id;
+		}
+		return occupied;
+	}
+
+	private static long firstSlot(long mask) {
+		ItemSlot[] slots = ItemSlot.getSlotsFor(mask);
+		return slots.length == 0 ? 0 : slots[0].getSlotIdMask();
 	}
 
 	/**
