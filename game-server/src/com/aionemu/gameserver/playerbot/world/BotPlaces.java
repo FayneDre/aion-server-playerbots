@@ -12,6 +12,7 @@ import com.aionemu.gameserver.model.TribeClass;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
@@ -183,7 +184,7 @@ public class BotPlaces {
 		clusters.sort(Comparator.comparingInt(List<Vector3f>::size).reversed());
 		for (List<Vector3f> cluster : clusters) {
 			if (cluster.size() >= SETTLEMENT_SIZE) {
-				Vector3f centre = centreOf(cluster);
+				Vector3f centre = anchorOf(worldId, cluster);
 				settlements.add(new Settlement(centre, cluster.size(), levelAround(countryside, centre)));
 			}
 		}
@@ -214,7 +215,7 @@ public class BotPlaces {
 		for (List<Vector3f> cluster : clusters) {
 			if (cluster.size() < HUNTING_GROUND_SIZE)
 				continue;
-			Vector3f centre = centreOf(cluster);
+			Vector3f centre = anchorOf(worldId, cluster);
 			// the level of what stands here, not of the country around it: a ground is a handful of creatures in one spot, and averaging over a
 			// hundred and fifty metres of everything nearby is exactly how a place of eights came to read as a place of twos
 			grounds.add(new Settlement(centre, cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS)));
@@ -258,5 +259,28 @@ public class BotPlaces {
 			z += spot.z;
 		}
 		return new Vector3f(x / cluster.size(), y / cluster.size(), z / cluster.size());
+	}
+
+	/**
+	 * Picks the spot a place is entered at: the one nearest its middle that a body can actually stand on.
+	 * <p>
+	 * Neither half of that is optional, and each was learned by getting it wrong. The plain average is not a place at all — creatures spread over a
+	 * slope, a ledge and the ground below average out to a point hanging between them, and a villager put there landed on an isolated shelf with no
+	 * route off it. But a spawn is not automatically standable either: an npc is posted behind a counter, on a dais, inside a hut the mesh gives no
+	 * head room, and aiming a whole village at one of those made every journey to it fail.
+	 * <p>
+	 * So the members are tried from the middle outwards and the first one the mesh accepts wins. Falling back to the average keeps a map with no
+	 * generated mesh working as it did before.
+	 */
+	private static Vector3f anchorOf(int worldId, List<Vector3f> cluster) {
+		Vector3f middle = centreOf(cluster);
+		List<Vector3f> fromTheMiddle = new ArrayList<>(cluster);
+		fromTheMiddle.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(middle.x, middle.y, spot.x, spot.y)));
+		for (Vector3f spot : fromTheMiddle) {
+			Vector3f ground = NavmeshService.getInstance().groundNear(worldId, spot.x, spot.y, spot.z);
+			if (ground != null)
+				return ground;
+		}
+		return middle;
 	}
 }

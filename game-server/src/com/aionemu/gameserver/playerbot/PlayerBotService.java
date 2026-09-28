@@ -48,6 +48,8 @@ public class PlayerBotService {
 	private static final long SAVE_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(5);
 	/** How far around its home a new resident may appear, so a village is not a stack of people on one spot. */
 	private static final float SETTLING_SPREAD = 15f;
+	/** How many spots to try before giving up and standing on the place itself. A handful: most spots around a place are fine. */
+	private static final int SETTLING_ATTEMPTS = 8;
 
 	private final Map<Integer, Player> spawnedBots = new ConcurrentHashMap<>();
 
@@ -248,18 +250,33 @@ public class PlayerBotService {
 	 */
 	private void settle(Player bot, int worldId, Vector3f home) {
 		if (home != null) {
-			double angle = Math.random() * Math.PI * 2;
-			float spread = SETTLING_SPREAD * (float) Math.random();
-			float x = home.getX() + (float) Math.cos(angle) * spread, y = home.getY() + (float) Math.sin(angle) * spread;
-			// scattered onto ground a body fits on, not merely scattered: a village has trees, huts and mushroom caps in it, and a villager dropped
-			// inside one of them is unroutable for ever — nothing walkable is within reach, so every journey it attempts is refused
-			Vector3f ground = NavmeshService.getInstance().groundNear(worldId, x, y, home.getZ());
-			bot.setPosition(World.getInstance().createPosition(worldId, ground != null ? ground.getX() : x, ground != null ? ground.getY() : y,
-				ground != null ? ground.getZ() : home.getZ(), (byte) 0, 0));
+			Vector3f spot = scatterAround(worldId, home);
+			bot.setPosition(World.getInstance().createPosition(worldId, spot.getX(), spot.getY(), spot.getZ(), (byte) 0, 0));
 		}
 		PlayerBotEnterWorldService.enterWorld(bot);
 		spawnedBots.put(bot.getObjectId(), bot);
 		rememberRoster();
+	}
+
+	/**
+	 * Finds a spot a few paces from a place, so a village is a village rather than a stack of people on one point.
+	 * <p>
+	 * Two conditions, and each was learned by leaving it out. The spot must be ground a body fits on, or the villager is dropped inside a hut, a
+	 * trunk or a mushroom cap. And it must be ground connected to the place itself: a ledge, a hollow or the far side of a wall is perfectly good
+	 * ground that leads nowhere, and a resident put on one spends its life asking for a route out. Failing both, it stands on the spot itself, which
+	 * is by construction somewhere the world put something.
+	 */
+	private static Vector3f scatterAround(int worldId, Vector3f home) {
+		NavmeshService navmesh = NavmeshService.getInstance();
+		for (int attempt = 0; attempt < SETTLING_ATTEMPTS; attempt++) {
+			double angle = Math.random() * Math.PI * 2;
+			float spread = SETTLING_SPREAD * (float) Math.random();
+			float x = home.getX() + (float) Math.cos(angle) * spread, y = home.getY() + (float) Math.sin(angle) * spread;
+			Vector3f ground = navmesh.groundNear(worldId, x, y, home.getZ());
+			if (ground != null && navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), home.getX(), home.getY(), home.getZ()))
+				return ground;
+		}
+		return home;
 	}
 
 	/**

@@ -43,14 +43,14 @@ public class BotEquipManager {
 		// places further down the bag went unnoticed.
 		for (Item upgrade : upgrades(bot, true)) {
 			if (wear(bot, upgrade.getObjectId(), upgrade.getItemTemplate())) {
-				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} puts on {}", bot.getName(), upgrade.getItemTemplate().getL10n());
+				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} puts on {}", bot.getName(), upgrade.getItemTemplate().getName());
 				return true;
 			}
 			// A piece that binds to its owner is not refused, it is *asked about*: equipItem opens a confirmation window and returns null, which to a
 			// bot looks exactly like a refusal. That is why nothing was ever worn — every upgrade worth having is soul bound. Answering yes starts
 			// five seconds of binding that end by equipping the piece itself, so there is nothing more to do here.
 			if (bot.getResponseRequester().respond(SM_QUESTION_WINDOW.STR_SOUL_BOUND_ITEM_DO_YOU_WANT_SOUL_BOUND, 1)) {
-				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} binds {} to itself", bot.getName(), upgrade.getItemTemplate().getL10n());
+				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} binds {} to itself", bot.getName(), upgrade.getItemTemplate().getName());
 				return true;
 			}
 		}

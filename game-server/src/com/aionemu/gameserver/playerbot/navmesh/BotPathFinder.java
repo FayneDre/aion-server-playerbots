@@ -385,10 +385,14 @@ public class BotPathFinder {
 	 * geometry: under a mushroom cap with no head room, inside a tree trunk, against a wall. A character left there is not merely misplaced, it is
 	 * unroutable: nothing walkable is within reach of it, so every journey it ever attempts is refused, and it spends its life asking.
 	 *
-	 * @return The nearest walkable ground within {@link #SNAP_RINGS} cells, or null when there is none.
+	 * The search is bounded vertically, and that bound is the point of it. A spot can have ground at the valley floor and again on the cliff forty
+	 * metres above it; left to take whichever is nearest in plan view, this put a villager on a clifftop seventy metres above the village it was
+	 * meant to live in, with no route back down. Ground a body could have walked to is ground within a step or two of where it was going.
+	 *
+	 * @return The nearest walkable ground within {@link #SNAP_RINGS} cells and {@link #SNAP_RANGE} metres of height, or null when there is none.
 	 */
 	public static Vector3f nearestGround(Navmesh mesh, float x, float y, float z) {
-		long node = nodeAt(mesh, x, y, z, ANY_HEIGHT);
+		long node = nodeAt(mesh, x, y, z, SNAP_RANGE);
 		if (node == -1)
 			return null;
 		int cellX = keyX(mesh, node), cellY = keyY(mesh, node);

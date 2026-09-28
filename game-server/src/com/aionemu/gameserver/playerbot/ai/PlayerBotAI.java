@@ -1,6 +1,9 @@
 package com.aionemu.gameserver.playerbot.ai;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
@@ -112,6 +115,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile Vector3f occupationDestination;
 	/** Where this bot lives, read from the roster on first use. A fact about the bot, not something recomputed from the map every time it is asked. */
 	private volatile Vector3f home;
+	/** Places this bot has found it cannot get to, so it stops choosing them. A map has pockets, and a bot can be standing in one. */
+	private final Set<Vector3f> unreachable = ConcurrentHashMap.newKeySet();
 	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
 	private volatile long dressingIdleUntil;
 	/** Shop spots that turned out to have no shop keeper standing on them, so the next trip goes somewhere else. */
@@ -558,7 +563,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// camp beside it, and one that lives in a village stays in its own. Recomputing a home from the map put every bot in the biggest village
 			// on it, which is how Akarios came to be a crowd and everywhere else empty.
 			Vector3f home = homeOfThisBot();
-			occupationDestination = home == null ? null : BotPlaces.nearestSettlement(getOwner().getWorldId(), home.getX(), home.getY());
+			occupationDestination = home == null ? null
+				: reachablePlace(BotPlaces.settlements(getOwner().getWorldId()).stream().map(BotPlaces.Settlement::centre).toList(), home.getX(),
+					home.getY());
 		}
 		if (occupationDestination == null)
 			return false; // nobody lives on this map, so there is nowhere to stand about
@@ -585,8 +592,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Walks to another settlement, and looks for something else to do once it arrives rather than waiting out the clock. */
 	private boolean wander() {
 		Player bot = getOwner();
-		if (occupationDestination == null)
-			occupationDestination = BotPlaces.otherSettlement(bot.getWorldId(), homeOfThisBot(), bot.getObjectId() + (int) occupationUntil);
+		if (occupationDestination == null) {
+			Vector3f elsewhere = BotPlaces.otherSettlement(bot.getWorldId(), homeOfThisBot(), bot.getObjectId() + (int) occupationUntil);
+			// a place already known to be out of reach is no destination at all, so fall back on the nearest one that is not
+			occupationDestination = elsewhere != null && !unreachable.contains(elsewhere) ? elsewhere
+				: reachablePlace(BotPlaces.settlements(bot.getWorldId()).stream().map(BotPlaces.Settlement::centre).toList(), bot.getX(), bot.getY());
+		}
 		if (occupationDestination == null)
 			return false;
 		setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
@@ -609,9 +620,20 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean giveUpOccupation() {
 		log.info("Bot {} cannot get to where {} would take it, and does something else", getOwner().getName(), occupation);
+		// Remembered, not merely abandoned. The place a bot is sent to is chosen the same way every time — the nearest village, the next place along
+		// the list — so forgetting a refusal means choosing the same unreachable place on the next tick, for ever. One bot standing in a pocket of
+		// the map cut off from the villages asked sixty times in three minutes.
+		if (occupationDestination != null)
+			unreachable.add(occupationDestination);
 		occupationUntil = 0;
 		occupationDestination = null;
 		return true;
+	}
+
+	/** @return The nearest place of that kind this bot has not already found it cannot get to, or null when it has run out of them. */
+	private Vector3f reachablePlace(List<Vector3f> candidates, float fromX, float fromY) {
+		return candidates.stream().filter(place -> !unreachable.contains(place))
+			.min(Comparator.comparingDouble(place -> PositionUtil.getDistance(fromX, fromY, place.getX(), place.getY()))).orElse(null);
 	}
 
 	/**

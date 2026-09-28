@@ -65,6 +65,20 @@ public class NavmeshService {
 	}
 
 	/**
+	 * Asks whether one spot can be walked to from another.
+	 * <p>
+	 * Standable is not the same as reachable, and scattering villagers around a village centre is where the difference bites: a ledge, the far side
+	 * of a wall or a hollow is perfectly good ground that happens to connect to nothing, and a resident put on one spends its life asking for a route
+	 * out of it.
+	 *
+	 * @return true if a route exists, or if the map has no mesh to ask.
+	 */
+	public boolean canReach(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
+		Navmesh mesh = get(worldId);
+		return mesh == null || !BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ).isEmpty();
+	}
+
+	/**
 	 * Plans a journey and hands the result back when it is ready.
 	 * <p>
 	 * Short journeys are planned on the spot, in a few tens of milliseconds. A long one takes over a second, which no movement thread can wait for,
