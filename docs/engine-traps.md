@@ -70,6 +70,24 @@ And none of that survives contact with the map, because the bot then walks by it
 placement guarantees, there must be a way out**: a bot refused every destination a dozen times running is put back home, the way players are given an
 unstick command rather than advice.
 
+## Colours are stored blue first
+
+A flesh tone of 224, 192, 168 written the obvious way round is read as a pale blue, and nothing in the code looks wrong: the value is right, the order
+is not. A village of smurfs is the only symptom. Two things follow. **Absolute colours must be packed deliberately** — `BotAppearance.stored(r, g, b)`
+exists to say so once. And **varying a colour by scaling every channel by the same factor is order independent**, which is why the shading code was
+right all along while the constants beside it were wrong.
+
+Whenever a byte order is in doubt, the database already holds a known good answer: an existing character's stored colour is one reading if you are
+right and an absurd one if you are not.
+
+## An index is not the truth
+
+"Is this map populated?" was asked of the roster table, which is derived data. It can be emptied, rebuilt or lost without a single character moving —
+and when it was, a map of forty five inhabitants was judged empty and populated a second time, leaving ninety. Ask the thing that *is* the state
+(`players`), not the thing that indexes it.
+
+The same shape as the `null` traps above: two different situations were giving the same answer, and the code picked the wrong meaning.
+
 ## A half built object is what the creation path hands you
 
 `PlayerService.newPlayer` builds only what character creation has to store. The effect controller, the known list, the flight controller and the

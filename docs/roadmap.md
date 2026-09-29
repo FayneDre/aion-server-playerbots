@@ -1,6 +1,6 @@
 # What is left to do
 
-State of the project and what comes next, written to be picked up cold. For how things work, see [playerbot-architecture.md](playerbot-architecture.md), [combat-prototype.md](combat-prototype.md), [navigation-prototype.md](navigation-prototype.md) and [navmesh-plan.md](navmesh-plan.md).
+State of the project and what comes next, written to be picked up cold. For how things work, see [playerbot-architecture.md](playerbot-architecture.md), [population.md](population.md), [combat-prototype.md](combat-prototype.md), [navigation-prototype.md](navigation-prototype.md) and [navmesh-plan.md](navmesh-plan.md).
 
 ## Where it stands
 
@@ -76,7 +76,7 @@ A bot is passed over when a group looks for a new leader — leading means answe
 
 **Economy.** Selling is the first step. Then the broker (`BrokerService`), then player shops. (`PvpService` no longer throws when a bot kills a real player: that dereference was guarded along with the rest of the `isOnline()` work.)
 
-**Bot population.** `//bot populate` creates them on reserved accounts from id 900000. `GameServer` then calls `PlayerBotService.onStartUp()`, which puts back whatever was in the world before, each bot at its own saved position — so a restart resumes rather than resets, and nothing has to place them by hand. The roster is a list of names in `server_variables`, written on every spawn and despawn because the case it exists for is a shutdown that never ran.
+**Bot population.** A map populates itself on first startup, from one configuration line, with its own navmesh generated if missing and its database schema brought up to date if it lacks anything. Bots live on reserved accounts from id 900000, keep a home, a level drawn from where they live and a face of their own. See [population.md](population.md).
 
 **Saving.** Spawned bots are written every 5 minutes, and on a clean shutdown. Nothing else writes them: the engine's `PeriodicSaveService` covers legion warehouses only, and real players are saved when they log out, a door a bot never uses. This matters more than it used to, now that bots gain levels and skills unattended over hours.
 
