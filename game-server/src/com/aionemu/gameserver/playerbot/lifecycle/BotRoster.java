@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -49,8 +50,11 @@ public class BotRoster {
 	 * <p>
 	 * The whole set is written rather than the one bot that changed: the caller holds the truth, and a single statement that says "these and nobody
 	 * else" cannot drift from it the way a sequence of additions and removals can.
+	 * <p>
+	 * By character id, because the caller has the characters. Taking names meant looking each one up again — one query per bot, on every call, for
+	 * an answer the caller was holding: populating a map of forty five ran a thousand of them.
 	 */
-	public static void remember(Set<String> characterNames) {
+	public static void remember(Collection<Integer> playerIds) {
 		try (Connection con = DatabaseFactory.getConnection()) {
 			boolean autoCommit = con.getAutoCommit();
 			con.setAutoCommit(false);
@@ -59,12 +63,7 @@ public class BotRoster {
 					clear.executeUpdate();
 				}
 				try (PreparedStatement mark = con.prepareStatement(upsert("in_world"))) {
-					for (String characterName : characterNames) {
-						int playerId = PlayerDAO.getPlayerIdByName(characterName);
-						if (playerId == 0) {
-							log.warn("Cannot remember {}: no character by that name", characterName);
-							continue;
-						}
+					for (int playerId : playerIds) {
 						mark.setInt(1, playerId);
 						mark.setInt(2, 1);
 						mark.addBatch();
@@ -79,7 +78,7 @@ public class BotRoster {
 				con.setAutoCommit(autoCommit);
 			}
 		} catch (SQLException e) {
-			log.error("Could not remember the roster of " + characterNames.size() + " bot(s)", e);
+			log.error("Could not remember the roster of " + playerIds.size() + " bot(s)", e);
 		}
 	}
 

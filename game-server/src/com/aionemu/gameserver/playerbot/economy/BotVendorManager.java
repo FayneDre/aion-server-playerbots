@@ -13,7 +13,6 @@ import com.aionemu.gameserver.model.DialogAction;
 import com.aionemu.gameserver.model.gameobjects.Item;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
-import com.aionemu.gameserver.model.items.storage.Storage;
 import java.util.Set;
 
 import com.aionemu.gameserver.model.Gender;
@@ -24,12 +23,8 @@ import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
-import com.aionemu.gameserver.services.RepurchaseService;
-import com.aionemu.gameserver.services.item.ItemFactory;
-import com.aionemu.gameserver.services.item.ItemPacketService.ItemDeleteType;
-import com.aionemu.gameserver.services.item.ItemPacketService.ItemUpdateType;
-import com.aionemu.gameserver.services.player.PlayerLimitService;
-import com.aionemu.gameserver.services.trade.PricesService;
+import com.aionemu.gameserver.model.trade.TradeList;
+import com.aionemu.gameserver.services.TradeService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
@@ -132,38 +127,18 @@ public class BotVendorManager {
 		if (bot.isDead())
 			return 0;
 
-		Storage inventory = bot.getInventory();
-		List<Item> sold = new ArrayList<>();
-		long kinahReward = 0;
-		for (Item item : inventory.getItems()) {
+		// The engine's own sale, the one CM_BUY_ITEM performs. This used to be a copy of it — the price, the sell limit, the repurchase list and the
+		// kinah, all redone here — because TradeService gates on PlayerRestrictions.canTrade, which asked isOnline() and so refused every bot. Since
+		// isOnline() came to mean "is present" rather than "has a socket", the engine's path works, and a copy of its rules can only drift from them.
+		TradeList sale = new TradeList();
+		int count = 0;
+		for (Item item : bot.getInventory().getItems()) {
 			if (!isJunk(bot, item))
 				continue;
-
-			long count = item.getItemCount();
-			long sellReward = PricesService.getSellReward(item.getItemTemplate().getPrice(), PricesService.getVendorSellModifier());
-			count = PlayerLimitService.updateSellLimit(bot, sellReward, count);
-			if (count == 0)
-				continue;
-
-			long realReward = sellReward * count;
-			Item repurchaseItem;
-			if (item.getItemCount() - count == 0) {
-				inventory.delete(item, ItemDeleteType.SELL);
-				repurchaseItem = item;
-			} else {
-				repurchaseItem = ItemFactory.newItem(item.getItemId(), count);
-				inventory.decreaseItemCount(item, count);
-			}
-			kinahReward += realReward;
-			repurchaseItem.setRepurchasePrice(realReward);
-			sold.add(repurchaseItem);
+			sale.addItem(item.getObjectId(), item.getItemCount());
+			count++;
 		}
-		if (sold.isEmpty())
-			return 0;
-
-		RepurchaseService.getInstance().addRepurchaseItems(bot, sold);
-		inventory.increaseKinah(kinahReward, ItemUpdateType.INC_KINAH_SELL);
-		return sold.size();
+		return count > 0 && TradeService.performSellToShop(bot, sale, null) ? count : 0;
 	}
 
 	private static boolean isJunk(Player bot, Item item) {

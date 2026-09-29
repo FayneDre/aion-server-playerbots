@@ -201,9 +201,7 @@ public class PlayerBotService {
 
 	/** The roster is written on every change rather than at shutdown, because a shutdown that never runs is the case it exists for. */
 	private void rememberRoster() {
-		Set<String> names = new LinkedHashSet<>();
-		spawnedBots.values().forEach(bot -> names.add(bot.getName()));
-		BotRoster.remember(names);
+		BotRoster.remember(spawnedBots.keySet());
 	}
 
 	/**
@@ -319,9 +317,11 @@ public class PlayerBotService {
 				created.add(name + " (" + playerClass + " " + level + ")");
 			} catch (IllegalArgumentException | IllegalStateException e) {
 				log.warn("Could not create bot " + name, e);
+				rememberRoster();
 				return report(created, e.getMessage());
 			}
 		}
+		rememberRoster();
 		return report(created, null) + ", over " + places.size() + " places";
 	}
 
@@ -336,7 +336,8 @@ public class PlayerBotService {
 		}
 		PlayerBotEnterWorldService.enterWorld(bot);
 		spawnedBots.put(bot.getObjectId(), bot);
-		rememberRoster();
+		// the roster is written once by the caller when the whole population is in, not once per inhabitant: rewriting the full set after each of
+		// forty five arrivals is forty five statements to say what one says at the end
 	}
 
 	/**

@@ -48,6 +48,7 @@ public class BotPlaces {
 	private static final Map<Integer, List<Settlement>> settlementsByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, Integer> levelByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> huntingByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
 
 	/**
 	 * A place people gather, how many of them do, and what the country around it is worth fighting at.
@@ -81,6 +82,13 @@ public class BotPlaces {
 	 * @return Villages first, then hunting grounds, every one of them somewhere a character could plausibly spend its day.
 	 */
 	public static List<Settlement> homes(int worldId) {
+		// Remembered, like the two lists it is built from. Assembling it means ordering the hunting grounds by distance from one another, which
+		// compares every remaining place against every one already taken — some tens of thousands of distances for a map the size of Poeta. It is
+		// asked for every time a bot decides where to go, and the answer never changes.
+		return homesByMap.computeIfAbsent(worldId, BotPlaces::locateHomes);
+	}
+
+	private static List<Settlement> locateHomes(int worldId) {
 		List<Settlement> villages = new ArrayList<>();
 		// a village appears once per few townsfolk, so Akarios gets a handful of inhabitants and a roadside camp one, which is the proportion the
 		// world itself was built in. One entry each would make the largest village as busy as the emptiest field.
@@ -88,7 +96,7 @@ public class BotPlaces {
 			for (int share = 0; share < Math.max(1, settlement.townsfolk() / TOWNSFOLK_PER_SHARE); share++)
 				villages.add(settlement);
 		}
-		return interleave(villages, spreadOut(huntingGrounds(worldId)));
+		return List.copyOf(interleave(villages, spreadOut(huntingGrounds(worldId)))); // shared and read by every bot, so nobody gets to change it
 	}
 
 	/**
