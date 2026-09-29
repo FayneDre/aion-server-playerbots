@@ -17,8 +17,8 @@ public class Bot extends AdminCommand {
 
 	public Bot() {
 		super("bot", "Controls playerbots.", """
-			create <name> <class> <level> <templateName> - Creates a new bot character, copying account, race, gender and looks from an existing one.
-			populate <count> <class> <level> <templateName> - Creates several bots at once with generated names.
+			create <name> <class> <level> <race> - Creates a new bot character with a face of its own.
+			populate <count> [race] - Fills this map with bots of its own levels, one or two per place.
 			delete <characterName> - Deletes a bot character from the database.
 			load <characterName> - Loads a bot character from the database without spawning it.
 			spawn <characterName> - Loads a bot character and spawns it next to you.
@@ -88,7 +88,7 @@ public class Bot extends AdminCommand {
 
 	private void create(Player admin, String[] params) {
 		if (params.length < 5) {
-			sendInfo(admin, "Usage: //bot create <name> <class> <level> <templateName>");
+			sendInfo(admin, "Usage: //bot create <name> <class> <level> <race>");
 			return;
 		}
 		int level;
@@ -102,8 +102,8 @@ public class Bot extends AdminCommand {
 	}
 
 	private void populate(Player admin, String[] params) {
-		if (params.length < 3) {
-			sendInfo(admin, "Usage: //bot populate <count> <templateName>   fills this map with people of its own level");
+		if (params.length < 2) {
+			sendInfo(admin, "Usage: //bot populate <count> [race]   fills this map with people of its own level");
 			return;
 		}
 		int count;
@@ -117,7 +117,9 @@ public class Bot extends AdminCommand {
 			sendInfo(admin, "Count must be between 1 and " + MAX_POPULATE);
 			return;
 		}
-		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin.getWorldId(), params[2]));
+		// the commander's own race when none is given: populating the map you are standing on with the other faction is never what was meant
+		String race = params.length > 2 ? params[2] : admin.getRace().name();
+		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin.getWorldId(), race));
 	}
 
 	private void withName(Player admin, String[] params, Function<String, String> action) {

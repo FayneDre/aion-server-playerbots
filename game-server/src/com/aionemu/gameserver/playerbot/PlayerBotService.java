@@ -11,9 +11,11 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.dao.PlayerDAO;
 import com.aionemu.commons.utils.Rnd;
 import com.aionemu.gameserver.model.PlayerClass;
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
@@ -101,20 +103,42 @@ public class PlayerBotService {
 	private void runStandingOrders() {
 		if (BotRoster.takeOrder(BotRoster.CLEAR_ORDER) != null)
 			log.info("Standing order: {}", clear());
-		String populate = BotRoster.takeOrder(BotRoster.POPULATE_ORDER);
-		if (populate == null)
+		populateConfiguredMaps();
+	}
+
+	/**
+	 * Populates any configured map that has nobody on it yet.
+	 * <p>
+	 * This is what makes the bot system work on a server other than the one it was written on. Everything else about a population lives in the
+	 * database — the characters, the roster, where each one lives — so a fresh installation has none of it, and until now the only ways to get some
+	 * were to type a command in game or to write a row into {@code server_variables} by hand. Neither is an installation step anybody should have to
+	 * be told about.
+	 * <p>
+	 * Only ever for an empty map, so it runs once and is silent on every start afterwards, and so it can never quietly double a population.
+	 */
+	private void populateConfiguredMaps() {
+		if (PlayerBotConfig.POPULATE.isBlank())
 			return;
-		String[] parts = populate.split(":");
-		if (parts.length != 3) {
-			log.warn("Cannot read the populate order '{}', expected <mapId>:<count>:<templateName>", populate);
-			return;
-		}
-		try {
-			log.info("Standing order: {}", populate(Integer.parseInt(parts[1]), Integer.parseInt(parts[0]), parts[2]));
-		} catch (NumberFormatException e) {
-			log.warn("Cannot read the populate order '{}', expected <mapId>:<count>:<templateName>", populate);
+		for (String order : PlayerBotConfig.POPULATE.split(";")) {
+			String[] parts = order.trim().split(":");
+			if (parts.length != 3) {
+				log.warn("Cannot read the populate setting '{}', expected <mapId>:<count>:<race>", order);
+				continue;
+			}
+			try {
+				int worldId = Integer.parseInt(parts[0]), count = Integer.parseInt(parts[1]);
+				if (BotRoster.hasResidentsOn(worldId)) {
+					log.info("Map {} already has bots living on it, leaving it alone", worldId);
+					continue;
+				}
+				log.info("Populating map {}: {}", worldId, populate(count, worldId, parts[2]));
+			} catch (NumberFormatException e) {
+				log.warn("Cannot read the populate setting '{}', expected <mapId>:<count>:<race>", order);
+			}
 		}
 	}
+
+
 
 	/** Writes every spawned bot to the database, in place, without taking it out of the world. */
 	public void saveAll() {
@@ -175,19 +199,19 @@ public class PlayerBotService {
 	 *
 	 * @return A human readable result message.
 	 */
-	public String create(String characterName, String className, int level, String templateName) {
+	public String create(String characterName, String className, int level, String raceName) {
 		PlayerClass playerClass;
 		try {
 			playerClass = PlayerClass.valueOf(className.toUpperCase());
 		} catch (IllegalArgumentException e) {
 			return "Unknown class " + className;
 		}
-		PlayerCommonData template = PlayerDAO.loadPlayerCommonDataByName(templateName);
-		if (template == null)
-			return "No character found with name " + templateName + " to copy from";
+		Race race = raceOf(raceName);
+		if (race == null)
+			return "Unknown race " + raceName + ", expected ELYOS or ASMODIANS";
 
 		try {
-			Player bot = PlayerBotCreationService.create(characterName, playerClass, level, template);
+			Player bot = PlayerBotCreationService.create(characterName, playerClass, level, race);
 			return "Created " + bot.getName() + " (objId " + bot.getObjectId() + "): " + playerClass + " level " + level;
 		} catch (IllegalArgumentException | IllegalStateException e) {
 			log.warn("Could not create bot " + characterName, e);
@@ -208,10 +232,10 @@ public class PlayerBotService {
 	 *
 	 * @param commander Whoever asked, whose map is populated and whose race and looks the new characters borrow.
 	 */
-	public String populate(int count, int worldId, String templateName) {
-		PlayerCommonData template = PlayerDAO.loadPlayerCommonDataByName(templateName);
-		if (template == null)
-			return "No character found with name " + templateName + " to copy from";
+	public String populate(int count, int worldId, String raceName) {
+		Race race = raceOf(raceName);
+		if (race == null)
+			return "Unknown race " + raceName + ", expected ELYOS or ASMODIANS";
 		List<BotPlaces.Settlement> places = BotPlaces.homes(worldId);
 		if (places.isEmpty())
 			return "Nothing lives on this map, so there is nowhere to put anyone";
@@ -236,7 +260,7 @@ public class PlayerBotService {
 			int level = Math.max(1, home.level() + Rnd.get(-1, 1));
 			PlayerClass playerClass = classFor(level);
 			try {
-				Player bot = PlayerBotCreationService.create(name, playerClass, level, template);
+				Player bot = PlayerBotCreationService.create(name, playerClass, level, race);
 				BotRoster.setResident(name, true);
 				BotRoster.setHome(name, home.centre());
 				// into the world before it is dressed: equipping asks whether its wearer is spawned, and a character with no position yet is not a
@@ -286,6 +310,16 @@ public class PlayerBotService {
 				return ground;
 		}
 		return home;
+	}
+
+	/** @return The race of that name, or null when it is not one. Accepts the enum's own spelling, so ELYOS and ASMODIANS. */
+	private static Race raceOf(String raceName) {
+		try {
+			Race race = Race.valueOf(raceName.toUpperCase());
+			return race == Race.ELYOS || race == Race.ASMODIANS ? race : null;
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
 	}
 
 	/**

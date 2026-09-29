@@ -13,14 +13,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.commons.database.DatabaseFactory;
-import com.aionemu.gameserver.dao.PlayerAppearanceDAO;
 import com.aionemu.gameserver.dao.PlayerDAO;
 import com.aionemu.gameserver.dao.PlayerQuestListDAO;
+import com.aionemu.gameserver.model.Gender;
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.account.Account;
 import com.aionemu.gameserver.model.account.PlayerAccountData;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
-import com.aionemu.gameserver.model.gameobjects.player.PlayerAppearance;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.services.AccountService;
 import com.aionemu.gameserver.services.ClassChangeService;
@@ -49,30 +49,22 @@ public class PlayerBotCreationService {
 		"Oly", "Pyr", "Quil", "Ras", "Syl", "Tor", "Ulf", "Ver", "Wyn", "Xan", "Yri", "Zel" };
 	private static final String[] NAME_ENDS = { "an", "ar", "el", "en", "ia", "ik", "il", "is", "on", "or", "ra", "ric", "us", "wyn", "yth" };
 	private static final int NAME_ATTEMPTS = 50;
-	/** How many head and hair models the character creation screen offers. Picking outside this is a missing model, not a different face. */
-	private static final int FACE_MODELS = 12, HAIR_MODELS = 12;
-	/** How far a face or body slider may move from the character it was copied from, and how far from neutral it may ever end up. */
-	private static final int FEATURE_NUDGE = 30, FEATURE_LIMIT = 90;
-	/** Height moves least: its extremes are the ones that read as broken rather than as a different person. */
-	private static final float HEIGHT_VARIATION = 0.04f;
-	/** How far skin and lips may be shaded. Small: skin is the one colour whose every wrong value is somebody from another planet. */
-	private static final float SKIN_SHADING = 0.12f;
-	/** Hair and eyes take a wider shading, since light and dark hair are both ordinary. */
-	private static final float HAIR_SHADING = 0.35f;
 
 	private PlayerBotCreationService() {
 	}
 
 	/**
-	 * Creates a character on the same account and with the same race, gender and looks as the given template, apart from randomized skin and hair
-	 * colors so bots are told apart at a glance.
+	 * Creates a bot character of the given race, with a face of its own.
+	 * <p>
+	 * No character to copy from. Cloning one was the first way this worked, and it made the bot system depend on somebody having played the server
+	 * first: a fresh installation has no character to point at, so it could not be populated at all. {@link BotAppearance} builds a plain face
+	 * instead, which is what the creation screen starts everyone with.
 	 *
-	 * @param template An existing character to copy account and appearance from.
 	 * @return The new character, stored and then read back, so it is as complete as one that just logged in.
-	 * @throws IllegalArgumentException If the name or the template is unusable.
+	 * @throws IllegalArgumentException If the name is unusable.
 	 * @throws IllegalStateException If storing fails, in which case the reserved object id is released again.
 	 */
-	public static Player create(String name, PlayerClass playerClass, int level, PlayerCommonData template) {
+	public static Player create(String name, PlayerClass playerClass, int level, Race race) {
 		if (!NameRestrictionService.isValidName(name) || NameRestrictionService.isForbidden(name))
 			throw new IllegalArgumentException("Invalid character name: " + name);
 		if (PlayerDAO.isNameUsed(name))
@@ -84,8 +76,11 @@ public class PlayerBotCreationService {
 
 		PlayerCommonData commonData = new PlayerCommonData(IDFactory.getInstance().nextId());
 		commonData.setName(name);
-		commonData.setRace(template.getRace());
-		commonData.setGender(template.getGender());
+		commonData.setRace(race);
+		// Half of them the other gender, whatever the character they were copied from. The face and body values are the same numbers either way — a
+		// head model index, a slider about neutral — so the client renders the other gender's version of them rather than a broken one. A population
+		// entirely of one sex is the single most obvious tell that they came out of one mould.
+		commonData.setGender(RANDOM.nextBoolean() ? Gender.MALE : Gender.FEMALE);
 		commonData.setPlayerClass(playerClass);
 		// levels above 9 are gated on daeva status, which a bot will never earn by running the ascension quest
 		if (!playerClass.isStartingClass())
@@ -97,7 +92,7 @@ public class PlayerBotCreationService {
 		// reaches something it does not have: a recipe learned at a trade level went looking for a recipe list that only the load path fills in.
 		commonData.setLevel(1);
 
-		PlayerAccountData accountData = new PlayerAccountData(commonData, varyAppearance(PlayerAppearanceDAO.load(template.getPlayerObjId())));
+		PlayerAccountData accountData = new PlayerAccountData(commonData, BotAppearance.invent());
 		Player bot = PlayerService.newPlayer(accountData, account);
 		if (!PlayerService.storeNewPlayer(bot, accountName, accountId)) {
 			IDFactory.getInstance().releaseId(commonData.getPlayerObjId());
@@ -190,81 +185,4 @@ public class PlayerBotCreationService {
 		throw new IllegalStateException("Could not find a free bot name in " + NAME_ATTEMPTS + " attempts");
 	}
 
-	/**
-	 * Makes a copied face into somebody else's.
-	 * <p>
-	 * A population cloned from one character is forty five of the same person, which no amount of good behaviour makes up for. Three kinds of change,
-	 * and they carry different risks:
-	 * <ul>
-	 * <li>colours are free — any value is a valid colour;</li>
-	 * <li>the head and hair models are picked from what the template's race and gender actually offer, since a model number that does not exist is
-	 * not a different face but a missing one;</li>
-	 * <li>the sliders are nudged, never redrawn. They are signed bytes about a neutral zero, and a character built from random ones is a gargoyle:
-	 * the whole reason a default appearance of all zeroes renders as something the client cannot even draw.</li>
-	 * </ul>
-	 * Height moves least of all. It is the one slider whose extremes read immediately as broken — a village of dwarves — so it stays within a few
-	 * percent of the character it was copied from.
-	 */
-	private static PlayerAppearance varyAppearance(PlayerAppearance appearance) {
-		appearance.setHairRGB(shade(appearance.getHairRGB(), HAIR_SHADING));
-		appearance.setLipRGB(shade(appearance.getLipRGB(), SKIN_SHADING));
-		appearance.setSkinRGB(shade(appearance.getSkinRGB(), SKIN_SHADING));
-		appearance.setEyeRGB(shade(appearance.getEyeRGB(), HAIR_SHADING));
-
-		appearance.setFace(RANDOM.nextInt(FACE_MODELS));
-		appearance.setHair(RANDOM.nextInt(HAIR_MODELS));
-
-		appearance.setFaceShape(nudge(appearance.getFaceShape()));
-		appearance.setForehead(nudge(appearance.getForehead()));
-		appearance.setEyeHeight(nudge(appearance.getEyeHeight()));
-		appearance.setEyeSpace(nudge(appearance.getEyeSpace()));
-		appearance.setEyeSize(nudge(appearance.getEyeSize()));
-		appearance.setNose(nudge(appearance.getNose()));
-		appearance.setNoseWidth(nudge(appearance.getNoseWidth()));
-		appearance.setCheek(nudge(appearance.getCheek()));
-		appearance.setMouthSize(nudge(appearance.getMouthSize()));
-		appearance.setLipSize(nudge(appearance.getLipSize()));
-		appearance.setJawHeigh(nudge(appearance.getJawHeigh()));
-		appearance.setChinJut(nudge(appearance.getChinJut()));
-		appearance.setShoulders(nudge(appearance.getShoulders()));
-		appearance.setTorso(nudge(appearance.getTorso()));
-		appearance.setWaist(nudge(appearance.getWaist()));
-		appearance.setArmThickness(nudge(appearance.getArmThickness()));
-		appearance.setLegThickness(nudge(appearance.getLegThickness()));
-
-		appearance.setHeight(appearance.getHeight() * (1 + (RANDOM.nextFloat() - 0.5f) * 2 * HEIGHT_VARIATION));
-		return appearance;
-	}
-
-	/**
-	 * Moves one slider a little.
-	 *
-	 * @param value The stored value: a signed byte kept as an unsigned int, so 253 means -3 and not "almost the maximum".
-	 * @return The nudged value in the same form, kept well inside the range so no feature reaches the extreme the sliders allow.
-	 */
-	/**
-	 * Varies a colour without inventing one.
-	 * <p>
-	 * Every channel moves by the same factor, so the hue survives and only the shade changes: a brown stays brown, lighter or darker. Drawing a fresh
-	 * colour instead gave a village of red and blue people with green hair, because there are sixteen million colours and almost none of them is a
-	 * colour a person comes in. It also means this does not need to know whether the channels are stored red first or blue first — an even scaling is
-	 * the same operation either way round.
-	 *
-	 * @param spread How far the shade may move, as a fraction: 0.25 means three quarters to five quarters of the original.
-	 */
-	private static int shade(int rgb, float spread) {
-		float factor = 1 + (RANDOM.nextFloat() - 0.5f) * 2 * spread;
-		int first = channel((rgb >> 16) & 0xFF, factor), second = channel((rgb >> 8) & 0xFF, factor), third = channel(rgb & 0xFF, factor);
-		return first << 16 | second << 8 | third;
-	}
-
-	private static int channel(int value, float factor) {
-		return Math.clamp(Math.round(value * factor), 0, 255);
-	}
-
-	private static int nudge(int value) {
-		int signed = (byte) value;
-		int moved = Math.clamp(signed + RANDOM.nextInt(FEATURE_NUDGE * 2 + 1) - FEATURE_NUDGE, -FEATURE_LIMIT, FEATURE_LIMIT);
-		return moved & 0xFF;
-	}
 }
