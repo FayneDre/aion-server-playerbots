@@ -136,16 +136,13 @@ public class PlayerBotService {
 	 * server's startup on eighteen of them is out of the question. Those maps are populated on the next start, by which time their meshes exist.
 	 */
 	private void populateEveryOpenMap() {
-		int building = 0, populated = 0;
+		int populated = 0;
 		for (WorldMapTemplate map : DataManager.WORLD_MAPS_DATA) {
 			if (map.isInstance() || map.getWorldType() != WorldType.ELYSEA && map.getWorldType() != WorldType.ASMODAE)
 				continue;
-			if (NavmeshBuilder.buildIfMissing(map.getMapId())) {
-				building++;
-				continue; // nothing to plan routes with yet; it will be populated once the mesh is there
-			}
 			if (BotRoster.hasResidentsOn(map.getMapId()))
 				continue;
+			NavmeshBuilder.ensureMesh(map.getMapId()); // before anyone is put on it: a map without one is a map bots cannot plan a route across
 			int places = BotPlaces.homes(map.getMapId()).size();
 			if (places == 0)
 				continue; // nothing lives here, so neither does anybody else
@@ -153,8 +150,6 @@ public class PlayerBotService {
 			log.info("Populating map {}: {}", map.getMapId(), populate(Math.round(places * MAP_DENSITY), map.getMapId(), race.name()));
 			populated++;
 		}
-		if (building > 0)
-			log.info("Building {} missing navmesh(es) in the background; those maps are populated on the next start", building);
 		log.info("Populated {} map(s) automatically", populated);
 	}
 
@@ -177,6 +172,7 @@ public class PlayerBotService {
 					log.info("Map {} already has bots living on it, leaving it alone", worldId);
 					continue;
 				}
+				NavmeshBuilder.ensureMesh(worldId); // before anyone is put on it, and before the server opens
 				log.info("Populating map {}: {}", worldId, populate(count, worldId, parts[2]));
 			} catch (NumberFormatException e) {
 				log.warn("Cannot read the populate setting '{}', expected <mapId>:<count>:<race>", order);

@@ -3,57 +3,46 @@ package com.aionemu.gameserver.playerbot.navmesh;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.aionemu.gameserver.utils.ThreadPoolManager;
-
 /**
  * Generates a map's navmesh when it is missing, so a server nobody has prepared by hand still gets bots that can find their way.
  * <p>
- * Generating one is not cheap — a few seconds and about a gigabyte for a map the size of Poeta — which is why the offline tool exists and why this
- * does its work on a background thread well after startup rather than holding the server on the way up. What it does not do is the tool's diagnostic
- * half: the height, structure and walkable images are a hundred and fifty megabytes each and are for looking at, not for playing.
+ * Done while the server is starting, before it accepts a single connection, and deliberately so. The alternative — building in the background while
+ * play goes on — means the bots on that map spend their first minutes walking without a plan, wedging themselves in scenery and being put back home by
+ * the safety net. A map is either ready or it is not, and a few seconds added to a startup that already takes tens of them is the cheaper half of that
+ * bargain.
  * <p>
- * Until it finishes, the bots on that map walk without a plan, which is what they did before any of this existed. They pick the mesh up the next time
- * the server starts.
+ * It skips the offline tool's diagnostic half: the height, structure and walkable images are a hundred and fifty megabytes each and are for looking
+ * at, not for playing. What is left costs about a gigabyte and a few seconds for a map the size of Poeta.
  */
 public class NavmeshBuilder {
 
 	private static final Logger log = LoggerFactory.getLogger(NavmeshBuilder.class);
-	/** Maps already being built, so two callers asking at once do not both start. */
-	private static final Set<Integer> building = ConcurrentHashMap.newKeySet();
 
 	private NavmeshBuilder() {
 	}
 
 	/**
-	 * Builds the navmesh for a map in the background, unless it already exists or is already being built.
+	 * Makes sure a map has a navmesh, building one now if it has none.
 	 *
-	 * @return true if a build was started.
+	 * @return true if the map has a usable navmesh afterwards.
 	 */
-	public static boolean buildIfMissing(int mapId) {
-		if (Files.isRegularFile(Navmesh.fileOf(mapId)) || !building.add(mapId))
-			return false;
-		ThreadPoolManager.getInstance().executeLongRunning(() -> build(mapId));
-		return true;
-	}
-
-	private static void build(int mapId) {
+	public static boolean ensureMesh(int mapId) {
+		if (Files.isRegularFile(Navmesh.fileOf(mapId)))
+			return true;
 		long start = System.currentTimeMillis();
 		try {
-			log.info("No navmesh for map {} yet, building one. Bots there walk without a plan until the next restart.", mapId);
-			Heightfield field = HeightfieldBuilder.build(mapId);
-			Path file = NavmeshWriter.write(mapId, field);
-			log.info("Built the navmesh for map {} in {} s: {} ({} MB)", mapId, (System.currentTimeMillis() - start) / 1000,
-				file.toAbsolutePath(), Files.size(file) / 1048576);
+			log.info("Map {} has no navmesh, building one before the server opens. This takes a few seconds.", mapId);
+			Path file = NavmeshWriter.write(mapId, HeightfieldBuilder.build(mapId));
+			log.info("Built the navmesh for map {} in {} s: {} ({} MB)", mapId, (System.currentTimeMillis() - start) / 1000, file.toAbsolutePath(),
+				Files.size(file) / 1048576);
+			return true;
 		} catch (IOException | RuntimeException e) {
 			log.error("Could not build the navmesh for map " + mapId + ", bots there will walk without a plan", e);
-		} finally {
-			building.remove(mapId);
+			return false;
 		}
 	}
 }
