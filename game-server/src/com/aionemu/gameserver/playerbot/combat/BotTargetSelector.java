@@ -58,6 +58,17 @@ public class BotTargetSelector {
 	 * the nearest one. Team mates are excluded: helping them is the whole point of being grouped. This also stops bots from stealing kills from real
 	 * players.
 	 */
+	/**
+	 * @return true if this is part of the furniture rather than something to fight: the little animals that wander through a village, the young of
+	 *         real creatures, the training dummy standing in the square.
+	 *         <p>
+	 *         Two markers, and both are needed: JUNK catches the qooqoo, NOVICE catches the elroco, the dummy and the young, which are rated NORMAL
+	 *         like anything else. Measured over the thirty three kinds of thing bots had picked on Poeta, every real monster is DISCIPLINED or above.
+	 */
+	public static boolean isScenery(Npc npc) {
+		return npc.getObjectTemplate().getRating() == NpcRating.JUNK || npc.getObjectTemplate().getRank() == NpcRank.NOVICE;
+	}
+
 	private static boolean isTakenByAnotherPlayer(Player bot, Npc npc) {
 		return isFighting(bot, npc.getTarget()) || isFighting(bot, BotTargetRegistry.getOwner(npc));
 	}
@@ -73,10 +84,7 @@ public class BotTargetSelector {
 			return false;
 		if (npc.getLevel() > bot.getLevel() + MAX_LEVEL_GAP)
 			return false; // this only limits what the bot picks: it still fights back against anything that attacks it
-		// The little animals that wander through a village are scenery, not game, and so is the training dummy standing in it. Two markers say so and
-		// both are needed: JUNK catches the qooqoo, NOVICE catches the elroco, the dummy and the young of real creatures, which are rated NORMAL like
-		// anything else. Measured over the thirty three kinds of thing bots had picked on Poeta, every real monster is DISCIPLINED or above.
-		if (npc.getObjectTemplate().getRating() == NpcRating.JUNK || npc.getObjectTemplate().getRank() == NpcRank.NOVICE)
+		if (isScenery(npc))
 			return false;
 		if (npc.getLevel() < bot.getLevel() - MIN_LEVEL_GAP)
 			return false; // far enough beneath it to be worth nothing, and a player walks past those

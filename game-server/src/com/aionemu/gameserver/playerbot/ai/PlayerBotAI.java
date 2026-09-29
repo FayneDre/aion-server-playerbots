@@ -976,7 +976,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// closing in, or it is mid-cast, or it is briefly aimed at something else, and through all of that getTarget() says anything but the bot.
 			// This project already learned it once, for a creature attacking a group member, and left the bot's own defence reading the wrong answer:
 			// aggressive monsters walked up and hit a bot that stood there as though nothing were happening.
-			if (attacker[0] == null && !npc.isDead() && npc.getAggroList().isHating(bot))
+			// scenery is skipped here too, not only when picking a fight. A training dummy holds a grudge like anything else once it has been hit,
+			// and a bot that answers it stands there swinging at furniture — which is precisely what one did, two minutes after resurrecting beside
+			// one. Nothing that counts as scenery can hurt a bot, so there is nothing to defend against.
+			if (attacker[0] == null && !npc.isDead() && !BotTargetSelector.isScenery(npc) && npc.getAggroList().isHating(bot))
 				attacker[0] = npc;
 		});
 		return attacker[0];
