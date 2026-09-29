@@ -12,11 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
+import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.dao.PlayerDAO;
 import com.aionemu.commons.utils.Rnd;
 import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.Creature;
+import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
@@ -26,6 +28,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.BotOutfitter;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshBuilder;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
@@ -33,6 +36,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.world.WorldType;
 import com.aionemu.gameserver.world.World;
 
 /**
@@ -57,6 +61,10 @@ public class PlayerBotService {
 	 * two everywhere empties two thirds of the map: at one and a half, the busier half of the places get a pair and the rest keep somebody.
 	 */
 	private static final float BOTS_PER_PLACE = 1.5f;
+	/** The setting that means "work it out": every open world map of both races, populated at a density drawn from the map itself. */
+	private static final String AUTOMATIC = "auto";
+	/** How many inhabitants a map gets per place it turns out to have. Poeta has sixty places, so forty five people. */
+	private static final float MAP_DENSITY = 0.75f;
 
 	private final Map<Integer, Player> spawnedBots = new ConcurrentHashMap<>();
 
@@ -116,9 +124,47 @@ public class PlayerBotService {
 	 * <p>
 	 * Only ever for an empty map, so it runs once and is silent on every start afterwards, and so it can never quietly double a population.
 	 */
+	/**
+	 * Populates every open world map of both races, building the navmeshes it finds missing.
+	 * <p>
+	 * This is what {@code auto} means, and the point of it is that a server should not need a decision per map. There are eighteen of them across
+	 * the two factions, and asking somebody to name each one, pick a count and remember a race for it is how a feature ends up used on exactly the
+	 * machine it was written on. Everything here is read from the world instead: which maps are open world, which race lives on each, and how many
+	 * people a map holds — one per place it turns out to have, so a starting valley gets a village's worth and a large region gets a region's.
+	 * <p>
+	 * A map with no mesh is set building in the background and skipped for now: generating one takes seconds and about a gigabyte, so holding the
+	 * server's startup on eighteen of them is out of the question. Those maps are populated on the next start, by which time their meshes exist.
+	 */
+	private void populateEveryOpenMap() {
+		int building = 0, populated = 0;
+		for (WorldMapTemplate map : DataManager.WORLD_MAPS_DATA) {
+			if (map.isInstance() || map.getWorldType() != WorldType.ELYSEA && map.getWorldType() != WorldType.ASMODAE)
+				continue;
+			if (NavmeshBuilder.buildIfMissing(map.getMapId())) {
+				building++;
+				continue; // nothing to plan routes with yet; it will be populated once the mesh is there
+			}
+			if (BotRoster.hasResidentsOn(map.getMapId()))
+				continue;
+			int places = BotPlaces.homes(map.getMapId()).size();
+			if (places == 0)
+				continue; // nothing lives here, so neither does anybody else
+			Race race = map.getWorldType() == WorldType.ASMODAE ? Race.ASMODIANS : Race.ELYOS;
+			log.info("Populating map {}: {}", map.getMapId(), populate(Math.round(places * MAP_DENSITY), map.getMapId(), race.name()));
+			populated++;
+		}
+		if (building > 0)
+			log.info("Building {} missing navmesh(es) in the background; those maps are populated on the next start", building);
+		log.info("Populated {} map(s) automatically", populated);
+	}
+
 	private void populateConfiguredMaps() {
 		if (PlayerBotConfig.POPULATE.isBlank())
 			return;
+		if (PlayerBotConfig.POPULATE.trim().equalsIgnoreCase(AUTOMATIC)) {
+			populateEveryOpenMap();
+			return;
+		}
 		for (String order : PlayerBotConfig.POPULATE.split(";")) {
 			String[] parts = order.trim().split(":");
 			if (parts.length != 3) {
