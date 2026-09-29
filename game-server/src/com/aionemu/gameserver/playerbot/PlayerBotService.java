@@ -50,6 +50,8 @@ public class PlayerBotService {
 	private static final float SETTLING_SPREAD = 15f;
 	/** How many spots to try before giving up and standing on the place itself. A handful: most spots around a place are fine. */
 	private static final int SETTLING_ATTEMPTS = 8;
+	/** How many inhabitants a place should have. Two people working the same ground look like players; one looks like a stray npc. */
+	private static final int BOTS_PER_PLACE = 2;
 
 	private final Map<Integer, Player> spawnedBots = new ConcurrentHashMap<>();
 
@@ -210,6 +212,10 @@ public class PlayerBotService {
 		List<BotPlaces.Settlement> places = BotPlaces.homes(worldId);
 		if (places.isEmpty())
 			return "Nothing lives on this map, so there is nowhere to put anyone";
+		// Fewer places, each with somebody to work it alongside. One inhabitant per place spread forty five people over forty grounds, and a lone
+		// character standing in a field does not read as a populated region — it reads as a lost npc, which is what a map with more places than
+		// people always produces. Keeping only as many places as the population can double up on trades reach for company.
+		places = places.subList(0, Math.clamp(count / BOTS_PER_PLACE, 1, places.size()));
 
 		List<String> created = new ArrayList<>();
 		for (int i = 0; i < count; i++) {

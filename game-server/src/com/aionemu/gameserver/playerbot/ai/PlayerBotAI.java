@@ -120,6 +120,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile Vector3f occupationDestination;
 	/** Where this bot lives, read from the roster on first use. A fact about the bot, not something recomputed from the map every time it is asked. */
 	private volatile Vector3f home;
+	/** How many refusals in a row mean the bot is not blocked from somewhere but wedged where it stands. */
+	private static final int STUCK_REFUSALS = 12;
+	/** Refusals in a row, reset by any movement that starts. */
+	private int refusedMoves;
 	/** Places this bot has found it cannot get to, so it stops choosing them. A map has pockets, and a bot can be standing in one. */
 	private final Set<Vector3f> unreachable = ConcurrentHashMap.newKeySet();
 	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
@@ -723,7 +727,34 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return true;
 		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) <= ANCHOR_TOLERANCE)
 			return true;
-		return moveController.moveToPoint(anchorX, anchorY, anchorZ);
+		if (moveController.moveToPoint(anchorX, anchorY, anchorZ)) {
+			refusedMoves = 0;
+			return true;
+		}
+		if (++refusedMoves >= STUCK_REFUSALS)
+			freeItself();
+		return false;
+	}
+
+	/**
+	 * Puts a bot that cannot move at all back where it lives.
+	 * <p>
+	 * However carefully a place is chosen, a bot walks on its own afterwards, and the reactive layer that steps round obstacles can walk it into one
+	 * — behind a rock, under a root, onto a shelf. From inside, every destination is refused, including spots a pace away: three separate bots have
+	 * now spent minutes asking for routes that do not exist from where they stand. There is no diagnosis to make at that point and nothing to walk
+	 * out along, which is exactly why players are given an unstick command rather than advice.
+	 */
+	private void freeItself() {
+		Player bot = getOwner();
+		Vector3f home = homeOfThisBot();
+		refusedMoves = 0;
+		if (home == null)
+			return;
+		log.info("Bot {} could not move at all from {} {} and is put back home", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()));
+		TeleportService.teleportTo(bot, bot.getWorldId(), home.getX(), home.getY(), home.getZ());
+		setAnchor(home.getX(), home.getY(), home.getZ());
+		occupationUntil = 0; // whatever it was doing was decided from a place it is no longer in
+		occupationDestination = null;
 	}
 
 	/**
@@ -887,7 +918,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Player bot = getOwner();
 		Creature[] attacker = { null };
 		bot.getKnownList().forEachNpc(npc -> {
-			if (attacker[0] == null && !npc.isDead() && bot.equals(npc.getTarget()))
+			// The aggro list, not getTarget(). A creature that has decided to kill this bot is not necessarily swinging at it this instant: it is
+			// closing in, or it is mid-cast, or it is briefly aimed at something else, and through all of that getTarget() says anything but the bot.
+			// This project already learned it once, for a creature attacking a group member, and left the bot's own defence reading the wrong answer:
+			// aggressive monsters walked up and hit a bot that stood there as though nothing were happening.
+			if (attacker[0] == null && !npc.isDead() && npc.getAggroList().isHating(bot))
 				attacker[0] = npc;
 		});
 		return attacker[0];
@@ -982,16 +1017,25 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
-	 * Brings the bot back at its anchor, the way a player choosing to resurrect at an obelisk would: reduced hp and mp, soul sickness, and away from
-	 * whatever killed it. Reviving on the spot would just feed it back to the same mob.
+	 * Brings the bot back the way a player does: at its obelisk, on a quarter of its health, with soul sickness.
+	 * <p>
+	 * {@code bindRevive} rather than a revive on the spot, and that is the whole of it. Coming back where it fell — or at its anchor, which is the
+	 * patch of ground it was working — puts the bot back within reach of whatever just killed it, at a quarter health: it dies again, comes back
+	 * again, and the loop only ends when something else wanders past. An obelisk is far away on purpose, and the walk home is the price a player
+	 * pays too.
+	 * <p>
+	 * Its anchor is moved home as well, because the spot it was working is on the far side of that walk and it has no business resuming there from
+	 * across the region.
 	 */
 	private void revive() {
 		Player bot = getOwner();
 		try {
 			if (!bot.isSpawned() || !bot.isDead())
 				return;
-			PlayerReviveService.revive(bot, 25, 25, true, 0);
-			TeleportService.teleportTo(bot, bot.getWorldId(), anchorX, anchorY, anchorZ);
+			PlayerReviveService.bindRevive(bot);
+			Vector3f home = homeOfThisBot();
+			if (home != null)
+				setAnchor(home.getX(), home.getY(), home.getZ());
 			setStateIfNot(AIState.IDLE);
 			log.info("Bot {} revived at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
 		} finally {

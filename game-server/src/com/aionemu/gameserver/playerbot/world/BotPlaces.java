@@ -31,6 +31,11 @@ public class BotPlaces {
 	private static final int SETTLEMENT_SIZE = 3;
 	/** How many creatures must stand together for the spot to be a place somebody works rather than two beetles by the roadside. */
 	private static final int HUNTING_GROUND_SIZE = 8;
+	/**
+	 * How many townsfolk a village needs before it counts for one more inhabitant than a hunting ground does. Deliberately coarse: once the same
+	 * population is spread over fewer places, a village counted once per three townsfolk takes a fifth of everybody and becomes the crowd again.
+	 */
+	private static final int TOWNSFOLK_PER_SHARE = 8;
 	/** How far a resident will go for a change of scene. Past that it is not an outing, it is moving house — and it crosses everything in between. */
 	private static final float WANDERING_RANGE = 250f;
 	/** How many spots of a place to try before settling for one that merely has footing. Each try costs a path search, and a place has many spots. */
@@ -80,7 +85,7 @@ public class BotPlaces {
 		// a village appears once per few townsfolk, so Akarios gets a handful of inhabitants and a roadside camp one, which is the proportion the
 		// world itself was built in. One entry each would make the largest village as busy as the emptiest field.
 		for (Settlement settlement : settlements(worldId)) {
-			for (int share = 0; share < Math.max(1, settlement.townsfolk() / SETTLEMENT_SIZE); share++)
+			for (int share = 0; share < Math.max(1, settlement.townsfolk() / TOWNSFOLK_PER_SHARE); share++)
 				villages.add(settlement);
 		}
 		return interleave(villages, spreadOut(huntingGrounds(worldId)));

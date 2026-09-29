@@ -49,6 +49,12 @@ public class PlayerBotCreationService {
 		"Oly", "Pyr", "Quil", "Ras", "Syl", "Tor", "Ulf", "Ver", "Wyn", "Xan", "Yri", "Zel" };
 	private static final String[] NAME_ENDS = { "an", "ar", "el", "en", "ia", "ik", "il", "is", "on", "or", "ra", "ric", "us", "wyn", "yth" };
 	private static final int NAME_ATTEMPTS = 50;
+	/** How many head and hair models the character creation screen offers. Picking outside this is a missing model, not a different face. */
+	private static final int FACE_MODELS = 12, HAIR_MODELS = 12;
+	/** How far a face or body slider may move from the character it was copied from, and how far from neutral it may ever end up. */
+	private static final int FEATURE_NUDGE = 30, FEATURE_LIMIT = 90;
+	/** Height moves least: its extremes are the ones that read as broken rather than as a different person. */
+	private static final float HEIGHT_VARIATION = 0.04f;
 
 	private PlayerBotCreationService() {
 	}
@@ -87,7 +93,7 @@ public class PlayerBotCreationService {
 		// reaches something it does not have: a recipe learned at a trade level went looking for a recipe list that only the load path fills in.
 		commonData.setLevel(1);
 
-		PlayerAccountData accountData = new PlayerAccountData(commonData, randomizeColors(PlayerAppearanceDAO.load(template.getPlayerObjId())));
+		PlayerAccountData accountData = new PlayerAccountData(commonData, varyAppearance(PlayerAppearanceDAO.load(template.getPlayerObjId())));
 		Player bot = PlayerService.newPlayer(accountData, account);
 		if (!PlayerService.storeNewPlayer(bot, accountName, accountId)) {
 			IDFactory.getInstance().releaseId(commonData.getPlayerObjId());
@@ -180,9 +186,61 @@ public class PlayerBotCreationService {
 		throw new IllegalStateException("Could not find a free bot name in " + NAME_ATTEMPTS + " attempts");
 	}
 
-	private static PlayerAppearance randomizeColors(PlayerAppearance appearance) {
+	/**
+	 * Makes a copied face into somebody else's.
+	 * <p>
+	 * A population cloned from one character is forty five of the same person, which no amount of good behaviour makes up for. Three kinds of change,
+	 * and they carry different risks:
+	 * <ul>
+	 * <li>colours are free — any value is a valid colour;</li>
+	 * <li>the head and hair models are picked from what the template's race and gender actually offer, since a model number that does not exist is
+	 * not a different face but a missing one;</li>
+	 * <li>the sliders are nudged, never redrawn. They are signed bytes about a neutral zero, and a character built from random ones is a gargoyle:
+	 * the whole reason a default appearance of all zeroes renders as something the client cannot even draw.</li>
+	 * </ul>
+	 * Height moves least of all. It is the one slider whose extremes read immediately as broken — a village of dwarves — so it stays within a few
+	 * percent of the character it was copied from.
+	 */
+	private static PlayerAppearance varyAppearance(PlayerAppearance appearance) {
 		appearance.setHairRGB(RANDOM.nextInt(0x1000000));
 		appearance.setLipRGB(RANDOM.nextInt(0x1000000));
+		appearance.setSkinRGB(RANDOM.nextInt(0x1000000));
+		appearance.setEyeRGB(RANDOM.nextInt(0x1000000));
+
+		appearance.setFace(RANDOM.nextInt(FACE_MODELS));
+		appearance.setHair(RANDOM.nextInt(HAIR_MODELS));
+
+		appearance.setFaceShape(nudge(appearance.getFaceShape()));
+		appearance.setForehead(nudge(appearance.getForehead()));
+		appearance.setEyeHeight(nudge(appearance.getEyeHeight()));
+		appearance.setEyeSpace(nudge(appearance.getEyeSpace()));
+		appearance.setEyeSize(nudge(appearance.getEyeSize()));
+		appearance.setNose(nudge(appearance.getNose()));
+		appearance.setNoseWidth(nudge(appearance.getNoseWidth()));
+		appearance.setCheek(nudge(appearance.getCheek()));
+		appearance.setMouthSize(nudge(appearance.getMouthSize()));
+		appearance.setLipSize(nudge(appearance.getLipSize()));
+		appearance.setJawHeigh(nudge(appearance.getJawHeigh()));
+		appearance.setChinJut(nudge(appearance.getChinJut()));
+		appearance.setShoulders(nudge(appearance.getShoulders()));
+		appearance.setTorso(nudge(appearance.getTorso()));
+		appearance.setWaist(nudge(appearance.getWaist()));
+		appearance.setArmThickness(nudge(appearance.getArmThickness()));
+		appearance.setLegThickness(nudge(appearance.getLegThickness()));
+
+		appearance.setHeight(appearance.getHeight() * (1 + (RANDOM.nextFloat() - 0.5f) * 2 * HEIGHT_VARIATION));
 		return appearance;
+	}
+
+	/**
+	 * Moves one slider a little.
+	 *
+	 * @param value The stored value: a signed byte kept as an unsigned int, so 253 means -3 and not "almost the maximum".
+	 * @return The nudged value in the same form, kept well inside the range so no feature reaches the extreme the sliders allow.
+	 */
+	private static int nudge(int value) {
+		int signed = (byte) value;
+		int moved = Math.clamp(signed + RANDOM.nextInt(FEATURE_NUDGE * 2 + 1) - FEATURE_NUDGE, -FEATURE_LIMIT, FEATURE_LIMIT);
+		return moved & 0xFF;
 	}
 }
