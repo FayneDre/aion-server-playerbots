@@ -53,6 +53,23 @@ nothing, and the caller must wait for that answer.
 
 **A plan that is redone every tick is not a plan.** Both ways round an obstacle cost about the same, so fresh plans alternate and the bot paces back and forth. The same applies to a leg in progress: re-deciding a sidestep halfway through measures the new deviation from a bearing that has itself rotated, and the bot arcs ever wider.
 
+## Standable is not reachable, and the difference costs a bot its life
+
+A spot can be ground a body fits on and still lead nowhere: a ledge, a hollow, the far side of a low wall, a shelf five metres up. From inside one,
+every destination is refused — including spots a pace away — so the bot asks for a route hundreds of times and never moves.
+
+This was learned four separate times before it was written down, because **each placement is its own decision and none of them inherits the others'
+checks**: scattering villagers round a village, choosing the point that stands for a place, putting a bot back on spawn, and picking a corner to idle
+in. Every new place a bot can be put needs all three conditions asked again:
+
+1. **a real spot** — a spawn the world already uses, never the average of several, which lands between them;
+2. **standable** — the mesh accepts it, bounded in height, or the snap climbs a cliff;
+3. **reachable** — a route exists from where the bot is, or from the place it belongs to.
+
+And none of that survives contact with the map, because the bot then walks by itself and the reactive layer can walk it behind a rock. **Whatever the
+placement guarantees, there must be a way out**: a bot refused every destination a dozen times running is put back home, the way players are given an
+unstick command rather than advice.
+
 ## A half built object is what the creation path hands you
 
 `PlayerService.newPlayer` builds only what character creation has to store. The effect controller, the known list, the flight controller and the

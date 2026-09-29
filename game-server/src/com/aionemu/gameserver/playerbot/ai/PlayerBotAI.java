@@ -184,7 +184,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	public boolean walkTo(float x, float y, float z) {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
 			return false;
-		manualErrand = moveController.moveToPoint(x, y, z);
+		manualErrand = tryMoveTo(moveController, x, y, z);
 		return manualErrand;
 	}
 
@@ -526,7 +526,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			&& (now - lastChaseRoute < CHASE_REROUTE_INTERVAL || moveController.isHeadingTo(target.getX(), target.getY(), RETARGET_STEP)))
 			return true; // already on its way, and the target has not moved enough to be worth a new route
 		lastChaseRoute = now;
-		return moveController.moveToPoint(target.getX(), target.getY(), target.getZ());
+		return tryMoveTo(moveController, target.getX(), target.getY(), target.getZ());
 	}
 
 	private void stopMoving() {
@@ -548,8 +548,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return false;
 		long now = System.currentTimeMillis();
 		if (now > occupationUntil) {
-			occupation = Occupation.drawFor(bot.getObjectId());
-			occupationUntil = now + occupation.draw();
+			// whether this bot lives among people decides how much of its day is spent standing about: a village square wants idlers, a hillside does
+			// not, and it was the same draw for both that filled the countryside with characters doing nothing
+			boolean inTown = BotPlaces.isSettlement(bot.getWorldId(), homeOfThisBot());
+			occupation = Occupation.drawFor(bot.getObjectId(), inTown);
+			occupationUntil = now + occupation.draw(inTown);
 			occupationDestination = null;
 			log.info("Bot {} takes to {}", bot.getName(), occupation);
 		}
@@ -692,7 +695,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 		if (standUp())
 			return;
-		moveController.moveToPoint(target.getX(), target.getY(), target.getZ());
+		tryMoveTo(moveController, target.getX(), target.getY(), target.getZ());
 	}
 
 	/** Brings the bot back where it belongs once it has nothing to fight, so a chase does not slowly displace it. */
@@ -712,7 +715,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// while its leader runs, and every plan turns it a little differently, which is what the walk looks like from outside: restless.
 			if (moveController.isInMove() && moveController.isHeadingTo(anchorX, anchorY, RETARGET_STEP))
 				return;
-			moveController.moveToPoint(anchorX, anchorY, anchorZ);
+			tryMoveTo(moveController, anchorX, anchorY, anchorZ);
 			return;
 		}
 		// Arrived. The leg in progress is aimed at wherever the leader stood when it was issued, so letting it run walks the bot past a leader who
@@ -727,7 +730,20 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return true;
 		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) <= ANCHOR_TOLERANCE)
 			return true;
-		if (moveController.moveToPoint(anchorX, anchorY, anchorZ)) {
+		return tryMoveTo(moveController, anchorX, anchorY, anchorZ);
+	}
+
+	/**
+	 * Every request this ai makes to move, so that refusals can be counted in one place.
+	 * <p>
+	 * Counting them inside one caller was not enough: a bot wedged behind a rock is refused whatever it asks for — a corpse to loot, a mob to reach,
+	 * its own camp — and whichever of those it happened to ask for was the one path that did not count. One bot was refused sixty four times while
+	 * the safety net saw twelve.
+	 *
+	 * @return true if the bot set off.
+	 */
+	private boolean tryMoveTo(BotMoveController moveController, float x, float y, float z) {
+		if (moveController.moveToPoint(x, y, z)) {
 			refusedMoves = 0;
 			return true;
 		}
@@ -794,7 +810,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 				return false;
 			if (moveController.isInMove())
 				return true;
-			if (moveController.isBlocked() || !moveController.moveToPoint(corpse.getX(), corpse.getY(), corpse.getZ())) {
+			if (moveController.isBlocked() || !tryMoveTo(moveController, corpse.getX(), corpse.getY(), corpse.getZ())) {
 				log.info("Bot {} cannot reach the corpse it wanted to loot", getOwner().getName());
 				pendingCorpse = 0;
 				return false;
@@ -850,7 +866,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		float x = vendor != null ? vendor.getX() : vendorDestination.x;
 		float y = vendor != null ? vendor.getY() : vendorDestination.y;
 		float z = vendor != null ? vendor.getZ() : vendorDestination.z;
-		if (moveController.isBlocked() || !moveController.moveToPoint(x, y, z)) {
+		if (moveController.isBlocked() || !tryMoveTo(moveController, x, y, z)) {
 			log.info("Bot {} cannot reach a shop and gives up selling", bot.getName());
 			vendorDestination = null;
 			return false;

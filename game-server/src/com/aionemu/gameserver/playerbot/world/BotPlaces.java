@@ -194,6 +194,15 @@ public class BotPlaces {
 		return Math.abs(levelOf(worldId) - level) <= LEVEL_TOLERANCE;
 	}
 
+	/** @return true if this spot is one of the places people gather, rather than a stretch of country somebody hunts. */
+	public static boolean isSettlement(int worldId, Vector3f place) {
+		for (Settlement settlement : settlements(worldId)) {
+			if (settlement.centre().equals(place))
+				return true;
+		}
+		return false;
+	}
+
 	/** @return The settlement nearest to a point, or null if the map has none. */
 	public static Vector3f nearestSettlement(int worldId, float x, float y) {
 		return settlements(worldId).stream().map(Settlement::centre)

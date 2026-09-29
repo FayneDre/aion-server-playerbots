@@ -55,6 +55,10 @@ public class PlayerBotCreationService {
 	private static final int FEATURE_NUDGE = 30, FEATURE_LIMIT = 90;
 	/** Height moves least: its extremes are the ones that read as broken rather than as a different person. */
 	private static final float HEIGHT_VARIATION = 0.04f;
+	/** How far skin and lips may be shaded. Small: skin is the one colour whose every wrong value is somebody from another planet. */
+	private static final float SKIN_SHADING = 0.12f;
+	/** Hair and eyes take a wider shading, since light and dark hair are both ordinary. */
+	private static final float HAIR_SHADING = 0.35f;
 
 	private PlayerBotCreationService() {
 	}
@@ -202,10 +206,10 @@ public class PlayerBotCreationService {
 	 * percent of the character it was copied from.
 	 */
 	private static PlayerAppearance varyAppearance(PlayerAppearance appearance) {
-		appearance.setHairRGB(RANDOM.nextInt(0x1000000));
-		appearance.setLipRGB(RANDOM.nextInt(0x1000000));
-		appearance.setSkinRGB(RANDOM.nextInt(0x1000000));
-		appearance.setEyeRGB(RANDOM.nextInt(0x1000000));
+		appearance.setHairRGB(shade(appearance.getHairRGB(), HAIR_SHADING));
+		appearance.setLipRGB(shade(appearance.getLipRGB(), SKIN_SHADING));
+		appearance.setSkinRGB(shade(appearance.getSkinRGB(), SKIN_SHADING));
+		appearance.setEyeRGB(shade(appearance.getEyeRGB(), HAIR_SHADING));
 
 		appearance.setFace(RANDOM.nextInt(FACE_MODELS));
 		appearance.setHair(RANDOM.nextInt(HAIR_MODELS));
@@ -238,6 +242,26 @@ public class PlayerBotCreationService {
 	 * @param value The stored value: a signed byte kept as an unsigned int, so 253 means -3 and not "almost the maximum".
 	 * @return The nudged value in the same form, kept well inside the range so no feature reaches the extreme the sliders allow.
 	 */
+	/**
+	 * Varies a colour without inventing one.
+	 * <p>
+	 * Every channel moves by the same factor, so the hue survives and only the shade changes: a brown stays brown, lighter or darker. Drawing a fresh
+	 * colour instead gave a village of red and blue people with green hair, because there are sixteen million colours and almost none of them is a
+	 * colour a person comes in. It also means this does not need to know whether the channels are stored red first or blue first — an even scaling is
+	 * the same operation either way round.
+	 *
+	 * @param spread How far the shade may move, as a fraction: 0.25 means three quarters to five quarters of the original.
+	 */
+	private static int shade(int rgb, float spread) {
+		float factor = 1 + (RANDOM.nextFloat() - 0.5f) * 2 * spread;
+		int first = channel((rgb >> 16) & 0xFF, factor), second = channel((rgb >> 8) & 0xFF, factor), third = channel(rgb & 0xFF, factor);
+		return first << 16 | second << 8 | third;
+	}
+
+	private static int channel(int value, float factor) {
+		return Math.clamp(Math.round(value * factor), 0, 255);
+	}
+
 	private static int nudge(int value) {
 		int signed = (byte) value;
 		int moved = Math.clamp(signed + RANDOM.nextInt(FEATURE_NUDGE * 2 + 1) - FEATURE_NUDGE, -FEATURE_LIMIT, FEATURE_LIMIT);

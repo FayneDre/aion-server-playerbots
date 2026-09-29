@@ -17,6 +17,9 @@ public enum Occupation {
 	/** On the road between two settlements. Ends on arrival, or when the time runs out and the bot settles wherever it stands. */
 	WANDERING(120, 360);
 
+	/** How much less a bot living out in the country stands about, both in how often it does and for how long. */
+	private static final int COUNTRY_IDLING = 4;
+
 	private final int shortestSeconds, longestSeconds;
 
 	Occupation(int shortestSeconds, int longestSeconds) {
@@ -30,6 +33,16 @@ public enum Occupation {
 	}
 
 	/**
+	 * @param livesInASettlement Whether this is somewhere people gather. Out in the country a pause is a pause between fights, not an afternoon: the
+	 *          same ten minute spell that suits a village square leaves a character standing alone in a field long enough to be noticed.
+	 * @return How long this spell lasts, in milliseconds.
+	 */
+	public long draw(boolean livesInASettlement) {
+		long span = draw();
+		return this == LOITERING && !livesInASettlement ? span / COUNTRY_IDLING : span;
+	}
+
+	/**
 	 * Picks what a bot does next, leaning on its temperament.
 	 * <p>
 	 * The temperament is fixed to the bot's own id, so one that likes the fields keeps going back to them and one that likes company is usually found
@@ -37,8 +50,15 @@ public enum Occupation {
 	 *
 	 * @param objectId The bot's object id, which is what makes its leaning its own.
 	 */
-	public static Occupation drawFor(int objectId) {
+	public static Occupation drawFor(int objectId, boolean livesInASettlement) {
 		int[] weights = temperamentOf(objectId);
+		if (!livesInASettlement) {
+			// Standing about is something people do in the place where people are. Out in the fields it is not idling, it is loitering in a hedgerow,
+			// and a third of the population doing it at any moment reads as a map full of characters who have forgotten what they came for. Rare
+			// rather than never: somebody resting between fights is fine, and that is what is left of it.
+			weights[0] += weights[1] - weights[1] / COUNTRY_IDLING;
+			weights[1] /= COUNTRY_IDLING;
+		}
 		int roll = Rnd.get(0, weights[0] + weights[1] + weights[2] - 1);
 		if (roll < weights[0])
 			return FARMING;
