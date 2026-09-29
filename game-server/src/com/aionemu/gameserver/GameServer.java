@@ -29,6 +29,7 @@ import com.aionemu.gameserver.configs.network.NetworkConfig;
 import com.aionemu.gameserver.custom.instance.CustomInstanceService;
 import com.aionemu.gameserver.custom.pvpmap.PvpMapService;
 import com.aionemu.gameserver.dao.PlayerDAO;
+import com.aionemu.gameserver.dao.SchemaUpdater;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.dataholders.StaticData;
 import com.aionemu.gameserver.instance.InstanceEngine;
@@ -224,6 +225,7 @@ public class GameServer {
 		Config.load();
 		// Second should be database factory
 		DatabaseFactory.init();
+		SchemaUpdater.update(); // before the first query: a database missing a table this build expects fails at the worst possible moment otherwise
 		PlayerDAO.setAllPlayersOffline();
 		if (CleaningConfig.CLEANING_ENABLE)
 			DatabaseCleaningService.deletePlayersOnInactiveAccounts();

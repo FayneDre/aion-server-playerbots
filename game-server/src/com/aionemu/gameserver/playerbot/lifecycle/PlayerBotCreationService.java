@@ -157,6 +157,27 @@ public class PlayerBotCreationService {
 		return names;
 	}
 
+	/**
+	 * @return true if any bot character already stands on that map.
+	 *         <p>
+	 *         Asked of the characters themselves, not of the roster that indexes them. The roster is derived data — it can be emptied, rebuilt or
+	 *         lost without a single character going anywhere — and asking it instead is how a map with forty five inhabitants was judged uninhabited
+	 *         and populated a second time, leaving ninety.
+	 */
+	public static boolean hasBotsOn(int worldId) {
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT 1 FROM `players` WHERE `account_id` >= ? AND `world_id` = ? LIMIT 1")) {
+			stmt.setInt(1, BOT_ACCOUNT_ID_BASE);
+			stmt.setInt(2, worldId);
+			try (ResultSet rs = stmt.executeQuery()) {
+				return rs.next();
+			}
+		} catch (SQLException e) {
+			LoggerFactory.getLogger(PlayerBotCreationService.class).error("Could not check whether map " + worldId + " already has bots", e);
+			return true; // erring towards doing nothing: populating a map twice is worse than not populating it
+		}
+	}
+
 	private static int highestBotAccountId() {
 		try (Connection con = DatabaseFactory.getConnection();
 				 PreparedStatement stmt = con.prepareStatement("SELECT MAX(`account_id`) FROM `players` WHERE `account_id` >= ?")) {

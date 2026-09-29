@@ -146,7 +146,7 @@ public class PlayerBotService {
 		for (WorldMapTemplate map : DataManager.WORLD_MAPS_DATA) {
 			if (map.isInstance() || map.getWorldType() != WorldType.ELYSEA && map.getWorldType() != WorldType.ASMODAE)
 				continue;
-			if (BotRoster.hasResidentsOn(map.getMapId()))
+			if (PlayerBotCreationService.hasBotsOn(map.getMapId()))
 				continue;
 			NavmeshBuilder.ensureMesh(map.getMapId()); // before anyone is put on it: a map without one is a map bots cannot plan a route across
 			int places = BotPlaces.homes(map.getMapId()).size();
@@ -174,7 +174,7 @@ public class PlayerBotService {
 			}
 			try {
 				int worldId = Integer.parseInt(parts[0]), count = Integer.parseInt(parts[1]);
-				if (BotRoster.hasResidentsOn(worldId)) {
+				if (PlayerBotCreationService.hasBotsOn(worldId)) {
 					log.info("Map {} already has bots living on it, leaving it alone", worldId);
 					continue;
 				}

@@ -64,8 +64,12 @@ public class BotOutfitter {
 			if (BotEquipManager.wear(bot, item.getObjectId(), template))
 				worn++;
 		}
+		// Not a warning, and it took a screenshot of a console full of red to notice. Below level four there is barely any gear made for players at
+		// all, so this fires for perfectly ordinary characters — who are then wearing the training kit every character is created in, exactly like a
+		// real beginner. Nothing is wrong and nothing needs doing. It is worth a word only because an empty wardrobe at level twenty would not be.
 		if (worn == 0)
-			LoggerFactory.getLogger(BotOutfitter.class).warn("Found nothing for a {} of level {} to wear", bot.getPlayerClass(), bot.getLevel());
+			LoggerFactory.getLogger(BotOutfitter.class).debug("Nothing made for players fits a {} of level {}, so it keeps its starting kit",
+				bot.getPlayerClass(), bot.getLevel());
 		return worn;
 	}
 

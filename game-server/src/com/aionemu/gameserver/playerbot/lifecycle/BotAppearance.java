@@ -27,8 +27,17 @@ public class BotAppearance {
 	private static final float SKIN_SHADING = 0.12f;
 	/** Hair and eyes take a wider shading, since light and dark hair are both ordinary. */
 	private static final float HAIR_SHADING = 0.35f;
-	/** Plain human colouring, used when there is no character to take colouring from. */
-	private static final int PLAIN_SKIN = 0xE0C0A8, PLAIN_HAIR = 0x332218, PLAIN_LIPS = 0xC08878, PLAIN_EYES = 0x4A3828;
+	/**
+	 * Complexions to draw from, as red, green and blue.
+	 * <p>
+	 * Several rather than one, because a population shaded from a single colour is one person at different exposures. These are ordinary human
+	 * ranges, pale to dark, and {@link #shade} moves each one a little further.
+	 */
+	private static final int[][] COMPLEXIONS = { { 238, 198, 193 }, { 232, 200, 178 }, { 214, 176, 150 }, { 190, 150, 124 }, { 150, 112, 88 } };
+	/** Hair colours: black, dark and light brown, auburn, blond, grey. */
+	private static final int[][] HAIR_COLOURS = { { 30, 26, 28 }, { 51, 34, 24 }, { 101, 67, 33 }, { 128, 64, 32 }, { 200, 170, 110 },
+		{ 160, 160, 165 } };
+	private static final int[] PLAIN_LIPS = { 192, 136, 128 }, PLAIN_EYES = { 74, 56, 40 };
 
 	private BotAppearance() {
 	}
@@ -36,10 +45,10 @@ public class BotAppearance {
 	/** @return A plain character of the given gender, varied as {@link #vary} varies a copied one. */
 	public static PlayerAppearance invent() {
 		PlayerAppearance appearance = new PlayerAppearance();
-		appearance.setSkinRGB(PLAIN_SKIN);
-		appearance.setHairRGB(PLAIN_HAIR);
-		appearance.setLipRGB(PLAIN_LIPS);
-		appearance.setEyeRGB(PLAIN_EYES);
+		appearance.setSkinRGB(stored(COMPLEXIONS[RANDOM.nextInt(COMPLEXIONS.length)]));
+		appearance.setHairRGB(stored(HAIR_COLOURS[RANDOM.nextInt(HAIR_COLOURS.length)]));
+		appearance.setLipRGB(stored(PLAIN_LIPS));
+		appearance.setEyeRGB(stored(PLAIN_EYES));
 		appearance.setHeight(NEUTRAL_HEIGHT);
 		// everything else is left at zero on purpose: zero is the middle of each slider, which is a face with no exaggeration anywhere
 		return vary(appearance);
@@ -87,6 +96,19 @@ public class BotAppearance {
 		float height = appearance.getHeight() <= 0 ? NEUTRAL_HEIGHT : appearance.getHeight();
 		appearance.setHeight(height * (1 + (RANDOM.nextFloat() - 0.5f) * 2 * HEIGHT_SPREAD));
 		return appearance;
+	}
+
+	/**
+	 * Packs a colour the way the client stores it, which is blue first.
+	 * <p>
+	 * Worth stating rather than assuming, because assuming it was red first is what turned a village into smurfs: a perfectly good complexion of
+	 * 224, 192, 168 written the wrong way round is read as a pale blue, and nothing in the code looks wrong. The character this was all copied from
+	 * settles it — its stored skin is C1C6EE, which is a bluish colour read one way and an ordinary rosy one read the other.
+	 *
+	 * @param rgb Red, green and blue, in that order, as anyone would say them.
+	 */
+	private static int stored(int[] rgb) {
+		return rgb[2] << 16 | rgb[1] << 8 | rgb[0];
 	}
 
 	/**

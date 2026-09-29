@@ -157,24 +157,6 @@ public class BotRoster {
 		}
 	}
 
-	/**
-	 * @return true if any bot already lives on that map, which is what says it has been populated before. Asked of the database rather than of the
-	 *         world, because it is answered at startup before anything has been spawned.
-	 */
-	public static boolean hasResidentsOn(int worldId) {
-		try (Connection con = DatabaseFactory.getConnection();
-				 PreparedStatement stmt = con.prepareStatement("SELECT 1 FROM `playerbot_characters` b JOIN `players` p ON p.`id` = b.`player_id` "
-					 + "WHERE p.`world_id` = ? LIMIT 1")) {
-			stmt.setInt(1, worldId);
-			try (ResultSet rs = stmt.executeQuery()) {
-				return rs.next();
-			}
-		} catch (SQLException e) {
-			log.error("Could not check whether map " + worldId + " already has bots", e);
-			return true; // erring towards doing nothing: populating a map twice is worse than not populating it
-		}
-	}
-
 	/** @return Where this bot lives, or null when it has never been given a home. */
 	public static Vector3f homeOf(String characterName) {
 		try (Connection con = DatabaseFactory.getConnection();

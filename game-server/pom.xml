@@ -21,6 +21,16 @@
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<testSourceDirectory>test</testSourceDirectory>
+		<!-- the reference schema travels inside the jar, so the server can compare the database it was given against the one this build expects -->
+		<resources>
+			<resource>
+				<directory>sql</directory>
+				<targetPath>sql</targetPath>
+				<includes>
+					<include>aion_gs.sql</include>
+				</includes>
+			</resource>
+		</resources>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
