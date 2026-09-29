@@ -25,6 +25,9 @@ import com.aionemu.gameserver.world.World;
  */
 public class PlayerBotEnterWorldService {
 
+	/** How far a resident may be found from home before a restart puts it back. Further than any errand it has business running. */
+	private static final float STRAYED_TOO_FAR = 150f;
+
 	private PlayerBotEnterWorldService() {
 	}
 
@@ -44,6 +47,7 @@ public class PlayerBotEnterWorldService {
 	public static void enterWorld(Player bot) {
 		// before anything else: it is what makes the engine treat this character as present despite having no connection
 		bot.setBot();
+		goHome(bot); // before the ground check, so a strayed resident is put back and then stood on solid ground there
 		standOnGround(bot);
 		// a resident is fixed at the level of the place it inhabits: left to progress, every bot drifts upwards and the low regions empty
 		bot.getCommonData().setNoExp(BotRoster.isResident(bot.getName()));
@@ -67,6 +71,23 @@ public class PlayerBotEnterWorldService {
 	 * attempts is refused and it spends its life asking. Done on entering the world so that a bot stuck once is freed the next time it spawns, rather
 	 * than needing to be found and moved by hand.
 	 */
+	/**
+	 * Brings a resident that has strayed a long way back to where it lives.
+	 * <p>
+	 * A resident belongs to its place: that is the whole of what makes it one. Yet a bot saved halfway across the region resumes exactly there, keeps
+	 * that spot as its anchor and works it for ever, so a population drifts a little further from its places at every restart — measured at a hundred
+	 * and forty metres from home on average, and one villager six hundred away. A restart is the natural moment to put everyone back.
+	 */
+	private static void goHome(Player bot) {
+		Vector3f home = BotRoster.homeOf(bot.getName());
+		if (home == null || PositionUtil.getDistance(bot.getX(), bot.getY(), home.getX(), home.getY()) <= STRAYED_TOO_FAR)
+			return;
+		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} had strayed {} m from home and starts there instead", bot.getName(),
+			Math.round(PositionUtil.getDistance(bot.getX(), bot.getY(), home.getX(), home.getY())));
+		bot.setPosition(World.getInstance().createPosition(bot.getWorldId(), home.getX(), home.getY(), home.getZ(), bot.getHeading(),
+			bot.getInstanceId()));
+	}
+
 	private static void standOnGround(Player bot) {
 		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
 		if (ground == null || PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), ground.getX(), ground.getY(), ground.getZ()) < Heightfield.CELL_SIZE)

@@ -1,7 +1,5 @@
 package com.aionemu.gameserver.playerbot.ai;
 
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +27,7 @@ import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
@@ -83,6 +82,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Health below which the bot waits to regenerate instead of looking for a fight. */
 	private static final int MIN_ENGAGE_HP_PERCENT = 90;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
+	/** How far from its place a bot will stand about, so a village square is people spread over it rather than a stack on one point. */
+	private static final float LOITERING_SPREAD = 14f;
+	/** How many spots to try before settling for the place itself. */
+	private static final int RESTING_SPOTS = 6;
+	/** How close to somebody else a bot may stop. Bots pass through npcs, so nothing but this keeps one from halting inside a blacksmith. */
+	private static final float PERSONAL_SPACE = 2.5f;
 	private static final float ANCHOR_TOLERANCE = 5f;
 	/** How near its place in the formation a follower settles. Small, because that place is already set apart from the leader. */
 	private static final float FOLLOW_DISTANCE = 2f;
@@ -559,16 +564,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean loiter() {
 		if (occupationDestination == null) {
-			// the village nearest to where this bot lives, not the one a formula names: a bot that works the quarry goes and stands about in the
-			// camp beside it, and one that lives in a village stays in its own. Recomputing a home from the map put every bot in the biggest village
-			// on it, which is how Akarios came to be a crowd and everywhere else empty.
+			// A spot of its own a few paces from where it lives, not the place itself. Sending every idler to one point put them inside each other
+			// and inside the npcs standing there — a village square of bots occupying the same square metre. And loitering happens at home rather
+			// than at the nearest village: villagers live in villages, so they are the ones who fill them, while everyone within walking distance
+			// converging on the same square is what made Akarios a crowd.
 			Vector3f home = homeOfThisBot();
-			occupationDestination = home == null ? null
-				: reachablePlace(BotPlaces.settlements(getOwner().getWorldId()).stream().map(BotPlaces.Settlement::centre).toList(), home.getX(),
-					home.getY());
+			occupationDestination = home == null ? null : restingSpot(home);
 		}
 		if (occupationDestination == null)
-			return false; // nobody lives on this map, so there is nowhere to stand about
+			return false; // nowhere of its own to stand about, so it works its ground instead
 		setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
 		if (!returnToAnchor())
 			return giveUpOccupation();
@@ -589,14 +593,53 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return home;
 	}
 
+	/**
+	 * Finds this bot its own place to stand about in, a few paces from the given spot.
+	 * <p>
+	 * Fixed to the bot's id, so it goes back to the same corner rather than picking a new one every time and shuffling about. Ground the mesh
+	 * accepts, and clear of the npcs who are already standing there: a bot has no collision with them, so it walks into a blacksmith and stops
+	 * inside him, which is the one thing that reads as broken from across a square.
+	 *
+	 * @return Somewhere to idle, or the spot itself if nothing better was found.
+	 */
+	private Vector3f restingSpot(Vector3f place) {
+		Player bot = getOwner();
+		for (int attempt = 0; attempt < RESTING_SPOTS; attempt++) {
+			double angle = Math.PI * 2 * Math.floorMod(Integer.hashCode(bot.getObjectId() * 0x9E3779B9) + attempt * 37, 360) / 360;
+			float reach = LOITERING_SPREAD * (0.4f + 0.6f * (Math.floorMod(bot.getObjectId() + attempt, 10) / 10f));
+			float x = place.getX() + (float) Math.cos(angle) * reach, y = place.getY() + (float) Math.sin(angle) * reach;
+			Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), x, y, place.getZ());
+			// standable, unoccupied, and joined to where the bot is standing. The third is not optional and leaving it out here cost a bot twenty one
+			// refusals in four minutes for a corner ten metres away: a low wall or a ledge makes perfectly good ground that cannot be walked to.
+			if (ground != null && !isCrowded(ground)
+				&& NavmeshService.getInstance().canReach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), ground.getX(), ground.getY(),
+					ground.getZ()))
+				return ground;
+		}
+		return place;
+	}
+
+	/** @return true if somebody is already standing there. An npc a bot can walk through is still somebody, as far as anyone watching is concerned. */
+	private boolean isCrowded(Vector3f spot) {
+		boolean[] taken = { false };
+		getOwner().getKnownList().forEachNpc(npc -> {
+			if (PositionUtil.getDistance(npc.getX(), npc.getY(), spot.getX(), spot.getY()) < PERSONAL_SPACE)
+				taken[0] = true;
+		});
+		return taken[0];
+	}
+
 	/** Walks to another settlement, and looks for something else to do once it arrives rather than waiting out the clock. */
 	private boolean wander() {
 		Player bot = getOwner();
 		if (occupationDestination == null) {
-			Vector3f elsewhere = BotPlaces.otherSettlement(bot.getWorldId(), homeOfThisBot(), bot.getObjectId() + (int) occupationUntil);
-			// a place already known to be out of reach is no destination at all, so fall back on the nearest one that is not
-			occupationDestination = elsewhere != null && !unreachable.contains(elsewhere) ? elsewhere
-				: reachablePlace(BotPlaces.settlements(bot.getWorldId()).stream().map(BotPlaces.Settlement::centre).toList(), bot.getX(), bot.getY());
+			// somewhere near home and fit for its level, rather than any settlement on the map: the walk itself crosses everything in between, and
+			// that is how a character of two came to be standing in a forest of eights
+			Vector3f elsewhere = BotPlaces.placeToVisit(bot.getWorldId(), homeOfThisBot(), bot.getLevel(),
+				bot.getObjectId() + (int) occupationUntil);
+			// a place already known to be out of reach is no destination at all. Nowhere suitable nearby means staying put rather than setting off
+			// across the region: the fallback used to be "any settlement", which is exactly the walk this is meant to prevent.
+			occupationDestination = elsewhere != null && !unreachable.contains(elsewhere) ? elsewhere : null;
 		}
 		if (occupationDestination == null)
 			return false;
@@ -628,12 +671,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 		occupationUntil = 0;
 		occupationDestination = null;
 		return true;
-	}
-
-	/** @return The nearest place of that kind this bot has not already found it cannot get to, or null when it has run out of them. */
-	private Vector3f reachablePlace(List<Vector3f> candidates, float fromX, float fromY) {
-		return candidates.stream().filter(place -> !unreachable.contains(place))
-			.min(Comparator.comparingDouble(place -> PositionUtil.getDistance(fromX, fromY, place.getX(), place.getY()))).orElse(null);
 	}
 
 	/**

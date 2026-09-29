@@ -122,7 +122,10 @@ public class BotEquipManager {
 	 * @return true if this is gear a player could be handed.
 	 */
 	public static boolean isPlayerGear(ItemTemplate template) {
-		return !DataManager.SKILL_DATA.getMasterySkills(template.getItemGroup()).isEmpty();
+		// Two things, and each lets something different through. A piece whose group names no mastery is a generic slot only npc and test gear sits
+		// in. A piece that declares no level restriction takes the default of "level one for every class", which is how a level two warrior came to
+		// be standing in full white plate: the pieces were level one, so every level filter passed them, and they were npc costume all the same.
+		return template.hasLevelRestrictions() && !DataManager.SKILL_DATA.getMasterySkills(template.getItemGroup()).isEmpty();
 	}
 
 	/**

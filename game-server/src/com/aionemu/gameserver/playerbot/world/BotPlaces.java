@@ -12,6 +12,7 @@ import com.aionemu.gameserver.model.TribeClass;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
+import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
@@ -30,6 +31,10 @@ public class BotPlaces {
 	private static final int SETTLEMENT_SIZE = 3;
 	/** How many creatures must stand together for the spot to be a place somebody works rather than two beetles by the roadside. */
 	private static final int HUNTING_GROUND_SIZE = 8;
+	/** How far a resident will go for a change of scene. Past that it is not an outing, it is moving house — and it crosses everything in between. */
+	private static final float WANDERING_RANGE = 250f;
+	/** How many spots of a place to try before settling for one that merely has footing. Each try costs a path search, and a place has many spots. */
+	private static final int ANCHOR_ATTEMPTS = 10;
 	/** How far around a settlement to read the countryside for the level it is worth. */
 	private static final float COUNTRYSIDE_RADIUS = 150f;
 	/** How far a character may be from a region's own level and still belong in it. */
@@ -203,6 +208,32 @@ public class BotPlaces {
 	}
 
 	/**
+	 * Picks somewhere for a resident to go and spend a while.
+	 * <p>
+	 * Within reach and within its depth, and it was leaving out both that showed. A wanderer sent to any settlement on the map walked the length of
+	 * the region to get there: forty five residents averaged a hundred and forty metres from home and one was six hundred away, which is not a stroll
+	 * but emigration. Worse, the walk crosses everything in between, so a character of two was to be found in a forest of eights — not because it was
+	 * settled there, but because its errand led through it.
+	 *
+	 * @param level The visitor's level, which decides where it has any business being.
+	 * @param pick Whatever makes this bot's choice its own.
+	 * @return Somewhere to go, or null when nowhere nearby suits it — in which case it is better off staying where it is.
+	 */
+	public static Vector3f placeToVisit(int worldId, Vector3f from, int level, int pick) {
+		List<Vector3f> within = new ArrayList<>();
+		for (Settlement place : homes(worldId)) {
+			if (place.centre().equals(from) || within.contains(place.centre()))
+				continue;
+			if (Math.abs(place.level() - level) > LEVEL_TOLERANCE)
+				continue;
+			if (PositionUtil.getDistance(from.x, from.y, place.centre().x, place.centre().y) > WANDERING_RANGE)
+				continue;
+			within.add(place.centre());
+		}
+		return within.isEmpty() ? null : within.get(Math.floorMod(pick, within.size()));
+	}
+
+	/**
 	 * Groups the peaceful spawns of a map into the places they stand in.
 	 * <p>
 	 * Greedy and good enough: townsfolk are few, and two clusters that should have been one merely give a wanderer two destinations a few paces
@@ -318,11 +349,32 @@ public class BotPlaces {
 		Vector3f middle = centreOf(cluster);
 		List<Vector3f> fromTheMiddle = new ArrayList<>(cluster);
 		fromTheMiddle.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(middle.x, middle.y, spot.x, spot.y)));
-		for (Vector3f spot : fromTheMiddle) {
-			Vector3f ground = NavmeshService.getInstance().groundNear(worldId, spot.x, spot.y, spot.z);
-			if (ground != null)
+		Vector3f standable = null;
+		for (int tried = 0; tried < Math.min(fromTheMiddle.size(), ANCHOR_ATTEMPTS); tried++) {
+			Vector3f ground = NavmeshService.getInstance().groundNear(worldId, fromTheMiddle.get(tried).x, fromTheMiddle.get(tried).y,
+				fromTheMiddle.get(tried).z);
+			if (ground == null)
+				continue;
+			if (standable == null)
+				standable = ground;
+			if (leadsSomewhere(worldId, ground, cluster))
 				return ground;
 		}
-		return middle;
+		return standable != null ? standable : middle;
+	}
+
+	/**
+	 * @return true if this spot is joined to the rest of its own place, which is what tells a place from a pocket.
+	 *         <p>
+	 *         Standable was not enough. A spot can be good ground inside a hollow with walls all round it — one village centre had a hundred and
+	 *         forty one of its hundred and sixty nine surrounding cells blocked — and a resident anchored there can reach nothing at all: it asked
+	 *         for a route out fifty five times in three minutes and was refused every time. A place people live in is one they can leave.
+	 */
+	private static boolean leadsSomewhere(int worldId, Vector3f ground, List<Vector3f> cluster) {
+		Vector3f farthest = cluster.stream()
+			.max(Comparator.comparingDouble(spot -> PositionUtil.getDistance(ground.x, ground.y, spot.x, spot.y))).orElse(null);
+		if (farthest == null || PositionUtil.getDistance(ground.x, ground.y, farthest.x, farthest.y) < Heightfield.CELL_SIZE)
+			return true; // a place of one spot has nowhere of its own to walk to, and nothing to prove
+		return NavmeshService.getInstance().canReach(worldId, ground.x, ground.y, ground.z, farthest.x, farthest.y, farthest.z);
 	}
 }

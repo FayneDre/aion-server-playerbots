@@ -30,8 +30,6 @@ public class BotOutfitter {
 	/** The places worth filling. Rings and earrings come in pairs and are left out: jewellery is not what makes a character look equipped. */
 	private static final ItemSlot[] DRESSED_SLOTS = { ItemSlot.MAIN_HAND, ItemSlot.TORSO, ItemSlot.PANTS, ItemSlot.GLOVES, ItemSlot.BOOTS,
 		ItemSlot.SHOULDER };
-	/** How far below its own level a piece may be. Gear is not made for every level, so an exact match is rarely on offer. */
-	private static final int LEVEL_SLACK = 5;
 	/** Nothing fancier than this: a village of people in heroic armour reads as a costume party, not a village. */
 	private static final ItemQuality BEST_QUALITY = ItemQuality.RARE;
 
@@ -100,7 +98,10 @@ public class BotOutfitter {
 			if (template.getRace() != Race.PC_ALL && template.getRace() != bot.getRace())
 				continue;
 			int required = template.getRequiredLevel(bot.getPlayerClass());
-			if (required < 1 || required > bot.getLevel() || required < bot.getLevel() - LEVEL_SLACK)
+			// No floor on how old a piece may be, only a ceiling on how new. Once npc costume is excluded there is little enough left at the lowest
+			// levels that insisting on a close match left whole classes with nothing at all, and something slightly behind is what a real character
+			// wears anyway. The sort below still prefers the closest to its level.
+			if (required < 1 || required > bot.getLevel())
 				continue;
 			// Gear a player could be handed. Guard equipment and test pieces ask level one of every class and name no armour type, so neither the
 			// level filter nor the engine itself turns them down — which is how a village of level four characters came to be wearing "NPC Veteran

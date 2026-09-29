@@ -177,6 +177,14 @@ public class ItemTemplate extends VisibleObjectTemplate {
 		return related;
 	}
 
+	/**
+	 * @return true if this item declares its own level restrictions, rather than falling back on the default of "level 1 for every class". Gear made
+	 *         for npcs and for testing declares none, which is what tells it apart from gear a player is meant to be handed.
+	 */
+	public boolean hasLevelRestrictions() {
+		return levelRestrictions != DEFAULT_LEVEL_RESTRICTION;
+	}
+
 	public int getRequiredLevel(PlayerClass playerClass) {
 		int requiredLevel = levelRestrictions[playerClass.ordinal()];
 		if (requiredLevel == 0)
