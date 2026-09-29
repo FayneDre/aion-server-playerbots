@@ -88,6 +88,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final int RESTING_SPOTS = 6;
 	/** How close to somebody else a bot may stop. Bots pass through npcs, so nothing but this keeps one from halting inside a blacksmith. */
 	private static final float PERSONAL_SPACE = 2.5f;
+	/** The penalty skill a player carries after dying, which a bot now sits out rather than fighting under. */
+	private static final int SOUL_SICKNESS_SKILL = 8291;
+	/** How little life a target needs for the bot to stop looking after itself and simply end the fight. */
+	private static final int FINISH_IT_PERCENT = 20;
 	private static final float ANCHOR_TOLERANCE = 5f;
 	/** How near its place in the formation a follower settles. Small, because that place is already set apart from the leader. */
 	private static final float FOLLOW_DISTANCE = 2f;
@@ -132,6 +136,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private final Map<Vector3f, Long> ignoredVendors = new ConcurrentHashMap<>();
 	/** Where the bot is headed to sell, non null only while a trip is in progress. */
 	private volatile Vector3f vendorDestination;
+	/** An operator asked for a sale, so the full bag test is waived until one actually happens. */
+	private volatile boolean sellingOnDemand;
 	/**
 	 * Whether this fight's opening has been tried. One attempt per fight and no more: an opening burst that will not go off now is on cooldown, which
 	 * is itself the answer, and retrying it every tick would spend it halfway through the fight where most of it is wasted.
@@ -312,6 +318,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// busy with a corpse, everything else can wait
 			} else if (dressUp()) {
 				// dressing itself, which is five seconds of stillness the bot has to commit to rather than hope for
+			} else if (isRecoveringFromDeath()) {
+				recover(); // sits out the sickness rather than walking back into a fight at a quarter of its strength
 			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following))
 				recover();
 			else if (following) {
@@ -354,6 +362,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (vendor == null)
 			return false;
 		vendorDestination = vendor;
+		sellingOnDemand = true; // sees the errand through: a shop spot with nobody on it is a detour, not an answer
 		return true;
 	}
 
@@ -469,6 +478,24 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 *
 	 * @return true if a skill went off, in which case the bot is busy and should not also swing.
 	 */
+	/**
+	 * @return true while the bot is still carrying the penalty it got for dying.
+	 *         <p>
+	 *         A player who has just resurrected waits it out, because it takes a large bite out of every stat and walking back into a fight under it
+	 *         is how you die a second time. A bot that went straight back to work read as exactly what it was: something that does not understand
+	 *         what just happened to it. Defending itself is untouched — that comes before all of this — and so is being dragged along by a group.
+	 */
+	private boolean isRecoveringFromDeath() {
+		return getOwner().getEffectController().hasAbnormalEffect(SOUL_SICKNESS_SKILL);
+	}
+
+	/**
+	 * @return true if the target is close enough to death that finishing it beats anything else the bot could do with the time.
+	 */
+	private static boolean isAlmostDead(Creature target) {
+		return target.getLifeStats() != null && target.getLifeStats().getHpPercentage() <= FINISH_IT_PERCENT;
+	}
+
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
 		boolean closing = !BotAttackManager.isInAttackRange(bot, target);
@@ -485,16 +512,21 @@ public class PlayerBotAI extends AITemplate<Player> {
 			if (BotSkillManager.tryOpeningCooldown(bot))
 				return true;
 		}
-		// the defensive ability comes before the heal: it is cheaper in mana and it stops damage instead of repairing it, which only works in advance
-		if (BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT))
-			return true;
-		// the flask is what a class with no heal of its own has instead, and what a healer reaches for when the heal is on cooldown
-		if (BotPotionManager.tryHealingPotion(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
-			|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT))
-			return true;
-		// a group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody
-		if (BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT)))
-			return true;
+		// Finish it. A target this close to death dies to the next blow or two, and every second spent mending instead is a second it spends hitting
+		// back: a bot at low health healing in front of a mob with a sliver left heals, gets hit, heals again, and dies to something it could have
+		// killed twice over. Ending the fight is the best defence available and no rule below can see that.
+		if (!isAlmostDead(target)) {
+			// the defensive ability comes before the heal: it is cheaper in mana and it stops damage instead of repairing it, which only works ahead
+			if (BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT))
+				return true;
+			// the flask is what a class with no heal of its own has instead, and what a healer reaches for when the heal is on cooldown
+			if (BotPotionManager.tryHealingPotion(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
+				|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT))
+				return true;
+			// a group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody
+			if (BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT)))
+				return true;
+		}
 		// a leap covers ground the bot would otherwise walk, and those last metres on foot are where bots get stuck
 		if (closing && BotSkillManager.tryGapCloser(bot, target))
 			return true;
@@ -832,12 +864,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private boolean runVendorTrip() {
 		Player bot = getOwner();
 		if (vendorDestination == null) {
-			// a full bag alone is not enough: one full of gear, quest items or anything rare never empties and would loop forever
-			if (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot))
+			// a full bag alone is not enough: one full of gear, quest items or anything rare never empties and would loop forever. An operator who
+			// asked for a trip has already made that judgement, and keeps the bot going until it has actually sold: without this, a first shop spot
+			// that turns out to be empty ends the errand here, since the bag it was never waiting for is still not full.
+			if (!sellingOnDemand && (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot)))
 				return false;
 			vendorDestination = BotVendorManager.findVendor(bot, this::isIgnoredVendor);
-			if (vendorDestination == null) // this map has no shop to walk to
+			if (vendorDestination == null) { // no shop left to walk to on this map
+				sellingOnDemand = false;
 				return false;
+			}
 			log.info("Bot {} heads to a shop to sell", bot.getName());
 		}
 
@@ -846,6 +882,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			int sold = BotVendorManager.sellJunk(bot, vendor);
 			log.info("Bot {} sold {} stack(s)", bot.getName(), sold);
 			vendorDestination = null;
+			sellingOnDemand = false;
 			return false; // roams or fights again from here, and drifts back to its anchor like after any other trip
 		}
 
@@ -869,6 +906,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (moveController.isBlocked() || !tryMoveTo(moveController, x, y, z)) {
 			log.info("Bot {} cannot reach a shop and gives up selling", bot.getName());
 			vendorDestination = null;
+			sellingOnDemand = false;
 			return false;
 		}
 		return true;

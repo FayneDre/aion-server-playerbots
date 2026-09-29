@@ -19,8 +19,15 @@ public class BotAppearance {
 	private static final Random RANDOM = new Random();
 	/** How many head and hair models the creation screen offers. Outside this is a missing model, not a different face. */
 	private static final int FACE_MODELS = 12, HAIR_MODELS = 12;
-	/** The middle of the height slider, and how far either side of it a character may be. */
-	private static final float NEUTRAL_HEIGHT = 1f, HEIGHT_SPREAD = 0.08f;
+	/**
+	 * The shortest and tallest a bot may be, drawn between the two.
+	 * <p>
+	 * Bounds rather than a middle and a spread, because the two ends are the thing worth being sure of: the question is never "how much may this
+	 * vary" but "how small is too small". A character made in the creation screen came out at 1.0986, so an assumed neutral of 1.0 made every bot
+	 * shorter than any real player and the smallest of them a dwarf. These sit either side of that known good value, far enough apart to tell people
+	 * apart across a village and no further, since where the game stops accepting a height is not documented anywhere.
+	 */
+	private static final float SHORTEST = 1.04f, TALLEST = 1.16f;
 	/** How far a face or body slider may move from what it was, and how far from neutral it may ever end up. */
 	private static final int FEATURE_NUDGE = 30, FEATURE_LIMIT = 90;
 	/** How far skin and lips may be shaded. Small: skin is the one colour whose every wrong value is somebody from another planet. */
@@ -49,7 +56,7 @@ public class BotAppearance {
 		appearance.setHairRGB(stored(HAIR_COLOURS[RANDOM.nextInt(HAIR_COLOURS.length)]));
 		appearance.setLipRGB(stored(PLAIN_LIPS));
 		appearance.setEyeRGB(stored(PLAIN_EYES));
-		appearance.setHeight(NEUTRAL_HEIGHT);
+		appearance.setHeight(SHORTEST);
 		// everything else is left at zero on purpose: zero is the middle of each slider, which is a face with no exaggeration anywhere
 		return vary(appearance);
 	}
@@ -93,8 +100,7 @@ public class BotAppearance {
 		appearance.setArmThickness(nudge(appearance.getArmThickness()));
 		appearance.setLegThickness(nudge(appearance.getLegThickness()));
 
-		float height = appearance.getHeight() <= 0 ? NEUTRAL_HEIGHT : appearance.getHeight();
-		appearance.setHeight(height * (1 + (RANDOM.nextFloat() - 0.5f) * 2 * HEIGHT_SPREAD));
+		appearance.setHeight(SHORTEST + RANDOM.nextFloat() * (TALLEST - SHORTEST));
 		return appearance;
 	}
 

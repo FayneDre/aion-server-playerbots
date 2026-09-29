@@ -49,6 +49,7 @@ public class BotPlaces {
 	private static final Map<Integer, Integer> levelByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> huntingByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
 
 	/**
 	 * A place people gather, how many of them do, and what the country around it is worth fighting at.
@@ -209,6 +210,29 @@ public class BotPlaces {
 				return true;
 		}
 		return false;
+	}
+
+	/**
+	 * @return The obelisk nearest a spot, or null where the map has none.
+	 *         <p>
+	 *         Bots never bind anywhere, so dying sent them to their race's starting location — the far end of the region from wherever they live and
+	 *         work. A player binds at the obelisk nearest the ground they are working precisely so that dying costs a short walk rather than a long
+	 *         one, and a bot given the same has the same.
+	 */
+	public static Vector3f nearestObelisk(int worldId, float x, float y) {
+		return obelisksByMap.computeIfAbsent(worldId, BotPlaces::locateObelisks).stream()
+			.min(Comparator.comparingDouble(spot -> PositionUtil.getDistance(x, y, spot.x, spot.y))).orElse(null);
+	}
+
+	private static List<Vector3f> locateObelisks(int worldId) {
+		List<Vector3f> found = new ArrayList<>();
+		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
+			if (DataManager.BIND_POINT_DATA.getBindPointTemplate(group.getNpcId()) == null)
+				continue;
+			for (SpawnTemplate spawn : group.getSpawnTemplates())
+				found.add(new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
+		}
+		return found;
 	}
 
 	/** @return The settlement nearest to a point, or null if the map has none. */

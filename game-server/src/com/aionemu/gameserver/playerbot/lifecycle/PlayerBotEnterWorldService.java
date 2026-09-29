@@ -5,12 +5,14 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.ai.event.AIEventType;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
+import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.services.SkillLearnService;
 import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
@@ -48,6 +50,7 @@ public class PlayerBotEnterWorldService {
 		// before anything else: it is what makes the engine treat this character as present despite having no connection
 		bot.setBot();
 		goHome(bot); // before the ground check, so a strayed resident is put back and then stood on solid ground there
+		bindToNearestObelisk(bot);
 		standOnGround(bot);
 		// a resident is fixed at the level of the place it inhabits: left to progress, every bot drifts upwards and the low regions empty
 		bot.getCommonData().setNoExp(BotRoster.isResident(bot.getName()));
@@ -71,6 +74,22 @@ public class PlayerBotEnterWorldService {
 	 * attempts is refused and it spends its life asking. Done on entering the world so that a bot stuck once is freed the next time it spawns, rather
 	 * than needing to be found and moved by hand.
 	 */
+	/**
+	 * Binds the bot at the obelisk nearest its home, the way a player binds where they work.
+	 * <p>
+	 * Without it a bot has no bind point at all, and dying sends it to its race's starting location — the far end of the region from the ground it
+	 * lives on, which it then has to walk all the way back across. Done on entering the world, so bots made before this get one too, and redone each
+	 * time because a bind point is not saved with the character.
+	 */
+	private static void bindToNearestObelisk(Player bot) {
+		Vector3f home = BotRoster.homeOf(bot.getName());
+		if (home == null)
+			return;
+		Vector3f obelisk = BotPlaces.nearestObelisk(bot.getWorldId(), home.getX(), home.getY());
+		if (obelisk != null)
+			bot.setBindPoint(new BindPointPosition(bot.getWorldId(), obelisk.getX(), obelisk.getY(), obelisk.getZ(), (byte) 0));
+	}
+
 	/**
 	 * Brings a resident that has strayed a long way back to where it lives.
 	 * <p>

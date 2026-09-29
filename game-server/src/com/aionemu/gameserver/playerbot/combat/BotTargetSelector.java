@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.templates.npc.NpcRank;
 import com.aionemu.gameserver.model.templates.npc.NpcRating;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.geo.GeoService;
@@ -72,9 +73,10 @@ public class BotTargetSelector {
 			return false;
 		if (npc.getLevel() > bot.getLevel() + MAX_LEVEL_GAP)
 			return false; // this only limits what the bot picks: it still fights back against anything that attacks it
-		// The little animals that wander through a village are scenery, not game. They are rated JUNK, which is the data saying exactly that, and a
-		// village of bots solemnly hunting qooqoos reads as broken however well the hunting works.
-		if (npc.getObjectTemplate().getRating() == NpcRating.JUNK)
+		// The little animals that wander through a village are scenery, not game, and so is the training dummy standing in it. Two markers say so and
+		// both are needed: JUNK catches the qooqoo, NOVICE catches the elroco, the dummy and the young of real creatures, which are rated NORMAL like
+		// anything else. Measured over the thirty three kinds of thing bots had picked on Poeta, every real monster is DISCIPLINED or above.
+		if (npc.getObjectTemplate().getRating() == NpcRating.JUNK || npc.getObjectTemplate().getRank() == NpcRank.NOVICE)
 			return false;
 		if (npc.getLevel() < bot.getLevel() - MIN_LEVEL_GAP)
 			return false; // far enough beneath it to be worth nothing, and a player walks past those
