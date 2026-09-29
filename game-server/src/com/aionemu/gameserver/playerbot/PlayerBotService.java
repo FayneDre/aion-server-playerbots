@@ -21,7 +21,6 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
-import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.lifecycle.BotOutfitter;
@@ -83,6 +82,13 @@ public class PlayerBotService {
 			return;
 		int restored = 0;
 		for (String characterName : roster) {
+			// Already in the world, because populating a map on this very startup both creates a bot and puts it there. Asking to load it again
+			// returns null, exactly as a deleted character does, and reading that null as "gone" printed forty five warnings about losing characters
+			// that were standing right there. A null is not a reason.
+			if (findSpawnedBot(characterName) != null) {
+				restored++;
+				continue;
+			}
 			Player bot = loadAvailableBot(characterName);
 			if (bot == null) {
 				log.warn("Bot {} is on the roster but no longer exists, dropping it", characterName);
