@@ -33,9 +33,9 @@ import com.aionemu.gameserver.utils.PositionUtil;
  * Vendors are found in the spawn data rather than in what the bot can see: a shop is in town and a bot farms in the fields, so it has to know where
  * to walk before it can see anything.
  * <p>
- * Selling does not go through {@code TradeService.performSellToShop}: it gates on {@code PlayerRestrictions.canTrade}, which rejects anything that
- * is not {@code isOnline()} — true of every real connection, never true of a bot. Rather than patch a restriction 79 call sites rely on, the small
- * amount of business logic for a plain, template-less sale is redone here.
+ * Selling goes through {@code TradeService.performSellToShop}, the engine's own sale. It did not at first: that path gates on
+ * {@code PlayerRestrictions.canTrade}, which asked {@code isOnline()} and so refused every bot, and its rules were copied here instead. Once
+ * {@code isOnline()} came to mean "is present" rather than "has a socket", the copy had nothing left to justify it and was deleted.
  */
 public class BotVendorManager {
 
@@ -118,8 +118,8 @@ public class BotVendorManager {
 	/**
 	 * Sells everything the bot has no use for: ordinary quality, not a quest item, not equipped, and sellable at all.
 	 * <p>
-	 * Mirrors the template-less branch of {@code TradeService.performSellToShop} (price, sell limit, repurchase list, kinah), the one a general
-	 * vendor takes because it accepts anything sellable rather than a fixed goods list.
+	 * Handed to the engine as one sale, which takes the template-less branch a general vendor takes: it accepts anything sellable rather than a fixed
+	 * goods list, and works out the price, the sell limit, the repurchase list and the kinah itself.
 	 *
 	 * @return How many stacks were sold.
 	 */

@@ -18,7 +18,7 @@ Wired into `PlayerBotAI.botTick`, right after the health check and before roamin
 
 The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops forever on a bag full of gear, quest items or anything rare, since nothing there is ever sold. `BotVendorManager.hasJunk(bot)` is required too.
 
-**Selling does not go through `TradeService.performSellToShop`.** It gates on `PlayerRestrictions.canTrade`, which used to reject anything not `isOnline()`, so every sale silently failed; `BotVendorManager.sellJunk` redoes the small amount of business logic itself (price, sell limit, repurchase list, kinah). Since `isOnline()` was fixed at the root (below), the engine's own path would now work — the duplicate is kept only because it is tested, and is the first thing to delete when that area is next touched.
+**Selling goes through `TradeService.performSellToShop`**, the engine's own sale. It did not at first: that path gates on `PlayerRestrictions.canTrade`, which used to reject anything not `isOnline()`, so every sale silently failed, and its rules — price, sell limit, repurchase list, kinah — were copied into `BotVendorManager.sellJunk`. Once `isOnline()` was fixed at the root (below), the copy had nothing left to justify it and was deleted.
 
 ## Done: looking after itself
 
@@ -54,7 +54,7 @@ The leader's target is taken first so a group converges instead of each member h
 
 **A group mate's attacker is assisted, not just the leader's selection.** Reading `getTarget()` alone left a bot standing by while its leader was being eaten, because a player whose selection is elsewhere — or who never clicked the mob that jumped them — is being attacked all the same. The mob's aggro list is asked instead: it remembers who it is fighting whatever anyone has selected. The leader's attacker comes first, then any member's.
 
-**Healing and buffing reach the group.** The bot uses the same skills it heals and buffs itself with, aimed at a group mate; which of them can reach someone else is the engine's question, answered as each is cast, so no list of party-capable skills is kept. Allies are healed below 75%, a higher bar than the bot uses for itself, because a bot can sit down and regenerate what it does not heal while an ally it leaves hurt stays hurt. In a fight an ally's life comes before the bot's damage but after the bot's own survival.
+**Healing and buffing reach the group.** The bot uses the same skills it heals and buffs itself with, aimed at a group mate — minus those that cannot leave their caster, which the data says and the engine does not: aimed elsewhere, a skill marked `first_target="ME"` is not refused but quietly turned back on the caster, and reported as a success. Over five thousand skills are marked that way, including the Bandage Heal every character knows, so every class kept "healing" its ally by bandaging itself. See [engine-traps.md](engine-traps.md). Allies are healed below 75%, a higher bar than the bot uses for itself, because a bot can sit down and regenerate what it does not heal while an ally it leaves hurt stays hurt. In a fight an ally's life comes before the bot's damage but after the bot's own survival.
 
 **Selecting a target is not fighting it.** Players click mobs to read their level, and a group whose bots pull whatever the leader looks at is unusable, so the mob's own aggro list decides: it holds a grudge against whoever hit it, and equally against whoever it chose to attack, which means a leader under attack is assisted too.
 

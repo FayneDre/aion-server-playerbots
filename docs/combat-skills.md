@@ -83,6 +83,16 @@ The data marks the first link of a chain with `_1TH` in its category; anything e
 
 All 157 enemy-targeted `DEBUFF` skills carry a stack group, so a debuff already on the target is recognised the same way a buff already on the bot is. Re-applying one buys nothing and costs the swing that would have gone into damage. Only skills whose *whole purpose* is the debuff are checked — an attack that happens to leave a mark is still worth casting for its damage.
 
+### A friendly skill is not a skill you may cast on a friend
+
+Which heals and buffs can reach a group mate is read from `first_target` in the data, not left to the engine. Aimed at somebody else, a skill marked
+`ME` is not refused: `FirstTargetProperty` turns it back on the caster and reports success. Over five thousand skills are marked that way, including
+the Bandage Heal every character knows — so every class found a heal that "worked" on its ally, healed itself, and left the ally hurt for ever. Since
+tending to the group is checked before fighting, a melee bot beside a wounded player bandaged itself on a loop instead of fighting.
+
+The target relation does not answer this question, and that is what made it invisible for so long: `FRIEND` says who a skill may help, not whether
+somebody else can be chosen. Only `TARGET`, `TARGETORME` and `TARGET_MYPARTY_NONVISIBLE` mean it can leave its caster.
+
 ## Mantras
 
 A chanter's mantras are toggles, and the rule that stops a bot switching its own toggles off had excluded every one of them, so chanters ran none at all. They are now the **only** toggles a bot may touch, and only ever to turn one on, since casting an active toggle turns it off.
