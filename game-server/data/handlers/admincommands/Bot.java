@@ -31,8 +31,11 @@ public class Bot extends AdminCommand {
 			auto <characterName> - Toggles autonomy (fights on its own) on and off.
 			sell <characterName> - Sends the bot to sell right away, without waiting for a full bag.
 			bag <characterName> - Lists what the bot is carrying.
+			kind <characterName> [resident|adventurer] - Reads or sets whether the bot levels up. Residents stay at their region's level.
 			nav - Lists the navmeshes loaded in memory.
 			list - Lists all currently spawned bots.
+			clear - Removes every bot from the world and deletes their characters. Everything has to be populated again afterwards.
+			See docs/bot-commands.md for what each one does.
 			""");
 	}
 

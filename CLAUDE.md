@@ -50,6 +50,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 
 - [docs/roadmap.md](docs/roadmap.md) — **start here**: what works, what is half written, what is left.
 - [docs/population.md](docs/population.md) — how a map ends up with inhabitants: places, levels, faces, gear, and the one config line that starts it.
+- [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command and what it does, plus the one number that decides who may run them.
 - [docs/engine-traps.md](docs/engine-traps.md) — what this engine does to a bot that no documentation warns about: questions it asks that a bot cannot see, actions anything cancels, and methods whose names promise one thing and answer another.
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
 - [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.
