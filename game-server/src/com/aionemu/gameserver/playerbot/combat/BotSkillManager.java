@@ -185,27 +185,46 @@ public class BotSkillManager {
 	/**
 	 * Heals a group mate.
 	 * <p>
-	 * The same skills the bot heals itself with: which of them can reach someone else is the engine's question, not ours, and it answers it as each
-	 * one is cast. A class with nothing but self heals simply never lands one here.
+	 * The same skills the bot heals itself with, minus the ones that cannot leave their caster. Which of those is which was left to the engine at
+	 * first, on the assumption that it would refuse a self only heal aimed at somebody else — it does not. It silently replaces the target with the
+	 * caster and reports success, so every class was offering the Bandage Heal that every character knows, healing itself, and counting it as having
+	 * looked after the ally. A melee bot beside a hurt player therefore bandaged itself over and over instead of fighting, for as long as the player
+	 * stayed hurt.
 	 *
 	 * @return true if a heal was cast, in which case the bot is busy with it.
 	 */
 	public static boolean tryHealAlly(Player bot, Player ally) {
 		if (ally == null || ally.getLifeStats().isDead() || ally.getLifeStats().getHpPercentage() >= HEAL_ALLY_PERCENT)
 			return false;
-		return cast(bot, ally, skills(bot, BotSkillManager::isHeal));
+		return cast(bot, ally, skills(bot, (caster, template) -> isHeal(caster, template) && reachesOthers(template)));
 	}
 
 	/**
-	 * Puts one of the bot's buffs on a group mate who is missing it. Self only buffs fail their own target check and are skipped, so no list of which
-	 * buffs reach a party has to be kept.
+	 * @return true if this skill can be aimed at somebody other than its caster.
+	 *         <p>
+	 *         Read from {@code first_target}, which is where the data says so, and not from the target relation: a friendly skill is not thereby a
+	 *         skill you may cast on a friend. Over five thousand of them are marked {@code ME}, and the engine's answer to one of those aimed
+	 *         elsewhere is to quietly aim it back at the caster (see {@code FirstTargetProperty}) — never a refusal, which is what made this
+	 *         invisible.
+	 */
+	private static boolean reachesOthers(SkillTemplate template) {
+		return switch (template.getProperties().getFirstTarget()) {
+			case TARGET, TARGETORME, TARGET_MYPARTY_NONVISIBLE -> true;
+			case null, default -> false;
+		};
+	}
+
+	/**
+	 * Puts one of the bot's buffs on a group mate who is missing it. Self only buffs are left out by {@link #reachesOthers}, because they do not fail
+	 * their own target check: the engine turns them back on the caster and says nothing, so the bot would buff itself and believe it had buffed the
+	 * ally, whose buff stays missing for ever.
 	 *
 	 * @return true if one was cast.
 	 */
 	public static boolean tryBuffAlly(Player bot, Player ally) {
 		if (ally == null || ally.getLifeStats().isDead())
 			return false;
-		return cast(bot, ally, skills(bot, (caster, template) -> isSelfBuff(template) && isWorthKeepingUp(template)
+		return cast(bot, ally, skills(bot, (caster, template) -> isSelfBuff(template) && reachesOthers(template) && isWorthKeepingUp(template)
 			&& !coversAnApproach(template) && !isAlreadyUp(ally, template)));
 	}
 

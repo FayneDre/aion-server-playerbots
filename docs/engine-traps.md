@@ -70,6 +70,25 @@ And none of that survives contact with the map, because the bot then walks by it
 placement guarantees, there must be a way out**: a bot refused every destination a dozen times running is put back home, the way players are given an
 unstick command rather than advice.
 
+## A refusal you were counting on may be a silent substitution
+
+Asking the engine rather than restating its rules is right almost everywhere, and it is how the gear filters and the cast path are written. But it
+only works where the engine answers `no`. Aimed at somebody else, a skill marked `first_target="ME"` is not refused: `FirstTargetProperty` replaces
+the target with the caster, casts, and reports success. Over five thousand skills are marked that way, including the Bandage Heal every character in
+the game knows.
+
+So a bot offering its heals to a hurt ally always found one that "worked" — it healed itself, returned true, and the ally stayed hurt for ever. A
+melee bot beside a wounded player bandaged itself over and over instead of fighting, because tending to the group is checked before fighting and it
+never stopped succeeding. The same hole sat under ally buffs.
+
+**Ask the data what a skill can be aimed at, and only then ask the engine whether it lands.** Target relation does not answer it: a friendly skill is
+not thereby a skill you may cast on a friend.
+
+The item path has the mirror image of this. `SkillUseAction` reads `player.getTarget()` both to decide whether an item may be used and to decide who
+it lands on, because for a real player the target answers both. A bot's target is its quarry in a fight and its ally out of one, so a flask drunk
+because the bot was dying went elsewhere, and one drunk beside somebody at full health was refused as pointless. **A bot uses an item on itself, which
+means aiming at itself first** — what a player does by using the item with nothing selected.
+
 ## Nobody announces that a bot has moved
 
 An aggressive monster does not watch the world; it is *told*. A player's own client sends `CM_MOVE` and the packet handler calls

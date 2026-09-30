@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.combat;
 
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.gameobjects.Item;
+import com.aionemu.gameserver.model.gameobjects.VisibleObject;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.item.actions.AbstractItemAction;
 import com.aionemu.gameserver.model.templates.item.actions.ItemActions;
@@ -49,13 +50,36 @@ public class BotPotionManager {
 			for (AbstractItemAction action : item.getItemTemplate().getActions().getItemActions()) {
 				// only the skill it casts: a potion has nothing else, and refusing to run anything else keeps this from firing off a scroll or a
 				// transformation the moment one shares a bag with a flask
-				if (action instanceof SkillUseAction && action.canAct(bot, item, null)) {
-					action.act(bot, item, null);
+				if (action instanceof SkillUseAction && useOnItself(bot, item, action))
 					return true;
-				}
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Uses an item on the bot rather than on whatever it happens to be looking at.
+	 * <p>
+	 * {@link SkillUseAction} reads {@code player.getTarget()} twice — once to decide whether the item may be used at all, once to decide who it
+	 * lands on — because for a real player the target is the answer to both. A bot's target is its quarry in a fight and its ally out of one, so a
+	 * flask drunk because the bot is dying went to the mob or to the group mate, and one drunk beside somebody at full health was refused outright as
+	 * pointless. Aiming at itself first is what a player does by using the item with nothing selected.
+	 * <p>
+	 * The previous target is put back only if nothing else claimed it meanwhile: the decision tick can start or end a fight while this runs, and its
+	 * choice is newer than ours.
+	 */
+	private static boolean useOnItself(Player bot, Item item, AbstractItemAction action) {
+		VisibleObject aimedAt = bot.getTarget();
+		bot.setTarget(bot);
+		try {
+			if (!action.canAct(bot, item, null))
+				return false;
+			action.act(bot, item, null);
+			return true;
+		} finally {
+			if (bot.getTarget() == bot)
+				bot.setTarget(aimedAt);
+		}
 	}
 
 	/** @return true if using this item casts a skill with one of those effects, which is what a potion is. */
