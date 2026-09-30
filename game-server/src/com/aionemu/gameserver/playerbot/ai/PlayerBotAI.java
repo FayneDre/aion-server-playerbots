@@ -310,7 +310,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 		boolean following = followTheGroup();
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
-		else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
+		else if (getOwner().isCasting()) {
+			// A cast roots a real player and their client refuses to start anything else until it is over. This tick comes round every second, and
+			// the Bandage Heal every character knows incants for four, so each decision that landed inside one either started a competing cast or
+			// walked off and cancelled it — five hundred times in three minutes across a populated map. The attack tick has held this line from the
+			// start; the decision tick never did.
+		} else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
 			Creature attacker = findAttacker();
 			if (attacker != null)
 				startAttacking(attacker); // no health check: a bot being hit defends itself, it does not sit down

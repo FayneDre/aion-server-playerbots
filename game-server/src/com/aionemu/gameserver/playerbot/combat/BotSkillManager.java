@@ -475,8 +475,17 @@ public class BotSkillManager {
 		return template.hasAnyEffect(EffectType.HIDE) && buffDurationMillis(template) >= APPROACH_HIDE_MILLIS;
 	}
 
-	/** Tries each candidate in turn and stops at the first one that actually goes off. */
+	/**
+	 * Tries each candidate in turn and stops at the first one that actually goes off.
+	 * <p>
+	 * Nothing is started while a cast is already running. A real player's client will not let them, and the engine has no guard of its own: a second
+	 * cast merely overwrites the reference to the first, whose {@code endCast} is already scheduled and still fires. Worse, the skill's cooldown is
+	 * set when the cast ends, not when it starts, so nothing in between turns the second one down either. This is the single choke point every bot
+	 * cast goes through, which is where the rule belongs.
+	 */
 	private static boolean cast(Player bot, Creature target, List<SkillTemplate> candidates) {
+		if (bot.isCasting())
+			return false;
 		for (SkillTemplate template : candidates) {
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			// useNoAnimationSkill validates mp, cooldown, range and target itself, and skips the client hit time checks a bot cannot satisfy

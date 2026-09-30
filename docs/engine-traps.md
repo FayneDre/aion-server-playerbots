@@ -70,6 +70,24 @@ And none of that survives contact with the map, because the bot then walks by it
 placement guarantees, there must be a way out**: a bot refused every destination a dozen times running is put back home, the way players are given an
 unstick command rather than advice.
 
+## Nothing stops a second cast, and the guard that looks like a mutex is a sieve
+
+`Skill.useSkill` does not ask whether the caster is already casting. It calls `setCasting(this)`, which merely overwrites the reference — the previous
+cast's `endCast` is already scheduled and still runs. And the cooldown is set at the *end* of a cast, not at its start, so `isSkillDisabled` says
+nothing about a skill being incanted right now. A real player is protected by their own client, which will not send the second cast at all.
+
+`endCast` opens with `if (!effector.isCasting()) return`, which reads like a mutex and is not one: it asks whether *any* cast is current, not whether
+this one is. So with three overlapping casts the first ends and applies, clearing the flag; the second ends and applies, because the third has set the
+flag again; only the third is dropped. **Two effects land from what the client drew as a single cast**, the later start having overwritten the earlier
+one's cast bar.
+
+The decision tick runs every second. Bandage Heal, which every character knows, incants for four, so a single heal had three casts competing over it.
+Measured on forty five bots in Poeta: **507 decision ticks landed inside a cast in three minutes**, twice on the same bot's same Bandage Heal a second
+apart. Heals are only where it was noticed — Smite led the count at 226, and those are casts the bot was cancelling by walking off mid incantation.
+
+So a bot holds still while it casts, exactly as the attack tick has always done, and the single place every bot cast passes through refuses to start
+one on top of another.
+
 ## A refusal you were counting on may be a silent substitution
 
 Asking the engine rather than restating its rules is right almost everywhere, and it is how the gear filters and the cast path are written. But it
