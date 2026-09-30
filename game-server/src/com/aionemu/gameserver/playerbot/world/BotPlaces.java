@@ -186,7 +186,7 @@ public class BotPlaces {
 			List<Float> levels = new ArrayList<>();
 			for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(id)) {
 				NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
-				if (template == null || template.getTribe() == TribeClass.GENERAL || template.getLevel() <= 0)
+				if (template == null || isTownsfolk(template) || template.getLevel() <= 0)
 					continue;
 				for (int i = 0; i < group.getSpawnTemplates().size(); i++)
 					levels.add((float) template.getLevel());
@@ -293,7 +293,7 @@ public class BotPlaces {
 			if (template == null)
 				continue;
 			for (SpawnTemplate spawn : group.getSpawnTemplates()) {
-				if (template.getTribe() == TribeClass.GENERAL)
+				if (isTownsfolk(template))
 					addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
 				else if (template.getLevel() > 0)
 					countryside.add(new float[] { spawn.getX(), spawn.getY(), template.getLevel() });
@@ -322,7 +322,7 @@ public class BotPlaces {
 		List<float[]> creatures = new ArrayList<>();
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
 			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
-			if (template == null || template.getTribe() == TribeClass.GENERAL || template.getLevel() <= 0)
+			if (template == null || isTownsfolk(template) || template.getLevel() <= 0)
 				continue;
 			for (SpawnTemplate spawn : group.getSpawnTemplates()) {
 				addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
@@ -340,6 +340,19 @@ public class BotPlaces {
 			grounds.add(new Settlement(centre, cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS)));
 		}
 		return grounds;
+	}
+
+	/**
+	 * @return true if this npc is a civilian — somebody who lives here rather than something that lives off whoever walks past.
+	 *         <p>
+	 *         Both tribes, which is the whole point of asking it in one place. The two factions are mirrored in the data and so are their tribe
+	 *         names: Elyos civilians are {@code GENERAL}, Asmodian ones {@code GENERAL_DARK}. Testing only the first meant every Asmodian map read as
+	 *         having no inhabitants at all — Pandaemonium's 266 civilians counted as zero, Altgard's 103 as zero — so no Asmodian bot could have had a
+	 *         home, an anchor or anywhere to stand about, and the hunting grounds absorbed the villages instead.
+	 */
+	private static boolean isTownsfolk(NpcTemplate template) {
+		TribeClass tribe = template.getTribe();
+		return tribe == TribeClass.GENERAL || tribe == TribeClass.GENERAL_DARK;
 	}
 
 	private static void addToCluster(List<List<Vector3f>> clusters, Vector3f spot) {

@@ -15,10 +15,10 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
+import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.taskmanager.tasks.MoveTaskManager;
-import com.aionemu.gameserver.utils.ThreadPoolManager;
 import com.aionemu.gameserver.utils.PacketSendUtility;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.utils.stats.StatFunctions;
@@ -244,7 +244,7 @@ public class BotMoveController extends PlayerMoveController {
 		// called, and the ai only asks again while the bot is on its way somewhere. Restarting the journey on a task thread keeps this one off the
 		// movement state, which belongs to whoever calls moveToPoint.
 		if (!isInMove())
-			ThreadPoolManager.getInstance().execute(() -> moveToPoint(finalX, finalY, finalZ));
+			BotScheduler.getInstance().execute(() -> moveToPoint(finalX, finalY, finalZ));
 	}
 
 	private boolean reachedWaypoint() {

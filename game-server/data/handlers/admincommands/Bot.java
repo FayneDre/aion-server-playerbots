@@ -17,9 +17,9 @@ public class Bot extends AdminCommand {
 
 	public Bot() {
 		super("bot", "Controls playerbots.", """
-			create <name> <class> <level> <race> - Creates a new bot character with a face of its own.
+			create <name> <class> <level> <race> - Creates a new bot character of your own, with a face of its own.
 			populate <count> [race] - Fills this map with bots of its own levels, one or two per place.
-			delete <characterName> - Deletes a bot character from the database.
+			delete <characterName> - Deletes one of your own bot characters from the database.
 			load <characterName> - Loads a bot character from the database without spawning it.
 			spawn <characterName> - Loads a bot character and spawns it next to you.
 			despawn <characterName> - Removes a spawned bot from the world.
@@ -34,7 +34,7 @@ public class Bot extends AdminCommand {
 			kind <characterName> [resident|adventurer] - Reads or sets whether the bot levels up. Residents stay at their region's level.
 			nav - Lists the navmeshes loaded in memory.
 			list - Lists all currently spawned bots.
-			clear - Removes every bot from the world and deletes their characters. Everything has to be populated again afterwards.
+			clear - Deletes your own bot characters. Staff clear the whole world, which then has to be populated again.
 			See docs/bot-commands.md for what each one does.
 			""");
 	}
@@ -49,7 +49,7 @@ public class Bot extends AdminCommand {
 		switch (params[0].toLowerCase()) {
 			case "create" -> create(admin, params);
 			case "populate" -> populate(admin, params);
-			case "delete" -> withName(admin, params, name -> PlayerBotService.getInstance().delete(name));
+			case "delete" -> withName(admin, params, name -> PlayerBotService.getInstance().delete(name, admin));
 			case "load" -> withName(admin, params, name -> PlayerBotService.getInstance().describeLoadedBot(name));
 			case "spawn" -> withName(admin, params, name -> PlayerBotService.getInstance().spawn(name, admin));
 			case "despawn" -> withName(admin, params, name -> PlayerBotService.getInstance().despawn(name));
@@ -61,7 +61,7 @@ public class Bot extends AdminCommand {
 			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
 			case "sell" -> withName(admin, params, name -> PlayerBotService.getInstance().sell(name));
 			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
-			case "clear" -> sendInfo(admin, PlayerBotService.getInstance().clear());
+			case "clear" -> sendInfo(admin, PlayerBotService.getInstance().clear(admin));
 			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));
 			case "nav" -> sendInfo(admin, PlayerBotService.getInstance().describeNavmeshes());
 			case "kind" -> kind(admin, params);
@@ -101,7 +101,7 @@ public class Bot extends AdminCommand {
 			sendInfo(admin, "Level must be a number");
 			return;
 		}
-		sendInfo(admin, PlayerBotService.getInstance().create(params[1], params[2], level, params[4]));
+		sendInfo(admin, PlayerBotService.getInstance().create(params[1], params[2], level, params[4], admin));
 	}
 
 	private void populate(Player admin, String[] params) {

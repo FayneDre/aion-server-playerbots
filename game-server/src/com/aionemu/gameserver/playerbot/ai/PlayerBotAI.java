@@ -12,6 +12,7 @@ import com.aionemu.gameserver.ai.AITemplate;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
@@ -23,7 +24,6 @@ import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
-import com.aionemu.gameserver.utils.ThreadPoolManager;
 
 /**
  * Brain of a player bot. The engine fires creature events on whatever AI is attached to a creature, so a bot receives ATTACK, MOVE_ARRIVED and
@@ -314,7 +314,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	private void scheduleBotTick() {
-		thinkTask = ThreadPoolManager.getInstance().schedule(this::botTick, THINK_INTERVAL_MILLIS);
+		thinkTask = BotScheduler.getInstance().schedule(this::botTick, THINK_INTERVAL_MILLIS);
 	}
 
 	/**
@@ -406,7 +406,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	private void scheduleAttackTick(int delayMillis) {
-		attackTask = ThreadPoolManager.getInstance().schedule(this::attackTick, delayMillis);
+		attackTask = BotScheduler.getInstance().schedule(this::attackTick, delayMillis);
 	}
 
 	private void stopAttackTask() {
@@ -765,7 +765,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			if (reviveTask != null) // already dealt with
 				return;
 			// nobody will ever click the resurrection window for a bot, so without this it lies dead forever
-			reviveTask = ThreadPoolManager.getInstance().schedule(this::revive, REVIVE_DELAY_MILLIS);
+			reviveTask = BotScheduler.getInstance().schedule(this::revive, REVIVE_DELAY_MILLIS);
 		}
 		Player bot = getOwner();
 		// whatever it was fighting just won, so leave it alone for a while instead of walking straight back into it

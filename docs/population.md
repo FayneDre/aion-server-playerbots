@@ -106,7 +106,9 @@ Four things make the number affordable, and the first is the one that matters:
 2. **A thread pool of their own.** Bot ticks currently share the server's 16 scheduled threads with respawns, effects, sieges and saves. At 1500 bots a
    burst of ticks would delay the engine itself. Bots must never be able to starve the world.
 3. **Lazy mesh loading** — held only for maps that have somebody on them, which is what makes 28 maps fit.
-4. **`-Xmx8192m`** instead of 2560, and saves staggered across their interval instead of fired in one burst.
+4. **A larger heap, which is an installation step and not a repository change.** `game-server/dist/start.bat` ships `-Xmx2560m`, which is upstream's
+   default and the right one for a machine of unknown size; a populated world wants **`-Xmx8192m`** and it is edited in the installed copy. Saves are
+   staggered across their interval rather than fired in one burst, which needs no setting.
 
 Per-place counts of 20 to 40 also keep the crowding term small: known-list scans are quadratic in the neighbourhood, and 40² is nothing. That is a
 second reason the per-place framing is the right one.

@@ -17,7 +17,8 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.dao.ServerVariablesDAO;
 
 /**
- * The two things the bot system remembers about a character between runs: whether it belongs in the world, and whether it is a resident.
+ * What the bot system remembers about a character between runs: whether it belongs in the world, who owns it, whether it is a resident, and where
+ * it lives.
  * <p>
  * That is all: where each bot stands, what it carries and what it has learned are already saved with the character itself, so a restored bot comes
  * back exactly where it left off. It is written on every change rather than at shutdown, because a shutdown that never runs is precisely the case it
@@ -128,6 +129,44 @@ public class BotRoster {
 
 	public static Set<String> residents() {
 		return namesFlagged("resident");
+	}
+
+	/**
+	 * @return The object id of the player who made this bot, or 0 if the world did.
+	 *         <p>
+	 *         This is what separates a character somebody made for themselves from one the server made to populate a region. A bot with an owner is
+	 *         theirs: the population director must never log it out, move it, level it or retire it, and nobody else may delete it. A bot with no
+	 *         owner belongs to the world and is the director's to manage.
+	 */
+	public static int ownerOf(String characterName) {
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT b.`owner_id` FROM `playerbot_characters` b "
+					 + "JOIN `players` p ON p.`id` = b.`player_id` WHERE p.`name` = ?")) {
+			stmt.setString(1, characterName);
+			try (ResultSet rs = stmt.executeQuery()) {
+				return rs.next() ? rs.getInt(1) : 0;
+			}
+		} catch (SQLException e) {
+			log.error("Could not read who owns " + characterName, e);
+			return 0;
+		}
+	}
+
+	/** Records who a bot belongs to. 0 gives it to the world. */
+	public static void setOwner(String characterName, int ownerId) {
+		int playerId = PlayerDAO.getPlayerIdByName(characterName);
+		if (playerId == 0) {
+			log.warn("Cannot set the owner of {}: no character by that name", characterName);
+			return;
+		}
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement(upsert("owner_id"))) {
+			stmt.setInt(1, playerId);
+			stmt.setInt(2, ownerId);
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			log.error("Could not record the owner of " + characterName, e);
+		}
 	}
 
 	/**

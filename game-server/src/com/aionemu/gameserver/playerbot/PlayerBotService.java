@@ -34,7 +34,6 @@ import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.services.player.PlayerService;
-import com.aionemu.gameserver.utils.ThreadPoolManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.world.WorldType;
 import com.aionemu.gameserver.world.World;
@@ -52,6 +51,8 @@ public class PlayerBotService {
 	 * uses. A clean shutdown still saves them; this is what stands between a crash and a day of progress.
 	 */
 	private static final long SAVE_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(5);
+	/** How often a slice of the population is written. The interval divided by this is the number of slices, so each bot is still saved every 5 min. */
+	private static final long SAVE_SWEEP_MILLIS = TimeUnit.SECONDS.toMillis(10);
 	/** How far around its home a new resident may appear, so a village is not a stack of people on one spot. */
 	private static final float SETTLING_SPREAD = 15f;
 	/** How many spots to try before giving up and standing on the place itself. A handful: most spots around a place are fine. */
@@ -76,7 +77,7 @@ public class PlayerBotService {
 	 * Puts the world back the way it was and starts saving it. Called once, from {@code GameServer}, after the world is loaded.
 	 */
 	public void onStartUp() {
-		ThreadPoolManager.getInstance().scheduleAtFixedRate(this::saveAll, SAVE_INTERVAL_MILLIS, SAVE_INTERVAL_MILLIS);
+		BotScheduler.getInstance().scheduleAtFixedRate(this::saveDue, SAVE_SWEEP_MILLIS, SAVE_SWEEP_MILLIS);
 		runStandingOrders();
 		Set<String> roster = BotRoster.restore();
 		if (roster.isEmpty())
@@ -117,7 +118,7 @@ public class PlayerBotService {
 	 */
 	private void runStandingOrders() {
 		if (BotRoster.takeOrder(BotRoster.CLEAR_ORDER) != null)
-			log.info("Standing order: {}", clear());
+			log.info("Standing order: {}", clear(null));
 		populateConfiguredMaps();
 	}
 
@@ -190,13 +191,32 @@ public class PlayerBotService {
 
 
 	/** Writes every spawned bot to the database, in place, without taking it out of the world. */
-	public void saveAll() {
+	/**
+	 * Saves every bot that is due, a slice at a time.
+	 * <p>
+	 * Each bot is still written every {@link #SAVE_INTERVAL_MILLIS}, but not all of them in the same instant. Saving the lot at once is a burst of as
+	 * many statements as there are bots — fifteen hundred of them on one connection, every five minutes, while the same database is answering real
+	 * players. Spreading them over the interval costs nothing and turns the burst into a trickle.
+	 * <p>
+	 * Which bot is due is decided by its own object id rather than by a queue: the ids are already spread, so the arithmetic does the scattering for
+	 * free and nothing has to be kept in step with bots arriving and leaving.
+	 */
+	private void saveDue() {
+		long now = System.currentTimeMillis();
+		long slices = SAVE_INTERVAL_MILLIS / SAVE_SWEEP_MILLIS;
+		long currentSlice = now / SAVE_SWEEP_MILLIS % slices;
 		for (Player bot : spawnedBots.values()) {
-			try {
-				PlayerService.storePlayer(bot);
-			} catch (RuntimeException e) {
-				log.error("Could not save bot " + bot.getName(), e);
-			}
+			if (Math.floorMod(bot.getObjectId(), slices) != currentSlice)
+				continue;
+			save(bot);
+		}
+	}
+
+	private void save(Player bot) {
+		try {
+			PlayerService.storePlayer(bot);
+		} catch (RuntimeException e) {
+			log.error("Could not save bot " + bot.getName(), e);
 		}
 	}
 
@@ -246,7 +266,7 @@ public class PlayerBotService {
 	 *
 	 * @return A human readable result message.
 	 */
-	public String create(String characterName, String className, int level, String raceName) {
+	public String create(String characterName, String className, int level, String raceName, Player maker) {
 		PlayerClass playerClass;
 		try {
 			playerClass = PlayerClass.valueOf(className.toUpperCase());
@@ -259,6 +279,10 @@ public class PlayerBotService {
 
 		try {
 			Player bot = PlayerBotCreationService.create(characterName, playerClass, level, race);
+			// A bot somebody made by hand is theirs; a bot the world made by populating a region belongs to the world. That is the whole of the
+			// distinction, and it decides both who may delete it and whether the population director is allowed to move it about.
+			if (maker != null)
+				BotRoster.setOwner(bot.getName(), maker.getObjectId());
 			return "Created " + bot.getName() + " (objId " + bot.getObjectId() + "): " + playerClass + " level " + level;
 		} catch (IllegalArgumentException | IllegalStateException e) {
 			log.warn("Could not create bot " + characterName, e);
@@ -403,10 +427,15 @@ public class PlayerBotService {
 	}
 
 	/**
-	 * Deletes a bot character and everything attached to it. Restricted to the reserved bot accounts, so a mistyped name can never wipe a real
-	 * character.
+	 * Deletes a bot character and everything attached to it.
+	 * <p>
+	 * Two restrictions, and they answer different questions. The reserved bot accounts mean a mistyped name can never reach a real character, whoever
+	 * types it. Ownership means one player cannot destroy another's: {@code //bot} is open to every account, so without this anybody could have
+	 * emptied the world or deleted somebody else's companions. Staff are exempt, since moderating the server is what the access level is for.
+	 *
+	 * @param requester Whoever asked. Null for the server itself, which owns nothing and may delete anything.
 	 */
-	public String delete(String characterName) {
+	public String delete(String characterName, Player requester) {
 		if (findSpawnedBot(characterName) != null)
 			return characterName + " is spawned, despawn it first";
 
@@ -415,9 +444,23 @@ public class PlayerBotService {
 			return "No character found with name " + characterName;
 		if (PlayerDAO.getAccountId(objectId) < PlayerBotCreationService.BOT_ACCOUNT_ID_BASE)
 			return characterName + " is not on a bot account, refusing to delete it";
+		if (!mayCommand(characterName, requester))
+			return characterName + " belongs to somebody else";
 
 		PlayerService.deletePlayerFromDB(objectId);
 		return "Deleted " + characterName;
+	}
+
+	/**
+	 * @return true if this player may do as they like with that bot: the server may, staff may, and a player may with their own.
+	 *         <p>
+	 *         A bot the world made has no owner, so only staff and the server may destroy it — a player emptying a region they did not populate is
+	 *         the same mistake as deleting somebody else's character, only larger.
+	 */
+	private boolean mayCommand(String characterName, Player requester) {
+		if (requester == null || requester.isStaff())
+			return true;
+		return BotRoster.ownerOf(characterName) == requester.getObjectId();
 	}
 
 	public String despawn(String characterName) {
@@ -572,17 +615,28 @@ public class PlayerBotService {
 	 * <p>
 	 * Only characters on the reserved bot accounts are touched; the deletion path refuses anything else, which is what keeps a mistyped command from
 	 * reaching a real player. Nothing is done about the roster: it hangs off the characters themselves, so it goes with them.
+	 * <p>
+	 * For an ordinary player this means their own bots and nothing else — the refused count says how many were left alone. Staff and the server clear
+	 * everything, which is what the command is for.
+	 *
+	 * @param requester Whoever asked. Null for the server carrying out a standing order.
 	 */
-	public String clear() {
-		despawnEverything();
+	public String clear(Player requester) {
+		if (requester == null || requester.isStaff())
+			despawnEverything();
 		int deleted = 0, kept = 0;
 		for (String name : PlayerBotCreationService.botCharacterNames()) {
-			if (delete(name).startsWith("Deleted "))
+			if (!mayCommand(name, requester)) {
+				kept++;
+				continue;
+			}
+			despawn(name); // its own bot may well be in the world, and deleting refuses a spawned character
+			if (delete(name, requester).startsWith("Deleted "))
 				deleted++;
 			else
 				kept++;
 		}
-		return "Deleted " + deleted + " bot character(s)" + (kept > 0 ? ", " + kept + " refused" : "");
+		return "Deleted " + deleted + " bot character(s)" + (kept > 0 ? ", " + kept + " left alone" : "");
 	}
 
 	public String despawnAll() {

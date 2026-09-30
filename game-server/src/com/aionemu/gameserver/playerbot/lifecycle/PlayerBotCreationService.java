@@ -50,6 +50,19 @@ public class PlayerBotCreationService {
 	private static final String[] NAME_STARTS = { "Ael", "Bri", "Cor", "Dal", "Eri", "Fen", "Gor", "Hal", "Iri", "Jor", "Kal", "Lyr", "Mor", "Nar",
 		"Oly", "Pyr", "Quil", "Ras", "Syl", "Tor", "Ulf", "Ver", "Wyn", "Xan", "Yri", "Zel" };
 	private static final String[] NAME_ENDS = { "an", "ar", "el", "en", "ia", "ik", "il", "is", "on", "or", "ra", "ric", "us", "wyn", "yth" };
+	/**
+	 * Optional middle syllable, and the reason a population of any size is possible at all.
+	 * <p>
+	 * Two syllables give 26 x 15 = 390 names and not one more. A world of fifteen hundred inhabitants is therefore not a matter of patience but
+	 * arithmetically out of reach, and long before the pool ran dry the generator would have started throwing: every draw is random, so at 350 names
+	 * taken it collides nine times in ten and fifty attempts are not enough. The empty string is one of the entries, which keeps the short names in
+	 * the mix rather than making every character three syllables long.
+	 * <p>
+	 * 26 x 26 x 15 = 10140, so fifteen hundred names fill 15% of the pool and a draw collides about as often. The name pattern allows 2 to 16
+	 * letters ({@code gameserver.name.character_pattern}); the longest combination here is nine.
+	 */
+	private static final String[] NAME_MIDDLES = { "", "a", "e", "i", "o", "y", "ad", "al", "am", "an", "ar", "as", "el", "em", "en", "er", "il", "im",
+		"in", "ir", "ol", "on", "or", "ul", "un", "ur" };
 	private static final int NAME_ATTEMPTS = 50;
 
 	private PlayerBotCreationService() {
@@ -200,7 +213,8 @@ public class PlayerBotCreationService {
 	 */
 	public static String generateName() {
 		for (int attempt = 0; attempt < NAME_ATTEMPTS; attempt++) {
-			String name = NAME_STARTS[RANDOM.nextInt(NAME_STARTS.length)] + NAME_ENDS[RANDOM.nextInt(NAME_ENDS.length)];
+			String name = NAME_STARTS[RANDOM.nextInt(NAME_STARTS.length)] + NAME_MIDDLES[RANDOM.nextInt(NAME_MIDDLES.length)]
+				+ NAME_ENDS[RANDOM.nextInt(NAME_ENDS.length)];
 			if (NameRestrictionService.isValidName(name) && !NameRestrictionService.isForbidden(name) && !PlayerDAO.isNameUsed(name))
 				return name;
 		}

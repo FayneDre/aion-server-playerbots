@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.utils.PositionUtil;
-import com.aionemu.gameserver.utils.ThreadPoolManager;
+import com.aionemu.gameserver.playerbot.BotScheduler;
 
 /**
  * Serves generated maps to the bots that need them.
@@ -93,7 +93,7 @@ public class NavmeshService {
 		}
 		// answered even when the search found nothing: "no way through" is an answer the caller waits for, and swallowing it left bots standing
 		// still for ever waiting for a plan that was never coming
-		ThreadPoolManager.getInstance().executeLongRunning(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ)));
+		BotScheduler.getInstance().planRoute(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ)));
 	}
 
 	/** @return The map, opening it on first use, or null when it has no generated file. */

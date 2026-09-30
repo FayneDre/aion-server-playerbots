@@ -961,6 +961,7 @@ CREATE TABLE `portal_cooldowns` (
 DROP TABLE IF EXISTS `playerbot_characters`;
 CREATE TABLE `playerbot_characters` (
   `player_id` int NOT NULL,
+  `owner_id` int NOT NULL DEFAULT '0',
   `resident` tinyint NOT NULL DEFAULT '0',
   `in_world` tinyint NOT NULL DEFAULT '0',
   `home_x` float NOT NULL DEFAULT '0',
