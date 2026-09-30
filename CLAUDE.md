@@ -48,8 +48,9 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 
 ### Design docs
 
-- [docs/roadmap.md](docs/roadmap.md) — **start here**: what works, what is half written, what is left.
-- [docs/population.md](docs/population.md) — how a map ends up with inhabitants: places, levels, faces, gear, and the one config line that starts it.
+- [docs/roadmap.md](docs/roadmap.md) — **start here**: what is left, by category, with what blocks each one.
+- [docs/built.md](docs/built.md) — what already works, and the reasoning most of it was paid for twice.
+- [docs/population.md](docs/population.md) — how a world gets its inhabitants: the flow, the three kinds of presence, the pool and the director.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command and what it does, plus the one number that decides who may run them.
 - [docs/engine-traps.md](docs/engine-traps.md) — what this engine does to a bot that no documentation warns about: questions it asks that a bot cannot see, actions anything cancels, and methods whose names promise one thing and answer another.
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.

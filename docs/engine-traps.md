@@ -1,6 +1,6 @@
 # Traps this engine sets for a bot
 
-Each of these cost hours at least once. They are written down so they cost them only once. For what is built and what is left, see [roadmap.md](roadmap.md).
+Each of these cost hours at least once. They are written down so they cost them only once. For what is built, see [built.md](built.md); for what is left, [roadmap.md](roadmap.md).
 
 ## The engine asks questions a bot cannot see
 
@@ -26,7 +26,7 @@ A bot has to **commit**: stop, put the weapon away, and hold its decision tick u
 
 ## `isOnline()` asked one question and answered another
 
-It was `getClientConnection() != null`, and 81 call sites used it to mean "is this character present". Fixed at the root — see [roadmap.md](roadmap.md). The general shape is worth keeping in mind: **a method whose name asks one question while its body answers another will be used for the question in its name.**
+It was `getClientConnection() != null`, and 81 call sites used it to mean "is this character present". Fixed at the root — see [built.md](built.md). The general shape is worth keeping in mind: **a method whose name asks one question while its body answers another will be used for the question in its name.**
 
 ## Two systems describing the same world will disagree
 
