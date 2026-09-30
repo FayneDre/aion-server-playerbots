@@ -352,8 +352,10 @@ public class BotMoveController extends PlayerMoveController {
 		pendingRoute = null;
 		routeIndex = 0;
 		MoveTaskManager.getInstance().removeCreature(owner);
-		if (started.compareAndSet(true, false))
+		if (started.compareAndSet(true, false)) {
 			setAndSendStopMove(owner);
+			owner.getController().onStopMove();
+		}
 	}
 
 	public boolean isArrived() {
@@ -370,6 +372,7 @@ public class BotMoveController extends PlayerMoveController {
 		PacketSendUtility.broadcastToSightedPlayers(owner, new SM_EMOTION(owner, EmotionType.RUN));
 		setAndSendStartMove(owner);
 		MoveTaskManager.getInstance().addCreature(owner);
+		owner.getController().onStartMove();
 	}
 
 	@Override
@@ -399,6 +402,11 @@ public class BotMoveController extends PlayerMoveController {
 		float newY = (getTargetY2() - y) * fraction + y;
 		World.getInstance().updatePosition(owner, newX, newY, groundZ(newX, newY, (getTargetZ2() - z) * fraction + z), heading, false);
 		updateLastMove();
+		// Tells the creatures around that this one has moved, which is the whole of what makes an aggressive monster notice somebody walking past.
+		// A player's own client sends CM_MOVE and the packet does this; an npc's move controller does it itself. A bot has neither, so nothing ever
+		// announced it: monsters re-checked their aggro only when a bot first entered their known list, hundreds of metres out and always too far,
+		// and never again as it walked right past them.
+		owner.getController().onMove();
 		checkProgress();
 	}
 

@@ -70,6 +70,19 @@ And none of that survives contact with the map, because the bot then walks by it
 placement guarantees, there must be a way out**: a bot refused every destination a dozen times running is put back home, the way players are given an
 unstick command rather than advice.
 
+## Nobody announces that a bot has moved
+
+An aggressive monster does not watch the world; it is *told*. A player's own client sends `CM_MOVE` and the packet handler calls
+`PlayerController.onMove()`, which notifies every npc in the known list; an npc's `NpcMoveController` calls the same hooks itself. A bot has neither a
+client nor that controller, so nothing ever announced it. Monsters therefore re-checked their aggro only at the moment a bot first entered their known
+list — hundreds of metres out, always too far — and never again as it walked straight past them.
+
+Measured before and after: **zero** aggro decisions in favour of a bot over 1981 checks, against five over 7364 once `BotMoveController` called
+`onStartMove` / `onMove` / `onStopMove` like everything else that moves.
+
+This is the same trap as drawing a weapon or standing up, in its most expensive form yet, and it is worth asking of anything shared: **who tells the
+rest of the world, and does a bot go through them?**
+
 ## Colours are stored blue first
 
 A flesh tone of 224, 192, 168 written the obvious way round is read as a pale blue, and nothing in the code looks wrong: the value is right, the order
