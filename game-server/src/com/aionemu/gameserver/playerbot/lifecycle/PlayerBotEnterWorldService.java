@@ -52,8 +52,10 @@ public class PlayerBotEnterWorldService {
 		goHome(bot); // before the ground check, so a strayed resident is put back and then stood on solid ground there
 		bindToNearestObelisk(bot);
 		standOnGround(bot);
-		// a resident is fixed at the level of the place it inhabits: left to progress, every bot drifts upwards and the low regions empty
-		bot.getCommonData().setNoExp(BotRoster.isResident(bot.getName()));
+		// Bots advance, because a character that cannot is not one. What keeps the low regions from emptying is the pace, not a ban: the drift
+		// upwards is arithmetic, so it is governed by arithmetic. See BotPacing.
+		bot.getCommonData().setNoExp(false);
+		BotPacing.apply(bot);
 		learnMissingSkills(bot);
 		applyPassiveSkillEffects(bot);
 		bot.setAi(new PlayerBotAI(bot));

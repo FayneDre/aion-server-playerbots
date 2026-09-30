@@ -19,6 +19,7 @@ import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
+import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
@@ -265,6 +266,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
 		sheathWhenCalm();
+		// A bot crosses its level while it is playing, not while it is loading, so growing up is checked here rather than on the way in. Both of these
+		// are one comparison and neither does anything until the level actually changes.
+		BotPacing.holdAtRegionCeiling(getOwner());
+		day.moveOutIfOutgrown();
 		boolean following = followTheGroup();
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();

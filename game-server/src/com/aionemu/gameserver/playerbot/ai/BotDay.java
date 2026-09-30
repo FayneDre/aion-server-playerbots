@@ -11,6 +11,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
+import com.aionemu.gameserver.playerbot.world.BotQuestGrounds;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
@@ -28,10 +29,10 @@ class BotDay {
 
 	private static final Logger log = LoggerFactory.getLogger(BotDay.class);
 
-	/** How far from its place a bot will stand about, so a village square is people spread over it rather than a stack on one point. */
-	private static final float LOITERING_SPREAD = 14f;
-	/** How many spots to try before settling for the place itself. */
-	private static final int RESTING_SPOTS = 6;
+	/** How many spots to try before settling for the place itself. More than a handful, since a busy village has most of its corners taken. */
+	private static final int RESTING_SPOTS = 12;
+	/** How far a bot's level may drift from its home's before it moves house. */
+	private static final int HOME_LEVEL_DRIFT = 2;
 	/** How close to somebody else a bot may stop. Bots pass through npcs, so nothing but this keeps one from halting inside a blacksmith. */
 	private static final float PERSONAL_SPACE = 2.5f;
 
@@ -53,15 +54,15 @@ class BotDay {
 	/**
 	 * Keeps the day going: renews the occupation when its time runs out, and carries out the ones that are not hunting.
 	 * <p>
-	 * Whether this bot has a day at all is read from {@code noExp} rather than from the stored roster, because that flag is already on the character
-	 * and says the same thing: a bot that gains no experience is one that belongs to a place. An adventurer always falls through to hunting.
+	 * Every bot has a day. This was once asked of {@code noExp}, on the grounds that a bot which gains no experience is one that belongs to a place —
+	 * and that made the flag answer two questions at once, "does not level" and "has a life". The moment levelling was turned on, the whole of the
+	 * daily round went silent with it: no loitering, no wandering, and farming no longer moved the anchor out of the village. Measured immediately:
+	 * zero occupations drawn where there had been sixty in three minutes.
 	 *
 	 * @return true if the occupation took this tick, false to go hunting as before.
 	 */
 	boolean pursue() {
 		Player bot = ai.getOwner();
-		if (!bot.getCommonData().getNoExp())
-			return false;
 		long now = System.currentTimeMillis();
 		if (now > occupationUntil) {
 			// whether this bot lives among people decides how much of its day is spent standing about: a village square wants idlers, a hillside does
@@ -73,7 +74,7 @@ class BotDay {
 			log.info("Bot {} takes to {}", bot.getName(), occupation);
 		}
 		return switch (occupation) {
-			case FARMING -> false;
+			case FARMING -> farm();
 			case LOITERING -> loiter();
 			case WANDERING -> wander();
 		};
@@ -93,10 +94,66 @@ class BotDay {
 		return home;
 	}
 
+	/**
+	 * Moves a bot out when it has outgrown where it lives.
+	 * <p>
+	 * Bots grow, and nothing used to follow. Born at the level of Akarios and left there, one reaches seven while still keeping house on ground worth
+	 * three, and spends its days beating creatures five levels beneath it in the middle of a beginners' village — seen in game within an hour of
+	 * levelling being turned on. Poeta reads as Akarios 3 and its camps at 5, 6 and 7: the valley steepens as you walk away from the village, so
+	 * growing up means moving out, and the map already says where to.
+	 * <p>
+	 * Only the home moves. Everything else — where it stands about, where it hunts, how far it may be dragged — is written against the home or the
+	 * anchor, so they follow of their own accord.
+	 *
+	 * @return true if the bot has just moved house, in which case whatever it was doing was decided somewhere it no longer lives.
+	 */
+	boolean moveOutIfOutgrown() {
+		Player bot = ai.getOwner();
+		Vector3f where = home();
+		if (where == null || Math.abs(BotPlaces.levelAt(bot.getWorldId(), where) - bot.getLevel()) <= HOME_LEVEL_DRIFT)
+			return false;
+		Vector3f better = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getObjectId());
+		if (better == null || better.equals(where))
+			return false; // the region has nowhere better; the ceiling in BotPacing is what stops it growing further
+		log.info("Bot {} has outgrown its home at level {} and moves to {} {}", bot.getName(), bot.getLevel(), Math.round(better.getX()),
+			Math.round(better.getY()));
+		home = better;
+		BotRoster.setHome(bot.getName(), better);
+		ai.setAnchor(better.getX(), better.getY(), better.getZ());
+		forget(); // whatever it was doing was chosen from the place it has just left
+		return true;
+	}
+
 	/** Drops the current occupation, for when it was decided from a place the bot is no longer in. */
 	void forget() {
 		occupationUntil = 0;
 		occupationDestination = null;
+	}
+
+	/**
+	 * Sends the bot out to work a stretch of country near home.
+	 * <p>
+	 * It always returns false, because farming is not something this decides for the tick — it only says <i>where</i>. Moving the anchor is the whole
+	 * of the instruction: the tick then goes hunting as it always did, and every rule already written against the anchor comes along.
+	 * <p>
+	 * Without this, farming left the anchor wherever the last occupation had put it, which for a villager is the village. Hunting refuses any target
+	 * more than a camp radius from the anchor and there is nothing hostile that close to a village, so a resident of Akarios spent its farming hours
+	 * finding nothing and walking back to the well — the one occupation that was meant to take it out of town kept it in.
+	 */
+	private boolean farm() {
+		Player bot = ai.getOwner();
+		if (occupationDestination == null) {
+			int pick = bot.getObjectId() + (int) occupationUntil;
+			// Where the game itself sends a character of this level, taken from the quest data, and only then a hunting ground picked by level. The
+			// quests know things a level band cannot: which valley a character of four is meant to be clearing, and which one belongs to eights.
+			Vector3f ground = BotQuestGrounds.groundFor(bot.getWorldId(), bot.getRace(), bot.getLevel(), home(), BotPlaces.WANDERING_RANGE, pick);
+			if (ground == null || unreachable.contains(ground))
+				ground = BotPlaces.groundToWork(bot.getWorldId(), home(), bot.getLevel(), pick);
+			occupationDestination = ground != null && !unreachable.contains(ground) ? ground : null;
+		}
+		if (occupationDestination != null)
+			ai.setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
+		return false; // hunts from here, wherever "here" turned out to be
 	}
 
 	/**
@@ -153,9 +210,12 @@ class BotDay {
 	 */
 	private Vector3f restingSpot(Vector3f place) {
 		Player bot = ai.getOwner();
+		// the ground the place actually covers, measured from its own occupants. A number invented for this was wrong in both directions at once: a
+		// formula gave Akarios 26 m where it measures 42, so its inhabitants stood at twice the density of the npcs the village was built with.
+		float spread = BotPlaces.reachAt(bot.getWorldId(), place);
 		for (int attempt = 0; attempt < RESTING_SPOTS; attempt++) {
 			double angle = Math.PI * 2 * Math.floorMod(Integer.hashCode(bot.getObjectId() * 0x9E3779B9) + attempt * 37, 360) / 360;
-			float reach = LOITERING_SPREAD * (0.4f + 0.6f * (Math.floorMod(bot.getObjectId() + attempt, 10) / 10f));
+			float reach = spread * (0.4f + 0.6f * (Math.floorMod(bot.getObjectId() + attempt, 10) / 10f));
 			float x = place.getX() + (float) Math.cos(angle) * reach, y = place.getY() + (float) Math.sin(angle) * reach;
 			Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), x, y, place.getZ());
 			// standable, unoccupied, and joined to where the bot is standing. The third is not optional and leaving it out here cost a bot twenty one
@@ -167,11 +227,24 @@ class BotDay {
 		return place;
 	}
 
-	/** @return true if somebody is already standing there. An npc a bot can walk through is still somebody, as far as anyone watching is concerned. */
+	/**
+	 * @return true if somebody is already standing there — an npc, another bot, or a real player.
+	 *         <p>
+	 *         Anything a bot can walk through is still somebody as far as anyone watching is concerned, and bots walk through everything. Only npcs
+	 *         were checked at first, which was invisible while a place held one or two inhabitants and is not once it holds twenty: they would have
+	 *         picked their corners without reference to each other and stood inside one another in the middle of a village square.
+	 */
 	private boolean isCrowded(Vector3f spot) {
 		boolean[] taken = { false };
-		ai.getOwner().getKnownList().forEachNpc(npc -> {
+		Player bot = ai.getOwner();
+		bot.getKnownList().forEachNpc(npc -> {
 			if (PositionUtil.getDistance(npc.getX(), npc.getY(), spot.getX(), spot.getY()) < PERSONAL_SPACE)
+				taken[0] = true;
+		});
+		if (taken[0])
+			return true;
+		bot.getKnownList().forEachPlayer(other -> {
+			if (!other.equals(bot) && PositionUtil.getDistance(other.getX(), other.getY(), spot.getX(), spot.getY()) < PERSONAL_SPACE)
 				taken[0] = true;
 		});
 		return taken[0];

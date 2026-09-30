@@ -27,6 +27,8 @@ public class BotPlaces {
 
 	/** How close two townsfolk must be to count as standing in the same place. */
 	private static final float GATHERING_RADIUS = 50f;
+	/** Smallest reach a place is credited with, so three npcs standing together still describe somewhere rather than a point. */
+	private static final float MIN_REACH = 12f;
 	/** How many of them make a settlement rather than a lone npc keeping a road. */
 	private static final int SETTLEMENT_SIZE = 3;
 	/** How many creatures must stand together for the spot to be a place somebody works rather than two beetles by the roadside. */
@@ -37,13 +39,18 @@ public class BotPlaces {
 	 */
 	private static final int TOWNSFOLK_PER_SHARE = 8;
 	/** How far a resident will go for a change of scene. Past that it is not an outing, it is moving house — and it crosses everything in between. */
-	private static final float WANDERING_RANGE = 250f;
+	public static final float WANDERING_RANGE = 250f;
 	/** How many spots of a place to try before settling for one that merely has footing. Each try costs a path search, and a place has many spots. */
 	private static final int ANCHOR_ATTEMPTS = 10;
 	/** How far around a settlement to read the countryside for the level it is worth. */
 	private static final float COUNTRYSIDE_RADIUS = 150f;
 	/** How far a character may be from a region's own level and still belong in it. */
 	private static final int LEVEL_TOLERANCE = 4;
+	/**
+	 * How far a bot's level may drift from its home's before it moves. Tighter than the map's tolerance on purpose: the map decides who lives in the
+	 * region, this decides which part of it, and the whole point is that a character of seven does not keep house on ground worth three.
+	 */
+	private static final int HOME_LEVEL_TOLERANCE = 2;
 
 	private static final Map<Integer, List<Settlement>> settlementsByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, Integer> levelByMap = new ConcurrentHashMap<>();
@@ -52,13 +59,21 @@ public class BotPlaces {
 	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
 
 	/**
-	 * A place people gather, how many of them do, and what the country around it is worth fighting at.
+	 * A place people gather, how far it spreads, how many of them do, and what the country around it is worth fighting at.
 	 *
-	 * @param townsfolk What makes a village draw more residents than a roadside camp.
+	 * @param reach How far the place's own occupants stand from its middle — Akarios measures 42 m, a roadside camp a dozen. Measured rather than
+	 *          assumed, because a number invented for it is wrong in both directions at once: a formula gave Akarios 26 m, which packed its
+	 *          inhabitants into half the ground the village actually occupies, and would have scattered a small camp's over twice its own.
+	 * @param townsfolk How many civilian npcs stand here.
 	 * @param level The middling level of the creatures within {@value #COUNTRYSIDE_RADIUS} metres, which is what says who belongs here. Poeta reads
 	 *          as Akarios 3, then camps at 5, 6 and 7 — a valley that steepens as you walk away from the village.
 	 */
-	public record Settlement(Vector3f centre, int townsfolk, int level) {
+	public record Settlement(Vector3f centre, float reach, int townsfolk, int level) {
+
+		/** @return The ground this place covers, which is what decides how many people it holds without feeling packed. */
+		public float area() {
+			return (float) Math.PI * reach * reach;
+		}
 	}
 
 	private BotPlaces() {
@@ -108,7 +123,7 @@ public class BotPlaces {
 	 * are the outlying ones: the lake and the farms had nobody at all while the same few busy fields had somebody each. Ordered by distance from what
 	 * is already taken, stopping anywhere leaves a population spread over the whole map.
 	 */
-	private static List<Settlement> spreadOut(List<Settlement> places) {
+	static List<Settlement> spreadOut(List<Settlement> places) {
 		List<Settlement> remaining = new ArrayList<>(places);
 		List<Settlement> spread = new ArrayList<>();
 		while (!remaining.isEmpty()) {
@@ -203,6 +218,39 @@ public class BotPlaces {
 		return Math.abs(levelOf(worldId) - level) <= LEVEL_TOLERANCE;
 	}
 
+	/**
+	 * @return The highest level this region still has anything to offer. Poeta reads as 5 in the middle, so 9 at the top, which matches a valley of
+	 *         ones to eights.
+	 */
+	public static int topLevelOf(int worldId) {
+		return levelOf(worldId) + LEVEL_TOLERANCE;
+	}
+
+	/** @return What the country around this place is worth fighting at, or the map's own band if the spot is not a place people gather. */
+	public static int levelAt(int worldId, Vector3f place) {
+		for (Settlement settlement : settlements(worldId)) {
+			if (settlement.centre().equals(place))
+				return settlement.level();
+		}
+		return levelOf(worldId);
+	}
+
+	/**
+	 * @return Somewhere on this map a character of that level would plausibly live, weighted the way the population is, or null if the map has none.
+	 *         <p>
+	 *         What it is for: a bot grows. Born at the level of Akarios and left there, it reaches seven while still anchored on ground worth two,
+	 *         and spends its days beating creatures five levels beneath it in the middle of a beginners' village. Poeta reads as Akarios 3 and its
+	 *         camps at 5, 6 and 7 — the valley steepens as you walk away from the village, so growing up means moving out.
+	 */
+	public static Vector3f homeForLevel(int worldId, int level, int pick) {
+		List<Vector3f> suitable = new ArrayList<>();
+		for (Settlement place : homes(worldId)) {
+			if (Math.abs(place.level() - level) <= HOME_LEVEL_TOLERANCE)
+				suitable.add(place.centre());
+		}
+		return suitable.isEmpty() ? null : suitable.get(Math.floorMod(pick, suitable.size()));
+	}
+
 	/** @return true if this spot is one of the places people gather, rather than a stretch of country somebody hunts. */
 	public static boolean isSettlement(int worldId, Vector3f place) {
 		for (Settlement settlement : settlements(worldId)) {
@@ -265,6 +313,27 @@ public class BotPlaces {
 	 * @param pick Whatever makes this bot's choice its own.
 	 * @return Somewhere to go, or null when nowhere nearby suits it — in which case it is better off staying where it is.
 	 */
+	/**
+	 * @return A stretch of country near home and fit for this level, or null if there is none.
+	 *         <p>
+	 *         Villagers have to go out to hunt, and until this existed they did not: farming left the anchor on the village, {@code roam} refuses any
+	 *         target further than {@value com.aionemu.gameserver.playerbot.combat.BotTargetSelector#HOME_RADIUS} m from the anchor, and there is
+	 *         nothing hostile that close to a village. A resident of Akarios therefore spent its farming hours finding nothing and walking back to
+	 *         the well. Its own hunting ground, drawn near where it lives, is the whole of the instruction — everything downstream already works off
+	 *         the anchor.
+	 */
+	public static Vector3f groundToWork(int worldId, Vector3f from, int level, int pick) {
+		List<Vector3f> within = new ArrayList<>();
+		for (Settlement ground : huntingGrounds(worldId)) {
+			if (Math.abs(ground.level() - level) > LEVEL_TOLERANCE)
+				continue;
+			if (PositionUtil.getDistance(from.x, from.y, ground.centre().x, ground.centre().y) > WANDERING_RANGE)
+				continue;
+			within.add(ground.centre());
+		}
+		return within.isEmpty() ? null : within.get(Math.floorMod(pick, within.size()));
+	}
+
 	public static Vector3f placeToVisit(int worldId, Vector3f from, int level, int pick) {
 		List<Vector3f> within = new ArrayList<>();
 		for (Settlement place : homes(worldId)) {
@@ -304,7 +373,7 @@ public class BotPlaces {
 		for (List<Vector3f> cluster : clusters) {
 			if (cluster.size() >= SETTLEMENT_SIZE) {
 				Vector3f centre = anchorOf(worldId, cluster);
-				settlements.add(new Settlement(centre, cluster.size(), levelAround(countryside, centre)));
+				settlements.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(countryside, centre)));
 			}
 		}
 		return settlements;
@@ -337,7 +406,7 @@ public class BotPlaces {
 			Vector3f centre = anchorOf(worldId, cluster);
 			// the level of what stands here, not of the country around it: a ground is a handful of creatures in one spot, and averaging over a
 			// hundred and fifty metres of everything nearby is exactly how a place of eights came to read as a place of twos
-			grounds.add(new Settlement(centre, cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS)));
+			grounds.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS)));
 		}
 		return grounds;
 	}
@@ -353,6 +422,26 @@ public class BotPlaces {
 	private static boolean isTownsfolk(NpcTemplate template) {
 		TribeClass tribe = template.getTribe();
 		return tribe == TribeClass.GENERAL || tribe == TribeClass.GENERAL_DARK;
+	}
+
+	/**
+	 * @return How far the furthest of a place's occupants stands from its middle, never less than {@value #MIN_REACH} m so a huddle of three still
+	 *         leaves room to stand apart.
+	 */
+	private static float reachOf(Vector3f centre, List<Vector3f> cluster) {
+		float furthest = 0;
+		for (Vector3f spot : cluster)
+			furthest = Math.max(furthest, (float) PositionUtil.getDistance(centre.x, centre.y, spot.x, spot.y));
+		return Math.max(MIN_REACH, furthest);
+	}
+
+	/** @return How far the place at this spot spreads, or {@value #MIN_REACH} if the spot is not a place people gather. */
+	public static float reachAt(int worldId, Vector3f place) {
+		for (Settlement settlement : settlements(worldId)) {
+			if (settlement.centre().equals(place))
+				return settlement.reach();
+		}
+		return MIN_REACH;
 	}
 
 	private static void addToCluster(List<List<Vector3f>> clusters, Vector3f spot) {

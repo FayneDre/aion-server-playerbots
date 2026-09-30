@@ -31,6 +31,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshBuilder;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
+import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.services.player.PlayerService;
@@ -57,15 +58,8 @@ public class PlayerBotService {
 	private static final float SETTLING_SPREAD = 15f;
 	/** How many spots to try before giving up and standing on the place itself. A handful: most spots around a place are fine. */
 	private static final int SETTLING_ATTEMPTS = 8;
-	/**
-	 * How many inhabitants a place should have on average. Two people working the same ground look like players and one looks like a stray npc, but
-	 * two everywhere empties two thirds of the map: at one and a half, the busier half of the places get a pair and the rest keep somebody.
-	 */
-	private static final float BOTS_PER_PLACE = 1.5f;
-	/** The setting that means "work it out": every open world map of both races, populated at a density drawn from the map itself. */
+	/** The setting that means "work it out": every open world map of both races, each taking as many inhabitants as its own civilians call for. */
 	private static final String AUTOMATIC = "auto";
-	/** How many inhabitants a map gets per place it turns out to have. Poeta has sixty places, so forty five people. */
-	private static final float MAP_DENSITY = 0.75f;
 
 	private final Map<Integer, Player> spawnedBots = new ConcurrentHashMap<>();
 
@@ -151,11 +145,9 @@ public class PlayerBotService {
 			if (PlayerBotCreationService.hasBotsOn(map.getMapId()))
 				continue;
 			NavmeshBuilder.ensureMesh(map.getMapId()); // before anyone is put on it: a map without one is a map bots cannot plan a route across
-			int places = BotPlaces.homes(map.getMapId()).size();
-			if (places == 0)
-				continue; // nothing lives here, so neither does anybody else
 			Race race = map.getWorldType() == WorldType.ASMODAE ? Race.ASMODIANS : Race.ELYOS;
-			log.info("Populating map {}: {}", map.getMapId(), populate(Math.round(places * MAP_DENSITY), map.getMapId(), race.name()));
+			// no count: the region says how many it wants, from its own civilians rather than from its monsters
+			log.info("Populating map {}: {}", map.getMapId(), populate(0, map.getMapId(), race.name()));
 			populated++;
 		}
 		log.info("Populated {} map(s) automatically", populated);
@@ -307,15 +299,15 @@ public class PlayerBotService {
 		Race race = raceOf(raceName);
 		if (race == null)
 			return "Unknown race " + raceName + ", expected ELYOS or ASMODIANS";
-		List<BotPlaces.Settlement> places = BotPlaces.homes(worldId);
+		// One entry per inhabitant the region asks for, each naming the place it belongs to. A busy village appears many times over and a roadside
+		// camp once, so going round the list in order puts the population where the world put its own people — which is what the count times a
+		// density never did, because that count was fed by how many monsters a map holds.
+		List<BotPlaces.Settlement> places = BotPresence.establishment(worldId);
 		if (places.isEmpty())
 			return "Nothing lives on this map, so there is nowhere to put anyone";
-		// Fewer places, each with somebody to work it alongside. One inhabitant per place spread forty five people over forty grounds, and a lone
-		// character standing in a field does not read as a populated region — it reads as a lost npc, which is what a map with more places than
-		// people always produces. Keeping only as many places as the population can double up on trades reach for company.
-		List<BotPlaces.Settlement> available = places;
-		places = places.subList(0, Math.clamp(Math.round(count / BOTS_PER_PLACE), 1, places.size()));
-		log.info("Map {} offers {}; keeping {}", worldId, levelSpread(available), levelSpread(places));
+		if (count <= 0)
+			count = places.size(); // as the region asks, which is what an unattended start wants
+		log.info("Map {} takes {} inhabitant(s) across {}", worldId, count, levelSpread(places));
 
 		List<String> created = new ArrayList<>();
 		for (int i = 0; i < count; i++) {
@@ -325,8 +317,8 @@ public class PlayerBotService {
 			} catch (IllegalStateException e) {
 				return report(created, "ran out of free names");
 			}
-			// one place after another rather than a place drawn at random: with forty five characters over forty places, drawing leaves a third of
-			// the map empty and piles three of them on one spot. Going round the list covers the map by construction.
+			// one entry after another rather than one drawn at random: the list is already weighted by how populous each place is, so going round it
+			// reproduces that weighting exactly, while drawing would leave some places empty and pile others up.
 			BotPlaces.Settlement home = places.get(i % places.size());
 			// the level of the place it lives at, not of the map: a map is one number, and living by it is what put a character of two in a forest
 			// of eights. A little spread so a camp is not a rank of identical characters.

@@ -22,7 +22,21 @@ oldest are deleted and their names freed.
 
 ## One kind of bot
 
-A bot levels and changes region. It is not a resident or an adventurer; it is a character with a career.
+A bot levels. It is not a resident or an adventurer; it is a character with a career. Three things hold that career together, and the third is
+temporary.
+
+**Its pace.** `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` stat, so `BotPacing` sets it per character with no core patch — the same
+door `EnchantEffect` uses. Measured at the ordinary rate a bot crossed three levels in half an hour, so the climb has to be slowed by a lot; the
+arithmetic at the top of this page says by how much.
+
+**Its address.** A bot outgrows where it lives. Poeta reads as Akarios 3 and its camps at 5, 6 and 7 — the valley steepens as you walk away from the
+village — so when a bot's level drifts more than two from its home's, it moves to a place that fits. Only the home moves; everything written against
+the home or the anchor follows by itself. Without this a bot reached seven while still keeping house on ground worth three, which is what it looked
+like in game within an hour of levelling being turned on.
+
+**A ceiling, for now.** A bot stops gaining experience at the top of its region's band — Poeta tops out at nine. This is a stopgap and should be
+deleted: what *should* happen is that the director finds it a region its new level belongs to. What must not happen meanwhile is a starter valley
+quietly filling with characters that have outgrown it.
 
 Bots a **player** created carry an owner and are never touched by the director — not logged out, not moved, not retired.
 
@@ -33,17 +47,31 @@ rule gave Brusthonin **311** inhabitants for its 27 civilians, while Sanctum —
 
 | presence | rule | why that source |
 |---|---|---|
-| **civic** | one bot per civilian npc, **per place**, capped by map category | a settlement's npc count *is* how busy the world meant it to be |
-| **field** | `4 + 6 × players of that band on the map` | follows people, not monsters |
-| **transit** | 2 per map | one traveller you pass is worth ten motionless farmers |
+| **civic** | one inhabitant per **1300 m²** of settlement ground, 940 in a capital | the ground a place covers *is* how busy the world meant it to be |
+| **field** | one hunter per **40000 m²** of hunting country, at most 60 a map | follows the country, and the director raises it where players are |
+| **transit** | not allocated | the occupation draw already sends residents walking between settlements |
+
+**By the ground, not by the npc count.** Counting npcs was the first answer and a measurement was needed to see why it fails. Akarios holds 21
+civilians spread over a 42 m radius — 262 m² each — so one bot per npc put 19 more into the same village and they read as packed because they were.
+Sanctum meanwhile covers 155000 m² of settlement against Poeta's 10670, fourteen times the ground, and the ratio gave it three times the people. One
+setting made the village crowded and the capital deserted at the same time, which is what counting the wrong thing looks like.
 
 **Per place, not per map.** Computing per map and then sharing out compresses twice: the big place is crushed and the small one gets a floor it has not
 earned. Measured at the old setting: a 4-npc roadside camp drew 7 inhabitants while Sanctum's main plaza drew 9. Two errors in opposite directions at
 the same setting is the signature of a wrong shape, not a wrong value.
 
 Map categories exist because npc density and player interest diverge, and no derived formula fixes that. Oriel and Pernon hold **1624 civilians each**
-— as many as seven Sanctums — and nobody lives there; people pass through. Three lines saying "these are services" beat a formula that is elegantly
-wrong.
+— as many as seven Sanctums — and nobody lives there; people pass through.
+
+Which category a map is in is still read from the map rather than from a list of ids: **a region whose civilians outnumber the creatures that gather
+in packs is a town.** That separates Sanctum (250 against a handful) and Oriel (1624) from Poeta (45 against some hundreds) and Brusthonin (181
+against thousands) on every map measured, and among towns sheer size tells a service from a home.
+
+Measured after the change, on Poeta: **19 inhabitants — 6 in Akarios, one in each of the three camps, and ten spread over separate hunting grounds.**
+The old rule gave 43, of which roughly 14 in Akarios and the rest scattered as ones over the countryside; the version before this one gave the
+countryside four in total, which left Agher's farm, Cliona lake, Kales farm, the plains and the quarry all empty.
+
+Only one cap is left, and not for density:
 
 | category | how it is recognised | cap |
 |---|---|---:|
@@ -90,14 +118,23 @@ Measured on 45 bots: the whole server used **0.116 core** — 0.73% of a 16-core
 alive in the world. A bot is one of those creatures plus a skill list, an inventory and a decision tick, so per-bot memory is not the constraint and
 never was.
 
-| target | bots | note |
-|---|---:|---|
-| everything, full density | ~2200 | 28 maps; ~1100 per faction |
-| **recommended** | **~1500** | the whole game at density 0.68 |
-| the old rule, extrapolated | 1923 | and misallocated: see above |
+**The settled figure is two thousand across the 28 maps worth populating**, and the three densities above are what produce it. None of them moves on
+its own: raising the countryside empties the villages at a fixed total, and that is arithmetic rather than a fault in the model.
 
-The faction split comes out even on its own — 747 against 756 at 1500 — because the world was built in mirror: Poeta 45 ↔ Ishalgen 53, Sanctum 250 ↔
-Pandaemonium 266, Theobomos 179 ↔ Brusthonin 181. No per-faction tuning, ever.
+| | bots | note |
+|---|---:|---|
+| **settled** | **~2000** | 960 Elyos, 1036 Asmodian, 279 on contested ground |
+| reachable today | ~1780 | Reshanta's 217 wait on flight navigation |
+| capitals and annexes | 20% | it was 29% before the countryside had a share of its own |
+| Poeta | 19 | a small starter valley's honest share of a populated world |
+
+The faction split comes out even on its own, because the world was built in mirror: Poeta 45 civilians ↔ Ishalgen 53, Sanctum 250 ↔ Pandaemonium 266,
+Theobomos 179 ↔ Brusthonin 181. No per-faction tuning, ever. The 76 bots between the two halves come from the field cap biting unevenly, not from the
+model.
+
+Giving the countryside its own share is also what took the weight off the capitals. Hunting country is on another scale from settlement —
+Brusthonin's grounds cover 3.3 million m² against its villages' 76 thousand — so a share for the field moved people into the regions without making
+any single place denser or thinner than before.
 
 Four things make the number affordable, and the first is the one that matters:
 

@@ -18,7 +18,7 @@ public class Bot extends AdminCommand {
 	public Bot() {
 		super("bot", "Controls playerbots.", """
 			create <name> <class> <level> <race> - Creates a new bot character of your own, with a face of its own.
-			populate <count> [race] - Fills this map with bots of its own levels, one or two per place.
+			populate <count> [race] - Fills this map with bots of its own levels. 0 takes as many as the map asks for.
 			delete <characterName> - Deletes one of your own bot characters from the database.
 			load <characterName> - Loads a bot character from the database without spawning it.
 			spawn <characterName> - Loads a bot character and spawns it next to you.
@@ -116,8 +116,8 @@ public class Bot extends AdminCommand {
 			sendInfo(admin, "Count must be a number");
 			return;
 		}
-		if (count < 1 || count > MAX_POPULATE) {
-			sendInfo(admin, "Count must be between 1 and " + MAX_POPULATE);
+		if (count < 0 || count > MAX_POPULATE) {
+			sendInfo(admin, "Count must be between 0 and " + MAX_POPULATE + ", or 0 for as many as the map asks for");
 			return;
 		}
 		// the commander's own race when none is given: populating the map you are standing on with the other faction is never what was meant
