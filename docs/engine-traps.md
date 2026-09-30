@@ -40,7 +40,22 @@ When bots misbehave near geometry, first ask whether the mesh and the engine agr
 
 Drawing the weapon, ending spawn protection, standing up, sheathing, answering a window. Each was a bug that looked like something else.
 
-And **the server decides faster than the client can show**: two animations in the same instant leave a bot sliding or floating. The delays in `PlayerBotAI` are empirical and named for it.
+And **the server decides faster than the client can show**: two animations in the same instant leave a bot sliding or floating.
+
+Nobody has to send that spacing for a real player, which is why it is easy to miss that somebody must. Their client refuses input until the animation
+it is playing has finished, so the pauses an onlooker sees between sitting, standing, drawing and setting off are produced by the acting client and
+never travel. A bot has no acting client, so the server has to produce them.
+
+The delays for this are empirical — animations live in the client and are exposed nowhere server side — but tuning them was never the answer to a bot
+that slid. Getting up and drawing the weapon were spaced apart while drawing the weapon and walking off were not, and **no value of a delay that does
+not exist is the right one**. Each pair in the chain needs its own, which is one delay per animation rather than one per pair: whatever the bot last
+did claims the next stretch of time (`holdAnimation`), measured from the end of what is already playing rather than from now, and nothing starts
+inside it.
+
+Where that check goes matters as much. Inside the one funnel every journey passes through it would have been cheap and wrong: a refusal there means
+the geometry leads nowhere, and two callers abandon their errand for good on one, so a bot would have given up the corpse it was walking to because it
+had just stood up. It belongs in the decision tick, next to the same rule for casting — **"not yet" and "never" must not come back as the same
+answer.**
 
 ## State kept in two places drifts
 

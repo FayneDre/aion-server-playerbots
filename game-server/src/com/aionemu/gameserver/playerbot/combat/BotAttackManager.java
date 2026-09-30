@@ -21,19 +21,25 @@ public class BotAttackManager {
 	/**
 	 * Draws the bot's weapon. A real client sends this emotion itself when entering combat (see CM_EMOTION); without it the bot deals damage but
 	 * plays no attack animation, since it never leaves its neutral stance.
+	 *
+	 * @return true if the weapon was actually drawn just now, so the caller can leave the animation time to play. Idempotent otherwise: it is called
+	 *         on every attack tick.
 	 */
-	public static void enterAttackMode(Player bot, Creature target) {
-		if (!bot.isInState(CreatureState.WEAPON_EQUIPPED)) {
-			bot.setState(CreatureState.WEAPON_EQUIPPED);
-			PacketSendUtility.broadcastPacket(bot, new SM_EMOTION(bot, EmotionType.ATTACKMODE_IN_STANDING, 0, target.getObjectId()));
-		}
+	public static boolean enterAttackMode(Player bot, Creature target) {
+		if (bot.isInState(CreatureState.WEAPON_EQUIPPED))
+			return false;
+		bot.setState(CreatureState.WEAPON_EQUIPPED);
+		PacketSendUtility.broadcastPacket(bot, new SM_EMOTION(bot, EmotionType.ATTACKMODE_IN_STANDING, 0, target.getObjectId()));
+		return true;
 	}
 
-	public static void leaveAttackMode(Player bot) {
-		if (bot.isInState(CreatureState.WEAPON_EQUIPPED)) {
-			bot.unsetState(CreatureState.WEAPON_EQUIPPED);
-			PacketSendUtility.broadcastPacket(bot, new SM_EMOTION(bot, EmotionType.NEUTRALMODE_IN_STANDING, 0, 0));
-		}
+	/** @return true if the weapon was actually put away just now, which is an animation of its own like drawing it. */
+	public static boolean leaveAttackMode(Player bot) {
+		if (!bot.isInState(CreatureState.WEAPON_EQUIPPED))
+			return false;
+		bot.unsetState(CreatureState.WEAPON_EQUIPPED);
+		PacketSendUtility.broadcastPacket(bot, new SM_EMOTION(bot, EmotionType.NEUTRALMODE_IN_STANDING, 0, 0));
+		return true;
 	}
 
 	/**

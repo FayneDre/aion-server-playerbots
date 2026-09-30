@@ -60,12 +60,20 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private static final long CHASE_REROUTE_INTERVAL = 600;
 	/**
-	 * How long after standing up the bot may move again, or the client shows it sliding to its feet.
+	 * How long each one-shot animation is given before the bot is allowed to start another or to move.
 	 * <p>
-	 * Both delays below are empirical: animation lengths live in the client and are exposed nowhere server side, so they are tuned by watching.
+	 * A real player's client will not let them act until the animation it is playing has finished, so the spacing an onlooker sees comes from the
+	 * acting client and nothing has to send it. A bot has no such client: the server decides, and it decides faster than anything can be drawn. So
+	 * the spacing is imposed here instead, through {@link #holdAnimation}.
+	 * <p>
+	 * These lengths are empirical. Animations live in the client and are exposed nowhere server side, so they are tuned by watching — but what was
+	 * wrong was never their value: standing up and drawing the weapon were spaced out while drawing the weapon and walking off were not, and no
+	 * value of a delay that does not exist is the right one.
 	 */
 	private static final long STAND_UP_MILLIS = 1000;
-	/** Drawing the weapon blends worse with standing up than walking does, so it waits a little longer. */
+	/** Drawing or sheathing the weapon, which blends worse with what comes next than walking does. */
+	private static final long DRAW_WEAPON_MILLIS = 1200;
+	/** Standing up before drawing: the two are the worst pair to overlap, which is what the reported sliding was. */
 	private static final long DRAW_AFTER_STAND_MILLIS = 1500;
 	/** How long the weapon stays drawn after a fight, so the bot does not sheathe it between two mobs of the same pull. */
 	private static final long SHEATHE_DELAY_MILLIS = 8000;
@@ -110,7 +118,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile float anchorX, anchorY, anchorZ;
 	private volatile long chaseStartTime;
 	private volatile long lastChaseRoute;
-	private volatile long standUpTime;
+	/** When the client is expected to be done drawing whatever the bot last did, so nothing new is sent on top of it. */
+	private volatile long animatingUntil;
 	/** Object id of the corpse left by the bot's last kill, 0 when there is nothing to pick up. */
 	private volatile int pendingCorpse;
 	/** When the last fight ended, 0 once the weapon has been put away. */
@@ -310,7 +319,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 		boolean following = followTheGroup();
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
-		else if (getOwner().isCasting()) {
+		else if (isAnimating()) {
+			// Nothing on top of an animation already playing. Deliberately not inside tryMoveTo, where it would have been one check for every kind of
+			// journey at once: a refusal there means the geometry leads nowhere, and two callers give the errand up for good on one — a bot would have
+			// abandoned the corpse it was walking to for the crime of having just stood up.
+		} else if (getOwner().isCasting()) {
 			// A cast roots a real player and their client refuses to start anything else until it is over. This tick comes round every second, and
 			// the Bandage Heal every character knows incants for four, so each decision that landed inside one either started a competing cast or
 			// walked off and cancelled it — five hundred times in three minutes across a populated map. The attack tick has held this line from the
@@ -423,7 +436,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 
-		BotAttackManager.enterAttackMode(bot, target); // idempotent, and deferred to here so it never overlaps the stand up animation
+		// idempotent, and deferred to here so it never overlaps the stand up animation. Drawing is an animation in its own right, and the tick below
+		// used to walk the bot off in the same instant it was sent: the slide the bot showed between getting up and setting off was those two frames
+		// of the client's work arriving as one.
+		if (BotAttackManager.enterAttackMode(bot, target))
+			holdAnimation(DRAW_WEAPON_MILLIS);
 		if (bot.getCastingSkill() != null) {
 			// casting roots a real player, so the bot neither moves nor starts another action until the cast is over
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
@@ -556,8 +573,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return false;
 		if (PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE)
 			return false;
-		if (!hasStoodUpLongEnough())
-			return true; // on its feet in a moment, do not slide there
+		if (isAnimating())
+			return true; // on its feet, or drawing its weapon; walking now is what makes it slide
 
 		if (moveController.isInMove()
 			&& (now - lastChaseRoute < CHASE_REROUTE_INTERVAL || moveController.isHeadingTo(target.getX(), target.getY(), RETARGET_STEP)))
@@ -934,18 +951,31 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (System.currentTimeMillis() - combatEndedAt < SHEATHE_DELAY_MILLIS)
 			return;
 		combatEndedAt = 0;
-		BotAttackManager.leaveAttackMode(getOwner());
+		if (BotAttackManager.leaveAttackMode(getOwner()))
+			holdAnimation(DRAW_WEAPON_MILLIS);
 	}
 
 	private boolean standUp() {
 		if (!BotRestManager.standUp(getOwner()))
 			return false;
-		standUpTime = System.currentTimeMillis();
+		holdAnimation(STAND_UP_MILLIS);
 		return true;
 	}
 
-	private boolean hasStoodUpLongEnough() {
-		return System.currentTimeMillis() - standUpTime >= STAND_UP_MILLIS;
+	/**
+	 * Claims the next stretch of time for an animation that was just started.
+	 * <p>
+	 * Measured from the end of whatever is already playing rather than from now, because these come in chains — get up, draw, walk in — and a claim
+	 * that started from the present would let the second animation land on top of the first, which is the whole of what this exists to prevent.
+	 */
+	private void holdAnimation(long millis) {
+		long now = System.currentTimeMillis();
+		animatingUntil = Math.max(animatingUntil, now) + millis;
+	}
+
+	/** @return true while the client is still expected to be playing the bot's last animation. */
+	private boolean isAnimating() {
+		return System.currentTimeMillis() < animatingUntil;
 	}
 
 	private void recover() {
