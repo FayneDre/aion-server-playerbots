@@ -45,6 +45,8 @@ public class PlayerBotCreationService {
 	/** Bot accounts start here, far above anything the login server hands out. */
 	public static final int BOT_ACCOUNT_ID_BASE = 900000;
 	private static final AtomicInteger nextBotAccountId = new AtomicInteger();
+	/** Turned over for each character made, so a population comes out half of each gender rather than however the coin fell. */
+	private static final AtomicInteger nextGender = new AtomicInteger();
 	private static final String[] NAME_STARTS = { "Ael", "Bri", "Cor", "Dal", "Eri", "Fen", "Gor", "Hal", "Iri", "Jor", "Kal", "Lyr", "Mor", "Nar",
 		"Oly", "Pyr", "Quil", "Ras", "Syl", "Tor", "Ulf", "Ver", "Wyn", "Xan", "Yri", "Zel" };
 	private static final String[] NAME_ENDS = { "an", "ar", "el", "en", "ia", "ik", "il", "is", "on", "or", "ra", "ric", "us", "wyn", "yth" };
@@ -77,10 +79,9 @@ public class PlayerBotCreationService {
 		PlayerCommonData commonData = new PlayerCommonData(IDFactory.getInstance().nextId());
 		commonData.setName(name);
 		commonData.setRace(race);
-		// Half of them the other gender, whatever the character they were copied from. The face and body values are the same numbers either way — a
-		// head model index, a slider about neutral — so the client renders the other gender's version of them rather than a broken one. A population
-		// entirely of one sex is the single most obvious tell that they came out of one mould.
-		commonData.setGender(RANDOM.nextBoolean() ? Gender.MALE : Gender.FEMALE);
+		// Alternating, not drawn. A coin flipped forty five times lands twenty against twenty five often enough to be noticed, and there is nothing
+		// to be gained from the randomness: what is wanted is half of each, which alternating gives exactly.
+		commonData.setGender(nextGender.getAndIncrement() % 2 == 0 ? Gender.MALE : Gender.FEMALE);
 		commonData.setPlayerClass(playerClass);
 		// levels above 9 are gated on daeva status, which a bot will never earn by running the ascension quest
 		if (!playerClass.isStartingClass())

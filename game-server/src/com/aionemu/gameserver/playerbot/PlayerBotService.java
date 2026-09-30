@@ -5,6 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -288,7 +289,9 @@ public class PlayerBotService {
 		// Fewer places, each with somebody to work it alongside. One inhabitant per place spread forty five people over forty grounds, and a lone
 		// character standing in a field does not read as a populated region — it reads as a lost npc, which is what a map with more places than
 		// people always produces. Keeping only as many places as the population can double up on trades reach for company.
+		List<BotPlaces.Settlement> available = places;
 		places = places.subList(0, Math.clamp(Math.round(count / BOTS_PER_PLACE), 1, places.size()));
+		log.info("Map {} offers {}; keeping {}", worldId, levelSpread(available), levelSpread(places));
 
 		List<String> created = new ArrayList<>();
 		for (int i = 0; i < count; i++) {
@@ -382,6 +385,16 @@ public class PlayerBotService {
 				choices.add(playerClass);
 		}
 		return choices.get(Rnd.get(0, choices.size() - 1));
+	}
+
+	/** @return How many places of each level a list holds, for comparing what a map offers against what a population was actually given. */
+	private static String levelSpread(List<BotPlaces.Settlement> places) {
+		Map<Integer, Integer> byLevel = new TreeMap<>();
+		for (BotPlaces.Settlement place : places)
+			byLevel.merge(place.level(), 1, Integer::sum);
+		StringBuilder sb = new StringBuilder(places.size() + " place(s)");
+		byLevel.forEach((level, n) -> sb.append(" lvl").append(level).append(':').append(n));
+		return sb.toString();
 	}
 
 	private String report(List<String> created, String failure) {

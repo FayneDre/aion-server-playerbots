@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.LoggerFactory;
@@ -117,9 +118,46 @@ public class BotOutfitter {
 			// its own level as well as the level it asks for: the two are not the same question, and only one of them is what the piece is worth
 			if (template.getLevel() > bot.getLevel())
 				continue;
+			// Armour the class is already trained for. Without this the sort below would put leather at the top of a mage's list, the engine would
+			// refuse every piece of it, and the mage would end up with nothing. Weapons are deliberately not filtered this way: a caster is taught
+			// its own weapon only on becoming an advanced class, and asking here left every mage unarmed.
+			if (template.isArmor() && !isTrainedFor(bot, template))
+				continue;
 			found.add(template);
 		}
-		found.sort(Comparator.comparingInt(ItemTemplate::getLevel).reversed());
+		// Heaviest armour first, then newest. A class may legally wear anything lighter than its own — a scout is taught cloth proficiency alongside
+		// leather, so the engine accepts a robe on it and says nothing — and sorting on level alone therefore dressed a scout in a robe whenever the
+		// robe happened to be a level newer. Nobody plays that way: you wear the heaviest your class allows, and only fall back when nothing fits.
+		found.sort(Comparator.comparingInt(BotOutfitter::armourWeight).thenComparingInt(ItemTemplate::getLevel).reversed());
 		return found.subList(0, Math.min(8, found.size()));
+	}
+
+	/**
+	 * @return true if the bot already holds a mastery that lets it wear this piece, which is the same question
+	 *         {@code Equipment.checkAvailableEquipSkills} asks when it refuses one. A group that needs no mastery is open to everyone.
+	 */
+	private static boolean isTrainedFor(Player bot, ItemTemplate template) {
+		Set<Integer> mastery = DataManager.SKILL_DATA.getMasterySkills(template.getItemGroup());
+		if (mastery.isEmpty())
+			return true;
+		for (int skillId : mastery) {
+			if (bot.getSkillList().isSkillPresent(skillId))
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @return How protective a piece's armour type is, so that the heaviest a class can wear is the one it gets. Weapons and anything without a type
+	 *         all score the same, which leaves them sorted by level as before.
+	 */
+	private static int armourWeight(ItemTemplate template) {
+		return switch (template.getItemGroup().getItemSubType()) {
+			case PLATE -> 4;
+			case CHAIN -> 3;
+			case LEATHER -> 2;
+			case ROBE -> 1;
+			default -> 0;
+		};
 	}
 }
