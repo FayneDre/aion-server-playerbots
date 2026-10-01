@@ -152,6 +152,35 @@ public class BotRoster {
 		}
 	}
 
+	/**
+	 * @return true when this character is somebody's own rather than one of the world's inhabitants.
+	 *         <p>
+	 *         Two things make it so, and both have to be asked because they arrive by different doors. A character <b>on a real account</b> is a
+	 *         person's, full stop: the server's own bots live on reserved accounts from {@code BOT_ACCOUNT_ID_BASE} upwards precisely so that they can
+	 *         never be confused with a player's characters. That covers the ordinary case of spawning a character you made yourself in game, which
+	 *         records no owner anywhere and which nothing else would recognise. A recorded <b>owner</b> covers the other case: a bot made with
+	 *         {@code //bot create}, which lives on a reserved account and still belongs to whoever asked for it.
+	 *         <p>
+	 *         Asked once as the ai is built, so the two halves are one query.
+	 */
+	public static boolean isSomebodysOwn(String characterName) {
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT p.`account_id`, COALESCE(b.`owner_id`, 0) FROM `players` p "
+					 + "LEFT JOIN `playerbot_characters` b ON b.`player_id` = p.`id` WHERE p.`name` = ?")) {
+			stmt.setString(1, characterName);
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (!rs.next())
+					return false;
+				return rs.getInt(1) < PlayerBotCreationService.BOT_ACCOUNT_ID_BASE || rs.getInt(2) != 0;
+			}
+		} catch (SQLException e) {
+			log.error("Could not read whether " + characterName + " belongs to anybody", e);
+			// The world's answer, because it is the reversible one: a character wrongly left to the world is paced and capped until the next restart,
+			// where one wrongly taken from it is quietly dropped out of the population and never replaced.
+			return false;
+		}
+	}
+
 	/** Records who a bot belongs to. 0 gives it to the world. */
 	public static void setOwner(String characterName, int ownerId) {
 		int playerId = PlayerDAO.getPlayerIdByName(characterName);

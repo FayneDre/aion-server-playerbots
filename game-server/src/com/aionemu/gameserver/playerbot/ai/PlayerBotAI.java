@@ -87,8 +87,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long chaseStartTime;
 	private volatile long lastChaseRoute;
 	/**
-	 * Whether a player made this bot for themselves rather than the world making it to fill a region. Read once: it is recorded against the character
-	 * and never changes while it is in the world.
+	 * Whether this character is somebody's own rather than one the world made to fill a region. Read once: it is a fact about the character and does
+	 * not change while it is in the world.
 	 * <p>
 	 * An owned bot is its owner's, and the population model keeps its hands off it — it is not paced, not capped, not rehoused and not counted.
 	 */
@@ -129,7 +129,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	public PlayerBotAI(Player owner) {
 		super(owner);
-		this.owned = BotRoster.ownerOf(owner.getName()) != 0;
+		this.owned = BotRoster.isSomebodysOwn(owner.getName());
 		this.pacing = new BotPacing(owner, owned);
 		this.pacing.reconcile(); // before the first tick, so a bot cannot earn a second's experience at the wrong rate on its way in
 		this.posture = new BotPosture(owner);
