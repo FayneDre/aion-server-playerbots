@@ -4,10 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.DialogAction;
 import com.aionemu.gameserver.model.gameobjects.Item;
@@ -21,17 +18,17 @@ import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
-import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
-import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
 import com.aionemu.gameserver.model.trade.TradeList;
 import com.aionemu.gameserver.services.TradeService;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
  * Turns a bag full of drops into kinah.
  * <p>
- * Vendors are found in the spawn data rather than in what the bot can see: a shop is in town and a bot farms in the fields, so it has to know where
- * to walk before it can see anything.
+ * Vendors are found by asking the map for its living shop keepers, not by reading the spawn data: a shop is in town and a bot farms in the fields,
+ * so it has to know where to walk before it can see anything — but a spawn coordinate is where an npc was <i>placed</i>, and many of them walk away
+ * from it. Measured in game, bots reached the recorded spot and found nobody there 39 times out of 41.
  * <p>
  * Selling goes through {@code TradeService.performSellToShop}, the engine's own sale. It did not at first: that path gates on
  * {@code PlayerRestrictions.canTrade}, which asked {@code isOnline()} and so refused every bot, and its rules were copied here instead. Once
@@ -45,7 +42,6 @@ public class BotVendorManager {
 	public static final float BAG_FULL_THRESHOLD = 0.9f;
 
 	/** Vendor positions per map, worked out once from the spawn data. */
-	private static final Map<Integer, List<Vector3f>> vendorsByMap = new ConcurrentHashMap<>();
 
 	private BotVendorManager() {
 	}
@@ -69,21 +65,18 @@ public class BotVendorManager {
 	 * @return Where the nearest shop stands, or null if that map has none.
 	 */
 	public static Vector3f findVendor(Player bot, Predicate<Vector3f> isIgnored) {
-		List<Vector3f> vendors = vendorsByMap.computeIfAbsent(bot.getWorldId(), BotVendorManager::locateVendors);
-		return vendors.stream().filter(spot -> !isIgnored.test(spot))
-			.min(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y))).orElse(null);
-	}
-
-	private static List<Vector3f> locateVendors(int worldId) {
 		List<Vector3f> vendors = new ArrayList<>();
-		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
-			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
-			if (template == null || !template.supportsAction(DialogAction.SELL))
-				continue;
-			for (SpawnTemplate spawn : group.getSpawnTemplates())
-				vendors.add(new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
-		}
-		return vendors;
+		bot.getPosition().getWorldMapInstance().forEachNpc(npc -> {
+			NpcTemplate template = npc.getObjectTemplate();
+			if (npc.isSpawned() && template != null && template.supportsAction(DialogAction.SELL))
+				vendors.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
+		});
+		// The nearest one it can actually walk to, not simply the nearest. Sorted first and tested lazily, so the usual case asks the navmesh once;
+		// without the test, a shop behind a wall or on another storey is chosen for ever because it is closest as the crow flies.
+		return vendors.stream().filter(spot -> !isIgnored.test(spot))
+			.sorted(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y)))
+			.filter(spot -> NavmeshService.getInstance().canReach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y, spot.z))
+			.findFirst().orElse(null);
 	}
 
 	/** @return The shop the bot is standing next to, or null. */

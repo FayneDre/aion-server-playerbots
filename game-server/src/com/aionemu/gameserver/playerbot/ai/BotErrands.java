@@ -191,6 +191,9 @@ class BotErrands {
 		float z = vendor != null ? vendor.getZ() : vendorDestination.z;
 		if (moveController.isBlocked() || !ai.tryMoveTo(moveController, x, y, z)) {
 			log.info("Bot {} cannot reach a shop and gives up selling", bot.getName());
+			// remembered, exactly as an empty spot is. Forgetting it only meant the next trip chose the same nearest shop and failed the same way,
+			// which is how one unreachable spot produced thousands of trips and no sales.
+			ignoredVendors.put(vendorDestination, System.currentTimeMillis() + EMPTY_SHOP_MILLIS);
 			vendorDestination = null;
 			sellingOnDemand = false;
 			return false;
