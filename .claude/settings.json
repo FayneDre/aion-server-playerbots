@@ -2,5 +2,20 @@
   "permissions": {
     "allow": [],
     "deny": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(sed -n \"s/.*\\\"file_path\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p\" | head -1); case \"$f\" in *Bot.java) ;; *) exit 0;; esac; m=$(powershell -NoProfile -File tools/check-bot-docs.ps1) || printf \"{\\\"decision\\\":\\\"block\\\",\\\"reason\\\":\\\"docs/bot-commands.md documents every //bot command except: %s. Add it to the table there before going on.\\\"}\\n\" \"$(echo $m | tr \"\\n\" \" \")\"",
+            "timeout": 15,
+            "statusMessage": "Checking //bot commands are documented"
+          }
+        ]
+      }
+    ]
   }
 }

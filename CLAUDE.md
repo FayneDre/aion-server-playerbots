@@ -92,6 +92,9 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
 
 - Keep each doc file (CLAUDE.md, `.claude/*`, `docs/*`) under ~200 lines.
 - Split into multiple topic-focused files instead of letting one grow indefinitely.
+- Every `//bot` command must appear in [docs/bot-commands.md](docs/bot-commands.md). `tools/check-bot-docs.ps1` compares the handler's switch with
+  the doc and names what is missing; `deploy.ps1` runs it and refuses to deploy while the two disagree, and an editor hook reports it sooner. The
+  rule exists because the discipline failed: `//bot number` was added and the doc was not touched.
 
 ## Java code conventions
 

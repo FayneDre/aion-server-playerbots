@@ -55,6 +55,14 @@ if ($gameServerProcess) {
     & (Join-Path $PSScriptRoot 'stop-server.ps1')
 }
 
+# Every //bot command has to be in docs/bot-commands.md. Checked here rather than left to discipline, because it was not kept: //bot number was
+# added and the doc was not touched. A hook on the editor only fires when a file is edited through the editor, and plenty of changes are not.
+# Run as its own process rather than called in place: the check ends with exit, which would take this script down with it.
+$undocumented = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-bot-docs.ps1')
+if ($LASTEXITCODE -ne 0) {
+    throw "docs/bot-commands.md does not document these //bot command(s): $($undocumented -join ', ')"
+}
+
 if (-not $SkipBuild) {
     Write-Host 'Building...' -ForegroundColor Cyan
     Push-Location $repoRoot
