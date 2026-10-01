@@ -16,6 +16,7 @@ public class PlayerBotLeaveWorldService {
 	}
 
 	public static void leaveWorld(Player bot) {
+		bot.getCommonData().setOnline(false); // the character is no longer present, and the flag is saved with it
 		bot.getAi().onGeneralEvent(AIEventType.DESPAWNED);
 		bot.getController().cancelCurrentSkill(null);
 		bot.getEffectController().removeAllEffects();

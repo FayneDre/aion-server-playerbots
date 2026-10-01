@@ -51,6 +51,9 @@ public class BotPacing implements StatOwner {
 	 */
 	private static final int HUNTING_XP_PERCENT = 1;
 
+	/** How often each bot reports what it earned. A minute, so the figure reads directly as experience per minute. */
+	private static final long EXP_REPORT_MILLIS = 60000;
+
 	/**
 	 * Every stat an experience reward passes through, because a pace that covers one of them is not a pace.
 	 * <p>
@@ -67,6 +70,11 @@ public class BotPacing implements StatOwner {
 	private final boolean owned;
 	/** The level last reported, so a gain is noticed the second it happens rather than guessed at from the database later. */
 	private int reportedLevel;
+	/** The experience seen last tick, so a gain is caught as it lands rather than inferred from a level crossed much later. */
+	private long lastExp = -1;
+	private long gainedThisMinute, biggestGain;
+	private int gainsThisMinute;
+	private long reportDue;
 	/** When this bot was built, so a level reads as a time since it started rather than a wall clock to subtract by hand. */
 	private final long startedAt = System.currentTimeMillis();
 
@@ -91,6 +99,45 @@ public class BotPacing implements StatOwner {
 		pace(!companion);
 		holdAtRegionCeiling(!companion);
 		reportLevel(companion);
+		reportExperience(companion);
+	}
+
+	/**
+	 * Says how much experience a bot actually earned, as it earns it.
+	 * <p>
+	 * A level crossing was the only measure available, and it is a poor one: it mixes the overflow carried from the previous level, the moment of the
+	 * last save, and the rate itself into one number. Measured that way a bot at one percent crossed a 30972 point band in three and a half minutes,
+	 * which is the full rate — but the stat read 1%, it was applied once and never cleared, and all five experience channels go through it. Something
+	 * grants experience outside them, and the shape of the gains says which: many tiny ones mean the rate is applied and the bot simply kills a great
+	 * deal; ordinary ones mean the rate misses kills; a single large one means a lump from somewhere else entirely.
+	 * <p>
+	 * So it reports the total, the count and the largest, which no single figure could have separated. The same move settled the navmesh and the
+	 * shop trips: one number covering two questions answers neither.
+	 */
+	private void reportExperience(boolean companion) {
+		long exp = bot.getCommonData().getExp();
+		long now = System.currentTimeMillis();
+		if (lastExp < 0) {
+			lastExp = exp;
+			reportDue = now + EXP_REPORT_MILLIS;
+			return;
+		}
+		if (exp > lastExp) {
+			long gain = exp - lastExp;
+			gainedThisMinute += gain;
+			gainsThisMinute++;
+			biggestGain = Math.max(biggestGain, gain);
+		}
+		lastExp = exp;
+		if (now < reportDue)
+			return;
+		reportDue = now + EXP_REPORT_MILLIS;
+		if (gainsThisMinute > 0)
+			log.info("Bot {} earned {} xp in {} gain(s), biggest {}, at {}% (level {}, {} to go)", bot.getName(), gainedThisMinute, gainsThisMinute,
+				biggestGain, companion ? "100" : effectiveRate(), bot.getLevel(), bot.getCommonData().getExpNeed());
+		gainedThisMinute = 0;
+		gainsThisMinute = 0;
+		biggestGain = 0;
 	}
 
 	/**

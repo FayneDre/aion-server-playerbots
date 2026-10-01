@@ -49,6 +49,13 @@ public class PlayerBotEnterWorldService {
 	public static void enterWorld(Player bot) {
 		// before anything else: it is what makes the engine treat this character as present despite having no connection
 		bot.setBot();
+		// The engine keeps a second notion of being online, on the character rather than on the player, and this is the one most of it consults.
+		// Patching Player.isOnline() fixed the first and left this one false, which is how a bot came to be paid raw experience for every kill: the
+		// line in PlayerCommonData.addExp that applies the rates runs only `if (getPlayer() != null)`, and getPlayer() answers null while this is
+		// false. The rate, the cap of a fifth of a level per kill, and the repose bonuses were all skipped — the pacing stat was set correctly on a
+		// character nobody asked. The same silence stops setExp calling onLevelChange, which is why a bot never learns the skills of a level it
+		// gains, and why learnMissingSkills below exists at all.
+		bot.getCommonData().setOnline(true);
 		goHome(bot); // before the ground check, so a strayed resident is put back and then stood on solid ground there
 		stepOffStructures(bot); // and before that again: a position saved on top of something comes back on top of it
 		bindToNearestObelisk(bot);
