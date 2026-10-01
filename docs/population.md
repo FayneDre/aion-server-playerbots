@@ -26,8 +26,7 @@ A bot levels. It is not a resident or an adventurer; it is a character with a ca
 temporary.
 
 **Its pace.** `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` stat, so `BotPacing` sets it per character with no core patch — the same
-door `EnchantEffect` uses. Measured at the ordinary rate a bot crossed three levels in half an hour, so the climb has to be slowed by a lot; the
-arithmetic at the top of this page says by how much.
+door `EnchantEffect` uses. Set to **1%**, which is what a measurement gave and not what two guesses did.
 
 **Its address.** A bot outgrows where it lives. Poeta reads as Akarios 3 and its camps at 5, 6 and 7 — the valley steepens as you walk away from the
 village — so when a bot's level drifts more than two from its home's, it moves to a place that fits. Only the home moves; everything written against
@@ -105,8 +104,24 @@ can get stuck. Following a *player* between regions is a different matter and is
 
 ## Pacing progression
 
-`Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` **stat**, so a bot's pace is adjustable per character with no core patch. Dwell time per
-band is therefore the control knob, and the arithmetic at the top says what each setting produces.
+`Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` **stat**, so a bot's pace is adjustable per character with no core patch. Dwell time is
+therefore the control knob, and it is set to **1%** of the ordinary rate.
+
+That number was guessed at a quarter and the guess was out by a factor of twenty five, which only a measurement could show. Two attempts to read it
+from the database gave nothing usable: bots are saved on a five minute sweep, so a five minute window reads two saves or none, and a level read
+afterwards says nothing about when it was reached. Logging each level at the moment it lands settles it in minutes.
+
+| | at 25% | at 1% |
+|---|---:|---:|
+| level 7 to 8 (30972 xp), fastest bot seen | 4 min | 1 h 40 |
+| the same band, an ordinary bot | 8 min+ | 3 h 20+ |
+| the eight levels of Poeta | 32 min | **13 to 26 h** |
+
+Thirteen to twenty six hours per region is what the population arithmetic is written against: nineteen inhabitants over that stay need about one and a
+half arrivals an hour, a newcomer every forty minutes, which a pool can supply without strain.
+
+**One percent is the floor.** `StatSetFunction` carries an int, and zero is not a slower pace but no experience at all. Anything slower than a day per
+region has to come from the director retiring a bot out of the region, not from the bot earning less.
 
 Where a bot hunts comes from `quest_data.xml` read as an **itinerary**, not as quests: 8043 quests, every one carrying a minimum level, 93% carrying a
 zone, and 4282 distinct npc ids between them. That answers "where does the game send a character of level 4, and what should it kill" as a file read —
