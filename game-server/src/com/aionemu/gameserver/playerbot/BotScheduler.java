@@ -77,7 +77,7 @@ public class BotScheduler {
 	 */
 	public ScheduledFuture<?> schedule(Runnable task, long delayMillis) {
 		try {
-			return pool.schedule(task, delayMillis, TimeUnit.MILLISECONDS);
+			return pool.schedule(reporting(task), delayMillis, TimeUnit.MILLISECONDS);
 		} catch (RejectedExecutionException e) {
 			return null;
 		}
@@ -85,7 +85,7 @@ public class BotScheduler {
 
 	public ScheduledFuture<?> scheduleAtFixedRate(Runnable task, long delayMillis, long periodMillis) {
 		try {
-			return pool.scheduleAtFixedRate(task, delayMillis, periodMillis, TimeUnit.MILLISECONDS);
+			return pool.scheduleAtFixedRate(reporting(task), delayMillis, periodMillis, TimeUnit.MILLISECONDS);
 		} catch (RejectedExecutionException e) {
 			return null;
 		}
@@ -93,16 +93,36 @@ public class BotScheduler {
 
 	public void execute(Runnable task) {
 		try {
-			pool.execute(task);
+			pool.execute(reporting(task));
 		} catch (RejectedExecutionException e) {
 			// shutting down, and whatever this was is no longer worth doing
 		}
 	}
 
+	/**
+	 * Wraps a task so that failing leaves a trace instead of a silence.
+	 * <p>
+	 * An executor drops whatever a task throws on the floor, and a repeating one cancels itself outright — so a single exception took one bot out of
+	 * the world with nothing in the log to say which, or that anything had happened at all. Every task the module runs goes through here, so the
+	 * answer is written once rather than remembered at each of the call sites.
+	 * <p>
+	 * It does not keep a task alive: a self-rescheduling tick has to see to that itself, in a finally. What it guarantees is that the failure is
+	 * reported and that no other bot's work is affected by it.
+	 */
+	private static Runnable reporting(Runnable task) {
+		return () -> {
+			try {
+				task.run();
+			} catch (RuntimeException | Error e) {
+				log.error("A bot task failed", e);
+			}
+		};
+	}
+
 	/** Runs a route search, which belongs in its own lane: it is the longest thing a bot does and must block neither ticks nor the engine. */
 	public void planRoute(Runnable search) {
 		try {
-			routePool.execute(search);
+			routePool.execute(reporting(search));
 		} catch (RejectedExecutionException e) {
 			// shutting down; the caller is a bot that will not be walking anywhere
 		}

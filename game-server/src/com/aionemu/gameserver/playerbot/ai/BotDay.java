@@ -108,6 +108,8 @@ class BotDay {
 	 * @return true if the bot has just moved house, in which case whatever it was doing was decided somewhere it no longer lives.
 	 */
 	boolean moveOutIfOutgrown() {
+		if (ai.isOwned())
+			return false; // somebody's own bot lives where they left it; moving it is the world rearranging a character that is not the world's
 		Player bot = ai.getOwner();
 		Vector3f where = home();
 		if (where == null || Math.abs(BotPlaces.levelAt(bot.getWorldId(), where) - bot.getLevel()) <= HOME_LEVEL_DRIFT)

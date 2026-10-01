@@ -53,9 +53,8 @@ public class PlayerBotEnterWorldService {
 		bindToNearestObelisk(bot);
 		standOnGround(bot);
 		// Bots advance, because a character that cannot is not one. What keeps the low regions from emptying is the pace, not a ban: the drift
-		// upwards is arithmetic, so it is governed by arithmetic. See BotPacing.
-		bot.getCommonData().setNoExp(false);
-		BotPacing.apply(bot);
+		// upwards is arithmetic, so it is governed by arithmetic. Both brakes are set by BotPacing, which the ai owns and settles as it is built a
+		// few lines down — including undoing whatever was saved with the character last time.
 		learnMissingSkills(bot);
 		applyPassiveSkillEffects(bot);
 		bot.setAi(new PlayerBotAI(bot));

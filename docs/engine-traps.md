@@ -166,6 +166,19 @@ skill applied to it dies on a null controller.
 of forty five came back empty and the cause was a `MysqlDataTruncation` two hundred lines up the log. **State whose size grows with the number of bots
 gets its own table**, keyed by character id with a foreign key onto `players`, so deleting a character takes its row with it.
 
+## A getter in the data layer can be a write
+
+`QuestKill.getNpcIds()` moves its ids into a second list on the first call, clears the first and nulls it. It reads as an accessor and is a lazy
+migration of shared state, so two threads calling it at once leave one of them clearing a list the other has already taken away — a null pointer
+inside the engine, from a method whose name promises a read.
+
+Nothing in the engine meets it, because a quest template is reached one player at a time. Bots meet it on the first populated map: eight tick threads
+scanning 8043 templates for different level bands at once. **Any sweep of the static data from a bot thread is serialised**, and once a template has
+been read it is in its settled state and safe for everyone for the rest of the run.
+
+The general shape is worth keeping in mind: this engine's template classes were written for a single reader and lazily build whatever is expensive.
+A bot module reads the same data from a pool.
+
 ## When diagnosing, mind where the truth lives
 
 **The database lags by up to five minutes.** Bots are saved on a timer and on a clean shutdown, so a query run too soon reports the state before whatever is being tested. Several conclusions today were drawn from stale rows and had to be taken back.

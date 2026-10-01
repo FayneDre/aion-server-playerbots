@@ -20,6 +20,7 @@ import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
+import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
@@ -85,6 +86,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile float anchorX, anchorY, anchorZ;
 	private volatile long chaseStartTime;
 	private volatile long lastChaseRoute;
+	/**
+	 * Whether a player made this bot for themselves rather than the world making it to fill a region. Read once: it is recorded against the character
+	 * and never changes while it is in the world.
+	 * <p>
+	 * An owned bot is its owner's, and the population model keeps its hands off it — it is not paced, not capped, not rehoused and not counted.
+	 */
+	private final boolean owned;
+	/** How fast the bot is allowed to advance, and how far, which depends on whether it is anybody's companion at this moment. */
+	private final BotPacing pacing;
 	/** What the bot's body is doing, and the time the client needs to draw a change of it. */
 	private final BotPosture posture;
 	/** What a resident does with its day. Adventurers pass straight through it and hunt. */
@@ -119,6 +129,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	public PlayerBotAI(Player owner) {
 		super(owner);
+		this.owned = BotRoster.ownerOf(owner.getName()) != 0;
+		this.pacing = new BotPacing(owner, owned);
+		this.pacing.reconcile(); // before the first tick, so a bot cannot earn a second's experience at the wrong rate on its way in
 		this.posture = new BotPosture(owner);
 		this.day = new BotDay(this);
 		this.errands = new BotErrands(this);
@@ -126,6 +139,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	BotPosture posture() {
 		return posture;
+	}
+
+	/** @return true if a player made this bot, which is what exempts it from everything the population model does to its own inhabitants. */
+	boolean isOwned() {
+		return owned;
 	}
 
 	/**
@@ -265,10 +283,26 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
+		try {
+			decide();
+		} catch (RuntimeException e) {
+			// The tick reschedules itself, so an exception thrown anywhere in it used to stop that bot thinking for the rest of its life, silently and
+			// one bot at a time. The decision chain reaches most of the module, so this is the one place where that can be made impossible.
+			log.error("Bot " + getOwner().getName() + " failed a decision tick", e);
+		} finally {
+			synchronized (combatLock) {
+				if (thinkTask != null) // still spawned
+					scheduleBotTick();
+			}
+		}
+	}
+
+	/** What the bot decides to do this second, in priority order. Called only by {@link #botTick()}, which is what keeps it running. */
+	private void decide() {
 		sheathWhenCalm();
-		// A bot crosses its level while it is playing, not while it is loading, so growing up is checked here rather than on the way in. Both of these
-		// are one comparison and neither does anything until the level actually changes.
-		BotPacing.holdAtRegionCeiling(getOwner());
+		// A bot crosses its level, and joins and leaves a group, while it is playing rather than while it is loading, so both are settled here rather
+		// than on the way in. Neither does anything until the answer actually changes.
+		pacing.reconcile();
 		day.moveOutIfOutgrown();
 		boolean following = followTheGroup();
 		if (getOwner().isSpawned() && getOwner().isDead())
@@ -301,8 +335,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (isRunningErrand()) {
 				// an operator sent it somewhere on purpose; let it arrive before it goes looking for its own fights
 			} else if (!posture.standUp()) { // stand up one tick before acting, so the animation has played out by then
-				// buffs go up before a fight is picked, never during one, where the cast would cost a swing. Not an early return: the tick reschedules
-				// itself at the end of this method, and leaving by any other door stops the bot for good.
+				// buffs go up before a fight is picked, never during one, where the cast would cost a swing.
 				if (!BotSkillManager.tryBuffSelf(getOwner()) && !BotSkillManager.tryChantMantra(getOwner()) && !day.pursue()) {
 					Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 					if (target == null)
@@ -311,10 +344,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 						startAttacking(target);
 				}
 			}
-		}
-		synchronized (combatLock) {
-			if (thinkTask != null) // still spawned
-				scheduleBotTick();
 		}
 	}
 

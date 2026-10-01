@@ -47,6 +47,18 @@ public class BotQuestGrounds {
 	private static final int GROUND_SIZE = 4;
 
 	private static final Map<String, List<Vector3f>> groundsByBand = new ConcurrentHashMap<>();
+	/**
+	 * Held while the quest data is read, because reading it is not a read.
+	 * <p>
+	 * {@code QuestKill.getNpcIds()} moves its ids into a second list the first time it is called and nulls the first — so two threads asking at once
+	 * leaves one of them clearing a list the other has already taken away. Nothing in the engine meets this, because quest handlers reach a template
+	 * one player at a time; the bots meet it immediately, with eight tick threads scanning 8043 templates for different level bands at once. Measured
+	 * in game as a null pointer on the very first populated map.
+	 * <p>
+	 * One lock around the whole scan rather than a defence at each call site: once a band has been read, every {@code QuestKill} it touched is in its
+	 * settled state and is safe for everyone for the rest of the run, so the lock is held a few milliseconds per band and never again.
+	 */
+	private static final Object questScan = new Object();
 
 	private BotQuestGrounds() {
 	}
@@ -58,7 +70,19 @@ public class BotQuestGrounds {
 	 *          crossing the region each time its occupation is renewed.
 	 */
 	public static Vector3f groundFor(int worldId, Race race, int level, Vector3f from, float range, int pick) {
-		List<Vector3f> grounds = groundsByBand.computeIfAbsent(worldId + "/" + race + "/" + level, _ -> locate(worldId, race, level));
+		String band = worldId + "/" + race + "/" + level;
+		List<Vector3f> grounds = groundsByBand.get(band);
+		if (grounds == null) {
+			// Deliberately not computeIfAbsent: that would hold a map bin while taking the scan lock, and another thread holding the scan lock and
+			// landing on the same bin would deadlock the pair of them.
+			synchronized (questScan) {
+				grounds = groundsByBand.get(band);
+				if (grounds == null) {
+					grounds = locate(worldId, race, level);
+					groundsByBand.put(band, grounds);
+				}
+			}
+		}
 		List<Vector3f> within = new ArrayList<>();
 		for (Vector3f ground : grounds) {
 			if (PositionUtil.getDistance(from.x, from.y, ground.x, ground.y) <= range)

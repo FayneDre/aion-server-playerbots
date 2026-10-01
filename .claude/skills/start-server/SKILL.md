@@ -41,6 +41,12 @@ prompt at all: the console belongs to the JVM and closes when it does.
 The cost is start.bat's restart-on-exit-code-2 loop, which a development server does not need. If the `JAVA` line
 cannot be found, the script falls back to running start.bat and says so.
 
+## Always invoke the script directly
+
+Run `.\tools\start-server.ps1` from the shell itself, **never nested inside another shell** (`powershell -c ".\tools\start-server.ps1"` from a bash call, and so on).
+
+A JVM launched through a nested shell inherits no attachable console. `send-ctrl-c.ps1` then returns 0 while the signal reaches nothing: the shutdown hook thread is never created, a thread dump shows `DestroyJavaVM` merely RUNNABLE, and the only way out is `-Force`, which is exactly the data loss the whole stop path exists to prevent. The server looks healthy the entire time — the symptom appears hours later, when it refuses to stop.
+
 ## Stopping the server
 
 **Never kill the game server process.** It saves player data (positions, inventories, game time since the last periodic save) from a JVM shutdown hook that only runs on `System.exit` or a console CTRL+C. `Stop-Process` and `taskkill /F` call TerminateProcess, which skips it entirely and silently loses data.

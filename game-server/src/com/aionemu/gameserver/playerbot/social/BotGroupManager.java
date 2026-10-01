@@ -40,17 +40,32 @@ public class BotGroupManager {
 	 * @return true if the bot left, in which case it is no longer in a group.
 	 */
 	public static boolean leaveIfLeaderless(Player bot) {
+		if (bot.getCurrentTeam() == null || hasPlayerMember(bot))
+			return false;
+		if (bot.getPlayerGroup() == null)
+			return false; // an alliance is not ours to dissolve, and bots are never invited into one on purpose
+		PlayerGroupService.removePlayer(bot);
+		return true;
+	}
+
+	/**
+	 * @return true when a real player is still in the bot's team.
+	 *         <p>
+	 *         Two unrelated questions turn out to be this one: whether the group still has anybody who can lead it, and whether the bot is somebody's
+	 *         companion right now rather than one of the world's own inhabitants.
+	 *         <p>
+	 *         A team keeps members in {@code getMembers()} that it no longer counts, so membership is confirmed rather than assumed — without that,
+	 *         a player who has left is still found here and the bot goes on treating itself as grouped with them.
+	 */
+	public static boolean hasPlayerMember(Player bot) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		if (team == null)
 			return false;
 		for (Player member : team.getMembers()) {
 			if (!member.isBot() && team.hasMember(member.getObjectId()))
-				return false; // someone is still there to lead
+				return true;
 		}
-		if (bot.getPlayerGroup() == null)
-			return false; // an alliance is not ours to dissolve, and bots are never invited into one on purpose
-		PlayerGroupService.removePlayer(bot);
-		return true;
+		return false;
 	}
 
 	/**
