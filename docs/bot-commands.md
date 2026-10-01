@@ -61,6 +61,15 @@ a map by hand, or for a map the config does not cover.
 | Command | What it does |
 |---|---|
 | `//bot nav` | Which maps' navigation meshes are loaded in memory. A map missing here is one where bots will not travel; see [navmesh-plan.md](navmesh-plan.md). |
+| `//bot number [region]` | How many inhabitants a map holds, by faction, and what it asks for. A map id or the start of a map's name; yours by default. |
+
+`//bot number` counts three things apart, and the distinction is the point of it. **Inhabitants** are the world's own, by faction. **Companions** are
+characters somebody owns, which belong to no region and must not be counted as its population. **Players** are real people, whose presence is what
+raises the countryside's density. It then prints what the region asks for both ways — quiet, and with somebody on it — so the gap the director
+reports can be read on demand, on any map, rather than waited for in the log.
+
+It reads the world rather than the roster or the database. The database lags a save sweep, up to five minutes; the roster says what should come back
+after a restart, not who is standing there now.
 
 ## Two things worth knowing before handing this out
 
