@@ -33,6 +33,7 @@ public class Bot extends AdminCommand {
 			bag <characterName> - Lists what the bot is carrying.
 			kind <characterName> [resident|adventurer] - Reads or sets whether the bot levels up. Residents stay at their region's level.
 			nav - Lists the navmeshes loaded in memory.
+			number [region] - Counts the bots on a map, by faction. Takes a map id or part of its name; yours by default.
 			list - Lists all currently spawned bots.
 			clear - Deletes your own bot characters. Staff clear the whole world, which then has to be populated again.
 			See docs/bot-commands.md for what each one does.
@@ -65,6 +66,7 @@ public class Bot extends AdminCommand {
 			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));
 			case "nav" -> sendInfo(admin, PlayerBotService.getInstance().describeNavmeshes());
 			case "kind" -> kind(admin, params);
+			case "number" -> sendInfo(admin, PlayerBotService.getInstance().count(params.length > 1 ? String.join(" ", java.util.Arrays.copyOfRange(params, 1, params.length)) : null, admin));
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
 			default -> sendInfo(admin);
 		}

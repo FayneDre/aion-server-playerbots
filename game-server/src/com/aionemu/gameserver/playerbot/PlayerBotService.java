@@ -641,6 +641,54 @@ public class PlayerBotService {
 		return "Deleted " + deleted + " bot character(s)" + (kept > 0 ? ", " + kept + " left alone" : "");
 	}
 
+	/**
+	 * Counts who is on a map, by faction and by what they are there for.
+	 * <p>
+	 * Read from the world rather than from the roster or the database, because what matters is who is actually standing on the map at this instant —
+	 * the roster says what should come back after a restart and the database lags a save sweep behind.
+	 *
+	 * @param region A map id, or part of a map's name, or null for the commander's own map.
+	 */
+	public String count(String region, Player commander) {
+		Integer worldId = resolveMap(region, commander);
+		if (worldId == null)
+			return "No map matches " + region;
+
+		int elyos = 0, asmodians = 0, companions = 0, players = 0;
+		for (Player everyone : World.getInstance().getAllPlayers()) {
+			if (everyone.getWorldId() != worldId)
+				continue;
+			if (!everyone.isBot())
+				players++;
+			else if (everyone.getAi() instanceof PlayerBotAI ai && ai.isOwned())
+				companions++;
+			else if (everyone.getRace() == Race.ELYOS)
+				elyos++;
+			else
+				asmodians++;
+		}
+		String name = DataManager.WORLD_MAPS_DATA.getTemplate(worldId) == null ? String.valueOf(worldId)
+			: DataManager.WORLD_MAPS_DATA.getTemplate(worldId).getName() + " (" + worldId + ")";
+		return String.format("%s holds %d inhabitant(s): %d Elyos, %d Asmodian. %d companion(s), %d player(s). The region asks for %d, or %d with a "
+			+ "player on it.", name, elyos + asmodians, elyos, asmodians, companions, players, BotPresence.establishment(worldId).size(),
+			BotPresence.wanted(worldId, true).size());
+	}
+
+	/** @return The map named, by id or by part of its name, or the commander's own when nothing is named. */
+	private Integer resolveMap(String region, Player commander) {
+		if (region == null || region.isBlank())
+			return commander == null ? null : commander.getWorldId();
+		try {
+			return Integer.parseInt(region.trim());
+		} catch (NumberFormatException e) {
+			for (WorldMapTemplate map : DataManager.WORLD_MAPS_DATA) {
+				if (map.getName() != null && map.getName().toLowerCase().startsWith(region.trim().toLowerCase()))
+					return map.getMapId();
+			}
+			return null;
+		}
+	}
+
 	public String despawnAll() {
 		int count = despawnEverything();
 		rememberRoster(); // emptied by hand, so the world comes back empty

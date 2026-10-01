@@ -400,12 +400,15 @@ public class BotMoveController extends PlayerMoveController {
 
 		float newX = (getTargetX2() - x) * fraction + x;
 		float newY = (getTargetY2() - y) * fraction + y;
-		World.getInstance().updatePosition(owner, newX, newY, groundZ(newX, newY, (getTargetZ2() - z) * fraction + z), heading, false);
+		// The known list is refreshed as the bot walks, which is what makes an aggressive monster notice somebody walking past: an npc re-checks its
+		// aggro when a creature ENTERS its known list, and never again, so a list fixed at the moment the bot spawned had every monster deciding
+		// once, from hundreds of metres away, that this one was too far to care about.
+		// This is what a real player does and what a bot did not: CM_MOVE goes through the four argument overload, where the flag is true, while the
+		// engine's own npcs pass false and have their lists refreshed by their walk manager instead. A bot had neither, and walked through aggressive
+		// camps untouched — reported from in game, after an earlier attempt to fix it with onMove(), which notifies this creature's own observers and
+		// its own ai, and nothing around it.
+		World.getInstance().updatePosition(owner, newX, newY, groundZ(newX, newY, (getTargetZ2() - z) * fraction + z), heading, true);
 		updateLastMove();
-		// Tells the creatures around that this one has moved, which is the whole of what makes an aggressive monster notice somebody walking past.
-		// A player's own client sends CM_MOVE and the packet does this; an npc's move controller does it itself. A bot has neither, so nothing ever
-		// announced it: monsters re-checked their aggro only when a bot first entered their known list, hundreds of metres out and always too far,
-		// and never again as it walked right past them.
 		owner.getController().onMove();
 		checkProgress();
 	}
