@@ -61,6 +61,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long UNREACHABLE_MILLIS = 10000;
 	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
 	private static final long KILLER_AVOIDED_MILLIS = 120000;
+	/**
+	 * How long a bot may be in a fight without the attack loop running before the fight is abandoned.
+	 * <p>
+	 * The decision tick does nothing while {@link #isAttacking()}, so a lost attack task left a bot standing beside a mob for ever: seen in game
+	 * after an hour, three bots of nineteen frozen that way and the count rising, with no exception in the log and every pool thread idle. Whatever
+	 * loses the task, this notices and lets the bot decide again — and says so, so the cause stays visible instead of being papered over.
+	 */
+	private static final long STALLED_FIGHT_MILLIS = 15000;
+	/**
+	 * Longest a swing may be scheduled ahead. No weapon in the game is slower than this, so a larger figure is a stat gone wrong rather than a slow
+	 * weapon, and scheduling it would park the bot for as long as it says.
+	 */
+	private static final int MAX_ATTACK_DELAY_MILLIS = 5000;
 	/** Health below which the bot waits to regenerate instead of looking for a fight. */
 	private static final int MIN_ENGAGE_HP_PERCENT = 90;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
@@ -77,6 +90,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Guards the scheduled tasks against concurrent starts and stops, since events and ticks run on different pool threads. */
 	private final Object combatLock = new Object();
 	private ScheduledFuture<?> attackTask;
+	/**
+	 * Which attack loop is the current one. A tick whose generation has been superseded retires instead of scheduling its successor.
+	 * <p>
+	 * Without it, anything that restarted the loop while a tick was already running forked it in two: {@code cancel(false)} does not stop a task that
+	 * has begun, so the old tick reached its end, saw a task set, and scheduled a third. Two loops then struck at once for the same bot.
+	 */
+	private long attackGeneration;
+	/** When the attack loop last ran, so the decision tick can tell a fight in progress from one that has silently stopped. */
+	private volatile long lastAttackTick;
 	private ScheduledFuture<?> thinkTask;
 	/** Non null between death and resurrection, which also marks the death as already handled. */
 	private ScheduledFuture<?> reviveTask;
@@ -305,6 +327,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** What the bot decides to do this second, in priority order. Called only by {@link #botTick()}, which is what keeps it running. */
 	private void decide() {
 		sheathWhenCalm();
+		abandonStalledFight();
 		// A bot crosses its level, and joins and leaves a group, while it is playing rather than while it is loading, so both are settled here rather
 		// than on the way in. Neither does anything until the answer actually changes.
 		pacing.reconcile();
@@ -407,7 +430,31 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 	}
 
-	private void attackTick() {
+	/**
+	 * Lets go of a fight the attack loop has stopped running, so the bot can decide again instead of standing beside its target for ever.
+	 */
+	private void abandonStalledFight() {
+		if (!isAttacking() || System.currentTimeMillis() - lastAttackTick < STALLED_FIGHT_MILLIS)
+			return;
+		log.warn("Bot {} has been fighting {} for {} s without a swing, so its attack loop is gone; letting the fight go", getOwner().getName(),
+			getOwner().getTarget() == null ? "nothing" : getOwner().getTarget().getName(), (System.currentTimeMillis() - lastAttackTick) / 1000);
+		stopAttacking();
+	}
+
+	private void attackTick(long generation) {
+		lastAttackTick = System.currentTimeMillis();
+		try {
+			fight();
+		} finally {
+			synchronized (combatLock) {
+				// only the current loop schedules the next one, and only if nothing stopped it while this tick was running
+				if (attackTask != null && generation == attackGeneration)
+					scheduleAttackTick(getOwner().getGameStats().getAttackSpeed().getCurrent());
+			}
+		}
+	}
+
+	private void fight() {
 		Player bot = getOwner();
 		Creature target = bot.getTarget() instanceof Creature creature ? creature : null;
 		if (!BotAttackManager.canKeepFighting(bot, target)) {
@@ -438,17 +485,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 
-		synchronized (combatLock) {
-			if (attackTask != null) // not stopped while we were attacking
-				scheduleAttackTick(bot.getGameStats().getAttackSpeed().getCurrent());
-		}
 	}
 
 	private void scheduleAttackTick(int delayMillis) {
-		attackTask = BotScheduler.getInstance().schedule(this::attackTick, delayMillis);
+		int delay = Math.clamp(delayMillis, 0, MAX_ATTACK_DELAY_MILLIS);
+		if (delay != delayMillis)
+			log.warn("Bot {} asked to swing in {} ms, which is not a weapon speed; using {}", getOwner().getName(), delayMillis, delay);
+		long generation = ++attackGeneration;
+		attackTask = BotScheduler.getInstance().schedule(() -> attackTick(generation), delay);
+		lastAttackTick = System.currentTimeMillis(); // a scheduled swing counts as alive, so the watchdog measures the gap and not the delay
 	}
 
 	private void stopAttackTask() {
+		attackGeneration++; // whatever is running now is no longer the current loop and must not schedule a successor
 		if (attackTask != null) {
 			attackTask.cancel(false);
 			attackTask = null;

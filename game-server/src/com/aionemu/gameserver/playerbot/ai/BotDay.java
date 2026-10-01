@@ -226,7 +226,10 @@ class BotDay {
 				ground.getX(), ground.getY(), ground.getZ()))
 				return ground;
 		}
-		return place;
+		// Not the centre of the place. Falling back to it meant every bot that found nowhere free stood on the one point they all share — which in
+		// Akarios and at Melponeh's camp is the obelisk, so they were seen stacked on its plinth. It also walked straight past isCrowded, the one
+		// rule meant to stop exactly that. A place with no room for another loiterer has no room: the caller reads null as "go and work instead".
+		return null;
 	}
 
 	/**
