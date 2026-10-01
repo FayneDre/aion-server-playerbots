@@ -35,12 +35,20 @@ public class BotPacing implements StatOwner {
 	private static final Logger log = LoggerFactory.getLogger(BotPacing.class);
 
 	/**
-	 * Percent of the ordinary hunting rate a bot earns. A quarter, so crossing a band takes the best part of a day of play rather than an hour or
-	 * two: slow enough that a region keeps the inhabitants it was given, fast enough that a bot visibly has a career.
+	 * Percent of the ordinary hunting rate a bot earns, so that crossing a region takes the best part of a day of play rather than half an hour.
 	 * <p>
-	 * This is the number to change when a population drifts. Lower it and the low regions hold; raise it and the higher bands fill faster.
+	 * It was a quarter, guessed, and twice I tried to check it against the database and got nothing usable — the save sweep runs every five minutes,
+	 * so a five minute window reads two saves or none. Measured properly, by logging each level at the moment it lands: <b>Yrieon crossed level seven
+	 * to eight in four minutes flat at a quarter rate</b>. That band costs 30972 experience, so a bot was earning 7743 a minute and running the eight
+	 * levels of Poeta in half an hour. The guess was out by a factor of twenty five.
+	 * <p>
+	 * At one percent the same band takes an hour and forty minutes and the region takes thirteen hours, which is the figure the population model is
+	 * written against: nineteen inhabitants over a thirteen hour stay need one and a half arrivals an hour, a newcomer every forty minutes.
+	 * <p>
+	 * <b>One is the floor.</b> {@code StatSetFunction} carries an int, and zero is not a slower pace but no experience at all. Anything slower than
+	 * thirteen hours a region has to come from somewhere else — the director retiring a bot out of its region rather than the bot earning less.
 	 */
-	private static final int HUNTING_XP_PERCENT = 25;
+	private static final int HUNTING_XP_PERCENT = 1;
 
 	private final Player bot;
 	/** Whether a player made this bot for themselves. Fixed for the character's life, so it is read once rather than on every tick. */
