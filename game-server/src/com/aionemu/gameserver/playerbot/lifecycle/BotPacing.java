@@ -2,6 +2,9 @@ package com.aionemu.gameserver.playerbot.lifecycle;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.stats.calc.StatOwner;
 import com.aionemu.gameserver.model.stats.calc.functions.StatSetFunction;
@@ -29,6 +32,8 @@ import com.aionemu.gameserver.playerbot.world.BotPlaces;
  */
 public class BotPacing implements StatOwner {
 
+	private static final Logger log = LoggerFactory.getLogger(BotPacing.class);
+
 	/**
 	 * Percent of the ordinary hunting rate a bot earns. A quarter, so crossing a band takes the best part of a day of play rather than an hour or
 	 * two: slow enough that a region keeps the inhabitants it was given, fast enough that a bot visibly has a career.
@@ -41,10 +46,15 @@ public class BotPacing implements StatOwner {
 	/** Whether a player made this bot for themselves. Fixed for the character's life, so it is read once rather than on every tick. */
 	private final boolean owned;
 	private boolean paced;
+	/** The level last reported, so a gain is noticed the second it happens rather than guessed at from the database later. */
+	private int reportedLevel;
+	/** When this bot was built, so a level reads as a time since it started rather than a wall clock to subtract by hand. */
+	private final long startedAt = System.currentTimeMillis();
 
 	public BotPacing(Player bot, boolean owned) {
 		this.bot = bot;
 		this.owned = owned;
+		this.reportedLevel = bot.getLevel();
 	}
 
 	/**
@@ -61,6 +71,22 @@ public class BotPacing implements StatOwner {
 		boolean companion = owned || BotGroupManager.hasPlayerMember(bot);
 		pace(!companion);
 		holdAtRegionCeiling(!companion);
+		reportLevel(companion);
+	}
+
+	/**
+	 * Says when a bot gains a level, and under which of the two regimes.
+	 * <p>
+	 * It exists because the pace cannot be set without being measured, and two attempts to measure it from the database were both wrong: the save
+	 * sweep runs every five minutes, so a five minute window reads either two saves or none, and a level seen in the character list says nothing
+	 * about when it was reached. A line at the moment it happens settles both the pace and how long a band actually takes to cross.
+	 */
+	private void reportLevel(boolean companion) {
+		if (bot.getLevel() == reportedLevel)
+			return;
+		log.info("Bot {} reached level {} from {} after {} min in the world, at {}% xp", bot.getName(), bot.getLevel(), reportedLevel,
+			(System.currentTimeMillis() - startedAt) / 60000, companion ? 100 : HUNTING_XP_PERCENT);
+		reportedLevel = bot.getLevel();
 	}
 
 	/** Takes the character's experience rate down to the bot rate, or gives it back, doing nothing when it is already where it should be. */
