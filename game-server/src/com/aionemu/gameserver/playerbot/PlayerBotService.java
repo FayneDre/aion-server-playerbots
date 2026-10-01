@@ -30,6 +30,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshBuilder;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
+import com.aionemu.gameserver.playerbot.world.BotDirector;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
@@ -72,6 +73,7 @@ public class PlayerBotService {
 	 */
 	public void onStartUp() {
 		BotScheduler.getInstance().scheduleAtFixedRate(this::saveDue, SAVE_SWEEP_MILLIS, SAVE_SWEEP_MILLIS);
+		BotDirector.getInstance().start();
 		runStandingOrders();
 		Set<String> roster = BotRoster.restore();
 		if (roster.isEmpty())

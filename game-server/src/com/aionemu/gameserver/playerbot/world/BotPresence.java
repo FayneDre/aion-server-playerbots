@@ -72,6 +72,16 @@ public class BotPresence {
 	 * would ask for 83. A countryside does not need more than this to read as worked, and the director will gather them where the players are anyway.
 	 */
 	private static final int FIELD_CAP = 60;
+	/**
+	 * Ground per hunter while somebody is actually playing on the map, and the whole point of the director.
+	 * <p>
+	 * A region at its quiet density is honest but thin: Poeta's ten occupied grounds are spread over 288000 square metres, so you can cross the
+	 * countryside and meet nobody. Raising the density only where a player is costs almost nothing — a player is on one map at a time — and it is the
+	 * one change that alters what the world feels like rather than what it contains.
+	 */
+	private static final float AREA_PER_HUNTER_WHEN_BUSY = 15000f;
+	/** The same cap, raised in proportion, so a large region can actually answer the surge instead of hitting its quiet ceiling. */
+	private static final int FIELD_CAP_WHEN_BUSY = 90;
 
 	/**
 	 * A service town. Oriel and Pernon hold 1624 civilians each — as many as seven Sanctums — over a quarter of a square kilometre, and nobody lives
@@ -92,10 +102,23 @@ public class BotPresence {
 	 *         and a roadside camp once or twice, which is the whole point.
 	 */
 	public static List<Settlement> establishment(int worldId) {
-		return establishmentByMap.computeIfAbsent(worldId, BotPresence::plan);
+		return establishmentByMap.computeIfAbsent(worldId, id -> plan(id, false));
 	}
 
-	private static List<Settlement> plan(int worldId) {
+	/**
+	 * @return Where the region's inhabitants should be <b>right now</b>, which is more of them in the countryside when somebody is playing there.
+	 *         <p>
+	 *         Separate from {@link #establishment(int)} because the two answer different questions. The establishment is what the region holds when
+	 *         nobody is looking, and it is what gets created and kept; this is what it should look like at this moment, and the surplus is drawn from
+	 *         the pool and returned to it. Creating characters for a surge and deleting them afterwards would make a region's inhabitants different
+	 *         strangers on every visit, which is not a world.
+	 * @param busy Whether a real player is on the map.
+	 */
+	public static List<Settlement> wanted(int worldId, boolean busy) {
+		return busy ? plan(worldId, true) : establishment(worldId);
+	}
+
+	private static List<Settlement> plan(int worldId, boolean busy) {
 		List<Settlement> settlements = BotPlaces.settlements(worldId);
 		List<Settlement> grounds = BotPlaces.huntingGrounds(worldId);
 		Kind kind = kindOf(settlements, grounds);
@@ -116,13 +139,17 @@ public class BotPresence {
 		List<Settlement> field = BotPlaces.spreadOut(grounds);
 		if (!field.isEmpty()) {
 			double groundArea = grounds.stream().mapToDouble(Settlement::area).sum();
-			int hunters = Math.min(FIELD_CAP, (int) Math.round(groundArea / AREA_PER_HUNTER));
+			float perHunter = busy ? AREA_PER_HUNTER_WHEN_BUSY : AREA_PER_HUNTER;
+			int hunters = Math.min(busy ? FIELD_CAP_WHEN_BUSY : FIELD_CAP, (int) Math.round(groundArea / perHunter));
 			for (int i = 0; i < hunters; i++)
 				posts.add(field.get(i % field.size()));
 		}
 
-		log.info("Map {} is a {}: {} place(s) over {} m2 and {} hunting ground(s) call for {} inhabitant(s)", worldId, kind, settlements.size(),
-			Math.round(settlements.stream().mapToDouble(Settlement::area).sum()), grounds.size(), posts.size());
+		// only the quiet plan, which is worked out once per map and cached. The busy one is recomputed whenever the director asks, so logging it
+		// would write a line every review for every map somebody is standing on.
+		if (!busy)
+			log.info("Map {} is a {}: {} place(s) over {} m2 and {} hunting ground(s) call for {} inhabitant(s)", worldId, kind, settlements.size(),
+				Math.round(settlements.stream().mapToDouble(Settlement::area).sum()), grounds.size(), posts.size());
 		return List.copyOf(posts);
 	}
 

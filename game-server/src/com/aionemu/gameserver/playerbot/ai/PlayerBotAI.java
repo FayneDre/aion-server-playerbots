@@ -141,8 +141,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return posture;
 	}
 
-	/** @return true if a player made this bot, which is what exempts it from everything the population model does to its own inhabitants. */
-	boolean isOwned() {
+	/**
+	 * @return true if this character is somebody's own, which is what exempts it from everything the population model does to its own inhabitants.
+	 *         <p>
+	 *         Public because the director has to tell a region's inhabitants from the companions standing among them, and it counts them every half
+	 *         minute — the answer is settled once as the character loads rather than asked of the database each time.
+	 */
+	public boolean isOwned() {
 		return owned;
 	}
 
