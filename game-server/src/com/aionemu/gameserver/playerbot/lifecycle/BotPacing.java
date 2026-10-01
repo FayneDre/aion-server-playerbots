@@ -65,7 +65,6 @@ public class BotPacing implements StatOwner {
 	private final Player bot;
 	/** Whether a player made this bot for themselves. Fixed for the character's life, so it is read once rather than on every tick. */
 	private final boolean owned;
-	private boolean paced;
 	/** The level last reported, so a gain is noticed the second it happens rather than guessed at from the database later. */
 	private int reportedLevel;
 	/** When this bot was built, so a level reads as a time since it started rather than a wall clock to subtract by hand. */
@@ -111,14 +110,30 @@ public class BotPacing implements StatOwner {
 
 	/** Takes the character's experience rate down to the bot rate, or gives it back, doing nothing when it is already where it should be. */
 	private void pace(boolean wanted) {
-		if (wanted == paced)
+		if (wanted == isPaced())
 			return;
 		if (wanted)
 			bot.getGameStats().addEffect(this, Stream.of(PACED_RATES).map(rate -> new StatSetFunction(rate, HUNTING_XP_PERCENT)).toList());
 		else
 			bot.getGameStats().endEffect(this);
-		paced = wanted;
 		log.info("Bot {} is now {} and its xp rates read {}%", bot.getName(), wanted ? "paced" : "at a player's pace", effectiveRate());
+	}
+
+	/**
+	 * @return Whether the brake is on, asked of the stat rather than of a flag.
+	 *         <p>
+	 *         This used to be a boolean the method set after applying the effect, which made it a note of what had been <i>intended</i>: anything that
+	 *         cleared the stat container would have left the note saying "applied" and the brake would never have gone back on, silently and for that
+	 *         character's whole life. Nothing clears it today — a level change rebuilds the class template without touching added functions — but the
+	 *         failure would be invisible, and an invisible failure in this exact area has already cost an afternoon.
+	 *         <p>
+	 *         Reading it back instead removes the cached state altogether: the stat is the state, so there is nothing left to go stale. It costs one
+	 *         map lookup and a list of one per tick, against the known list scans and ray casts the same tick already does.
+	 *         <p>
+	 *         Relies on {@link #HUNTING_XP_PERCENT} differing from the 100 that means the ordinary rate, which is the whole point of it.
+	 */
+	private boolean isPaced() {
+		return Math.round(bot.getGameStats().getStat(PACED_RATES[0], 100).getCurrent()) == HUNTING_XP_PERCENT;
 	}
 
 	/**
