@@ -332,7 +332,14 @@ public class PlayerBotService {
 			BotPlaces.Settlement home = places.get(i % places.size());
 			// the level of the place it lives at, not of the map: a map is one number, and living by it is what put a character of two in a forest
 			// of eights. A little spread so a camp is not a rank of identical characters.
-			int level = Math.max(1, home.level() + Rnd.get(-1, 1));
+			//
+			// Bounded below what the region tops out at, because the spread reaches past it: Poeta's highest place is worth 9, so the +1 made a
+			// character of 10 in a valley of ones to nines — and classFor hands a character of ten a specialised class, Spirit Master for one, which
+			// is a thing you become by ascending and it never had.
+			//
+			// Below rather than at: a resident born on the ceiling has nowhere to go, earns nothing from its first minute, and is a career already
+			// over. Every new inhabitant gets at least one level of its own to climb.
+			int level = Math.clamp(home.level() + Rnd.get(-1, 1), 1, Math.max(1, BotPlaces.topLevelOf(worldId) - 1));
 			PlayerClass playerClass = classFor(level);
 			try {
 				Player bot = PlayerBotCreationService.create(name, playerClass, level, race);
