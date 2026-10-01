@@ -403,11 +403,16 @@ public class NavmeshTool {
 		if (navmesh.width() != field.width() || navmesh.height() != field.height())
 			throw new IllegalStateException("Round trip changed the grid size");
 
-		long mismatches = 0, compared = 0;
+		long mismatches = 0, compared = 0, clipped = 0;
 		float tolerance = Navmesh.Z_STEP; // heights are quantized on the way out, so they come back rounded
 		for (int y = 0; y < field.height(); y++) {
 			for (int x = 0; x < field.width(); x++) {
-				int expected = field.columnEnd(x, y) - field.columnStart(x, y);
+				int tall = field.columnEnd(x, y) - field.columnStart(x, y);
+				// the format holds a byte per column, so a taller one is written clipped. Comparing against the unclipped height called the file
+				// corrupt for doing exactly what the writer decided to do.
+				int expected = Math.min(tall, Navmesh.MAX_SURFACES_PER_COLUMN);
+				if (tall > expected)
+					clipped++;
 				if (navmesh.surfaceCount(x, y) != expected) {
 					mismatches++;
 					continue;
@@ -421,8 +426,8 @@ public class NavmeshTool {
 				}
 			}
 		}
-		System.out.printf("Read back in %d ms, %d tiles holding %.0f MB, %d surfaces compared, %d mismatches%n", loadTime, navmesh.loadedTiles(),
-			navmesh.memoryFootprint() / 1048576f, compared, mismatches);
+		System.out.printf("Read back in %d ms, %d tiles holding %.0f MB, %d surfaces compared, %d mismatches, %d column(s) clipped at %d%n", loadTime,
+			navmesh.loadedTiles(), navmesh.memoryFootprint() / 1048576f, compared, mismatches, clipped, Navmesh.MAX_SURFACES_PER_COLUMN);
 		if (mismatches > 0)
 			throw new IllegalStateException("The navmesh file does not match what was generated");
 	}

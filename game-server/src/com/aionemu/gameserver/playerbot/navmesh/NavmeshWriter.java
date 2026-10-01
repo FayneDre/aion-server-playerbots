@@ -30,10 +30,11 @@ public class NavmeshWriter {
 		int tilesY = (field.height() + Navmesh.TILE_SIZE - 1) / Navmesh.TILE_SIZE;
 		int tileCount = tilesX * tilesY;
 
+		float zOrigin = floorOf(field);
 		byte[][] compressedTiles = new byte[tileCount][];
 		for (int tileY = 0; tileY < tilesY; tileY++)
 			for (int tileX = 0; tileX < tilesX; tileX++)
-				compressedTiles[tileY * tilesX + tileX] = compress(tile(field, tileX, tileY));
+				compressedTiles[tileY * tilesX + tileX] = compress(tile(field, tileX, tileY, zOrigin));
 
 		// the regions of each coarse cell rather than a bit: the rough grid has to know what the fine grid keeps apart, or it routes across it
 		Heightfield.CoarseRegions coarseRegions = field.coarseRegions(field.regions(BotPathFinder.STEP_TOLERANCE));
@@ -41,10 +42,10 @@ public class NavmeshWriter {
 		// offsets then ids, and how many offsets there are follows from the map's size, so the block carries no length of its own
 		ByteBuffer.wrap(coarse).asIntBuffer().put(coarseRegions.offsets()).put(coarseRegions.ids());
 		try (OutputStream out = Files.newOutputStream(file)) {
-			ByteBuffer header = ByteBuffer.allocate(Navmesh.MAGIC.length() + 4 * 8 + coarse.length + tileCount * 8);
+			ByteBuffer header = ByteBuffer.allocate(Navmesh.MAGIC.length() + 4 * 9 + coarse.length + tileCount * 8);
 			header.put(Navmesh.MAGIC.getBytes());
 			header.putInt(mapId).putInt(field.width()).putInt(field.height()).putFloat(Heightfield.CELL_SIZE).putInt(tilesX).putInt(tileCount);
-			header.putInt(Heightfield.COARSE_FACTOR).putInt(coarse.length);
+			header.putInt(Heightfield.COARSE_FACTOR).putInt(coarse.length).putFloat(zOrigin);
 			header.put(coarse);
 			int offset = 0;
 			for (byte[] compressed : compressedTiles) {
@@ -59,7 +60,7 @@ public class NavmeshWriter {
 	}
 
 	/** @return The tile's payload, or an empty array when nothing stands in it. */
-	private static byte[] tile(Heightfield field, int tileX, int tileY) throws IOException {
+	private static byte[] tile(Heightfield field, int tileX, int tileY, float zOrigin) throws IOException {
 		int originX = tileX * Navmesh.TILE_SIZE, originY = tileY * Navmesh.TILE_SIZE;
 		byte[] counts = new byte[Navmesh.TILE_SIZE * Navmesh.TILE_SIZE];
 		char[] rowOffsets = new char[Navmesh.TILE_SIZE + 1];
@@ -71,7 +72,7 @@ public class NavmeshWriter {
 				int cellX = originX + localX, cellY = originY + localY;
 				if (cellX >= field.width() || cellY >= field.height())
 					continue;
-				int count = Math.min(field.columnEnd(cellX, cellY) - field.columnStart(cellX, cellY), 255);
+				int count = Math.min(field.columnEnd(cellX, cellY) - field.columnStart(cellX, cellY), Navmesh.MAX_SURFACES_PER_COLUMN);
 				counts[localY * Navmesh.TILE_SIZE + localX] = (byte) count;
 				surfaces += count;
 			}
@@ -90,7 +91,7 @@ public class NavmeshWriter {
 					continue;
 				int end = field.columnStart(cellX, cellY) + (counts[localY * Navmesh.TILE_SIZE + localX] & 0xFF);
 				for (int i = field.columnStart(cellX, cellY); i < end; i++) {
-					heights[index] = quantize(field.surfaceAt(i));
+					heights[index] = quantize(field.surfaceAt(i), zOrigin);
 					if (field.isWalkable(i))
 						walkable[index >> 6] |= 1L << index;
 					index++;
@@ -123,7 +124,20 @@ public class NavmeshWriter {
 	}
 
 	/** Heights below zero or above the engine's 2048 m ceiling are not real ground, so clamping them loses nothing. */
-	private static short quantize(float z) {
-		return (short) Math.max(0, Math.min(0xFFFF, Math.round(z / Navmesh.Z_STEP)));
+	private static short quantize(float z, float zOrigin) {
+		return (short) Math.max(0, Math.min(0xFFFF, Math.round((z - zOrigin) / Navmesh.Z_STEP)));
+	}
+
+	/**
+	 * @return The height the map's quantised zero stands for: its lowest surface, rounded down onto a quantisation step so nothing is lost to the
+	 *         rounding itself.
+	 *         <p>
+	 *         Never above zero, so a map that lies entirely above sea level keeps the origin it always had and its mesh is unchanged by this.
+	 */
+	private static float floorOf(Heightfield field) {
+		float lowest = 0;
+		for (int i = 0; i < field.surfaceCount(); i++)
+			lowest = Math.min(lowest, field.surfaceAt(i));
+		return (float) Math.floor(lowest / Navmesh.Z_STEP) * Navmesh.Z_STEP;
 	}
 }

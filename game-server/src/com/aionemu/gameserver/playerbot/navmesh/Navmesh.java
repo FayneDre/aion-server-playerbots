@@ -25,14 +25,35 @@ import java.util.zip.Inflater;
  */
 public class Navmesh {
 
-	static final String MAGIC = "AINAV5";
+	static final String MAGIC = "AINAV6";
 	/** Height resolution. Aion heights span 0..2048 m, so this fits an unsigned short with room to spare. */
 	static final float Z_STEP = 0.05f;
 	/** Columns per tile side. Small enough that a camp loads few tiles and a row scan is cheap, large enough that per tile overhead stays small. */
 	static final int TILE_SIZE = 64;
+	/**
+	 * Most surfaces one column of the grid can hold, because the per column count is a byte.
+	 * <p>
+	 * A column taller than this is clipped at the top on the way out. It was clipped silently while the round trip check compared against the
+	 * unclipped count, so a mesh could have been written and then refused for doing what the writer decided to do. Measured since: <b>no map clips a
+	 * single column</b>, so nothing has ever been lost to it — but the count is now reported, because a limit nobody can see is one nobody will
+	 * remember when a map finally reaches it.
+	 * <p>
+	 * Widening the count to a {@code char} would remove the limit at the cost of 37 MB a map, which is not worth paying for a case that does not
+	 * occur.
+	 */
+	static final int MAX_SURFACES_PER_COLUMN = 255;
 
 	private final int mapId, width, height, tilesX, coarseFactor, coarseWidth;
 	private final float cellSize;
+	/**
+	 * The height the map's quantised zero stands for, in metres.
+	 * <p>
+	 * Heights used to be quantised from an assumed zero and clamped at it, so every surface below sea level was written as if it were at sea level.
+	 * It cost nothing on a flat valley and quietly falsified seven of the eighteen open maps — Eltnen alone had 13580 surfaces wrong, 0.03% of the
+	 * map, which is few enough to look like a rounding complaint and quite enough to drop a bot through a ravine floor. Measuring from the map's own
+	 * lowest surface costs four bytes in the header and removes the assumption.
+	 */
+	private final float zOrigin;
 	/**
 	 * The regions passing through each coarse cell, kept in memory always: it is small, and long routes are planned on it before any tile is read. A
 	 * region is a stretch of ground a body can actually walk across, so a rough route that stays inside one is a route that can be refined.
@@ -53,8 +74,9 @@ public class Navmesh {
 		static final Tile EMPTY = new Tile(null, null, null, null);
 	}
 
-	private Navmesh(int mapId, int width, int height, float cellSize, int tilesX, int coarseFactor, int[] coarseRegionOffsets, int[] coarseRegionIds,
-		int[] tileOffsets, int[] tileLengths, FileChannel channel, long dataStart) {
+	private Navmesh(int mapId, int width, int height, float cellSize, float zOrigin, int tilesX, int coarseFactor, int[] coarseRegionOffsets,
+		int[] coarseRegionIds, int[] tileOffsets, int[] tileLengths, FileChannel channel, long dataStart) {
+		this.zOrigin = zOrigin;
 		this.coarseFactor = coarseFactor;
 		this.coarseWidth = (width + coarseFactor - 1) / coarseFactor;
 		this.coarseRegionOffsets = coarseRegionOffsets;
@@ -78,7 +100,7 @@ public class Navmesh {
 	/** Reads the header and the tile directory only. The tiles themselves are read as bots walk into them. */
 	public static Navmesh open(int mapId) throws IOException {
 		FileChannel channel = FileChannel.open(fileOf(mapId), StandardOpenOption.READ);
-		ByteBuffer header = ByteBuffer.allocate(MAGIC.length() + 4 * 8);
+		ByteBuffer header = ByteBuffer.allocate(MAGIC.length() + 4 * 9);
 		channel.read(header, 0);
 		header.flip();
 
@@ -92,6 +114,7 @@ public class Navmesh {
 		float cellSize = header.getFloat();
 		int tilesX = header.getInt(), tileCount = header.getInt();
 		int coarseFactor = header.getInt(), coarseBytes = header.getInt();
+		float zOrigin = header.getFloat();
 
 		ByteBuffer coarse = ByteBuffer.allocate(coarseBytes);
 		channel.read(coarse, header.capacity());
@@ -111,7 +134,7 @@ public class Navmesh {
 		int cells = ((width + coarseFactor - 1) / coarseFactor) * ((height + coarseFactor - 1) / coarseFactor);
 		int[] regionOffsets = Arrays.copyOfRange(flat, 0, cells + 1);
 		int[] regionIds = Arrays.copyOfRange(flat, cells + 1, flat.length);
-		return new Navmesh(storedMapId, width, height, cellSize, tilesX, coarseFactor, regionOffsets, regionIds, offsets, lengths, channel,
+		return new Navmesh(storedMapId, width, height, cellSize, zOrigin, tilesX, coarseFactor, regionOffsets, regionIds, offsets, lengths, channel,
 			header.capacity() + coarseBytes + directory.capacity());
 	}
 
@@ -152,7 +175,7 @@ public class Navmesh {
 	/** @return The height of the given surface of that column, counted from the lowest. */
 	public float surfaceZ(int cellX, int cellY, int surface) {
 		Tile tile = tileOf(cellX, cellY);
-		return (tile.heights()[columnStart(tile, cellX, cellY) + surface] & 0xFFFF) * Z_STEP;
+		return zOrigin + (tile.heights()[columnStart(tile, cellX, cellY) + surface] & 0xFFFF) * Z_STEP;
 	}
 
 	public boolean isWalkable(int cellX, int cellY, int surface) {
