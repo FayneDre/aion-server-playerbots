@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot.lifecycle;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,17 @@ public class BotPacing implements StatOwner {
 	 */
 	private static final int HUNTING_XP_PERCENT = 1;
 
+	/**
+	 * Every stat an experience reward passes through, because a pace that covers one of them is not a pace.
+	 * <p>
+	 * {@code Rates} has five, each reading its own stat, and only the solo one was set. A bot that kills anything while in a group is rewarded
+	 * through {@code XP_GROUP_HUNTING} and {@code BOOST_GROUP_HUNTING_XP_RATE} — untouched, so at the full rate, which is the one case where a bot is
+	 * most likely to be killing quickly. Quest, gathering and crafting are not routes a bot takes today and are set anyway: the rule is that a bot
+	 * advances at this pace, not that it advances at this pace when it happens to be hunting alone.
+	 */
+	private static final StatEnum[] PACED_RATES = { StatEnum.BOOST_HUNTING_XP_RATE, StatEnum.BOOST_GROUP_HUNTING_XP_RATE,
+		StatEnum.BOOST_QUEST_XP_RATE, StatEnum.BOOST_GATHERING_XP_RATE, StatEnum.BOOST_CRAFTING_XP_RATE };
+
 	private final Player bot;
 	/** Whether a player made this bot for themselves. Fixed for the character's life, so it is read once rather than on every tick. */
 	private final boolean owned;
@@ -92,8 +104,8 @@ public class BotPacing implements StatOwner {
 	private void reportLevel(boolean companion) {
 		if (bot.getLevel() == reportedLevel)
 			return;
-		log.info("Bot {} reached level {} from {} after {} min in the world, at {}% xp", bot.getName(), bot.getLevel(), reportedLevel,
-			(System.currentTimeMillis() - startedAt) / 60000, companion ? 100 : HUNTING_XP_PERCENT);
+		log.info("Bot {} reached level {} from {} after {} min in the world, {} at {}% xp", bot.getName(), bot.getLevel(), reportedLevel,
+			(System.currentTimeMillis() - startedAt) / 60000, companion ? "a companion" : "the world's", effectiveRate());
 		reportedLevel = bot.getLevel();
 	}
 
@@ -102,10 +114,22 @@ public class BotPacing implements StatOwner {
 		if (wanted == paced)
 			return;
 		if (wanted)
-			bot.getGameStats().addEffect(this, List.of(new StatSetFunction(StatEnum.BOOST_HUNTING_XP_RATE, HUNTING_XP_PERCENT)));
+			bot.getGameStats().addEffect(this, Stream.of(PACED_RATES).map(rate -> new StatSetFunction(rate, HUNTING_XP_PERCENT)).toList());
 		else
 			bot.getGameStats().endEffect(this);
 		paced = wanted;
+		log.info("Bot {} is now {} and its xp rates read {}%", bot.getName(), wanted ? "paced" : "at a player's pace", effectiveRate());
+	}
+
+	/**
+	 * @return What the character's experience rate actually is, read back out of the stat container.
+	 *         <p>
+	 *         Asked rather than assumed, because the first version of this log printed the constant it had just tried to set, which would have read
+	 *         the same whether the effect landed or was dropped on the floor. A number that cannot be wrong is not a measurement.
+	 */
+	private String effectiveRate() {
+		return Stream.of(PACED_RATES).map(rate -> String.valueOf(Math.round(bot.getGameStats().getStat(rate, 100).getCurrent()))).distinct()
+			.reduce((a, b) -> a + "/" + b).orElse("?");
 	}
 
 	/**
