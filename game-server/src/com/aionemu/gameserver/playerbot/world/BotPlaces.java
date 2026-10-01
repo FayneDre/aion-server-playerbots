@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
@@ -39,6 +40,47 @@ public class BotPlaces {
 	 */
 	private static final int TOWNSFOLK_PER_SHARE = 8;
 	/** How far a resident will go for a change of scene. Past that it is not an outing, it is moving house — and it crosses everything in between. */
+	/**
+	 * How far above a place's own floor counts as standing on top of something rather than in it. A step is less; a plinth is more.
+	 */
+	public static final float STANDS_ON_A_STRUCTURE = 1.5f;
+
+	/**
+	 * @return Somewhere to stand near a place, or null when nothing around it will do.
+	 *         <p>
+	 *         Two rules, and both were learned from the same screenshot four times over. <b>Never the centre</b>: it is one point that every
+	 *         inhabitant of the place shares, and in Akarios and at Melponeh's camp it is the obelisk, so falling back to it does not place a
+	 *         villager anywhere — it stacks the village on a statue. <b>Never the top of something</b>: a plinth is walkable ground a metre above the
+	 *         square, so a spot near the middle of a village climbs onto whatever stands there.
+	 *         <p>
+	 *         It lives here because the same two rules were needed in four places — settling a new resident, choosing somewhere to stand about,
+	 *         putting a strayed bot back, and the spots a region hands out — and were written into one at a time, each fix leaving the other three
+	 *         doing it wrong. A rule with four copies has four chances to be the one nobody updated.
+	 * @param seed Fixes the choice to a bot, so it keeps the same corner instead of shuffling every time it is asked. Random when negative.
+	 * @param refused The caller's own objection: somewhere crowded, somewhere it cannot walk to. Null when it has none.
+	 */
+	public static Vector3f spotAround(int worldId, Vector3f place, float spread, int attempts, int seed, Predicate<Vector3f> refused) {
+		NavmeshService navmesh = NavmeshService.getInstance();
+		for (int attempt = 0; attempt < attempts; attempt++) {
+			double angle = seed < 0 ? Math.random() * Math.PI * 2
+				: Math.PI * 2 * Math.floorMod(Integer.hashCode(seed * 0x9E3779B9) + attempt * 37, 360) / 360;
+			// never the first third: the obelisk, the well and the campfire are what stands in the middle of a place
+			float fraction = seed < 0 ? (float) Math.random() : Math.floorMod(seed + attempt, 10) / 10f;
+			float reach = spread * (0.35f + 0.65f * fraction);
+			float x = place.getX() + (float) Math.cos(angle) * reach, y = place.getY() + (float) Math.sin(angle) * reach;
+			Vector3f ground = navmesh.groundNear(worldId, x, y, place.getZ());
+			if (ground == null || ground.getZ() - place.getZ() > STANDS_ON_A_STRUCTURE)
+				continue;
+			if (refused != null && refused.test(ground))
+				continue;
+			// joined to the place itself: a ledge or the far side of a wall is perfectly good ground that leads nowhere, and a resident put on one
+			// spends its life asking for a route out
+			if (navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), place.getX(), place.getY(), place.getZ()))
+				return ground;
+		}
+		return null;
+	}
+
 	public static final float WANDERING_RANGE = 250f;
 	/** How many spots of a place to try before settling for one that merely has footing. Each try costs a path search, and a place has many spots. */
 	private static final int ANCHOR_ATTEMPTS = 10;

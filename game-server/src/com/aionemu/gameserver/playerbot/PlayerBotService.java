@@ -59,8 +59,6 @@ public class PlayerBotService {
 	private static final float SETTLING_SPREAD = 15f;
 	/** How many spots to try before giving up and standing on the place itself. A handful: most spots around a place are fine. */
 	private static final int SETTLING_ATTEMPTS = 8;
-	/** How far above a place's own floor counts as standing on top of something rather than in it. A step is less; a plinth is more. */
-	private static final float STANDS_ON_A_STRUCTURE = 1.5f;
 	/** The setting that means "work it out": every open world map of both races, each taking as many inhabitants as its own civilians call for. */
 	private static final String AUTOMATIC = "auto";
 
@@ -385,30 +383,9 @@ public class PlayerBotService {
 	 * place, so falling back to it does not place a villager anywhere — it stacks the whole village on a single spot.
 	 */
 	private static Vector3f scatterAround(int worldId, Vector3f home) {
-		NavmeshService navmesh = NavmeshService.getInstance();
-		Vector3f furthestOut = null;
-		for (int attempt = 0; attempt < SETTLING_ATTEMPTS; attempt++) {
-			double angle = Math.random() * Math.PI * 2;
-			// never right on the centre: the first few paces are where the obelisk, the well or the campfire stands
-			float spread = SETTLING_SPREAD * (0.35f + 0.65f * (float) Math.random());
-			float x = home.getX() + (float) Math.cos(angle) * spread, y = home.getY() + (float) Math.sin(angle) * spread;
-			Vector3f ground = navmesh.groundNear(worldId, x, y, home.getZ());
-			if (ground == null || isOnTopOfSomething(ground, home))
-				continue;
-			furthestOut = ground;
-			if (navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), home.getX(), home.getY(), home.getZ()))
-				return ground;
-		}
-		// somewhere real that simply could not be proved connected, which still beats the one point the whole village shares
-		return furthestOut != null ? furthestOut : home;
-	}
-
-	/**
-	 * @return true when the ground found is the top of something rather than the floor of the place — a plinth, a crate, a roof. Walkable, and not
-	 *         where anybody lives.
-	 */
-	private static boolean isOnTopOfSomething(Vector3f ground, Vector3f place) {
-		return ground.getZ() - place.getZ() > STANDS_ON_A_STRUCTURE;
+		Vector3f spot = BotPlaces.spotAround(worldId, home, SETTLING_SPREAD, SETTLING_ATTEMPTS, -1, null);
+		// the centre only when nothing around the place will do at all, which means the place has no floor the navmesh knows of
+		return spot != null ? spot : home;
 	}
 
 	/** @return The race of that name, or null when it is not one. Accepts the enum's own spelling, so ELYOS and ASMODIANS. */

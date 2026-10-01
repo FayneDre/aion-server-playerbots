@@ -50,6 +50,7 @@ public class PlayerBotEnterWorldService {
 		// before anything else: it is what makes the engine treat this character as present despite having no connection
 		bot.setBot();
 		goHome(bot); // before the ground check, so a strayed resident is put back and then stood on solid ground there
+		stepOffStructures(bot); // and before that again: a position saved on top of something comes back on top of it
 		bindToNearestObelisk(bot);
 		standOnGround(bot);
 		// Bots advance, because a character that cannot is not one. What keeps the low regions from emptying is the pace, not a ban: the drift
@@ -104,7 +105,34 @@ public class PlayerBotEnterWorldService {
 			return;
 		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} had strayed {} m from home and starts there instead", bot.getName(),
 			Math.round(PositionUtil.getDistance(bot.getX(), bot.getY(), home.getX(), home.getY())));
-		bot.setPosition(World.getInstance().createPosition(bot.getWorldId(), home.getX(), home.getY(), home.getZ(), bot.getHeading(),
+		// beside the place, not on it. Put exactly on the centre, every bot the roster brings back lands on the one point they all share — which is
+		// the obelisk in Akarios, where they were photographed standing on the statue after three other copies of this rule had been fixed.
+		Vector3f spot = BotPlaces.spotAround(bot.getWorldId(), home, BotPlaces.reachAt(bot.getWorldId(), home), 8, bot.getObjectId(), null);
+		if (spot == null)
+			spot = home; // nowhere around it will do, and the middle of its village still beats wherever it had strayed to
+		bot.setPosition(World.getInstance().createPosition(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ(), bot.getHeading(),
+			bot.getInstanceId()));
+	}
+
+	/**
+	 * Takes a bot off whatever it was standing on when it was last saved.
+	 *
+	 * <p>
+	 * A position is saved as it was, so a bot that had found its way onto a plinth comes back onto it at every restart, for ever — which is how
+	 * residents came to be photographed standing on the obelisk even after the rule that puts them beside it was fixed in three other places. It had
+	 * never strayed, so nothing moved it; its home simply was a statue.
+	 */
+	private static void stepOffStructures(Player bot) {
+		Vector3f home = BotRoster.homeOf(bot.getName());
+		if (home == null || bot.getZ() - home.getZ() <= BotPlaces.STANDS_ON_A_STRUCTURE
+			|| PositionUtil.getDistance(bot.getX(), bot.getY(), home.getX(), home.getY()) > BotPlaces.reachAt(bot.getWorldId(), home))
+			return;
+		Vector3f spot = BotPlaces.spotAround(bot.getWorldId(), home, BotPlaces.reachAt(bot.getWorldId(), home), 8, bot.getObjectId(), null);
+		if (spot == null)
+			return;
+		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} was standing {} m above its home, so it comes down", bot.getName(),
+			Math.round(bot.getZ() - home.getZ()));
+		bot.setPosition(World.getInstance().createPosition(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ(), bot.getHeading(),
 			bot.getInstanceId()));
 	}
 

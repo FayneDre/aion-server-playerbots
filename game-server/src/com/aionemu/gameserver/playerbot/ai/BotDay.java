@@ -35,8 +35,6 @@ class BotDay {
 	private static final int HOME_LEVEL_DRIFT = 2;
 	/** How close to somebody else a bot may stop. Bots pass through npcs, so nothing but this keeps one from halting inside a blacksmith. */
 	private static final float PERSONAL_SPACE = 2.5f;
-	/** How far above a place's own floor counts as standing on top of something rather than in it. A step is less; a plinth is more. */
-	private static final float STANDS_ON_A_STRUCTURE = 1.5f;
 
 	private final PlayerBotAI ai;
 	/** What the bot is doing with its day, and until when. */
@@ -217,25 +215,10 @@ class BotDay {
 		// the ground the place actually covers, measured from its own occupants. A number invented for this was wrong in both directions at once: a
 		// formula gave Akarios 26 m where it measures 42, so its inhabitants stood at twice the density of the npcs the village was built with.
 		float spread = BotPlaces.reachAt(bot.getWorldId(), place);
-		for (int attempt = 0; attempt < RESTING_SPOTS; attempt++) {
-			double angle = Math.PI * 2 * Math.floorMod(Integer.hashCode(bot.getObjectId() * 0x9E3779B9) + attempt * 37, 360) / 360;
-			float reach = spread * (0.4f + 0.6f * (Math.floorMod(bot.getObjectId() + attempt, 10) / 10f));
-			float x = place.getX() + (float) Math.cos(angle) * reach, y = place.getY() + (float) Math.sin(angle) * reach;
-			Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), x, y, place.getZ());
-			// the top of a plinth is walkable ground a metre above the square, so a spot near the middle of a village climbs onto whatever stands
-			// there — the obelisk, in Akarios and at Melponeh's camp, where residents were photographed standing on the statue
-			if (ground != null && ground.getZ() - place.getZ() > STANDS_ON_A_STRUCTURE)
-				continue;
-			// standable, unoccupied, and joined to where the bot is standing. The third is not optional and leaving it out here cost a bot twenty one
-			// refusals in four minutes for a corner ten metres away: a low wall or a ledge makes perfectly good ground that cannot be walked to.
-			if (ground != null && !isCrowded(ground) && NavmeshService.getInstance().canReach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(),
-				ground.getX(), ground.getY(), ground.getZ()))
-				return ground;
-		}
-		// Not the centre of the place. Falling back to it meant every bot that found nowhere free stood on the one point they all share — which in
-		// Akarios and at Melponeh's camp is the obelisk, so they were seen stacked on its plinth. It also walked straight past isCrowded, the one
-		// rule meant to stop exactly that. A place with no room for another loiterer has no room: the caller reads null as "go and work instead".
-		return null;
+		// null rather than the centre of the place: everybody shares that point, and in a village it is the obelisk. The caller reads null as "no
+		// room here, go and work instead", which is the honest answer when a place is full.
+		return BotPlaces.spotAround(bot.getWorldId(), place, spread, RESTING_SPOTS, bot.getObjectId(), ground -> isCrowded(ground)
+			|| !NavmeshService.getInstance().canReach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), ground.getX(), ground.getY(), ground.getZ()));
 	}
 
 	/**
