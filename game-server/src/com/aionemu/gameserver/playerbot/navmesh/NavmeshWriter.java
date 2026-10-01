@@ -31,10 +31,11 @@ public class NavmeshWriter {
 		int tileCount = tilesX * tilesY;
 
 		float zOrigin = floorOf(field);
+		float zStep = stepFor(field, zOrigin);
 		byte[][] compressedTiles = new byte[tileCount][];
 		for (int tileY = 0; tileY < tilesY; tileY++)
 			for (int tileX = 0; tileX < tilesX; tileX++)
-				compressedTiles[tileY * tilesX + tileX] = compress(tile(field, tileX, tileY, zOrigin));
+				compressedTiles[tileY * tilesX + tileX] = compress(tile(field, tileX, tileY, zOrigin, zStep));
 
 		// the regions of each coarse cell rather than a bit: the rough grid has to know what the fine grid keeps apart, or it routes across it
 		Heightfield.CoarseRegions coarseRegions = field.coarseRegions(field.regions(BotPathFinder.STEP_TOLERANCE));
@@ -42,10 +43,10 @@ public class NavmeshWriter {
 		// offsets then ids, and how many offsets there are follows from the map's size, so the block carries no length of its own
 		ByteBuffer.wrap(coarse).asIntBuffer().put(coarseRegions.offsets()).put(coarseRegions.ids());
 		try (OutputStream out = Files.newOutputStream(file)) {
-			ByteBuffer header = ByteBuffer.allocate(Navmesh.MAGIC.length() + 4 * 9 + coarse.length + tileCount * 8);
+			ByteBuffer header = ByteBuffer.allocate(Navmesh.MAGIC.length() + 4 * 10 + coarse.length + tileCount * 8);
 			header.put(Navmesh.MAGIC.getBytes());
 			header.putInt(mapId).putInt(field.width()).putInt(field.height()).putFloat(Heightfield.CELL_SIZE).putInt(tilesX).putInt(tileCount);
-			header.putInt(Heightfield.COARSE_FACTOR).putInt(coarse.length).putFloat(zOrigin);
+			header.putInt(Heightfield.COARSE_FACTOR).putInt(coarse.length).putFloat(zOrigin).putFloat(zStep);
 			header.put(coarse);
 			int offset = 0;
 			for (byte[] compressed : compressedTiles) {
@@ -60,14 +61,14 @@ public class NavmeshWriter {
 	}
 
 	/** @return The tile's payload, or an empty array when nothing stands in it. */
-	private static byte[] tile(Heightfield field, int tileX, int tileY, float zOrigin) throws IOException {
+	private static byte[] tile(Heightfield field, int tileX, int tileY, float zOrigin, float zStep) throws IOException {
 		int originX = tileX * Navmesh.TILE_SIZE, originY = tileY * Navmesh.TILE_SIZE;
 		byte[] counts = new byte[Navmesh.TILE_SIZE * Navmesh.TILE_SIZE];
-		char[] rowOffsets = new char[Navmesh.TILE_SIZE + 1];
+		int[] rowOffsets = new int[Navmesh.TILE_SIZE + 1];
 		int surfaces = 0;
 
 		for (int localY = 0; localY < Navmesh.TILE_SIZE; localY++) {
-			rowOffsets[localY] = (char) surfaces;
+			rowOffsets[localY] = surfaces;
 			for (int localX = 0; localX < Navmesh.TILE_SIZE; localX++) {
 				int cellX = originX + localX, cellY = originY + localY;
 				if (cellX >= field.width() || cellY >= field.height())
@@ -77,7 +78,7 @@ public class NavmeshWriter {
 				surfaces += count;
 			}
 		}
-		rowOffsets[Navmesh.TILE_SIZE] = (char) surfaces;
+		rowOffsets[Navmesh.TILE_SIZE] = surfaces;
 		if (surfaces == 0)
 			return new byte[0];
 
@@ -91,7 +92,7 @@ public class NavmeshWriter {
 					continue;
 				int end = field.columnStart(cellX, cellY) + (counts[localY * Navmesh.TILE_SIZE + localX] & 0xFF);
 				for (int i = field.columnStart(cellX, cellY); i < end; i++) {
-					heights[index] = quantize(field.surfaceAt(i), zOrigin);
+					heights[index] = quantize(field.surfaceAt(i), zOrigin, zStep);
 					if (field.isWalkable(i))
 						walkable[index >> 6] |= 1L << index;
 					index++;
@@ -102,8 +103,8 @@ public class NavmeshWriter {
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 		try (DataOutputStream out = new DataOutputStream(bytes)) {
 			out.writeInt(surfaces);
-			for (char rowOffset : rowOffsets)
-				out.writeChar(rowOffset);
+			for (int rowOffset : rowOffsets)
+				out.writeInt(rowOffset);
 			out.write(counts);
 			for (short z : heights)
 				out.writeShort(z);
@@ -124,8 +125,23 @@ public class NavmeshWriter {
 	}
 
 	/** Heights below zero or above the engine's 2048 m ceiling are not real ground, so clamping them loses nothing. */
-	private static short quantize(float z, float zOrigin) {
-		return (short) Math.max(0, Math.min(0xFFFF, Math.round((z - zOrigin) / Navmesh.Z_STEP)));
+	private static short quantize(float z, float zOrigin, float zStep) {
+		return (short) Math.max(0, Math.min(Navmesh.Z_LEVELS, Math.round((z - zOrigin) / zStep)));
+	}
+
+	/**
+	 * @return Metres per quantisation step for this map: the finest the format offers, unless the map is too tall for a short to reach its ceiling at
+	 *         that, in which case just coarse enough that it does.
+	 *         <p>
+	 *         Kaldor is the map that needed it — floating islands spanning more than the 3276 m a short covers at the finest step, so its upper
+	 *         surfaces were all written at the ceiling. Deciding the step from the map rather than in advance means no map can overflow, however
+	 *         vertical, and the ordinary ones keep the resolution they had.
+	 */
+	private static float stepFor(Heightfield field, float zOrigin) {
+		float highest = zOrigin;
+		for (int i = 0; i < field.surfaceCount(); i++)
+			highest = Math.max(highest, field.surfaceAt(i));
+		return Math.max(Navmesh.FINEST_Z_STEP, (highest - zOrigin) / Navmesh.Z_LEVELS);
 	}
 
 	/**
@@ -138,6 +154,6 @@ public class NavmeshWriter {
 		float lowest = 0;
 		for (int i = 0; i < field.surfaceCount(); i++)
 			lowest = Math.min(lowest, field.surfaceAt(i));
-		return (float) Math.floor(lowest / Navmesh.Z_STEP) * Navmesh.Z_STEP;
+		return (float) Math.floor(lowest / Navmesh.FINEST_Z_STEP) * Navmesh.FINEST_Z_STEP;
 	}
 }

@@ -403,8 +403,9 @@ public class NavmeshTool {
 		if (navmesh.width() != field.width() || navmesh.height() != field.height())
 			throw new IllegalStateException("Round trip changed the grid size");
 
-		long mismatches = 0, compared = 0, clipped = 0;
-		float tolerance = Navmesh.Z_STEP; // heights are quantized on the way out, so they come back rounded
+		long mismatches = 0, compared = 0, clipped = 0, wrongHeight = 0, wrongWalkable = 0;
+		float worstHeight = 0;
+		float tolerance = navmesh.zStep(); // heights are quantized on the way out, so they come back rounded, by this map's own step
 		for (int y = 0; y < field.height(); y++) {
 			for (int x = 0; x < field.width(); x++) {
 				int tall = field.columnEnd(x, y) - field.columnStart(x, y);
@@ -420,14 +421,25 @@ public class NavmeshTool {
 				for (int i = 0; i < expected; i++) {
 					compared++;
 					int source = field.columnStart(x, y) + i;
-					if (Math.abs(navmesh.surfaceZ(x, y, i) - field.surfaceAt(source)) > tolerance
-						|| navmesh.isWalkable(x, y, i) != field.isWalkable(source))
+					// counted apart, because "the file does not match" was one number covering two unrelated faults and it cost three wrong guesses
+					float drift = Math.abs(navmesh.surfaceZ(x, y, i) - field.surfaceAt(source));
+					boolean heightOff = drift > tolerance, walkableOff = navmesh.isWalkable(x, y, i) != field.isWalkable(source);
+					if (heightOff) {
+						wrongHeight++;
+						worstHeight = Math.max(worstHeight, drift);
+					}
+					if (walkableOff)
+						wrongWalkable++;
+					if (heightOff || walkableOff)
 						mismatches++;
 				}
 			}
 		}
 		System.out.printf("Read back in %d ms, %d tiles holding %.0f MB, %d surfaces compared, %d mismatches, %d column(s) clipped at %d%n", loadTime,
 			navmesh.loadedTiles(), navmesh.memoryFootprint() / 1048576f, compared, mismatches, clipped, Navmesh.MAX_SURFACES_PER_COLUMN);
+		if (mismatches > 0)
+			System.out.printf("  %d height(s) off by up to %.2f m (step %.4f m), %d walkable flag(s) off%n", wrongHeight, worstHeight,
+				navmesh.zStep(), wrongWalkable);
 		if (mismatches > 0)
 			throw new IllegalStateException("The navmesh file does not match what was generated");
 	}

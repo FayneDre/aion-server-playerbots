@@ -25,9 +25,18 @@ import java.util.zip.Inflater;
  */
 public class Navmesh {
 
-	static final String MAGIC = "AINAV6";
-	/** Height resolution. Aion heights span 0..2048 m, so this fits an unsigned short with room to spare. */
-	static final float Z_STEP = 0.05f;
+	static final String MAGIC = "AINAV8";
+	/**
+	 * Finest height resolution worth storing. A map uses it unless it is too tall for a short to reach its ceiling at this step, in which case it gets
+	 * a coarser one of its own, written in its header beside the origin.
+	 * <p>
+	 * A fixed step was an assumption about how tall a map can be, and it was wrong twice over: Eltnen has ground below the step's zero, and Kaldor — a
+	 * map of floating islands — is taller than the 3276 m a short reaches at this step, so 20269 of its surfaces were written at its ceiling instead
+	 * of above it. Both are one mistake: a range decided in advance for data nobody had looked at.
+	 */
+	static final float FINEST_Z_STEP = 0.05f;
+	/** Heights are an unsigned short, so a map's span is cut into this many steps at most. */
+	static final int Z_LEVELS = 0xFFFF;
 	/** Columns per tile side. Small enough that a camp loads few tiles and a row scan is cheap, large enough that per tile overhead stays small. */
 	static final int TILE_SIZE = 64;
 	/**
@@ -54,6 +63,8 @@ public class Navmesh {
 	 * lowest surface costs four bytes in the header and removes the assumption.
 	 */
 	private final float zOrigin;
+	/** Metres per quantisation step on this map, {@link #FINEST_Z_STEP} unless the map is too tall for that to reach its ceiling. */
+	private final float zStep;
 	/**
 	 * The regions passing through each coarse cell, kept in memory always: it is small, and long routes are planned on it before any tile is read. A
 	 * region is a stretch of ground a body can actually walk across, so a rough route that stays inside one is a route that can be refined.
@@ -68,15 +79,22 @@ public class Navmesh {
 	private final long dataStart;
 
 	/** One square of the map. */
-	private record Tile(char[] rowOffsets, byte[] counts, short[] heights, long[] walkable) {
+	/**
+	 * One square of the grid. {@code rowOffsets} is int rather than char because a tile of 64x64 columns can hold up to a million surfaces, and a
+	 * 16 bit offset wraps silently at 65535: every column of an overflowed tile then read somebody else's surfaces, which came back as heights
+	 * hundreds of metres out. Dense vertical maps — floating islands, canyons — were the only ones that reached it, which is why fifteen maps were
+	 * perfect and seven were not. The width costs 130 bytes a tile.
+	 */
+	private record Tile(int[] rowOffsets, byte[] counts, short[] heights, long[] walkable) {
 
 		/** Stands for a tile with nothing in it, so an empty tile is not mistaken for one that has not been read yet. */
 		static final Tile EMPTY = new Tile(null, null, null, null);
 	}
 
-	private Navmesh(int mapId, int width, int height, float cellSize, float zOrigin, int tilesX, int coarseFactor, int[] coarseRegionOffsets,
+	private Navmesh(int mapId, int width, int height, float cellSize, float zOrigin, float zStep, int tilesX, int coarseFactor, int[] coarseRegionOffsets,
 		int[] coarseRegionIds, int[] tileOffsets, int[] tileLengths, FileChannel channel, long dataStart) {
 		this.zOrigin = zOrigin;
+		this.zStep = zStep;
 		this.coarseFactor = coarseFactor;
 		this.coarseWidth = (width + coarseFactor - 1) / coarseFactor;
 		this.coarseRegionOffsets = coarseRegionOffsets;
@@ -100,7 +118,7 @@ public class Navmesh {
 	/** Reads the header and the tile directory only. The tiles themselves are read as bots walk into them. */
 	public static Navmesh open(int mapId) throws IOException {
 		FileChannel channel = FileChannel.open(fileOf(mapId), StandardOpenOption.READ);
-		ByteBuffer header = ByteBuffer.allocate(MAGIC.length() + 4 * 9);
+		ByteBuffer header = ByteBuffer.allocate(MAGIC.length() + 4 * 10);
 		channel.read(header, 0);
 		header.flip();
 
@@ -114,7 +132,7 @@ public class Navmesh {
 		float cellSize = header.getFloat();
 		int tilesX = header.getInt(), tileCount = header.getInt();
 		int coarseFactor = header.getInt(), coarseBytes = header.getInt();
-		float zOrigin = header.getFloat();
+		float zOrigin = header.getFloat(), zStep = header.getFloat();
 
 		ByteBuffer coarse = ByteBuffer.allocate(coarseBytes);
 		channel.read(coarse, header.capacity());
@@ -134,12 +152,17 @@ public class Navmesh {
 		int cells = ((width + coarseFactor - 1) / coarseFactor) * ((height + coarseFactor - 1) / coarseFactor);
 		int[] regionOffsets = Arrays.copyOfRange(flat, 0, cells + 1);
 		int[] regionIds = Arrays.copyOfRange(flat, cells + 1, flat.length);
-		return new Navmesh(storedMapId, width, height, cellSize, zOrigin, tilesX, coarseFactor, regionOffsets, regionIds, offsets, lengths, channel,
+		return new Navmesh(storedMapId, width, height, cellSize, zOrigin, zStep, tilesX, coarseFactor, regionOffsets, regionIds, offsets, lengths, channel,
 			header.capacity() + coarseBytes + directory.capacity());
 	}
 
 	public int mapId() {
 		return mapId;
+	}
+
+	/** @return Metres per quantisation step, which is how far a height read back may legitimately differ from the one written. */
+	public float zStep() {
+		return zStep;
 	}
 
 	public int width() {
@@ -175,7 +198,7 @@ public class Navmesh {
 	/** @return The height of the given surface of that column, counted from the lowest. */
 	public float surfaceZ(int cellX, int cellY, int surface) {
 		Tile tile = tileOf(cellX, cellY);
-		return zOrigin + (tile.heights()[columnStart(tile, cellX, cellY) + surface] & 0xFFFF) * Z_STEP;
+		return zOrigin + (tile.heights()[columnStart(tile, cellX, cellY) + surface] & 0xFFFF) * zStep;
 	}
 
 	public boolean isWalkable(int cellX, int cellY, int surface) {
@@ -294,9 +317,9 @@ public class Navmesh {
 
 	private static Tile parse(ByteBuffer buffer) {
 		int surfaces = buffer.getInt();
-		char[] rowOffsets = new char[TILE_SIZE + 1];
-		buffer.asCharBuffer().get(rowOffsets);
-		buffer.position(buffer.position() + rowOffsets.length * 2);
+		int[] rowOffsets = new int[TILE_SIZE + 1];
+		buffer.asIntBuffer().get(rowOffsets);
+		buffer.position(buffer.position() + rowOffsets.length * 4);
 
 		byte[] counts = new byte[TILE_SIZE * TILE_SIZE];
 		buffer.get(counts);
