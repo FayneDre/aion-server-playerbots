@@ -77,12 +77,20 @@ public class PlayerBotService {
 		if (roster.isEmpty())
 			return;
 		int restored = 0;
+		int left = 0;
 		for (String characterName : roster) {
 			// Already in the world, because populating a map on this very startup both creates a bot and puts it there. Asking to load it again
 			// returns null, exactly as a deleted character does, and reading that null as "gone" printed forty five warnings about losing characters
 			// that were standing right there. A null is not a reason.
 			if (findSpawnedBot(characterName) != null) {
 				restored++;
+				continue;
+			}
+			// A character of somebody's own comes back when they ask for it and not before. The roster exists so the world is the world again after a
+			// restart, and a player's character is not part of the world in that sense — putting it back would be the server playing it, which is the
+			// one thing it must not do with somebody else's character. It leaves the roster here, so nothing goes looking for it again.
+			if (BotRoster.isSomebodysOwn(characterName)) {
+				left++;
 				continue;
 			}
 			Player bot = loadAvailableBot(characterName);
@@ -99,7 +107,7 @@ public class PlayerBotService {
 			}
 		}
 		rememberRoster(); // drops whatever could not be restored, so a broken name is not retried every restart
-		log.info("Restored {} of {} bot(s) from the roster", restored, roster.size());
+		log.info("Restored {} of {} bot(s) from the roster, leaving {} belonging to players", restored, roster.size(), left);
 	}
 
 	/**
