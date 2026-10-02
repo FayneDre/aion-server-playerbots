@@ -27,10 +27,16 @@ import org.slf4j.LoggerFactory;
  * Sized below the processor count on purpose. These threads are almost always idle — a decision tick is short — and leaving processors for the engine
  * and for the real players' packet handling matters more than draining the bot queue as fast as possible.
  * <p>
- * Two lanes, because the work comes in two lengths. A decision tick is microseconds; planning a route across a map is a search that can take orders
- * of magnitude longer, which is why it was put on the engine's long-running pool in the first place. Running both in one lane would have route
+ * Three lanes, because the work comes in three lengths. A decision tick is microseconds; planning a route across a map is a search that can take
+ * orders of magnitude longer, which is why it was put on the engine's long-running pool in the first place. Running both in one lane would have route
  * searches blocking ticks, and running routes on the engine's pool — which is what still happened after the ticks moved — leaves the heaviest thing
  * bots do competing with the engine's own long tasks. So they get a lane each.
+ * <p>
+ * The third is for entering and leaving the world, and it is the slowest of the three by a wide margin: loading a character is some twenty blocking
+ * database round trips — skills, inventory, titles, quests, mail — before any navmesh lookup. The population director does that in batches, so on the
+ * tick lane a single review would hold a thread for seconds, and with the tick lane sized at half the processors that is half the bots not thinking.
+ * One thread, on purpose: there is no gain in loading characters in parallel against one database, and a single lane serialises arrivals and
+ * departures for free, so nothing has to lock to keep the same character from being woken twice.
  */
 public class BotScheduler {
 
@@ -42,6 +48,7 @@ public class BotScheduler {
 
 	private final ScheduledExecutorService pool;
 	private final ExecutorService routePool;
+	private final ExecutorService lifecyclePool;
 
 	private BotScheduler() {
 		int threads = Math.max(2, (int) (Runtime.getRuntime().availableProcessors() * PROCESSOR_SHARE));
@@ -52,7 +59,8 @@ public class BotScheduler {
 		pool = executor;
 		int routeThreads = Math.max(1, threads / 2);
 		routePool = Executors.newFixedThreadPool(routeThreads, threadsNamed("PlayerBotRoute"));
-		log.info("Bot scheduler running on {} tick thread(s) and {} route thread(s)", threads, routeThreads);
+		lifecyclePool = Executors.newSingleThreadExecutor(threadsNamed("PlayerBotLifecycle"));
+		log.info("Bot scheduler running on {} tick thread(s), {} route thread(s) and one lifecycle thread", threads, routeThreads);
 	}
 
 	private static ThreadFactory threadsNamed(String prefix) {
@@ -128,13 +136,43 @@ public class BotScheduler {
 		}
 	}
 
+	/**
+	 * Brings a bot into the world or takes it out of it, in the lane that may block.
+	 * <p>
+	 * Every arrival and departure goes through here rather than being run wherever it was decided, which is what keeps a batch of them off the tick
+	 * lane. Because the lane is one thread, tasks run in the order they were handed over: a bot cannot be woken while it is still leaving.
+	 */
+	public void enterOrLeaveWorld(Runnable task) {
+		try {
+			lifecyclePool.execute(reporting(task));
+		} catch (RejectedExecutionException e) {
+			// shutting down, and the world is being emptied anyway
+		}
+	}
+
 	/** @return How many bot tasks are waiting, which is the number to watch when bots start looking sluggish. */
 	public int queued() {
 		return pool instanceof ScheduledThreadPoolExecutor executor ? executor.getQueue().size() : 0;
 	}
 
+	/**
+	 * Closes the arrivals and departures lane and waits briefly for the one in progress, which has to happen <b>before</b> the world is emptied on the
+	 * way out: emptying walks the set of bots in the world and then clears it, so a bot that arrives between those two steps is left behind — in the
+	 * world, with nobody holding a reference to it, saved by nothing.
+	 */
+	public void stopEnteringAndLeaving() {
+		lifecyclePool.shutdown();
+		try {
+			if (!lifecyclePool.awaitTermination(5, TimeUnit.SECONDS))
+				log.warn("A bot was still entering or leaving the world after 5s; carrying on without it");
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
 	public void shutdown() {
 		pool.shutdownNow();
 		routePool.shutdownNow();
+		lifecyclePool.shutdownNow();
 	}
 }

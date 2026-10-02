@@ -102,6 +102,21 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private ScheduledFuture<?> thinkTask;
 	/** Non null between death and resurrection, which also marks the death as already handled. */
 	private ScheduledFuture<?> reviveTask;
+	/**
+	 * True while a decision tick is actually running, as opposed to merely scheduled.
+	 * <p>
+	 * The tick holds {@code combatLock} at its two ends and not in the middle, where the deciding happens — deliberately, since a decision reaches
+	 * most of the module and holding a lock across it would serialise every bot in the world. So "is this bot busy right now" cannot be read from the
+	 * task, and the population director needs exactly that question answered before it takes the character out of the world.
+	 */
+	private boolean ticking;
+	/**
+	 * True once the bot has agreed to leave the world, and never false again: the object is discarded immediately afterwards.
+	 * <p>
+	 * It is what makes {@link #tryRetire()} a decision rather than a request. A departure that merely cancelled the tasks would still race the tick
+	 * that had already begun, and {@code cancel(false)} does not stop one — the same trap the attack generation was added for.
+	 */
+	private boolean retiring;
 	private volatile boolean autonomous = true;
 
 	/** Where the bot belongs: it fights around this point and returns to it rather than following a target across the map. */
@@ -310,6 +325,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
+		synchronized (combatLock) {
+			if (retiring || thinkTask == null) // on its way out of the world, or already gone: nothing is decided from here on
+				return;
+			ticking = true;
+		}
 		try {
 			decide();
 		} catch (RuntimeException e) {
@@ -318,9 +338,46 @@ public class PlayerBotAI extends AITemplate<Player> {
 			log.error("Bot " + getOwner().getName() + " failed a decision tick", e);
 		} finally {
 			synchronized (combatLock) {
-				if (thinkTask != null) // still spawned
+				ticking = false;
+				if (thinkTask != null && !retiring) // still spawned, and not leaving
 					scheduleBotTick();
 			}
+		}
+	}
+
+	/**
+	 * Asks the bot to leave the world, and answers whether this is a moment at which it may.
+	 * <p>
+	 * The population director decides <i>that</i> a region holds too many inhabitants; it must not decide <i>when</i> any one of them goes, because
+	 * every reason not to is state only the bot holds. A character taken out mid-swing drops a monster's target in front of whoever was watching; one
+	 * taken out dead is stored as a corpse and comes back as one; one taken out mid-journey leaves a tick that has already begun to walk an object
+	 * that no longer exists, which the engine answers with "can't update position of despawned object" and a decision half made.
+	 * <p>
+	 * Refusing costs nothing: the director comes round again every half minute, and a bot that is busy now will not be in a minute. So every one of
+	 * these is a plain no rather than something to wait for.
+	 *
+	 * @return true if the bot has just given up its future ticks, in which case the caller <b>must</b> take it out of the world — nothing else will
+	 *         start it thinking again.
+	 */
+	public boolean tryRetire() {
+		synchronized (combatLock) {
+			if (retiring || ticking || attackTask != null || reviveTask != null)
+				return false;
+			Player bot = getOwner();
+			if (bot.isDead() || getState() == AIState.DIED)
+				return false;
+			// A team mate that vanishes is a hole in somebody's party window, and the one bot in a group is worth more to a player than the shape of a
+			// region's population.
+			if (bot.isInGroup() || bot.isInAlliance())
+				return false;
+			if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isTravelling())
+				return false;
+			retiring = true;
+			if (thinkTask != null) {
+				thinkTask.cancel(false);
+				thinkTask = null;
+			}
+			return true;
 		}
 	}
 
