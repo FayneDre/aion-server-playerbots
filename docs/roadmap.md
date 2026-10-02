@@ -6,24 +6,40 @@ inhabitants, [population.md](population.md). For what this engine does to a bot 
 Each section below says what the work is *for*, what it needs, and what actually blocks it. The order is roughly by value per unit of effort, not by
 ambition.
 
-## Blockers to clear first
+## The one blocker left
 
-These are small, independent, and three of them make later work impossible rather than merely harder.
+**Stigmas are never slotted.** Not cosmetic: a character past level 20 without stigma stones fights at a fraction of its strength, so every
+measurement of bot combat above that level is measuring a crippled character. `BotEquipManager` leaves them out today
+(`getEquippedItemsWithoutStigma`), which is right for the armour rule it sits in and is why nothing else noticed.
 
-**Names run out at 390.** `PlayerBotCreationService` combines 26 prefixes with 15 suffixes, so the whole name space is 390 and the generator throws
-after 50 collisions. A population of 1500 is arithmetically impossible, and it would slow to a crawl well before that. Needs a third syllable or a
-larger pool.
+The three that stood here before were cleared in `0118bfe9e` and this file had not caught up: names gained a middle syllable so the space is no longer
+390, `BotPlaces` tests `GENERAL_DARK` as well as `GENERAL` so the Asmodian faction has settlements, and the roster carries an `owner_id` that the
+director is required to leave alone.
 
-**Asmodian civilians are invisible.** `BotPlaces` tests `TribeClass.GENERAL` only; Asmodian civilians are `GENERAL_DARK`. Measured: Pandaemonium has
-266 civilians and reads as zero, Altgard 103 as zero. **The entire Asmodian faction currently has no settlements**, so its bots would have no home, no
-loitering and no civic anchor. One line.
+## The pool and the director: the half that acts
 
-**Anyone can delete anyone's bots.** `//bot` is open to all accounts (issue #5) and nothing scopes the destructive commands. The roster table needs an
-`owner_id`: empty means server-managed, otherwise the creating player. `delete`, `clear` and `populate` then apply to your own bots unless you are
-staff — and the population director must never touch an owned bot.
+**Designed, started, and it only looks.** `BotDirector` reviews every inhabited region every 30 seconds, measures what it holds against what
+`BotPresence.wanted` says it should, and writes the difference to the log. Nothing moves. The acting half — the pool — does not exist at all.
 
-**Stigmas are never slotted.** Nobody has raised this and it is not cosmetic: a character past level 20 without stigma stones fights at a fraction of
-its strength, so every measurement of bot combat above that level is measuring a crippled character.
+The whole population model rests on it, so it is worth being plain about what is missing meanwhile:
+
+- **Every bot is in the world, all the time.** The 2000-bot figure in [population.md](population.md) assumes a pool of which only a fraction is logged
+  in. Today a populated map is one whose characters are all awake, so the affordability argument is untested at the number it was made for.
+- **`in_world` is not a pool yet.** The column exists and `BotRoster.remember` writes it, but it records who was in the world for the *next start* to
+  put back. Nobody decides it while the server is running.
+- **Nothing surges for a player.** `wanted(worldId, busy)` already returns the denser countryside when a real player is on the map, and the director
+  already computes the gap — it just cannot fill it. The one change that alters what the world *feels* like is the one not wired up.
+- **Nothing retires a bot that outgrew its region.** Residents are pinned to their region's level and earn nothing, so the upward drift is held off
+  rather than handled. A bot that passes its valley needs the director to find it a region it belongs to, which is also what removes the need to walk
+  there ([population.md](population.md)).
+- **Attention is a table in a doc, not code.** The 1.0 / 0.6 / 0.2 weights in [population.md](population.md) have no implementation; the director
+  knows only `busy` or not.
+
+The hard requirement is the one the class comment already names: **nobody ever sees it happen.** A character materialising in front of a player is
+worse than an empty field, so connecting and disconnecting has to be out of sight, and a player's capital and last map have to be filled before they
+arrive rather than while they watch.
+
+It needs no navigation and no new engine seam: `PlayerBotEnterWorldService` and `PlayerBotLeaveWorldService` are the two doors and both work.
 
 ## Dungeons and instances
 
@@ -103,7 +119,7 @@ Priority five. Bots forming and filling legions, which mostly falls out of group
   shouting for a group, answering a trade — cheap, and high value per line of code.
 - **Bots do not yield to real players.** `BotTargetRegistry` stops two bots claiming the same mob but nothing yields to a *person*. A player who
   cannot farm because forty bots took the spawns, or whose gathering nodes are always stripped, has a worse server than one with no bots at all. This
-  becomes serious at 1500 and it is a design rule, not a tuning value.
+  becomes serious at a settled 2000 and it is a design rule, not a tuning value.
 - **No gathering or crafting.** It would feed the broker and make the countryside look used rather than merely fought over.
 - **Gear does not keep up.** Bots are dressed at creation and wear what they loot. Crossing 1 to 65 needs buying or crafting.
 - **Zero automated tests** on roughly 8000 lines, much of it concurrent. This is why the combat half of `PlayerBotAI` has not been split: a mistake
