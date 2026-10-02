@@ -107,6 +107,11 @@ dependency was the opposite way round and quieter: the outfitter refuses armour 
 from the database holds level-1 skills whatever its level, because teaching happened on the way in ([world-and-data-traps.md](world-and-data-traps.md)).
 Teach, then dress.
 
+**Verified in game, on Poeta.** A cleared map repopulated to 36 inhabitants over **29 distinct homes** — against 16, twelve of them in Akarios, before
+`populate` learned to fill the places still short. A player standing on the map took the target to 37, and the pool filled in waves of 25: 23 arrived,
+then 10, then nothing, with **the same two refused at every review** because the player was stood on the ground those two live on. The region holds two
+short, on purpose, for as long as somebody is looking at the place that is missing them. That is the whole rule, observed rather than reasoned about.
+
 **The surge had nobody to draw on, and only the game showed it.** `populate` created the *quiet* plan, because that is what `population.md` calls the
 establishment — "what gets created and kept". But the busy countryside is twice as dense, so on Poeta a player's arrival raised the target from 19 to 37
 against a pool of 19: fourteen awake, five asleep, and a map with a player on it no busier than an empty one. Two things were wrong at once. The pool has

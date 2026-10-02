@@ -75,8 +75,9 @@ public class BotDirector {
 	 */
 	private static final int CHANGES_PER_REVIEW = 25;
 	/**
-	 * How far a region may be from its target before anything is done about it. Without it a map sits on the boundary and churns, waking and sleeping
-	 * the same inhabitant every half minute for a difference nobody could see.
+	 * How far over its target a region may be before anybody is sent away. Departures only: an arrival cannot churn, since a region that fills to its
+	 * target has nothing further to ask for, where one that empties to it sits on the boundary and is found one over, then one under, every half
+	 * minute.
 	 */
 	private static final int DEAD_BAND = 1;
 
@@ -145,8 +146,12 @@ public class BotDirector {
 			Difference difference = sort(bots, worldId, residents, villages, hunters);
 			report.add(String.format("map %d: %d awake of %d, wants %d%s", worldId, difference.awake(), residents.size(),
 				villages.values().stream().mapToInt(count -> count).sum() + hunters, busy ? " (" + watchers.size() + " player(s))" : ""));
-			if (difference.toWake().size() + difference.toSleep().size() <= DEAD_BAND)
-				continue; // near enough, and churning over one inhabitant is worse than being one short
+			// The band holds departures back and lets arrivals through, because only one of the two directions can churn. A region that wakes its way
+			// up to its target then stops: there is nothing left to ask for. A region that sleeps its way down to it sits on the boundary, and the next
+			// review finds it one over, or one under, and moves somebody again. Applied to both, the band left a map one inhabitant short for ever —
+			// seen in game, a village missing its last resident with nobody anywhere near it, and nothing in the log to say why.
+			if (difference.toWake().isEmpty() && difference.toSleep().size() <= DEAD_BAND)
+				continue;
 
 			for (BotRoster.Resident resident : difference.toWake()) {
 				if (woken >= budget)
