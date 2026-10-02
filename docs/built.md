@@ -112,6 +112,11 @@ Teach, then dress.
 then 10, then nothing, with **the same two refused at every review** because the player was stood on the ground those two live on. The region holds two
 short, on purpose, for as long as somebody is looking at the place that is missing them. That is the whole rule, observed rather than reasoned about.
 
+**A bot is busy most of the time, which is what paces departures.** Emptying a map measured 4 to 6 leaving a review against 15 to 21 put off as "in a
+fight or on a road" — so the rate is set by how often bots are idle, not by the budget of 25, which is almost never the binding constraint. A surplus of
+27 took three or four minutes to go, with nobody watching. `tryRetire` is what produces that, and it is the right trade: no bot is ever taken out of the
+world mid-swing.
+
 **The surge had nobody to draw on, and only the game showed it.** `populate` created the *quiet* plan, because that is what `population.md` calls the
 establishment — "what gets created and kept". But the busy countryside is twice as dense, so on Poeta a player's arrival raised the target from 19 to 37
 against a pool of 19: fourteen awake, five asleep, and a map with a player on it no busier than an empty one. Two things were wrong at once. The pool has
