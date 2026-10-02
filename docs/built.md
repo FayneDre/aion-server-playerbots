@@ -141,7 +141,7 @@ settlements are read from the world rather than authored. What it got wrong is r
 
 1. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the navmesh does not answer — an ungenerated map, the last few metres to a creature — a bot can still wedge itself on one. Along a planned route it no longer applies: those legs are walked on the mesh, which sees them.
 2. **Walkable ground comes in islands.** A route between two of them does not exist. Check with `NavmeshTool <mapId> components` before suspecting the search.
-3. **Only maps with a generated file are planned on.** Run `tools/navmesh.ps1 <mapId>`; the rest fall back to reactive steering. Only Poeta (210010000) is generated.
+3. **Only maps with a generated file are planned on.** Run `tools/navmesh.ps1 <mapId>`; the rest fall back to reactive steering. 24 are generated, Poeta (210010000) among them; Sanctum (110010000) and Reshanta (400010000) are not.
 4. **Crossing maps is not a navigation problem.** It needs teleporters and flight paths, like a player.
 5. **A crash loses at most 5 minutes of what bots did.** That is the periodic save interval; nothing writes them between two sweeps.
 6. **Bots never flee.** They heal, drink and shield themselves, and otherwise sit down to regenerate, but nothing makes them run from a fight they are losing.

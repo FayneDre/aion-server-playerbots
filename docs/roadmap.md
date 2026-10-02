@@ -23,15 +23,18 @@ The pool is built: inhabitants are created asleep, and the director wakes and sl
 it ([population.md](population.md)). Three pieces of it were deliberately left out.
 
 **Stocking.** *"Do I have a level-16 Asmodian scout?"* — and growing one if not, plus retiring the oldest at the cap and freeing their names. Without it a
-population is whatever was created once; with it the flow in [population.md](population.md) becomes real, and this is where the pool meets progression.
+population is whatever `//bot populate` created once; with it the flow in [population.md](population.md) becomes real, and this is where the pool meets
+progression. What exists is the depth: `populate` now creates the **busy** plan rather than the quiet one (`b5a0cbd10`), so the surge has sleepers to
+wake instead of asking for people nobody had made.
 
 **Pre-filling a map before a player arrives.** The window exists: a teleport knows its destination before the client finishes loading, and the account's
 character list is known while somebody is still on the selection screen. It is also what would let **settlements** sleep, which they currently cannot —
 the director can only breathe the countryside, because a village is all within sight of the obelisk a player lands on.
 
-**Moving a bot that outgrew its region.** `BotPacing` stops a bot at the top of its region's band, and that is documented as a stopgap. What should
-happen is that the director finds it a region its new level belongs to, which the pool makes cheap: it is a sleep and a wake somewhere else, and nobody
-watches a ten-minute walk.
+**Moving a bot that outgrew its region — across maps.** Within a map it already happens: `BotDay.moveOutIfOutgrown` rehomes a bot whose level has
+drifted from the ground it lives on, and writes the new home to the roster. What is missing is the other half, for a bot that has outgrown the whole
+region: `BotPacing` stops it at the top of the region's band, which is documented as a stopgap. The director should find it a region its new level
+belongs to, which the pool makes cheap — a sleep and a wake somewhere else, and nobody watches a ten-minute walk.
 
 ## Dungeons and instances
 
@@ -71,8 +74,9 @@ that crossing maps needs teleporters and flight paths was simply wrong.
 Pandaemonium together** — against 4352 hostiles, median level 33 and ninth decile 50. It is one of the ways a character crosses 25 to 50.
 
 Less blocked than it looks. The mesh labels regions **per surface** rather than per column, which is exactly what stacked islands need, so civic and
-field presence on each island is ordinary work. What is missing is only the crossing *between* islands: for population the director's teleport covers
-it, and for gameplay it needs flight.
+field presence on each island is ordinary work. What is missing is the crossing *between* islands — for population the director's teleport covers it,
+and for gameplay it needs flight — and, before any of that, **Reshanta's mesh, which has not been generated**. It is the largest map in the game, so
+budget the generation rather than assuming it is one more run of the tool.
 
 ## Wild PvP and rifts
 
@@ -95,11 +99,12 @@ they take combatants only, and only during a siege.
 
 ## Economy
 
-Selling works; the broker (`BrokerService`) is next, then player shops.
+Selling works, and now in practice as well as in principle. It did not: shop spots were read from spawn data — where an npc was *placed*, not where
+it stands — and 79 of 87 trips ended at an empty spot. Repaired in `baf18e121`, which asks the map for its living shop keepers, refuses a shop it
+cannot walk to, and remembers the refusal. Measured over the night of 2 October: **37 sales in 38 trips, and not one "found no shop keeper"**.
 
-**But selling barely works in practice**, and it was measured today rather than assumed: 79 of 87 shop trips end in "found no shop keeper where one
-was expected", and zero sales completed in three minutes. Shop spots come from spawn data — where an npc was *placed*, not where it stands. The broker
-will be built on the same "find the right npc" mechanism, so this is worth fixing before it is built on.
+Next is the broker (`BrokerService`), then player shops. The broker is built on the same "find the right npc" mechanism, which is now worth
+building on.
 
 ## Legions
 
@@ -114,13 +119,15 @@ Priority five. Bots forming and filling legions, which mostly falls out of group
   becomes serious at a settled 2000 and it is a design rule, not a tuning value.
 - **No gathering or crafting.** It would feed the broker and make the countryside look used rather than merely fought over.
 - **Gear does not keep up.** Bots are dressed at creation and wear what they loot. Crossing 1 to 65 needs buying or crafting.
-- **Zero automated tests** on roughly 8000 lines, much of it concurrent. This is why the combat half of `PlayerBotAI` has not been split: a mistake
-  there is silent rather than loud.
+- **Zero automated tests** on roughly 10400 lines, much of it concurrent — the repo has a test layout and other modules use it, the bot module
+  simply has none. This is why the combat half of `PlayerBotAI` has not been split: a mistake there is silent rather than loud.
 
 ## Known limits, in order of how much they will bite
 
-1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating; one exists. `tools/navmesh.ps1 <mapId>`. **This paces
-   everything** — it is the real cost of a living world, not the bot logic.
+1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **24 meshes exist** (`data/navmesh/*.nav`, 23 distinct
+   names — Idian Depths has one per faction). `tools/navmesh.ps1 <mapId>`. This no longer paces everything, but two of the absentees are named
+   throughout these docs as if they were ready: **Sanctum** (110010000) and **Reshanta** (400010000) have no mesh, so no bot plans a route on
+   either. A mesh is also not a population: only Poeta has inhabitants, and the others open lazily, on the first map that needs one.
 2. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the mesh does not answer a bot can still wedge itself.
 3. **Walkable ground comes in islands.** A route between two of them does not exist; `NavmeshTool <mapId> components` says so before you suspect the
    search.
