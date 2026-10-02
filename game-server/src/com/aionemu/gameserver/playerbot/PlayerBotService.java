@@ -338,6 +338,7 @@ public class PlayerBotService {
 		log.info("Map {} takes {} inhabitant(s) across {}", worldId, count, levelSpread(places));
 
 		List<String> created = new ArrayList<>();
+		int worn = 0;
 		for (int i = 0; i < count; i++) {
 			String name;
 			try {
@@ -363,35 +364,40 @@ public class PlayerBotService {
 				Player bot = PlayerBotCreationService.create(name, playerClass, level, race);
 				BotRoster.setResident(name, true);
 				BotRoster.setHome(name, home.centre());
-				// into the world before it is dressed: equipping asks whether its wearer is spawned, and a character with no position yet is not a
-				// question that has an answer
-				settle(bot, worldId, home.centre());
-				BotOutfitter.dress(bot);
+				place(bot, worldId, home.centre());
+				// Taught before it is dressed, and this is the order that matters: the outfitter refuses a piece of armour to a character that does not
+				// already hold its mastery, and a character read back from the database knows the skills of level one whatever its level. Taught on the
+				// way into the world, which is where this used to happen, a character created and left asleep would be dressed in nothing at all.
+				PlayerBotEnterWorldService.learnMissingSkills(bot);
+				worn += BotOutfitter.dress(bot);
 				PlayerService.storePlayer(bot);
 				created.add(name + " (" + playerClass + " " + level + ")");
 			} catch (IllegalArgumentException | IllegalStateException e) {
 				log.warn("Could not create bot " + name, e);
-				rememberRoster();
 				return report(created, e.getMessage());
 			}
 		}
-		rememberRoster();
+		log.info("Created {} inhabitant(s) for map {}, wearing {} piece(s) between them, all asleep", created.size(), worldId, worn);
 		return report(created, null) + ", over " + places.size() + " places";
 	}
 
 	/**
-	 * Puts a newly made resident into the world at the place it belongs, scattered a little so a village does not appear as a stack of people on one
-	 * spot. Creating without spawning would mean invoking forty five characters by hand afterwards.
+	 * Puts a newly made resident down at the place it belongs, scattered a little so a village is not a stack of people on one spot — and leaves it
+	 * there, asleep.
+	 * <p>
+	 * It used to enter the world here, on the grounds that creating without spawning would mean invoking forty five characters by hand afterwards.
+	 * Nobody has to: the population director brings in as many of them as the region currently wants, and leaves the rest in the pool. Which is the
+	 * whole point of there being a pool — a world of two thousand inhabitants is affordable because most of them are asleep most of the time, and
+	 * creating them all awake was the one thing that made that impossible to try.
+	 * <p>
+	 * The position is set without spawning, which the engine has its own door for, and it has to be set before the character is stored: the save reads
+	 * the coordinates off the object, so a character stored without one is a character with nowhere to be woken to.
 	 */
-	private void settle(Player bot, int worldId, Vector3f home) {
-		if (home != null) {
-			Vector3f spot = scatterAround(worldId, home);
-			bot.setPosition(World.getInstance().createPosition(worldId, spot.getX(), spot.getY(), spot.getZ(), (byte) 0, 0));
-		}
-		PlayerBotEnterWorldService.enterWorld(bot);
-		spawnedBots.put(bot.getObjectId(), bot);
-		// the roster is written once by the caller when the whole population is in, not once per inhabitant: rewriting the full set after each of
-		// forty five arrivals is forty five statements to say what one says at the end
+	private void place(Player bot, int worldId, Vector3f home) {
+		if (home == null)
+			return;
+		Vector3f spot = scatterAround(worldId, home);
+		World.getInstance().setPosition(bot, worldId, spot.getX(), spot.getY(), spot.getZ(), (byte) 0);
 	}
 
 	/**
@@ -517,6 +523,14 @@ public class PlayerBotService {
 			log.error("Could not take bot " + bot.getName() + " out of the world", e);
 			return false;
 		}
+	}
+
+	/**
+	 * @return The bot of that character id if it is in the world, or null if it is in the pool. Which is the whole of what "asleep" means — there is
+	 *         no flag and nothing to keep in step, only a character that is in the world or a character that is not.
+	 */
+	public Player spawnedBot(int playerId) {
+		return spawnedBots.get(playerId);
 	}
 
 	/**

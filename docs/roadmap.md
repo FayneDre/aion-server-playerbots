@@ -16,30 +16,21 @@ The three that stood here before were cleared in `0118bfe9e` and this file had n
 390, `BotPlaces` tests `GENERAL_DARK` as well as `GENERAL` so the Asmodian faction has settlements, and the roster carries an `owner_id` that the
 director is required to leave alone.
 
-## The pool and the director: the half that acts
+## What the director still does not do
 
-**Designed, started, and it only looks.** `BotDirector` reviews every inhabited region every 30 seconds, measures what it holds against what
-`BotPresence.wanted` says it should, and writes the difference to the log. Nothing moves. The acting half — the pool — does not exist at all.
+The pool is built: inhabitants are created asleep, and the director wakes and sleeps the countryside to match each region's target without anybody seeing
+it ([population.md](population.md)). Three pieces of it were deliberately left out.
 
-The whole population model rests on it, so it is worth being plain about what is missing meanwhile:
+**Stocking.** *"Do I have a level-16 Asmodian scout?"* — and growing one if not, plus retiring the oldest at the cap and freeing their names. Without it a
+population is whatever was created once; with it the flow in [population.md](population.md) becomes real, and this is where the pool meets progression.
 
-- **Every bot is in the world, all the time.** The 2000-bot figure in [population.md](population.md) assumes a pool of which only a fraction is logged
-  in. Today a populated map is one whose characters are all awake, so the affordability argument is untested at the number it was made for.
-- **`in_world` is not a pool yet.** The column exists and `BotRoster.remember` writes it, but it records who was in the world for the *next start* to
-  put back. Nobody decides it while the server is running.
-- **Nothing surges for a player.** `wanted(worldId, busy)` already returns the denser countryside when a real player is on the map, and the director
-  already computes the gap — it just cannot fill it. The one change that alters what the world *feels* like is the one not wired up.
-- **Nothing retires a bot that outgrew its region.** Residents are pinned to their region's level and earn nothing, so the upward drift is held off
-  rather than handled. A bot that passes its valley needs the director to find it a region it belongs to, which is also what removes the need to walk
-  there ([population.md](population.md)).
-- **Attention is a table in a doc, not code.** The 1.0 / 0.6 / 0.2 weights in [population.md](population.md) have no implementation; the director
-  knows only `busy` or not.
+**Pre-filling a map before a player arrives.** The window exists: a teleport knows its destination before the client finishes loading, and the account's
+character list is known while somebody is still on the selection screen. It is also what would let **settlements** sleep, which they currently cannot —
+the director can only breathe the countryside, because a village is all within sight of the obelisk a player lands on.
 
-The hard requirement is the one the class comment already names: **nobody ever sees it happen.** A character materialising in front of a player is
-worse than an empty field, so connecting and disconnecting has to be out of sight, and a player's capital and last map have to be filled before they
-arrive rather than while they watch.
-
-It needs no navigation and no new engine seam: `PlayerBotEnterWorldService` and `PlayerBotLeaveWorldService` are the two doors and both work.
+**Moving a bot that outgrew its region.** `BotPacing` stops a bot at the top of its region's band, and that is documented as a stopgap. What should
+happen is that the director finds it a region its new level belongs to, which the pool makes cheap: it is a sleep and a wake somewhere else, and nobody
+watches a ten-minute walk.
 
 ## Dungeons and instances
 

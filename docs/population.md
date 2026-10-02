@@ -83,24 +83,43 @@ Only one cap is left, and not for density:
 
 ## The pool and the director
 
-Every bot character is in the pool; only a fraction is in the world. The roster table already has the `in_world` column — what was missing was
-somebody to decide it.
+Every bot character is in the pool; only some of them are in the world. The pool is not a thing anybody maintains — it is the world-owned residents in
+`playerbot_characters` that are not in the set of spawned bots, so there is nothing to keep in step and nothing to go stale.
 
-The **director** runs every few minutes: demand per map and per band from the rules above, multiplied by attention, then it connects bots from the pool
-to close the gap and disconnects the surplus. Never within sight of a player, and it pre-fills a player's capital and last map before they arrive, so
-they never watch a region assemble itself.
+The **director** reviews every region every 30 seconds: what it holds, against what it should hold at this moment. The difference is handed to a lane of
+its own, one thread, because loading a character is some twenty blocking database round trips and a batch of them on a tick thread would stop the bots
+thinking.
 
-| situation | attention |
+**Only the countryside breathes**, and the reason is geometric rather than a matter of tuning. A player arrives at a bind obelisk, in a town — where this
+module deliberately puts bots' bind points too. Every villager's home is one place's centre with fifteen metres of scatter, so while that player stands
+there all of them are inside the ninety five metres a client is told about: a village thinned while nobody watched could never be refilled until the
+player left, and the one place a person looks at would be the one place the director cannot fix. So settlements are a fixed cast, and the hunting grounds
+— spread apart by construction, nowhere near a bind point — are what fills and empties.
+
+| situation | share of the countryside awake |
 |---|---:|
-| a real player on the map | 1.0 |
-| capital with no player | 0.6 |
-| ordinary map, no player | 0.2 |
-| nobody online anywhere | ~0 — only the economy stays up |
+| a real player on the map | all of it, at the busy density |
+| the five minutes after they leave | the same, decaying rather than snapping back |
+| a quiet map, somebody playing elsewhere | a fifth |
+| nobody online anywhere | a twentieth |
 
-Its second job is stocking: *"do I have a level-16 Asmodian scout?"* If not, one has to be grown. This is where the pool meets progression.
+That last row was going to be zero — "only the economy stays up" — and zero is wrong. A sleeping bot earns no experience, and this model is a *flow*: a
+band holds what arrives times how long it stays. Put the whole world to sleep and no career advances overnight, so a server comes back each morning to
+the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
 
-**And it removes the need to travel.** A bot that outgrows Poeta logs out and logs back in at Verteron. Nobody watches a ten-minute walk, and a walk
-can get stuck. Following a *player* between regions is a different matter and is cheap — see [roadmap.md](roadmap.md) under Flight.
+Two rules are worth stating as rules, because neither can be repaired after the fact:
+
+- **Nobody ever watches it happen.** A wake is tested against the real players on that map at 150 m: the engine's own 95 m sight radius, plus room for
+  somebody walking towards the spot. A sleep asks the bot's own known list, which is not an estimate of who is near but exactly the set of clients that
+  would be told. A refused wake is simply not done, and the next review asks again.
+- **The director never picks the moment.** It decides that a region holds too many; the bot decides whether it may go now. In a fight, dead, mid-journey
+  or grouped with a real player, it stays.
+
+**And it removes the need to travel.** A bot that outgrows Poeta logs out and logs back in at Verteron. Nobody watches a ten-minute walk, and a walk can
+get stuck. Following a *player* between regions is a different matter and is cheap — see [roadmap.md](roadmap.md) under Flight.
+
+Two jobs are designed and not built, and they are in [roadmap.md](roadmap.md): **stocking** — *"do I have a level-16 Asmodian scout?"*, and growing one
+if not — and **pre-filling a map before a player arrives**, which is what would let settlements sleep too.
 
 ## Pacing progression
 

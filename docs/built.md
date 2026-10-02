@@ -83,6 +83,33 @@ A bot is passed over when a group looks for a new leader — leading means answe
 
 **Saving.** Spawned bots are written every 5 minutes, and on a clean shutdown. Nothing else writes them: the engine's `PeriodicSaveService` covers legion warehouses only, and real players are saved when they log out, a door a bot never uses. This matters more than it used to, now that bots gain levels and skills unattended over hours.
 
+## Done: the pool
+
+Inhabitants are created asleep and the director wakes them, which is what makes a world of two thousand something that can be tried rather than only
+calculated — every bot used to be awake from the moment it was created. The model and the numbers are in [population.md](population.md); what the building
+of it cost is here.
+
+**Attention could not be applied to the whole population, and the reason was geometric.** The design scaled every region's target by how much it was being
+watched. That cannot work for settlements: a player arrives at a bind obelisk in a town, every villager's home is one centre with fifteen metres of
+scatter, and so the whole village sits inside the ninety five metres a client is told about. A village thinned while nobody looked could never be refilled
+while somebody stood in it — the one place a person looks at would be the one place the director was unable to fix. Settlements became a fixed cast and the
+countryside became the part that breathes. It also happens to be the arrangement the data already had: settlement density never depended on whether a map
+was busy, only the hunting grounds did.
+
+**Three things were wrong before any of this and only became visible once something other than an operator decided when a bot leaves.** `delete()` despawns
+with `FADE_OUT`, so every departure was watched; the departure did not leave its group, so a player kept a ghost in their party window; and `cancel(false)`
+does not stop a tick that has begun, so a bot could be removed from the world in the middle of deciding something and then try to walk. All three are in
+[engine-traps.md](engine-traps.md) or fixed at the source.
+
+**Creating a character asleep nearly dressed it in nothing.** Dressing used to happen after entering the world, and the comment said why: equipping was
+believed to ask whether its wearer was spawned. It does not — a broadcast to a non-spawned object reaches its empty known list and stops. The real
+dependency was the opposite way round and quieter: the outfitter refuses armour to a character that does not hold its mastery, and a character read back
+from the database holds level-1 skills whatever its level, because teaching happened on the way in. Teach, then dress.
+
+**The pool is a query, not a collection.** Which characters exist is the database's answer; a copy of it kept in memory is a second truth to drift. So the
+pool is the world-owned residents that are not in the set of spawned bots, and `in_world` went from a full-table rewrite on every change to one row per
+arrival — "these and nobody else" is the safer statement for a population created once and the wrong one for a loop running every thirty seconds.
+
 ## Retired: residents and adventurers
 
 A bot used to be one of two things, and a resident gained no experience so that its region kept inhabitants of its own level. It worked, and it was

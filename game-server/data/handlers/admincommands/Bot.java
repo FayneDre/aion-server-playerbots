@@ -1,10 +1,12 @@
 package admincommands;
 
+import java.util.List;
 import java.util.function.Function;
 
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
+import com.aionemu.gameserver.playerbot.world.BotDirector;
 import com.aionemu.gameserver.utils.chathandlers.AdminCommand;
 
 /**
@@ -18,7 +20,7 @@ public class Bot extends AdminCommand {
 	public Bot() {
 		super("bot", "Controls playerbots.", """
 			create <name> <class> <level> <race> - Creates a new bot character of your own, with a face of its own.
-			populate <count> [race] - Fills this map with bots of its own levels. 0 takes as many as the map asks for.
+			populate <count> [race] - Creates inhabitants for this map, asleep. The director brings in as many as it currently wants.
 			delete <characterName> - Deletes one of your own bot characters from the database.
 			load <characterName> - Loads a bot character from the database without spawning it.
 			spawn <characterName> - Loads a bot character and spawns it next to you.
@@ -34,6 +36,7 @@ public class Bot extends AdminCommand {
 			kind <characterName> [resident|adventurer] - Reads or sets whether the bot levels up. Residents stay at their region's level.
 			nav - Lists the navmeshes loaded in memory.
 			number [region] - Counts the bots on a map, by faction. Takes a map id or part of its name; yours by default.
+			pool - What the last population review found: awake, total and wanted, a line per map.
 			list - Lists all currently spawned bots.
 			clear - Deletes your own bot characters. Staff clear the whole world, which then has to be populated again.
 			See docs/bot-commands.md for what each one does.
@@ -68,8 +71,21 @@ public class Bot extends AdminCommand {
 			case "kind" -> kind(admin, params);
 			case "number" -> sendInfo(admin, PlayerBotService.getInstance().count(params.length > 1 ? String.join(" ", java.util.Arrays.copyOfRange(params, 1, params.length)) : null, admin));
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
+			case "pool" -> sendInfo(admin, describePool());
 			default -> sendInfo(admin);
 		}
+	}
+
+	/**
+	 * @return What the director concluded last time it looked, which is the one window onto a population that is mostly asleep: //bot number counts
+	 *         what is in the world, and says nothing about what should be.
+	 */
+	private static String describePool() {
+		List<String> review = BotDirector.getInstance().lastReview();
+		if (review.isEmpty())
+			return "No population review has run yet. The first one is half a minute after startup.";
+		return String.join("
+", review);
 	}
 
 	private void kind(Player admin, String[] params) {

@@ -163,8 +163,13 @@ public class PlayerBotEnterWorldService {
 	 * <p>
 	 * Done on entering the world rather than at creation so that bots made before this existed are mended the next time they spawn. Asking twice
 	 * costs nothing: the service keeps only the highest rank of each skill.
+	 * <p>
+	 * Public because creation needs it too, and for a reason that is invisible until it bites: the outfitter will not put a piece of armour on a
+	 * character that does not already hold its mastery, which is the same question the engine asks when it refuses one. A bot read back from the
+	 * database knows the skills of level one, whatever its level — so a character dressed before being taught is a character dressed in nothing, and
+	 * the outfitter says so at debug level only.
 	 */
-	private static void learnMissingSkills(Player bot) {
+	public static void learnMissingSkills(Player bot) {
 		SkillLearnService.learnNewSkills(bot, 1, bot.getLevel());
 	}
 

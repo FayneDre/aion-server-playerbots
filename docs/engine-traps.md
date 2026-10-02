@@ -179,6 +179,23 @@ been read it is in its settled state and safe for everyone for the rest of the r
 The general shape is worth keeping in mind: this engine's template classes were written for a single reader and lazily build whatever is expensive.
 A bot module reads the same data from a pool.
 
+## Removing an object plays an animation you did not ask for
+
+`getController().delete()` reaches `World.removeObject`, which despawns with `FADE_OUT` — the one-argument default — so every client that can see the
+object watches it dissolve, and no animation can be passed through `delete()`. To remove something silently, despawn it yourself with
+`ObjectDeleteAnimation.NONE` first; `removeObject` then skips its own despawn. It matters wherever the server removes what nobody asked it to: a bot put to
+sleep must be *gone*, not seen leaving.
+
+## A character read back from the database knows the skills of level one
+
+`PlayerService.newPlayer` teaches skills from level 1 to the level the character has **at that moment**, and a bot is created at 1 and then given its
+experience — so a level-30 templar loaded from the database holds level-1 skills and nothing else. Nothing since repairs it: `onLevelChange` only teaches
+levels actually gained, and a bot gains none while it is not in the world.
+
+What depends on that quietly is the outfitter: it will not put armour on a character that does not already hold the mastery for it — the same question the
+engine asks when it refuses a piece — so dressing before teaching leaves the character in its starting kit and says so at `debug` level only. Teach, then
+dress. This held for as long as it did only because teaching happened on the way into the world, which was once the only way a bot was ever dressed.
+
 ## When diagnosing, mind where the truth lives
 
 **The database lags by up to five minutes.** Bots are saved on a timer and on a clean shutdown, so a query run too soon reports the state before whatever is being tested. Several conclusions today were drawn from stale rows and had to be taken back.
