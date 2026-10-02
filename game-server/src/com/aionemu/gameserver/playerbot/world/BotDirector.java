@@ -299,6 +299,30 @@ public class BotDirector {
 		return reasons.isEmpty() ? "nothing" : reasons.toString();
 	}
 
+	/**
+	 * What a region should hold at this moment, and the band it moves within.
+	 * <p>
+	 * Reported rather than worked out again by whoever asks, because the only figure worth showing an operator is the one the review itself acts on.
+	 * The establishment — every inhabitant the region has a character for — is not that figure: it is what the pool holds, and the countryside is only
+	 * ever awake in the share that attention justifies, so a region quoted at its establishment reads as permanently short of people nobody was ever
+	 * going to wake.
+	 *
+	 * @return What the region wants now, the fewest it ever keeps awake, and the most it holds with somebody playing on it.
+	 */
+	public Band band(int worldId) {
+		Map<Integer, List<Player>> playersByMap = realPlayersByMap();
+		int villagers = BotPresence.civic(worldId).size();
+		boolean busy = isBusy(worldId, playersByMap.getOrDefault(worldId, List.of()), System.currentTimeMillis());
+		int now = villagers + BotPresence.share(BotPresence.field(worldId, busy), attention(busy, !playersByMap.isEmpty())).size();
+		int quiet = villagers + BotPresence.share(BotPresence.field(worldId, false), ATTENTION_UNWATCHED).size();
+		int crowded = villagers + BotPresence.share(BotPresence.field(worldId, true), ATTENTION_BUSY).size();
+		return new Band(now, quiet, crowded);
+	}
+
+	/** What a region should hold at this moment, at its quietest, and at its busiest. */
+	public record Band(int now, int quiet, int crowded) {
+	}
+
 	/** @return What the last review concluded, a line per map, for an operator asking where the population stands. */
 	public List<String> lastReview() {
 		return lastReview;

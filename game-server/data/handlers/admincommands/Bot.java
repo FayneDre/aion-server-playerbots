@@ -3,6 +3,7 @@ package admincommands;
 import java.util.List;
 import java.util.function.Function;
 
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
@@ -45,6 +46,12 @@ public class Bot extends AdminCommand {
 
 	@Override
 	public void execute(Player admin, String... params) {
+		// Refused rather than half obeyed: with the system off there is no save sweep and no director, so a bot spawned from here would run
+		// unmanaged and lose whatever it did at the next shutdown.
+		if (!PlayerBotConfig.ENABLE) {
+			sendInfo(admin, "Playerbots are disabled. Set gameserver.playerbot.enable to true and restart.");
+			return;
+		}
 		if (params.length == 0) {
 			sendInfo(admin);
 			return;

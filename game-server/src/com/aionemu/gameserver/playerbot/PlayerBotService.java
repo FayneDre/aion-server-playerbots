@@ -78,8 +78,15 @@ public class PlayerBotService {
 
 	/**
 	 * Puts the world back the way it was and starts saving it. Called once, from {@code GameServer}, after the world is loaded.
+	 * <p>
+	 * Switched off, nothing here runs: no save sweep, no standing orders, no roster restored and no director. The characters stay in the database
+	 * untouched, which is the whole promise of the setting — turning bots off must not be a way to lose them.
 	 */
 	public void onStartUp() {
+		if (!PlayerBotConfig.ENABLE) {
+			log.info("Playerbots are disabled, so none is put back into the world. Their characters are left in the database untouched.");
+			return;
+		}
 		BotScheduler.getInstance().scheduleAtFixedRate(this::saveDue, SAVE_SWEEP_MILLIS, SAVE_SWEEP_MILLIS);
 		runStandingOrders();
 		restoreRoster();
@@ -146,16 +153,6 @@ public class PlayerBotService {
 	}
 
 	/**
-	 * Populates any configured map that has nobody on it yet.
-	 * <p>
-	 * This is what makes the bot system work on a server other than the one it was written on. Everything else about a population lives in the
-	 * database — the characters, the roster, where each one lives — so a fresh installation has none of it, and until now the only ways to get some
-	 * were to type a command in game or to write a row into {@code server_variables} by hand. Neither is an installation step anybody should have to
-	 * be told about.
-	 * <p>
-	 * Only ever for an empty map, so it runs once and is silent on every start afterwards, and so it can never quietly double a population.
-	 */
-	/**
 	 * Populates every open world map of both races, building the navmeshes it finds missing.
 	 * <p>
 	 * This is what {@code auto} means, and the point of it is that a server should not need a decision per map. There are eighteen of them across
@@ -163,8 +160,8 @@ public class PlayerBotService {
 	 * machine it was written on. Everything here is read from the world instead: which maps are open world, which race lives on each, and how many
 	 * people a map holds — one per place it turns out to have, so a starting valley gets a village's worth and a large region gets a region's.
 	 * <p>
-	 * A map with no mesh is set building in the background and skipped for now: generating one takes seconds and about a gigabyte, so holding the
-	 * server's startup on eighteen of them is out of the question. Those maps are populated on the next start, by which time their meshes exist.
+	 * A map with no mesh has one built here, before the server opens and before anybody is put on it — see {@link NavmeshBuilder}. It costs seconds
+	 * and about a gigabyte per map, which is why a first {@code auto} start on a fresh installation is a long one.
 	 */
 	private void populateEveryOpenMap() {
 		int populated = 0;
@@ -182,6 +179,18 @@ public class PlayerBotService {
 		log.info("Populated {} map(s) automatically", populated);
 	}
 
+	/**
+	 * Populates any configured map that has nobody on it yet.
+	 * <p>
+	 * This is what makes the bot system work on a server other than the one it was written on. Everything else about a population lives in the
+	 * database — the characters, the roster, where each one lives — so a fresh installation has none of it, and the only ways to get some were to
+	 * type a command in game or to write a row into {@code server_variables} by hand. Neither is an installation step anybody should have to be told
+	 * about.
+	 * <p>
+	 * Only ever for an empty map, so it runs once and is silent on every start afterwards, and so it can never quietly double a population. Which
+	 * also means a map that already has inhabitants is skipped <b>before</b> its mesh is looked at: an installation that was populated under an
+	 * earlier build keeps whatever meshes it had.
+	 */
 	private void populateConfiguredMaps() {
 		if (PlayerBotConfig.POPULATE.isBlank())
 			return;
@@ -836,9 +845,12 @@ public class PlayerBotService {
 		}
 		String name = DataManager.WORLD_MAPS_DATA.getTemplate(worldId) == null ? String.valueOf(worldId)
 			: DataManager.WORLD_MAPS_DATA.getTemplate(worldId).getName() + " (" + worldId + ")";
-		return String.format("%s holds %d inhabitant(s): %d Elyos, %d Asmodian. %d companion(s), %d player(s). The region asks for %d, or %d with a "
-			+ "player on it.", name, elyos + asmodians, elyos, asmodians, companions, players, BotPresence.establishment(worldId).size(),
-			BotPresence.wanted(worldId, true).size());
+		// What the director is actually working towards, not what the region has characters for. The establishment was the figure here before, and it
+		// answers a different question: a map asleep but for its villages was quoted as wanting nineteen when the review it answers to wanted ten.
+		BotDirector.Band band = BotDirector.getInstance().band(worldId);
+		return String.format("%s holds %d inhabitant(s): %d Elyos, %d Asmodian. %d companion(s), %d player(s). The region wants %d right now, out of "
+			+ "%d with nobody online and %d with a player on it.", name, elyos + asmodians, elyos, asmodians, companions, players, band.now(),
+			band.quiet(), band.crowded());
 	}
 
 	/** @return The map named, by id or by part of its name, or the commander's own when nothing is named. */

@@ -6,6 +6,10 @@ Everything the bot system exposes in game, in one place. `//bot` on its own, or 
 `accessLevel >= 0`, which every account satisfies, so no code decides this and changing that one number is the whole of the permission. Set it back to
 `9` to make it staff only again.
 
+**Unless the system is off.** `gameserver.playerbot.enable = false` refuses every one of these with one line, because with bots disabled there is no
+save sweep and no director: a bot spawned by hand would run unmanaged and lose whatever it did at the next shutdown. The setting takes effect at
+startup and leaves every bot character in the database untouched.
+
 The prefix is `//` even for a regular player: the chat processor looks a command up by name and only then asks whether the caller may run it. Uses are
 recorded in the admin audit log when `LOG_GMAUDIT` is on, which is worth leaving on — it is the only record of who emptied the world.
 
@@ -66,8 +70,13 @@ a map by hand, or for a map the config does not cover.
 
 `//bot number` counts three things apart, and the distinction is the point of it. **Inhabitants** are the world's own, by faction. **Companions** are
 characters somebody owns, which belong to no region and must not be counted as its population. **Players** are real people, whose presence is what
-raises the countryside's density. It then prints what the region asks for both ways — quiet, and with somebody on it — so the gap the director
-reports can be read on demand, on any map, rather than waited for in the log.
+raises the countryside's density. It then prints the three figures the director works to: what the region wants at this moment, what it keeps awake
+with nobody online at all, and what it holds with a player on it — so the gap the director reports can be read on demand, on any map, rather than
+waited for in the log.
+
+Those are targets, not stock. Earlier it quoted the **establishment** — every inhabitant the region has a character for — which reads as a figure the
+map is permanently short of, because the countryside is only ever awake in the share attention justifies: Poeta was quoted as asking for 19 while the
+review it answers to wanted 10.
 
 It reads the world rather than the roster or the database. The database lags a save sweep, up to five minutes; the roster says what should come back
 after a restart, not who is standing there now.
