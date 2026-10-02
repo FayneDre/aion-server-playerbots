@@ -84,8 +84,7 @@ public class Bot extends AdminCommand {
 		List<String> review = BotDirector.getInstance().lastReview();
 		if (review.isEmpty())
 			return "No population review has run yet. The first one is half a minute after startup.";
-		return String.join("
-", review);
+		return String.join(System.lineSeparator(), review);
 	}
 
 	private void kind(Player admin, String[] params) {
