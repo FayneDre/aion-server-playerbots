@@ -85,6 +85,15 @@ public class BotDirector {
 	private final Map<Integer, Long> lastSeenPlayer = new ConcurrentHashMap<>();
 	/** What the last review concluded, for {@code //bot pool} to report. Written once a review, read rarely. */
 	private volatile List<String> lastReview = List.of();
+	/**
+	 * What the changes asked for by the previous review actually came to.
+	 * <p>
+	 * Counted because the first version of this log counted what it <b>asked</b> for and said it had done it, and a refusal is the common case rather
+	 * than the exception — a region short of hunters while a player stands in it asks every half minute and is told no every half minute. Read as
+	 * outcomes, that log showed a population churning once a review; it was a population correctly holding still. Plain fields: everything that writes
+	 * them, the review included, runs on the one lifecycle thread.
+	 */
+	private int wokeLast, wakesRefusedLast, sleptLast, sleepsRefusedLast;
 
 	private BotDirector() {
 	}
@@ -141,18 +150,35 @@ public class BotDirector {
 				if (woken >= budget)
 					break;
 				woken++;
-				BotScheduler.getInstance().enterOrLeaveWorld(() -> bots.wake(resident, watchers));
+				BotScheduler.getInstance().enterOrLeaveWorld(() -> {
+					if (bots.wake(resident, watchers))
+						wokeLast++;
+					else
+						wakesRefusedLast++;
+				});
 			}
 			for (Player bot : difference.toSleep()) {
 				if (slept >= budget)
 					break;
 				slept++;
-				BotScheduler.getInstance().enterOrLeaveWorld(() -> bots.sleep(bot));
+				BotScheduler.getInstance().enterOrLeaveWorld(() -> {
+					if (bots.sleep(bot))
+						sleptLast++;
+					else
+						sleepsRefusedLast++;
+				});
 			}
 		}
+		// What the previous round came to, before this one's tasks start reporting into the same counters. Said as outcomes rather than as intentions:
+		// a refusal is ordinary, and reading the asked-for figure as the done figure is how a population holding still came to look like one churning.
+		if (wokeLast > 0 || sleptLast > 0 || wakesRefusedLast > 0 || sleepsRefusedLast > 0)
+			log.info("Population: {} woke and {} were put to sleep; {} wake(s) and {} departure(s) refused, nobody having been out of sight", wokeLast,
+				sleptLast, wakesRefusedLast, sleepsRefusedLast);
+		wokeLast = sleptLast = wakesRefusedLast = sleepsRefusedLast = 0;
+
 		lastReview = List.copyOf(report);
 		if (woken > 0 || slept > 0)
-			log.info("Population review: waking {} and putting {} to sleep across {} map(s)", woken, slept, maps.size());
+			log.info("Population review asks for {} arrival(s) and {} departure(s) across {} map(s)", woken, slept, maps.size());
 	}
 
 	/**

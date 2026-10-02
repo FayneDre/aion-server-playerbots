@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -336,11 +337,14 @@ public class PlayerBotService {
 		// and 37 with somebody playing: created at 19, a player's arrival raised the target to 37 and the director had nobody left to wake, so a map
 		// with a player on it was no busier than an empty one. Creating at the fuller plan also spreads the homes over far more of the countryside,
 		// which is what lets the director find a sleeper for a ground that needs one.
-		List<BotPlaces.Settlement> places = BotPresence.wanted(worldId, true);
-		if (places.isEmpty())
+		List<BotPlaces.Settlement> plan = BotPresence.wanted(worldId, true);
+		if (plan.isEmpty())
 			return "Nothing lives on this map, so there is nowhere to put anyone";
+		List<BotPlaces.Settlement> places = placesStillNeeding(worldId, plan);
+		if (places.isEmpty())
+			return "This map already has an inhabitant for every place it asks for";
 		if (count <= 0)
-			count = places.size(); // as the region asks, which is what an unattended start wants
+			count = places.size(); // as the region still asks for, which is what an unattended start wants
 		log.info("Map {} takes {} inhabitant(s) across {}", worldId, count, levelSpread(places));
 
 		List<String> created = new ArrayList<>();
@@ -385,6 +389,32 @@ public class PlayerBotService {
 		}
 		log.info("Created {} inhabitant(s) for map {}, wearing {} piece(s) between them, all asleep", created.size(), worldId, worn);
 		return report(created, null) + ", over " + places.size() + " places";
+	}
+
+	/**
+	 * @return The posts of the plan that no inhabitant lives at yet, in the plan's own order.
+	 *         <p>
+	 *         Because going round the plan from the top is right exactly once. The plan lists the settlements before the countryside, so a second
+	 *         populate — a map being topped up, which is what a map gets after its densities change — fills the villages all over again. Measured on
+	 *         Poeta after one top-up of 18: thirty seven inhabitants over sixteen homes, twelve of them in Akarios alone, with twenty one villagers
+	 *         for eight village posts and a countryside asking for twenty nine hunters out of the sixteen characters left to supply them. The surplus
+	 *         villagers are then asleep for ever, which is a character created for nothing, and the countryside stays short however many are made.
+	 */
+	private static List<BotPlaces.Settlement> placesStillNeeding(int worldId, List<BotPlaces.Settlement> plan) {
+		Map<Vector3f, Integer> taken = new HashMap<>();
+		for (BotRoster.Resident resident : BotRoster.pool()) {
+			if (resident.worldId() == worldId)
+				taken.merge(resident.home(), 1, Integer::sum);
+		}
+		List<BotPlaces.Settlement> needed = new ArrayList<>();
+		for (BotPlaces.Settlement post : plan) {
+			Integer here = taken.get(post.centre());
+			if (here != null && here > 0)
+				taken.put(post.centre(), here - 1); // somebody already lives at this one
+			else
+				needed.add(post);
+		}
+		return needed;
 	}
 
 	/**
