@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.services.player.PlayerService;
+import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.world.WorldType;
 import com.aionemu.gameserver.world.World;
@@ -59,6 +61,11 @@ public class PlayerBotService {
 	private static final float SETTLING_SPREAD = 15f;
 	/** How many spots to try before giving up and standing on the place itself. A handful: most spots around a place are fine. */
 	private static final int SETTLING_ATTEMPTS = 8;
+	/**
+	 * How far from a real player an inhabitant may be brought into the world. The engine tells a client about anything within 95 m
+	 * ({@code VisibleObject.getVisibleDistance}); the rest is for a player walking towards the spot while the decision is being carried out.
+	 */
+	private static final float OUT_OF_SIGHT = 150f;
 	/** The setting that means "work it out": every open world map of both races, each taking as many inhabitants as its own civilians call for. */
 	private static final String AUTOMATIC = "auto";
 
@@ -73,8 +80,19 @@ public class PlayerBotService {
 	 */
 	public void onStartUp() {
 		BotScheduler.getInstance().scheduleAtFixedRate(this::saveDue, SAVE_SWEEP_MILLIS, SAVE_SWEEP_MILLIS);
-		BotDirector.getInstance().start();
 		runStandingOrders();
+		restoreRoster();
+		// Last, and it used to be first. The director reviews what each region holds against what it should hold, and both of the steps above change
+		// that answer wholesale: populating a fresh installation builds a navmesh and creates thousands of characters across eighteen maps, which
+		// takes minutes. Started first, the director's opening review fired into a world a tenth of the way up and began correcting a figure that was
+		// still moving — on the same threads doing the populating.
+		BotDirector.getInstance().start();
+	}
+
+	/**
+	 * Puts back the bots that were in the world when it last went down, so a restart is not a depopulation.
+	 */
+	private void restoreRoster() {
 		Set<String> roster = BotRoster.restore();
 		if (roster.isEmpty())
 			return;
@@ -475,16 +493,98 @@ public class PlayerBotService {
 		if (bot == null)
 			return "No bot spawned with name " + characterName;
 
-		spawnedBots.remove(bot.getObjectId());
-		rememberRoster(); // taken out on purpose, so a restart leaves it out too
-		try {
-			PlayerBotLeaveWorldService.leaveWorld(bot);
-		} catch (RuntimeException e) {
-			log.error("Could not despawn bot " + characterName, e);
+		if (!takeOutOfWorld(bot))
 			return "Could not despawn " + characterName + " (see server log)";
-		}
+		rememberRoster(); // taken out on purpose, so a restart leaves it out too
 		boolean stillInWorld = World.getInstance().findVisibleObject(bot.getObjectId()) != null;
 		return "Despawned " + bot.getName() + (stillInWorld ? " but it is still registered in the world!" : "");
+	}
+
+	/**
+	 * Takes a bot out of the world, and answers whether this call was the one that did it.
+	 * <p>
+	 * The claim is the removal. Every way a bot can leave — an operator's command, the director putting it to sleep, the shutdown — runs through here,
+	 * and more than one of them can pick the same character at the same moment. Removing from the set first means exactly one of them proceeds, where
+	 * removing and then leaving without looking at the result had both of them saving the character and firing its departure twice.
+	 */
+	private boolean takeOutOfWorld(Player bot) {
+		if (spawnedBots.remove(bot.getObjectId()) == null)
+			return false; // somebody else is already taking it out
+		try {
+			PlayerBotLeaveWorldService.leaveWorld(bot);
+			return true;
+		} catch (RuntimeException e) {
+			log.error("Could not take bot " + bot.getName() + " out of the world", e);
+			return false;
+		}
+	}
+
+	/**
+	 * Brings one of the world's own inhabitants into the world, at the place it lives.
+	 * <p>
+	 * Runs on the lifecycle lane, never on a tick thread: loading a character is some twenty blocking database round trips before the first navmesh
+	 * lookup. The spot is tested against the watchers given <b>here</b> rather than when the director decided, because that decision is up to half a
+	 * minute old by the time this runs and a player covers ground in that time.
+	 *
+	 * @param watchers The real players on that map, as the director's own census found them.
+	 * @return false if the bot cannot be brought in now, which is never final: the next review asks again.
+	 */
+	public boolean wake(BotRoster.Resident resident, Collection<Player> watchers) {
+		Vector3f spot = scatterAround(resident.worldId(), resident.home());
+		if (isOverlooked(resident.worldId(), spot, watchers))
+			return false;
+		Player bot = loadAvailableBot(resident.name());
+		if (bot == null)
+			return false; // deleted, or still on its way out of the world; either way not this review's business
+		try {
+			bot.setPosition(World.getInstance().createPosition(resident.worldId(), spot.getX(), spot.getY(), spot.getZ(), (byte) 0, 0));
+			PlayerBotEnterWorldService.enterWorld(bot);
+			spawnedBots.put(bot.getObjectId(), bot);
+			BotRoster.setInWorld(resident.playerId(), true);
+			return true;
+		} catch (RuntimeException e) {
+			log.error("Could not wake bot " + resident.name(), e);
+			return false;
+		}
+	}
+
+	/**
+	 * Takes one of the world's own inhabitants out of the world, if this is a moment at which it may go.
+	 * <p>
+	 * Three refusals, in the order that matters. A bot somebody owns is not the world's to move at all. A bot anybody can see does not vanish, and the
+	 * question is asked of its own known list, which is precisely the set of clients that would be told — not an estimate of who is near. Only then is
+	 * the bot itself asked, because agreeing to go is irreversible: see {@link PlayerBotAI#tryRetire()}.
+	 *
+	 * @return false if the bot stays, which is never final.
+	 */
+	public boolean sleep(Player bot) {
+		if (!(bot.getAi() instanceof PlayerBotAI ai) || ai.isOwned())
+			return false;
+		if (bot.getKnownList().streamPlayers().anyMatch(other -> !other.isBot()))
+			return false;
+		if (!ai.tryRetire())
+			return false;
+		if (!takeOutOfWorld(bot))
+			return false;
+		BotRoster.setInWorld(bot.getObjectId(), false);
+		return true;
+	}
+
+	/**
+	 * @return true if bringing a character in at this spot would happen in front of somebody.
+	 *         <p>
+	 *         The margin is the engine's own sight radius with room to spare: a client is told about anything within 95 m
+	 *         ({@code VisibleObject.getVisibleDistance}), and the rest is for a player who is walking towards the spot while this is being decided. A
+	 *         bot that appears out of nothing is worse than an empty field, so the test errs outwards.
+	 */
+	private static boolean isOverlooked(int worldId, Vector3f spot, Collection<Player> watchers) {
+		for (Player watcher : watchers) {
+			if (watcher.getWorldId() != worldId)
+				continue;
+			if (PositionUtil.isInRange(watcher, spot.getX(), spot.getY(), spot.getZ(), OUT_OF_SIGHT))
+				return true;
+		}
+		return false;
 	}
 
 	/**
@@ -707,6 +807,9 @@ public class PlayerBotService {
 	 * through it here would mean every restart came back to an empty map.
 	 */
 	public void onShutdown() {
+		// Before the count is read, let alone acted on: emptying the world walks the set of bots in it and then clears the set, so a bot the director
+		// brings in between those two steps is left standing in a world nothing holds a reference to any more.
+		BotScheduler.getInstance().stopEnteringAndLeaving();
 		log.info("Despawning {} bot(s) for shutdown", spawnedBots.size());
 		despawnEverything();
 	}

@@ -93,6 +93,9 @@ public class BotPresence {
 	private static final int SERVICE_TOWNSFOLK = 500;
 
 	private static final Map<Integer, List<Settlement>> establishmentByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Settlement>> civicByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Settlement>> fieldByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Settlement>> busyFieldByMap = new ConcurrentHashMap<>();
 
 	private BotPresence() {
 	}
@@ -102,7 +105,7 @@ public class BotPresence {
 	 *         and a roadside camp once or twice, which is the whole point.
 	 */
 	public static List<Settlement> establishment(int worldId) {
-		return establishmentByMap.computeIfAbsent(worldId, id -> plan(id, false));
+		return establishmentByMap.computeIfAbsent(worldId, BotPresence::describe);
 	}
 
 	/**
@@ -115,25 +118,89 @@ public class BotPresence {
 	 * @param busy Whether a real player is on the map.
 	 */
 	public static List<Settlement> wanted(int worldId, boolean busy) {
-		return busy ? plan(worldId, true) : establishment(worldId);
+		if (!busy)
+			return establishment(worldId);
+		List<Settlement> both = new ArrayList<>(civic(worldId));
+		both.addAll(field(worldId, true));
+		return List.copyOf(both);
 	}
 
-	private static List<Settlement> plan(int worldId, boolean busy) {
+	/**
+	 * The inhabitants of the region's settlements, who are a fixed cast and never put to sleep.
+	 * <p>
+	 * Which is not a simplification but the only arrangement that works, and the reason is geometric. A player arrives at a bind obelisk, in a town —
+	 * where this module deliberately puts bots' bind points too. Every villager's home is one place's centre with fifteen metres of scatter, so while
+	 * that player stands there, every single one of them is inside the ninety five metres a client is told about. A village thinned while nobody was
+	 * looking could then never be filled again until the player left: the one place a person actually looks at would be the one place the population
+	 * director is unable to fix. So settlements do not vary, and the countryside — which is spread out by construction and nowhere near a bind point —
+	 * is what the director breathes in and out.
+	 */
+	public static List<Settlement> civic(int worldId) {
+		return civicByMap.computeIfAbsent(worldId, id -> plan(id, false, true));
+	}
+
+	/**
+	 * The region's hunters, which is the part of a population that may sleep.
+	 * <p>
+	 * Cached for both answers. The busy plan used to be worked out afresh on every call, and it is not cheap: it spreads the hunting grounds apart,
+	 * which this module's own notes describe as some tens of thousands of distance comparisons for a map the size of Poeta — the reason the places
+	 * themselves are cached. A director asking for it every half minute for every inhabited map would have paid that each time, on a bot thread. It is
+	 * a pure function of the map's spawns, so once is enough.
+	 *
+	 * @param busy Whether a real player is on the map, which is what raises the density.
+	 */
+	public static List<Settlement> field(int worldId, boolean busy) {
+		Map<Integer, List<Settlement>> cache = busy ? busyFieldByMap : fieldByMap;
+		return cache.computeIfAbsent(worldId, id -> plan(id, busy, false));
+	}
+
+	/**
+	 * Keeps a share of a plan, spread over the places it names rather than taken from the front of it.
+	 * <p>
+	 * A share of the countryside is what attention comes to in the end: at a fifth, a region works a fifth of its grounds. Which fifth matters —
+	 * keeping the first few would leave one valley busy and the rest of the map deserted, so this keeps every so many entries instead. Exposed because
+	 * the director is the one that knows what share this minute deserves.
+	 *
+	 * @param share Between 0 and 1. Always leaves at least one inhabitant where the plan named any at all: a countryside with nobody in it is a
+	 *          different thing from a quiet one.
+	 */
+	public static List<Settlement> share(List<Settlement> posts, float share) {
+		if (posts.isEmpty() || share >= 1f)
+			return posts;
+		int keep = Math.max(1, Math.round(posts.size() * share));
+		return keep >= posts.size() ? posts : List.copyOf(thinTo(posts, keep));
+	}
+
+	/** The whole of what a region should hold when nobody is there, which is also the only plan worth announcing in the log. */
+	private static List<Settlement> describe(int worldId) {
+		List<Settlement> settlements = BotPlaces.settlements(worldId);
+		List<Settlement> grounds = BotPlaces.huntingGrounds(worldId);
+		List<Settlement> posts = new ArrayList<>(civic(worldId));
+		posts.addAll(field(worldId, false));
+		log.info("Map {} is a {}: {} place(s) over {} m2 and {} hunting ground(s) call for {} inhabitant(s)", worldId, kindOf(settlements, grounds),
+			settlements.size(), Math.round(settlements.stream().mapToDouble(Settlement::area).sum()), grounds.size(), posts.size());
+		return List.copyOf(posts);
+	}
+
+	private static List<Settlement> plan(int worldId, boolean busy, boolean civic) {
 		List<Settlement> settlements = BotPlaces.settlements(worldId);
 		List<Settlement> grounds = BotPlaces.huntingGrounds(worldId);
 		Kind kind = kindOf(settlements, grounds);
 		float perResident = kind == Kind.FIELD ? AREA_PER_RESIDENT : AREA_PER_RESIDENT_IN_TOWN;
 
 		List<Settlement> posts = new ArrayList<>();
-		for (Settlement place : settlements) {
-			// its own ground, not a share of the map's. Working out a map total and then dividing it compresses twice — the big place is crushed and
-			// the small one gets a floor it has not earned, which is how a camp of 4 npcs came to hold 7 people and a capital plaza 9.
-			int here = Math.max(1, Math.round(place.area() / perResident));
-			for (int i = 0; i < here; i++)
-				posts.add(place);
+		if (civic) {
+			for (Settlement place : settlements) {
+				// its own ground, not a share of the map's. Working out a map total and then dividing it compresses twice — the big place is crushed and
+				// the small one gets a floor it has not earned, which is how a camp of 4 npcs came to hold 7 people and a capital plaza 9.
+				int here = Math.max(1, Math.round(place.area() / perResident));
+				for (int i = 0; i < here; i++)
+					posts.add(place);
+			}
+			if (kind == Kind.SERVICE && posts.size() > SERVICE_CAP)
+				posts = thinTo(posts, SERVICE_CAP);
+			return List.copyOf(posts);
 		}
-		if (kind == Kind.SERVICE && posts.size() > SERVICE_CAP)
-			posts = thinTo(posts, SERVICE_CAP);
 		// The countryside, by its own ground and spread out so the hunters are not all in one valley. Going round the list in order rather than
 		// weighting it: a hunting ground is a hunting ground, and what matters is that every part of the region has somebody working it.
 		List<Settlement> field = BotPlaces.spreadOut(grounds);
@@ -144,12 +211,6 @@ public class BotPresence {
 			for (int i = 0; i < hunters; i++)
 				posts.add(field.get(i % field.size()));
 		}
-
-		// only the quiet plan, which is worked out once per map and cached. The busy one is recomputed whenever the director asks, so logging it
-		// would write a line every review for every map somebody is standing on.
-		if (!busy)
-			log.info("Map {} is a {}: {} place(s) over {} m2 and {} hunting ground(s) call for {} inhabitant(s)", worldId, kind, settlements.size(),
-				Math.round(settlements.stream().mapToDouble(Settlement::area).sum()), grounds.size(), posts.size());
 		return List.copyOf(posts);
 	}
 

@@ -4,8 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -42,6 +44,16 @@ public class BotRoster {
 	private static final String UPSERT = "INSERT INTO `playerbot_characters` (`player_id`, `%s`) VALUES (?, ?) "
 		+ "ON DUPLICATE KEY UPDATE `%s` = VALUES(`%s`)";
 	private static final String NAMES_WHERE = "SELECT p.`name` FROM `playerbot_characters` b JOIN `players` p ON p.`id` = b.`player_id` WHERE b.`%s` = 1";
+
+	/**
+	 * One of the world's own inhabitants, as the population director needs to know it: which character, which map, and the place it belongs to.
+	 * <p>
+	 * No level, and not by oversight. There is no level column — a character's level is derived from its experience, and {@code old_level} is written
+	 * only on a real client's logout, so it reads zero for every bot ever created. Nor is one needed: the level band of a region is already settled by
+	 * the home the character was given, so a home is the stronger answer to the same question.
+	 */
+	public record Resident(int playerId, String name, int worldId, Vector3f home) {
+	}
 
 	private BotRoster() {
 	}
@@ -129,6 +141,59 @@ public class BotRoster {
 
 	public static Set<String> residents() {
 		return namesFlagged("resident");
+	}
+
+	/**
+	 * Every inhabitant the world owns, awake or asleep, which is the pool the population director draws on.
+	 * <p>
+	 * Deliberately not held in memory. Which characters exist is the database's answer and nothing else's, and a copy of it kept alongside would be a
+	 * second truth to go stale — see {@code docs/engine-traps.md}. Which of these is in the world right now is a different question, answered by the
+	 * set of spawned bots, so "the pool" is this list minus that set rather than a thing either of them has to maintain.
+	 * <p>
+	 * Both halves of the ownership test are applied, not just the obvious one. {@code owner_id = 0} alone would let through a character sitting on a
+	 * <b>real account</b> that happens to have a row here, and logging one of those in is the server playing somebody's character — the one thing it
+	 * must never do. So the account id is tested as well, exactly as {@link #isSomebodysOwn} does.
+	 *
+	 * @return One entry per character, in no particular order. Empty when nothing has been populated, or when the query fails — a director that is
+	 *         told the world is empty does nothing, which is the right way for this to fail.
+	 */
+	public static List<Resident> pool() {
+		List<Resident> residents = new ArrayList<>();
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT p.`id`, p.`name`, p.`world_id`, b.`home_x`, b.`home_y`, b.`home_z` "
+					 + "FROM `playerbot_characters` b JOIN `players` p ON p.`id` = b.`player_id` "
+					 + "WHERE b.`resident` = 1 AND b.`owner_id` = 0 AND p.`account_id` >= ?")) {
+			stmt.setInt(1, PlayerBotCreationService.BOT_ACCOUNT_ID_BASE);
+			try (ResultSet rs = stmt.executeQuery()) {
+				while (rs.next()) {
+					float x = rs.getFloat(4), y = rs.getFloat(5), z = rs.getFloat(6);
+					// A resident with no home has nowhere to be woken to, so it is not part of the pool. It can still be spawned by hand.
+					if (x == 0 && y == 0)
+						continue;
+					residents.add(new Resident(rs.getInt(1), rs.getString(2), rs.getInt(3), new Vector3f(x, y, z)));
+				}
+			}
+		} catch (SQLException e) {
+			log.error("Could not read the pool of the world's own inhabitants", e);
+		}
+		return residents;
+	}
+
+	/**
+	 * Records whether one bot is in the world, for the next start to put it back.
+	 * <p>
+	 * One row, where {@link #remember} rewrites the whole table. That is the difference between a population being created once and a population being
+	 * adjusted every half minute: "these and nobody else" is the safer statement, but as a loop it is a full-table write lock competing with the save
+	 * sweep and with whatever real players are doing.
+	 */
+	public static void setInWorld(int playerId, boolean inWorld) {
+		try (Connection con = DatabaseFactory.getConnection(); PreparedStatement stmt = con.prepareStatement(upsert("in_world"))) {
+			stmt.setInt(1, playerId);
+			stmt.setBoolean(2, inWorld);
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			log.error("Could not record whether bot " + playerId + " is in the world", e);
+		}
 	}
 
 	/**
