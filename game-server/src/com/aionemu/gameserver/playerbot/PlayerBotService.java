@@ -579,22 +579,22 @@ public class PlayerBotService {
 	 * @param watchers The real players on that map, as the director's own census found them.
 	 * @return false if the bot cannot be brought in now, which is never final: the next review asks again.
 	 */
-	public boolean wake(BotRoster.Resident resident, Collection<Player> watchers) {
+	public Change wake(BotRoster.Resident resident, Collection<Player> watchers) {
 		Vector3f spot = scatterAround(resident.worldId(), resident.home());
 		if (isOverlooked(resident.worldId(), spot, watchers))
-			return false;
+			return Change.SEEN;
 		Player bot = loadAvailableBot(resident.name());
 		if (bot == null)
-			return false; // deleted, or still on its way out of the world; either way not this review's business
+			return Change.UNAVAILABLE; // deleted, or still on its way out of the world; either way not this review's business
 		try {
 			bot.setPosition(World.getInstance().createPosition(resident.worldId(), spot.getX(), spot.getY(), spot.getZ(), (byte) 0, 0));
 			PlayerBotEnterWorldService.enterWorld(bot);
 			spawnedBots.put(bot.getObjectId(), bot);
 			BotRoster.setInWorld(resident.playerId(), true);
-			return true;
+			return Change.DONE;
 		} catch (RuntimeException e) {
 			log.error("Could not wake bot " + resident.name(), e);
-			return false;
+			return Change.UNAVAILABLE;
 		}
 	}
 
@@ -607,17 +607,29 @@ public class PlayerBotService {
 	 *
 	 * @return false if the bot stays, which is never final.
 	 */
-	public boolean sleep(Player bot) {
+	public Change sleep(Player bot) {
 		if (!(bot.getAi() instanceof PlayerBotAI ai) || ai.isOwned())
-			return false;
+			return Change.UNAVAILABLE;
 		if (bot.getKnownList().streamPlayers().anyMatch(other -> !other.isBot()))
-			return false;
+			return Change.SEEN;
 		if (!ai.tryRetire())
-			return false;
+			return Change.BUSY;
 		if (!takeOutOfWorld(bot))
-			return false;
+			return Change.UNAVAILABLE;
 		BotRoster.setInWorld(bot.getObjectId(), false);
-		return true;
+		return Change.DONE;
+	}
+
+	/**
+	 * Why a change to the population did or did not happen, in either direction.
+	 * <p>
+	 * Three refusals rather than one boolean, because the reasons are not interchangeable to anybody reading the log. Being <b>seen</b> is the rule
+	 * working: the region stays short on purpose while somebody is stood in it. Being <b>busy</b> is a bot in a fight or on a road, which passes on its
+	 * own within a tick or two. Only <b>unavailable</b> is a surprise. Saying "refused" and leaving the cause to be guessed is how a server with
+	 * nobody on it came to report that a dozen departures had been refused for being watched.
+	 */
+	public enum Change {
+		DONE, SEEN, BUSY, UNAVAILABLE
 	}
 
 	/**

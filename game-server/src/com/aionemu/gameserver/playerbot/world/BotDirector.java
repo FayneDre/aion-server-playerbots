@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.world;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -93,7 +94,8 @@ public class BotDirector {
 	 * outcomes, that log showed a population churning once a review; it was a population correctly holding still. Plain fields: everything that writes
 	 * them, the review included, runs on the one lifecycle thread.
 	 */
-	private int wokeLast, wakesRefusedLast, sleptLast, sleepsRefusedLast;
+	private final Map<PlayerBotService.Change, Integer> arrivals = new EnumMap<>(PlayerBotService.Change.class);
+	private final Map<PlayerBotService.Change, Integer> departures = new EnumMap<>(PlayerBotService.Change.class);
 
 	private BotDirector() {
 	}
@@ -150,31 +152,21 @@ public class BotDirector {
 				if (woken >= budget)
 					break;
 				woken++;
-				BotScheduler.getInstance().enterOrLeaveWorld(() -> {
-					if (bots.wake(resident, watchers))
-						wokeLast++;
-					else
-						wakesRefusedLast++;
-				});
+				BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(bots.wake(resident, watchers), 1, Integer::sum));
 			}
 			for (Player bot : difference.toSleep()) {
 				if (slept >= budget)
 					break;
 				slept++;
-				BotScheduler.getInstance().enterOrLeaveWorld(() -> {
-					if (bots.sleep(bot))
-						sleptLast++;
-					else
-						sleepsRefusedLast++;
-				});
+				BotScheduler.getInstance().enterOrLeaveWorld(() -> departures.merge(bots.sleep(bot), 1, Integer::sum));
 			}
 		}
 		// What the previous round came to, before this one's tasks start reporting into the same counters. Said as outcomes rather than as intentions:
 		// a refusal is ordinary, and reading the asked-for figure as the done figure is how a population holding still came to look like one churning.
-		if (wokeLast > 0 || sleptLast > 0 || wakesRefusedLast > 0 || sleepsRefusedLast > 0)
-			log.info("Population: {} woke and {} were put to sleep; {} wake(s) and {} departure(s) refused, nobody having been out of sight", wokeLast,
-				sleptLast, wakesRefusedLast, sleepsRefusedLast);
-		wokeLast = sleptLast = wakesRefusedLast = sleepsRefusedLast = 0;
+		if (!arrivals.isEmpty() || !departures.isEmpty())
+			log.info("Population: {} arrived and {} left. Put off: {}", done(arrivals), done(departures), putOff());
+		arrivals.clear();
+		departures.clear();
 
 		lastReview = List.copyOf(report);
 		if (woken > 0 || slept > 0)
@@ -274,6 +266,32 @@ public class BotDirector {
 		for (Settlement post : posts)
 			counts.merge(post.centre(), 1, Integer::sum);
 		return counts;
+	}
+
+	private int done(Map<PlayerBotService.Change, Integer> changes) {
+		return changes.getOrDefault(PlayerBotService.Change.DONE, 0);
+	}
+
+	/**
+	 * @return Why the changes that did not happen did not happen, named rather than totalled. A cause the log invents is worse than no cause at all:
+	 *         the first version of this blamed every refusal on a player being near, and reported a dozen departures refused for being watched on a
+	 *         server with nobody connected to it.
+	 */
+	private String putOff() {
+		StringBuilder reasons = new StringBuilder();
+		for (PlayerBotService.Change cause : PlayerBotService.Change.values()) {
+			if (cause == PlayerBotService.Change.DONE)
+				continue;
+			int count = arrivals.getOrDefault(cause, 0) + departures.getOrDefault(cause, 0);
+			if (count > 0)
+				reasons.append(reasons.isEmpty() ? "" : ", ").append(count).append(switch (cause) {
+					case SEEN -> " within sight of a player";
+					case BUSY -> " in a fight or on a road";
+					case UNAVAILABLE -> " no longer available";
+					default -> "";
+				});
+		}
+		return reasons.isEmpty() ? "nothing" : reasons.toString();
 	}
 
 	/** @return What the last review concluded, a line per map, for an operator asking where the population stands. */
