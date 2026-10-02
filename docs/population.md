@@ -103,23 +103,20 @@ player left, and the one place a person looks at would be the one place the dire
 | a quiet map, somebody playing elsewhere | a fifth |
 | nobody online anywhere | a twentieth |
 
-That last row was going to be zero — "only the economy stays up" — and zero is wrong. A sleeping bot earns no experience, and this model is a *flow*: a
-band holds what arrives times how long it stays. Put the whole world to sleep and no career advances overnight, so a server comes back each morning to
-the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
+That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
+a world asleep overnight comes back to the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
 
-Two rules are worth stating as rules, because neither can be repaired after the fact:
-
-- **Nobody ever watches it happen.** A wake is tested against the real players on that map at 150 m: the engine's own 95 m sight radius, plus room for
-  somebody walking towards the spot. A sleep asks the bot's own known list, which is not an estimate of who is near but exactly the set of clients that
-  would be told. A refused wake is simply not done, and the next review asks again.
-- **The director never picks the moment.** It decides that a region holds too many; the bot decides whether it may go now. In a fight, dead, mid-journey
-  or grouped with a real player, it stays.
+Two rules, because neither can be repaired after the fact. **Nobody ever watches it happen**: a wake is tested against the real players on that map at
+150 m — the engine's own 95 m sight radius plus room for somebody walking towards the spot — and a sleep asks the bot's own known list, which is exactly
+the set of clients that would be told rather than an estimate of who is near. A refused wake is simply not done, and the next review asks again. And
+**the director never picks the moment**: it decides that a region holds too many, the bot decides whether it may go now, and in a fight, dead, mid-journey
+or grouped with a real player it stays.
 
 **And it removes the need to travel.** A bot that outgrows Poeta logs out and logs back in at Verteron. Nobody watches a ten-minute walk, and a walk can
 get stuck. Following a *player* between regions is a different matter and is cheap — see [roadmap.md](roadmap.md) under Flight.
 
-Two jobs are designed and not built, and they are in [roadmap.md](roadmap.md): **stocking** — *"do I have a level-16 Asmodian scout?"*, and growing one
-if not — and **pre-filling a map before a player arrives**, which is what would let settlements sleep too.
+What the director still does not do — stocking, pre-filling a map before a player arrives, and rehousing a bot that outgrew its region — is in
+[roadmap.md](roadmap.md).
 
 ## Pacing progression
 
@@ -166,12 +163,19 @@ never was.
 **The settled figure is two thousand across the 28 maps worth populating**, and the three densities above are what produce it. None of them moves on
 its own: raising the countryside empties the villages at a fixed total, and that is arithmetic rather than a fault in the model.
 
+**Two thousand is the quiet figure, not the number of characters**, and the difference is the whole arithmetic of the pool. The busy countryside is
+roughly twice the quiet one — Poeta asks for 19 inhabitants quiet and **37** with a player on it — so the pool must be stocked at the busy plan or the
+surge has nobody to draw on. Created at 19, measured in game: a player arrived, the target rose to 37, the director had nobody left to wake, and a map
+with a player on it was no busier than an empty one. So the database holds about **3700 characters** for a quiet population of 2000. Characters are
+cheap, a row and an inventory; it is the decision ticks that cost, and attention is what governs those.
+
 | | bots | note |
 |---|---:|---|
-| **settled** | **~2000** | 960 Elyos, 1036 Asmodian, 279 on contested ground |
+| **settled, quiet** | **~2000** | 960 Elyos, 1036 Asmodian, 279 on contested ground |
+| characters in the database | ~3700 | the busy plan, so the surge has somebody to wake |
 | reachable today | ~1780 | Reshanta's 217 wait on flight navigation |
 | capitals and annexes | 20% | it was 29% before the countryside had a share of its own |
-| Poeta | 19 | a small starter valley's honest share of a populated world |
+| Poeta | 19 quiet, 37 busy | a small starter valley's honest share of a populated world |
 
 The faction split comes out even on its own, because the world was built in mirror: Poeta 45 civilians ↔ Ishalgen 53, Sanctum 250 ↔ Pandaemonium 266,
 Theobomos 179 ↔ Brusthonin 181. No per-faction tuning, ever. The 76 bots between the two halves come from the field cap biting unevenly, not from the
@@ -185,8 +189,8 @@ Four things make the number affordable, and the first is the one that matters:
 
 1. **Adaptive ticks** — 1 s with a player in the known list, 3 s with one on the map, 10 s otherwise. Most of the world is unobserved most of the
    time, so this divides the dominant cost by four to six.
-2. **A thread pool of their own.** Bot ticks currently share the server's 16 scheduled threads with respawns, effects, sieges and saves. At 1500 bots a
-   burst of ticks would delay the engine itself. Bots must never be able to starve the world.
+2. **Threads of their own**, which `BotScheduler` now gives them: ticks, route searches and arrivals each in their own lane, so neither the engine nor
+   the bots can starve the other.
 3. **Lazy mesh loading** — held only for maps that have somebody on them, which is what makes 28 maps fit.
 4. **A larger heap, which is an installation step and not a repository change.** `game-server/dist/start.bat` ships `-Xmx2560m`, which is upstream's
    default and the right one for a machine of unknown size; a populated world wants **`-Xmx8192m`** and it is edited in the installed copy. Saves are

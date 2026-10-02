@@ -330,7 +330,13 @@ public class PlayerBotService {
 		// One entry per inhabitant the region asks for, each naming the place it belongs to. A busy village appears many times over and a roadside
 		// camp once, so going round the list in order puts the population where the world put its own people — which is what the count times a
 		// density never did, because that count was fed by how many monsters a map holds.
-		List<BotPlaces.Settlement> places = BotPresence.establishment(worldId);
+		//
+		// The busy plan, which is the most a region can ever ask for, and not the quiet one it holds when nobody is there. The pool has to contain
+		// what the surge will want or the surge cannot happen, and that is not a subtlety — measured on Poeta, which asks for 19 inhabitants quiet
+		// and 37 with somebody playing: created at 19, a player's arrival raised the target to 37 and the director had nobody left to wake, so a map
+		// with a player on it was no busier than an empty one. Creating at the fuller plan also spreads the homes over far more of the countryside,
+		// which is what lets the director find a sleeper for a ground that needs one.
+		List<BotPlaces.Settlement> places = BotPresence.wanted(worldId, true);
 		if (places.isEmpty())
 			return "Nothing lives on this map, so there is nowhere to put anyone";
 		if (count <= 0)

@@ -128,11 +128,12 @@ public class BotDirector {
 			List<Player> watchers = playersByMap.getOrDefault(worldId, List.of());
 			boolean busy = isBusy(worldId, watchers, now);
 			List<BotRoster.Resident> residents = residentsByMap.getOrDefault(worldId, List.of());
-			Map<Vector3f, Integer> target = countByPlace(wanted(worldId, busy, anybodyOnline));
+			Map<Vector3f, Integer> villages = countByPlace(BotPresence.civic(worldId));
+			int hunters = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline)).size();
 
-			Difference difference = sort(bots, residents, target);
+			Difference difference = sort(bots, worldId, residents, villages, hunters);
 			report.add(String.format("map %d: %d awake of %d, wants %d%s", worldId, difference.awake(), residents.size(),
-				target.values().stream().mapToInt(count -> count).sum(), busy ? " (" + watchers.size() + " player(s))" : ""));
+				villages.values().stream().mapToInt(count -> count).sum() + hunters, busy ? " (" + watchers.size() + " player(s))" : ""));
 			if (difference.toWake().size() + difference.toSleep().size() <= DEAD_BAND)
 				continue; // near enough, and churning over one inhabitant is worse than being one short
 
@@ -160,33 +161,52 @@ public class BotDirector {
 	 * Per place and not per map total, because a map total is satisfied by a crowd in one valley. Each place is compared with what it should hold, and
 	 * only the places that disagree produce any work.
 	 */
-	private static Difference sort(PlayerBotService bots, List<BotRoster.Resident> residents, Map<Vector3f, Integer> target) {
-		Map<Vector3f, List<BotRoster.Resident>> asleepHere = new LinkedHashMap<>();
-		Map<Vector3f, List<Player>> awakeHere = new LinkedHashMap<>();
+	private static Difference sort(PlayerBotService bots, int worldId, List<BotRoster.Resident> residents, Map<Vector3f, Integer> villages,
+		int hunters) {
+		Map<Vector3f, List<BotRoster.Resident>> asleepInVillage = new LinkedHashMap<>();
+		Map<Vector3f, List<Player>> awakeInVillage = new LinkedHashMap<>();
+		List<BotRoster.Resident> asleepInField = new ArrayList<>();
+		List<Player> awakeInField = new ArrayList<>();
 		int awake = 0;
 		for (BotRoster.Resident resident : residents) {
 			Player bot = bots.spawnedBot(resident.playerId());
-			if (bot == null) {
-				asleepHere.computeIfAbsent(resident.home(), home -> new ArrayList<>()).add(resident);
-			} else {
-				awakeHere.computeIfAbsent(resident.home(), home -> new ArrayList<>()).add(bot);
+			if (bot != null)
 				awake++;
+			// A villager belongs to its village and a hunter belongs to the countryside, and the two are counted differently on purpose. Compare the
+			// countryside place by place and most of it can never be filled: a region names fifty one hunting grounds and its inhabitants were given
+			// thirteen of them as homes, so the plan asks for hunters at grounds nobody lives at while inhabitants sleep at grounds already worked.
+			// Measured on Poeta: fourteen awake, five asleep, and a target of thirty seven that could not move. A hunting ground is interchangeable
+			// with another — the bot works the country near its own home either way — where a village is a place, and the one a player walks into.
+			if (BotPlaces.isSettlement(worldId, resident.home())) {
+				if (bot == null)
+					asleepInVillage.computeIfAbsent(resident.home(), home -> new ArrayList<>()).add(resident);
+				else
+					awakeInVillage.computeIfAbsent(resident.home(), home -> new ArrayList<>()).add(bot);
+			} else if (bot == null) {
+				asleepInField.add(resident);
+			} else {
+				awakeInField.add(bot);
 			}
 		}
+
 		List<BotRoster.Resident> toWake = new ArrayList<>();
-		target.forEach((home, wanted) -> {
-			int missing = wanted - awakeHere.getOrDefault(home, List.of()).size();
-			List<BotRoster.Resident> available = asleepHere.getOrDefault(home, List.of());
+		List<Player> toSleep = new ArrayList<>();
+		villages.forEach((home, wanted) -> {
+			int missing = wanted - awakeInVillage.getOrDefault(home, List.of()).size();
+			List<BotRoster.Resident> available = asleepInVillage.getOrDefault(home, List.of());
 			for (int i = 0; i < Math.min(missing, available.size()); i++)
 				toWake.add(available.get(i));
 		});
-		// Anybody awake at a place the region no longer asks for, which includes every place the plan has stopped naming at all.
-		List<Player> toSleep = new ArrayList<>();
-		awakeHere.forEach((home, here) -> {
-			int keep = target.getOrDefault(home, 0);
+		// Anybody awake in a village the region no longer asks for, which includes every village the plan has stopped naming at all.
+		awakeInVillage.forEach((home, here) -> {
+			int keep = villages.getOrDefault(home, 0);
 			for (int i = keep; i < here.size(); i++)
 				toSleep.add(here.get(i));
 		});
+		for (int i = 0; i < Math.min(hunters - awakeInField.size(), asleepInField.size()); i++)
+			toWake.add(asleepInField.get(i));
+		for (int i = hunters; i < awakeInField.size(); i++)
+			toSleep.add(awakeInField.get(i));
 		return new Difference(awake, toWake, toSleep);
 	}
 
@@ -194,12 +214,9 @@ public class BotDirector {
 	private record Difference(int awake, List<BotRoster.Resident> toWake, List<Player> toSleep) {
 	}
 
-	/** @return What this region should hold at this moment: its settlements entire, plus the share of its countryside that is being watched for. */
-	private static List<Settlement> wanted(int worldId, boolean busy, boolean anybodyOnline) {
-		float attention = busy ? ATTENTION_BUSY : anybodyOnline ? ATTENTION_QUIET : ATTENTION_UNWATCHED;
-		List<Settlement> posts = new ArrayList<>(BotPresence.civic(worldId));
-		posts.addAll(BotPresence.share(BotPresence.field(worldId, busy), attention));
-		return posts;
+	/** @return How much of a region's countryside is awake at this moment. Settlements are not scaled at all — see {@link BotPresence#civic}. */
+	private static float attention(boolean busy, boolean anybodyOnline) {
+		return busy ? ATTENTION_BUSY : anybodyOnline ? ATTENTION_QUIET : ATTENTION_UNWATCHED;
 	}
 
 	/**

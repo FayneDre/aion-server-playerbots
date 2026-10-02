@@ -107,6 +107,13 @@ dependency was the opposite way round and quieter: the outfitter refuses armour 
 from the database holds level-1 skills whatever its level, because teaching happened on the way in ([world-and-data-traps.md](world-and-data-traps.md)).
 Teach, then dress.
 
+**The surge had nobody to draw on, and only the game showed it.** `populate` created the *quiet* plan, because that is what `population.md` calls the
+establishment — "what gets created and kept". But the busy countryside is twice as dense, so on Poeta a player's arrival raised the target from 19 to 37
+against a pool of 19: fourteen awake, five asleep, and a map with a player on it no busier than an empty one. Two things were wrong at once. The pool has
+to be stocked at the busy plan, and the countryside has to be counted **per map** rather than per place — thirteen homes were spread over fifty one
+hunting grounds, so the plan kept asking for hunters at grounds nobody lived at while inhabitants slept at grounds already worked. A village is a place a
+player walks into; a hunting ground is interchangeable with the next one.
+
 **The pool is a query, not a collection.** Which characters exist is the database's answer; a copy of it kept in memory is a second truth to drift. So the
 pool is the world-owned residents that are not in the set of spawned bots, and `in_world` went from a full-table rewrite on every change to one row per
 arrival — "these and nobody else" is the safer statement for a population created once and the wrong one for a loop running every thirty seconds.
