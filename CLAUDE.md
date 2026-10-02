@@ -53,6 +53,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/population.md](docs/population.md) — how a world gets its inhabitants: the flow, the three kinds of presence, the pool and the director.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command and what it does, plus the one number that decides who may run them.
 - [docs/engine-traps.md](docs/engine-traps.md) — what this engine does to a bot that no documentation warns about: questions it asks that a bot cannot see, actions anything cancels, and methods whose names promise one thing and answer another.
+- [docs/world-and-data-traps.md](docs/world-and-data-traps.md) — the other half: geometry two systems describe differently, objects handed over half built, and templates that rewrite themselves as you read them.
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
 - [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.
 - [docs/combat-skills.md](docs/combat-skills.md) — how a bot chooses a skill: the in-fight order, upkeep versus abilities kept in hand, class openers.

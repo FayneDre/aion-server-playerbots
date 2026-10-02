@@ -104,7 +104,8 @@ does not stop a tick that has begun, so a bot could be removed from the world in
 **Creating a character asleep nearly dressed it in nothing.** Dressing used to happen after entering the world, and the comment said why: equipping was
 believed to ask whether its wearer was spawned. It does not — a broadcast to a non-spawned object reaches its empty known list and stops. The real
 dependency was the opposite way round and quieter: the outfitter refuses armour to a character that does not hold its mastery, and a character read back
-from the database holds level-1 skills whatever its level, because teaching happened on the way in. Teach, then dress.
+from the database holds level-1 skills whatever its level, because teaching happened on the way in ([world-and-data-traps.md](world-and-data-traps.md)).
+Teach, then dress.
 
 **The pool is a query, not a collection.** Which characters exist is the database's answer; a copy of it kept in memory is a second truth to drift. So the
 pool is the world-owned residents that are not in the set of spawned bots, and `in_world` went from a full-table rewrite on every change to one row per
@@ -152,4 +153,5 @@ Three of those were already broken before any of this: they walk the world playe
 
 ## Traps
 
-Moved to [engine-traps.md](engine-traps.md), which is where to look first when a bot does nothing and says nothing about why.
+Moved to [engine-traps.md](engine-traps.md) and [world-and-data-traps.md](world-and-data-traps.md), which are where to look first when a bot does
+nothing and says nothing about why. The first is what the engine does; the second is what the world and its data are.

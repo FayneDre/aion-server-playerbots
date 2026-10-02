@@ -1,7 +1,8 @@
 # What is left to do
 
 Written to be picked up cold. For what already works and why it was built that way, see [built.md](built.md). For how a world gets its
-inhabitants, [population.md](population.md). For what this engine does to a bot that no documentation warns about, [engine-traps.md](engine-traps.md).
+inhabitants, [population.md](population.md). For what this engine does to a bot that no
+documentation warns about, [engine-traps.md](engine-traps.md) and [world-and-data-traps.md](world-and-data-traps.md).
 
 Each section below says what the work is *for*, what it needs, and what actually blocks it. The order is roughly by value per unit of effort, not by
 ambition.
