@@ -2,8 +2,6 @@ package com.aionemu.gameserver.playerbot.lifecycle;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,10 +21,7 @@ import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.item.WeaponStats;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.services.item.ItemFactory;
-import com.aionemu.gameserver.skillengine.condition.WeaponCondition;
 import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
-import com.aionemu.gameserver.skillengine.model.SkillLearnTemplate;
-import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 
 /**
  * Dresses a freshly created bot in gear that suits its class and level.
@@ -51,8 +46,6 @@ public class BotOutfitter {
 
 	/** Candidates per class, level and slot are the same for every bot of that kind, and the item list is long enough to be worth remembering. */
 	private static final Map<String, List<ItemTemplate>> candidates = new ConcurrentHashMap<>();
-	/** What each class is built to hold, worked out once from its skill book. */
-	private static final Map<String, Set<ItemGroup>> weaponsByClass = new ConcurrentHashMap<>();
 
 	private BotOutfitter() {
 	}
@@ -94,6 +87,13 @@ public class BotOutfitter {
 	 * @return true if the place ended up filled.
 	 */
 	private static boolean fill(Player bot, ItemSlot slot) {
+		// Never into a hand that is already full, and the off hand is the one that can be. A two handed weapon is stored under <b>both</b> hands, so
+		// the shield pass found the off hand "occupied", {@code slotFor} answered with that very slot — it returns the taken one when none is free,
+		// which is right when swapping a ring and wrong here — and {@code Equipment.getUnequipSlots} then took the polearm out to make room. A
+		// gladiator ended up holding a shield and nothing else, and a cleric that had drawn a staff did too, while a chanter with a one handed mace
+		// kept both. That is the whole of "gladiator with a shield instead of a two hander".
+		if (bot.getEquipment().isSlotEquipped(slot.getSlotIdMask()))
+			return false;
 		List<ItemTemplate> wearable = candidates.computeIfAbsent(key(bot, slot), _ -> gatherFor(bot, slot));
 		if (wearable.isEmpty())
 			return false;
@@ -193,44 +193,38 @@ public class BotOutfitter {
 	}
 
 	/**
-	 * @return The weapons this class is actually built around, or an empty set when its skills do not say.
+	 * @return The weapon a class is meant to fight with.
 	 *         <p>
-	 *         Read from the class's own skill book rather than authored. A skill may state what it must be held to be used, and the statement is
-	 *         worth exactly as much as it is narrow: a condition naming one weapon says what the class is, one naming all thirteen says nothing. So
-	 *         each skill contributes one share split between the weapons it names, and what survives at half the best score is the class's trade.
+	 *         Authored, and this is the second place in the module where that is the right answer — {@code BotRole} is the first, for the same
+	 *         reason. The data says what a class <b>may</b> hold and never what it <b>should</b>: a gladiator is allowed a dagger, a chanter a mace,
+	 *         a cleric a staff, and the engine accepts all three without a word. Which of them is the real one is knowledge about playing the game,
+	 *         and it exists nowhere in any file.
 	 *         <p>
-	 *         Measured over every class: a ranger scores 210 on bow against 10 on sword, a songweaver 307 on harp, a gunner 208 on gun. A templar
-	 *         comes out 43 / 35 / 35 across greatsword, mace and sword, which is a class that genuinely uses all three — so nothing is excluded for
-	 *         it, and the ranking below decides as before. The rule only ever bites where the data is emphatic, which is exactly where bots were
-	 *         picking the wrong thing. Casters state no weapon condition at all and are untouched.
+	 *         It was derived first, by weighing how narrowly each skill names a weapon, and the derivation was wrong where it mattered: it gave the
+	 *         chanter a mace, could not separate a gladiator's polearm from a greatsword, and had no way at all to know that a gunner's second pistol
+	 *         is unreachable here. This list comes from somebody who plays these classes.
+	 *         <p>
+	 *         A preference and not a filter: it sorts ahead of the ranking, below what the character is actually trained for, so a class too low to
+	 *         have earned its own weapon still gets something rather than nothing.
 	 */
 	private static Set<ItemGroup> weaponsOfTrade(Player bot) {
-		return weaponsByClass.computeIfAbsent(bot.getPlayerClass() + "/" + bot.getRace(), _ -> gatherWeaponsOfTrade(bot));
-	}
-
-	private static Set<ItemGroup> gatherWeaponsOfTrade(Player bot) {
-		Map<ItemGroup, Double> score = new EnumMap<>(ItemGroup.class);
-		for (int level = 1; level <= DataManager.PLAYER_EXPERIENCE_TABLE.getMaxLevel(); level++) {
-			for (SkillLearnTemplate learn : DataManager.SKILL_TREE_DATA.getTemplatesFor(bot.getPlayerClass(), level, bot.getRace())) {
-				SkillTemplate skill = DataManager.SKILL_DATA.getSkillTemplate(learn.getSkillId());
-				WeaponCondition condition = skill == null ? null : skill.getWeaponCondition();
-				if (condition == null || condition.getItemGroups() == null || condition.getItemGroups().isEmpty())
-					continue;
-				double share = 1d / condition.getItemGroups().size();
-				for (ItemGroup group : condition.getItemGroups())
-					score.merge(group, share, Double::sum);
-			}
-		}
-		// The whole class book, not what it has learned so far: a ranger of ten is a ranger, and the weapon it is going to live by is the same one.
-		double best = score.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
-		if (best <= 0)
-			return Set.of();
-		Set<ItemGroup> trade = EnumSet.noneOf(ItemGroup.class);
-		for (Map.Entry<ItemGroup, Double> entry : score.entrySet()) {
-			if (entry.getValue() >= best / 2)
-				trade.add(entry.getKey());
-		}
-		return trade;
+		return switch (bot.getPlayerClass()) {
+			case GLADIATOR -> Set.of(ItemGroup.POLEARM); // everything else is a heavy loss of damage, dual wielding included
+			case TEMPLAR -> Set.of(ItemGroup.SWORD); // one hand, because the shield is the other half of the class
+			case RANGER -> Set.of(ItemGroup.BOW);
+			case ASSASSIN -> Set.of(ItemGroup.DAGGER, ItemGroup.SWORD); // the one class here that can truly hold two
+			case SORCERER, SPIRIT_MASTER, MAGE -> Set.of(ItemGroup.ORB, ItemGroup.SPELLBOOK);
+			case CLERIC, PRIEST -> Set.of(ItemGroup.MACE); // mace and shield outlives a staff, and surviving is the job
+			case CHANTER -> Set.of(ItemGroup.STAFF);
+			case BARD, ARTIST -> Set.of(ItemGroup.HARP); // no choice at all
+			// Two pistols is how this class is played and it cannot be done here: only the assassin carries the dual wield effect in this build, so
+			// the engine quietly moves a second gun back to the main hand. The cannon is the other thing it is meant to hold, and it works.
+			case GUNNER -> Set.of(ItemGroup.CANNON);
+			case RIDER -> Set.of(ItemGroup.KEYBLADE); // the key is what the class climbs into its machine with
+			case ENGINEER -> Set.of(ItemGroup.GUN);
+			case WARRIOR -> Set.of(ItemGroup.SWORD, ItemGroup.MACE);
+			case SCOUT -> Set.of(ItemGroup.DAGGER, ItemGroup.SWORD);
+		};
 	}
 
 	/**

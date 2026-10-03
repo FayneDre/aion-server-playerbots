@@ -362,17 +362,6 @@ public class SkillTemplate implements L10n {
 		return chainCondition != null && chainCondition.getAllowedActivations() > 1;
 	}
 
-	/** @return What this skill must be held to be used, or null when it does not care. */
-	public WeaponCondition getWeaponCondition() {
-		if (startconditions != null) {
-			for (Condition cond : startconditions.getConditions()) {
-				if (cond instanceof WeaponCondition weaponCondition)
-					return weaponCondition;
-			}
-		}
-		return null;
-	}
-
 	public ChainCondition getChainCondition() {
 		if (startconditions != null) {
 			for (Condition cond : startconditions.getConditions()) {

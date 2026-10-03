@@ -17,6 +17,7 @@ import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotRole;
+import com.aionemu.gameserver.services.StigmaService;
 import com.aionemu.gameserver.skillengine.effect.AbstractHealEffect;
 import com.aionemu.gameserver.skillengine.effect.EffectTemplate;
 import com.aionemu.gameserver.skillengine.effect.EffectType;
@@ -40,8 +41,6 @@ public class BotStigmaFitter {
 
 	/** Lowest level at which any stigma exists, and where the skill tree search starts. */
 	private static final int FIRST_STIGMA_LEVEL = 20;
-	/** Sockets of either kind. Asking for more is pointless: three is the most the engine ever opens. */
-	private static final int MAX_SOCKETS = 3;
 	/**
 	 * How many refusals in a row mean there is no point trying more. A refusal is usually "the sockets are full", which the engine answers without
 	 * saying so, but it is also "not enough kinah" and "this stone is not for you". Stopping on the first would give up on a bot whose best stone
@@ -58,35 +57,39 @@ public class BotStigmaFitter {
 	/**
 	 * Fills what sockets the bot has open.
 	 * <p>
-	 * The count is never asked for. {@code StigmaService.getPossibleStigmaCount} knows it and is private, and copying its table here would be a
-	 * second set of rules to keep in step — so stones are offered until the engine stops taking them, which is the same answer arrived at honestly.
+	 * How many sockets are open is asked of {@code StigmaService} rather than discovered by offering stones until it refuses. Probing looked like
+	 * the honest way round — the engine owns the rule, so let it answer — but a refusal there is not a quiet no: it is
+	 * {@code AuditLogger.log(player, "tried to equip stigma, exceeding the socket limit")}, which goes to the server log and into the chat of every
+	 * administrator. A few hundred bots respawning turned that into a wall of text. The two counters were made public for this, which is a smaller
+	 * change than copying their table and the only one that cannot drift from it.
 	 *
 	 * @return How many stones went in.
 	 */
 	public static int fit(Player bot) {
 		if (bot.getLevel() < FIRST_STIGMA_LEVEL)
 			return 0;
-		int worn = socket(bot, candidates(bot, false), ItemSlot.STIGMA1, ItemSlot.STIGMA2, ItemSlot.STIGMA3);
-		worn += socket(bot, candidates(bot, true), ItemSlot.ADV_STIGMA1, ItemSlot.ADV_STIGMA2, ItemSlot.ADV_STIGMA3);
+		int worn = socket(bot, candidates(bot, false), StigmaService.getPossibleStigmaCount(bot), ItemSlot.STIGMA1, ItemSlot.STIGMA2, ItemSlot.STIGMA3);
+		worn += socket(bot, candidates(bot, true), StigmaService.getPossibleAdvancedStigmaCount(bot), ItemSlot.ADV_STIGMA1, ItemSlot.ADV_STIGMA2,
+			ItemSlot.ADV_STIGMA3);
 		if (worn > 0)
 			LoggerFactory.getLogger(BotStigmaFitter.class).debug("Bot {} sockets {} stigma(s)", bot.getName(), worn);
 		return worn;
 	}
 
-	/** Offers stones to one family of sockets until they stop being taken. */
-	private static int socket(Player bot, List<ItemTemplate> stones, ItemSlot... slots) {
+	/**
+	 * Fills one family of sockets, never offering more stones than there are places for them.
+	 *
+	 * @param open How many sockets of this kind the character has, which already accounts for the stigma quest and for its level.
+	 */
+	private static int socket(Player bot, List<ItemTemplate> stones, int open, ItemSlot... slots) {
 		int worn = 0, refused = 0;
 		for (ItemTemplate stone : stones) {
-			if (worn >= MAX_SOCKETS || refused >= REFUSALS_BEFORE_GIVING_UP)
-				break;
-			// One refusal after something has already gone in means the sockets are full, and nothing else does: the stones are all of the same tier
-			// and the same price, so what changed between the two attempts can only be the room. Without this a character of 20 to 29, which has one
-			// socket, filled it and then offered three more stones it could never wear — on every spawn, for the rest of its life.
-			if (worn > 0 && refused > 0)
+			// Counting what is already worn, because this runs again on every spawn and most of the time the sockets are already full.
+			if (worn >= open || taken(bot, slots) >= open || refused >= REFUSALS_BEFORE_GIVING_UP)
 				break;
 			long slot = freeSlot(bot, slots);
 			if (slot == 0)
-				break; // every socket of this kind is full, whatever the engine would have said
+				break;
 			if (wear(bot, stone, slot))
 				worn++;
 			else
@@ -110,6 +113,16 @@ public class BotStigmaFitter {
 			return true;
 		BotEquipManager.discard(bot, item);
 		return false;
+	}
+
+	/** @return How many sockets of this kind already hold a stone. */
+	private static int taken(Player bot, ItemSlot... slots) {
+		int count = 0;
+		for (ItemSlot slot : slots) {
+			if (bot.getEquipment().isSlotEquipped(slot.getSlotIdMask()))
+				count++;
+		}
+		return count;
 	}
 
 	private static long freeSlot(Player bot, ItemSlot... slots) {

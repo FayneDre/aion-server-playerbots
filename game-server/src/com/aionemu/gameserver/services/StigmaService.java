@@ -273,7 +273,8 @@ public class StigmaService {
 		return equippedCount == neededCount;
 	}
 
-	private static int getPossibleStigmaCount(Player player) {
+	/** @return How many regular stigma sockets this character has open. Public so callers can ask instead of probing and being audited for it. */
+	public static int getPossibleStigmaCount(Player player) {
 		if (player.hasPermission(MembershipConfig.STIGMA_SLOT_QUEST))
 			return 3;
 		int playerLevel = player.getLevel();
@@ -309,7 +310,8 @@ public class StigmaService {
 		return isCompleteQuest;
 	}
 
-	private static int getPossibleAdvancedStigmaCount(Player player) {
+	/** @return How many advanced stigma sockets this character has open. */
+	public static int getPossibleAdvancedStigmaCount(Player player) {
 		if (player.hasPermission(MembershipConfig.STIGMA_SLOT_QUEST))
 			return 3;
 		int playerLevel = player.getLevel();
