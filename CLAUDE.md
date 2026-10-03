@@ -52,6 +52,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/built.md](docs/built.md) — what already works, and the reasoning most of it was paid for twice.
 - [docs/population.md](docs/population.md) — how a world gets its inhabitants: the flow, the three kinds of presence, where each one stands.
 - [docs/population-director.md](docs/population-director.md) — the pool and the director: how a region is kept holding the people it should.
+- [docs/bot-careers.md](docs/bot-careers.md) — how a bot gains levels, where it lives as it grows, and what keeps it out of trouble.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command and what it does, plus the one number that decides who may run them.
 - [docs/engine-traps.md](docs/engine-traps.md) — what this engine does to a bot that no documentation warns about: questions it asks that a bot cannot see, actions anything cancels, and methods whose names promise one thing and answer another.
 - [docs/world-and-data-traps.md](docs/world-and-data-traps.md) — the other half: geometry two systems describe differently, objects handed over half built, and templates that rewrite themselves as you read them.
