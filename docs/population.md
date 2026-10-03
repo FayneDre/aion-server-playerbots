@@ -154,6 +154,10 @@ Where a bot hunts comes from `quest_data.xml` read as an **itinerary**, not as q
 zone, and 4282 distinct npc ids between them. That answers "where does the game send a character of level 4, and what should it kill" as a file read —
 no handlers, no quest state. Quests that *gate* progression are completed outright, as the ascension quest already is.
 
+Every new character is given kinah, ten thousand per level, because the engine charges 25 000 to socket a stigma and a bot earns only by selling loot —
+one created at level fifty has never earned a coin. **This mints kinah**, which costs nothing while bots trade only with the engine and is the thing to
+look at again the day they trade with players.
+
 ## What it costs
 
 Measured on 45 bots: the whole server used **0.116 core** — 0.73% of a 16-core machine — and 1260 MB of a 2560 MB heap, with **83,286 npcs** already
@@ -182,11 +186,10 @@ Theobomos 179 ↔ Brusthonin 181. No per-faction tuning, ever. The 76 bots betwe
 model.
 
 **Which side a bot is on is asked of the place, not of the map.** A civilian's tribe already says it — `GENERAL` is a friend of `PC` and
-`GENERAL_DARK` of `PC_DARK` — so each settlement carries the faction of the people standing in it, and a hunting ground takes it from the settlement
-nearest it. A faction's own region answers the same thing everywhere and is unchanged; contested ground (Reshanta, Silentera, the Idian Depths,
-Kaldor, Levinshor, Panesterra) has no single answer, so one `//bot populate` fills Teminon with Elyos and Primum with Asmodians in whatever proportion
-the region itself holds. Balaurea is **not** contested — Inggison and Cygnea are Elyos, Gelkmaros and Enshar Asmodian — and the startup pass still
-covers the faction regions only, because Reshanta has no mesh and is the largest map in the game.
+`GENERAL_DARK` of `PC_DARK` — so each settlement carries its own faction and a hunting ground takes it from the nearest one. A faction's region answers
+the same everywhere and is unchanged; contested ground (Reshanta, Silentera, the Idian Depths, Kaldor, Levinshor, Panesterra) has no single answer, so
+one `//bot populate` fills Teminon with Elyos and Primum with Asmodians. Balaurea is **not** contested, and the startup pass still covers the faction
+regions only — Reshanta has no mesh and is the largest map in the game.
 
 Giving the countryside its own share is also what took the weight off the capitals. Hunting country is on another scale from settlement —
 Brusthonin's grounds cover 3.3 million m² against its villages' 76 thousand — so a share for the field moved people into the regions without making

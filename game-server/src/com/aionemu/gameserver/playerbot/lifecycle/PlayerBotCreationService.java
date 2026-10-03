@@ -22,6 +22,8 @@ import com.aionemu.gameserver.model.account.Account;
 import com.aionemu.gameserver.model.account.PlayerAccountData;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
+import com.aionemu.gameserver.questEngine.model.QuestState;
+import com.aionemu.gameserver.questEngine.model.QuestStatus;
 import com.aionemu.gameserver.services.AccountService;
 import com.aionemu.gameserver.services.ClassChangeService;
 import com.aionemu.gameserver.services.NameRestrictionService;
@@ -41,6 +43,8 @@ import com.aionemu.gameserver.utils.idfactory.IDFactory;
  */
 public class PlayerBotCreationService {
 
+	/** Kinah a new character is given for each level it has. Enough to socket its stigmas several times over, which is the bill that forced it. */
+	private static final int KINAH_PER_LEVEL = 10000;
 	private static final Random RANDOM = new Random();
 	/** Bot accounts start here, far above anything the login server hands out. */
 	public static final int BOT_ACCOUNT_ID_BASE = 900000;
@@ -116,6 +120,7 @@ public class PlayerBotCreationService {
 
 		if (commonData.isDaeva()) { // daeva status is not a column: it is recomputed from the ascension quest on every load
 			ClassChangeService.completeAscensionQuest(bot);
+			completeStigmaQuest(bot);
 			PlayerQuestListDAO.store(bot);
 		}
 		storeExperience(bot.getObjectId(), exp);
@@ -125,7 +130,40 @@ public class PlayerBotCreationService {
 		Player stored = PlayerBotLoader.load(name);
 		if (stored == null)
 			throw new IllegalStateException("Stored bot " + name + " could not be read back");
+		givePurse(stored);
 		return stored;
+	}
+
+	/**
+	 * Gives a new character the money somebody of its level would have.
+	 * <p>
+	 * Needed before it is wanted anywhere else, because the engine charges 25 000 kinah to socket an ordinary stigma and up to 100 000 for the best
+	 * of them — and a bot earns kinah only by selling what it loots, so one created at level fifty has never earned a coin and can afford none of
+	 * the build its level says it has. The alternative was to add the skills without paying, which would be a second copy of the engine's rules and
+	 * the one thing this module refuses to do anywhere.
+	 * <p>
+	 * Deliberately more than the stigma bill. A character of this level would have money, the auction house and the player shops will both want some,
+	 * and the amount is not finely tuned because nothing yet depends on it being. <b>It mints kinah</b>, which costs nothing while bots trade only
+	 * with the engine and will have to be looked at again the day they trade with players.
+	 */
+	private static void givePurse(Player bot) {
+		bot.getInventory().increaseKinah((long) bot.getLevel() * KINAH_PER_LEVEL);
+	}
+
+	/**
+	 * Marks the stigma quest done, which is what opens the sockets at all.
+	 * <p>
+	 * {@code StigmaService.getPossibleStigmaCount} returns <b>zero</b> until this quest is complete, whatever the character's level — so without it
+	 * a bot can hold every stone in the game and socket none of them. A bot does not run quests, and this is the same gate the ascension quest is:
+	 * progression locked behind something it will never do. Granted the same way and in the same breath, for the same reason.
+	 */
+	private static void completeStigmaQuest(Player bot) {
+		int questId = bot.getRace() == Race.ELYOS ? 1929 : 2900;
+		QuestState state = bot.getQuestStateList().getQuestState(questId);
+		if (state == null)
+			bot.getQuestStateList().addQuest(questId, new QuestState(questId, QuestStatus.COMPLETE));
+		else
+			state.setStatus(QuestStatus.COMPLETE);
 	}
 
 	/**

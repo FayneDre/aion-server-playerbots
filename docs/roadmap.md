@@ -7,11 +7,13 @@ documentation warns about, [engine-traps.md](engine-traps.md) and [world-and-dat
 Each section below says what the work is *for*, what it needs, and what actually blocks it. The order is roughly by value per unit of effort, not by
 ambition.
 
-## The one blocker left
+## No blocker left
 
-**Stigmas are never slotted.** Not cosmetic: a character past level 20 without stigma stones fights at a fraction of its strength, so every
-measurement of bot combat above that level is measuring a crippled character. `BotEquipManager` leaves them out today
-(`getEquippedItemsWithoutStigma`), which is right for the armour rule it sits in and is why nothing else noticed.
+**Stigmas are now socketed** — `BotStigmaFitter`. It was the last one, and it mattered because a character past level 20 without stigma stones fights
+at a fraction of its strength, so every measurement of bot combat above that level was of a crippled character. What it needed turned out to be four
+things, none of them optional: the stigma quest marked complete (1929 / 2900, exactly as the ascension quest already was, since the socket count is
+**zero** until it is), stones chosen from the class's own skill tree, kinah to pay the engine's charge, and `StigmaService.onPlayerLogin` on the way
+into the world — without that last one the whole thing would have worked once and gone silent at the first restart.
 
 The three that stood here before were cleared in `0118bfe9e` and this file had not caught up: names gained a middle syllable so the space is no longer
 390, `BotPlaces` tests `GENERAL_DARK` as well as `GENERAL` so the Asmodian faction has settlements, and the roster carries an `owner_id` that the
@@ -45,17 +47,23 @@ Needs group roles (below) first, and instance entry for a connectionless player 
 teleported in, which is the same `TeleportService` door bots already use. Boss mechanics can wait: a bot that simply fights correctly clears most
 low-level instances, and the ones it cannot are a later refinement rather than a prerequisite.
 
-## Group play: tank, healer, damage
+## Group play: tank, healer, support, damage
 
-Bots currently have no notion of role, which is why a group of them fights like five soloists standing together. Role follows from `PlayerClass` — the
-one place in this design where a fifteen-line authored table beats deriving it, because the data does not say what a class is *for*.
+**Roles exist** — `BotRole`, the one authored table in the module, because the data says what a skill does and never says what a class is *for*. There
+are four rather than three: a chanter states 197 physical damage against 17 magical, and filing it under healer left it watching full health bars.
+What each role now does is in [combat-skills.md](combat-skills.md). What is left below is the part that needs more than a role to decide.
 
-- **Tank**: engages first and holds aggro. The skills exist and are already classified — `ProvokerEffect` is read today for its *stance*, and it is
-  the same effect a taunt carries. A tank must prefer them, not merely be allowed them.
-- **Healer**: heals by danger rather than by lowest health, and keeps out of melee. The targeting hole that made every class "heal" its ally by
-  bandaging itself is fixed ([engine-traps.md](engine-traps.md)), so this now starts from a working base.
-- **Damage**: does not pull, waits for the tank to hold, and focuses the tank's target rather than the nearest thing.
-- **Composition**: the director should be able to offer a balanced group, which means the pool has to be stocked by role as well as by level.
+Corrected while building it: a taunt is **not** `ProvokerEffect`, which this file and the skill notes both assumed. `ProvokerEffect` installs a proc.
+The taunts are the 24 skills carrying `BOOSTHATE`, of which the enemy-targeted ones are the real article.
+
+What is left:
+
+- **Damage waits for the tank to hold.** It focuses the tank's target now, but it opens at the same instant the tank does, so the first blow can still
+  pull the mob off. Needs a notion of the tank having established aggro, which `AggroList.getTarget(MOST_HATED)` can answer.
+- **Composition**: the director should be able to offer a balanced group, which means the pool has to be stocked by role as well as by level. This is
+  the same stocking gap listed under the director above, with one more axis.
+- **Nobody forms a group.** Bots join a player's; two bots standing in a field never party with each other, so a pure-bot group is only ever something
+  a player assembles.
 
 ## Flight
 

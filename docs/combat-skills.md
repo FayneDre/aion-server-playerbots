@@ -93,6 +93,61 @@ tending to the group is checked before fighting, a melee bot beside a wounded pl
 The target relation does not answer this question, and that is what made it invisible for so long: `FRIEND` says who a skill may help, not whether
 somebody else can be chosen. Only `TARGET`, `TARGETORME` and `TARGET_MYPARTY_NONVISIBLE` mean it can leave its caster.
 
+## What a role changes
+
+`BotRole` is the one authored table in the module: the data says what a skill does and never says what a class is *for*. Four roles, not three —
+`SUPPORT` exists because a chanter states 197 physical damage against 17 magical, and a class that hits does not belong under `HEALER`.
+
+| Role | Classes | What changes |
+|---|---|---|
+| `TANK` | templar | Prefers a taunt over a stronger attack, and stays on its feet while the group is engaged rather than sitting to heal |
+| `HEALER` | cleric | Weighs the danger a member is in as well as its health, and does not join the attack at all |
+| `SUPPORT` | chanter, songweaver | Tends to the group first, then fights |
+| `DAMAGE` | everything else | Assists the tank's target before the leader's |
+
+**Only inside a group.** A solo bot is untouched: a templar alone does not taunt and still sits down to recover.
+
+A taunt is **not** `ProvokerEffect`, which is a proc. The taunts are among the 24 skills carrying `BOOSTHATE`; the ones aimed at an enemy are the real
+article, and the rest — `Winged Strength`, `Reduce Enmity Increase Rate` — are self buffs the existing offensive test already turns down.
+
+The healer's rule is the one with a number in it: being under attack counts as 20 points of health, which is both a tie-break and a widening. A member
+above the healing threshold is healed anyway while something is hitting it, because by the time the cast lands it will be under it. Lowest health alone
+always acts one beat late.
+
+## Stigmas
+
+A build past level 20 **is** its stigmas, so a bot without them was being measured as a character missing half of itself. `BotStigmaFitter` sockets
+them, and nothing in it reimplements the engine: the sockets, their count, the kinah and the skills all belong to `StigmaService`, which the ordinary
+equip path already calls.
+
+Which stones a class may wear is read rather than listed, through a join the data supports in only one direction:
+
+```
+skill_tree.xml   <skill skillId="500" minLevel="20" classId="GLADIATOR" stigma="1"/>
+skill_templates  skill_id="500"  group="FI_LOCKDOWNIMPACT"
+item_templates   id="140001115" "Lockdown"  <stigma gain_skill_group1="FI_LOCKDOWNIMPACT"/>
+```
+
+The stone itself cannot be filtered on class — plenty of stigmas state a required level of 20 for all seventeen — so the tree is the only honest
+source. It is also the only place the **tier** is stated: `stigma="1"` is a regular socket, `"2"` and `"3"` advanced, `"4"` linked and granted on its
+own. The stone does not say, because `ItemGroup.STIGMA` names all six sockets at once.
+
+Measured across the data: every one of the eleven advanced classes finds 9 to 13 regular stones by level 25 and advanced ones from 45, so no class
+comes up empty.
+
+Three traps, each of which would have failed quietly:
+
+- **The socket count is zero until the stigma quest is complete** (1929 Elyos, 2900 Asmodian), whatever the level. A bot could hold every stone in the
+  game and socket none. Granted at creation, exactly as the ascension quest already was.
+- **`chargeable` reads backwards.** Every stone exists twice, as itself and as an inert copy granting the same group. The ordinary one is
+  `chargeable="true"` — it can be enchanted with a duplicate of itself — and the inert copy is false. `StigmaService.addLinkedStigmaSkills` settles
+  it: it refuses the linked stigma unless all six sockets hold chargeable stones.
+- **The skills are not stored with the character.** The stones persist as equipment; what they grant does not, and `PlayerEnterWorldService` hands it
+  back on every login. A bot that did not do the same would have been fitted once and gone silent at the first restart, still visibly wearing them.
+
+Which stigmas, out of the fifty or so a class can reach, is the role's question: a tank takes the ones that hold aggro, a healer the ones that heal,
+and everyone else — and all of them as the tie-break — the stated power that already orders every other skill here.
+
 ## Mantras
 
 A chanter's mantras are toggles, and the rule that stops a bot switching its own toggles off had excluded every one of them, so chanters ran none at all. They are now the **only** toggles a bot may touch, and only ever to turn one on, since casting an active toggle turns it off.

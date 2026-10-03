@@ -614,7 +614,7 @@ public class BotSkillManager {
 	 * Every damaging effect in the game states its value as a percentage, so they compare directly. Heals over time are excluded by the class
 	 * hierarchy rather than by a rule, and that is the right answer: their value is a tick, not a total, so it was never comparable to the rest.
 	 */
-	private static int statedPower(SkillTemplate template) {
+	public static int statedPower(SkillTemplate template) {
 		if (template.getEffects() == null)
 			return 0;
 		int best = 0;

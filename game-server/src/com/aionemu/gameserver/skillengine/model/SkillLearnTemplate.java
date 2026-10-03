@@ -64,6 +64,15 @@ public class SkillLearnTemplate {
 	}
 
 	/**
+	 * @return true if this stigma goes in an advanced socket rather than a regular one. The tier is stated here and nowhere else — the stigma stone
+	 *         itself does not carry it, since {@code ItemGroup.STIGMA} names every socket at once — so without this there is no way to tell which of
+	 *         the six slots a stone belongs in. 1 is regular (from level 20), 2 and 3 are advanced (45 and 55), 4 is linked and granted on its own.
+	 */
+	public boolean isAdvancedStigma() {
+		return stigma == 2 || stigma == 3;
+	}
+
+	/**
 	 * Skill learning since 4.8 is different than before. Every level of a skill has its own skillId.<br>
 	 * This method returns the skillId of the next lower level of a skill.
 	 * 
