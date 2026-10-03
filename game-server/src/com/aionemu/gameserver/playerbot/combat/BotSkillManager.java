@@ -10,14 +10,18 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
+import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.skillengine.change.Change;
 import com.aionemu.gameserver.skillengine.condition.ChainCondition;
+import com.aionemu.gameserver.skillengine.condition.SkillChargeCondition;
 import com.aionemu.gameserver.skillengine.effect.AbstractHealEffect;
 import com.aionemu.gameserver.skillengine.effect.DamageEffect;
 import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.effect.EffectTemplate;
 import com.aionemu.gameserver.skillengine.effect.EffectType;
 import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
+import com.aionemu.gameserver.skillengine.model.ChargeSkillEntry;
+import com.aionemu.gameserver.skillengine.model.ChargedSkill;
 import com.aionemu.gameserver.skillengine.model.HitType;
 import com.aionemu.gameserver.skillengine.model.Skill;
 import com.aionemu.gameserver.skillengine.model.SkillSubType;
@@ -63,6 +67,11 @@ public class BotSkillManager {
 	 * a continuation is a window that closes.
 	 */
 	private static final String FIRST_CHAIN_LINK = "_1TH";
+	/**
+	 * How far short of the full charge a held skill is let go. Just enough that the engine's own cancellation, scheduled for the same instant,
+	 * never wins the race.
+	 */
+	private static final long CHARGE_RELEASE_MARGIN_MILLIS = 200;
 	/** Auras a bot keeps running. The engine ends the oldest past this many (see {@code EffectController}), so going further would only cycle them. */
 	private static final int MAX_MANTRAS = 3;
 
@@ -160,6 +169,27 @@ public class BotSkillManager {
 
 	private static boolean isMissingSelfBuff(Player bot, SkillTemplate template) {
 		return isSelfBuff(template) && isWorthKeepingUp(template) && !coversAnApproach(template) && !isAlreadyUp(bot, template);
+	}
+
+	/**
+	 * Calls up the servant a class fights alongside.
+	 * <p>
+	 * A spirit master without its spirit is not a weaker spirit master, it is a cloth caster with no damage: the pet is the class. Nothing picked
+	 * these up before because a summon is not a buff, not a heal and not aimed at an enemy, so every rule that chooses a skill looked straight past
+	 * them — which is why bots of that class fought bare handed and died to things their level.
+	 *
+	 * @return true if a servant was called, in which case the bot is busy with the cast.
+	 */
+	public static boolean trySummonServant(Player bot) {
+		if (bot.getSummon() != null)
+			return false;
+		return cast(bot, bot, skills(bot, BotSkillManager::isSummon));
+	}
+
+	private static boolean isSummon(Player bot, SkillTemplate template) {
+		// the lasting companion only. The rest of the summon family puts a thing on the ground — a totem, a trap, a gate, a functional npc — and
+		// each of those is a tactic with a moment, not something a bot should be calling up because it happens to know how.
+		return template.hasAnyEffect(EffectType.SUMMON);
 	}
 
 	private static boolean isSelfBuff(SkillTemplate template) {
@@ -489,10 +519,42 @@ public class BotSkillManager {
 		for (SkillTemplate template : candidates) {
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			// useNoAnimationSkill validates mp, cooldown, range and target itself, and skips the client hit time checks a bot cannot satisfy
-			if (skill != null && skill.useNoAnimationSkill())
+			if (skill != null && skill.useNoAnimationSkill()) {
+				if (template.isCharge())
+					releaseWhenCharged(bot, skill);
 				return true;
+			}
 		}
 		return false;
+	}
+
+	/**
+	 * Lets go of a skill the bot has been charging, which is the half of one nobody else will send.
+	 * <p>
+	 * A charge skill is the one kind the engine deliberately leaves unfinished: starting it schedules {@code cancelCurrentSkillCast} at the full
+	 * charge time and nothing else, because the blow itself comes from the player letting the key go — {@code CM_USE_CHARGE_SKILL}, which a bot has
+	 * no client to send. So a bard would start a three stage harp skill, stand there for its whole duration playing the animation, and land nothing
+	 * at all, over and over, which is exactly what was reported.
+	 * <p>
+	 * Released just short of the end, so the top stage is reached and the engine's own cancellation never beats it to the skill. The charge data is
+	 * read for the stage times rather than guessed at, and the cast speed ratio the skill already worked out is applied to them, because that is what
+	 * {@code useChargeSkill} compares the elapsed time against on the other side.
+	 */
+	private static void releaseWhenCharged(Player bot, Skill skill) {
+		SkillChargeCondition condition = skill.getSkillTemplate().getSkillChargeCondition();
+		ChargeSkillEntry charged = condition == null ? null : DataManager.SKILL_CHARGE_DATA.getChargedSkillEntry(condition.getValue());
+		if (charged == null || charged.getSkills().isEmpty())
+			return;
+		int fullCharge = 0;
+		for (ChargedSkill stage : charged.getSkills())
+			fullCharge += stage.getTime();
+		long delay = (long) (fullCharge * skill.getCastSpeedForAnimationBoostAndChargeSkills()) - CHARGE_RELEASE_MARGIN_MILLIS;
+		BotScheduler.getInstance().schedule(() -> {
+			// still the same cast: the bot may have died, been interrupted or moved on, and releasing a skill it is no longer holding would reach
+			// into whatever it is doing now
+			if (bot.getCastingSkill() == skill)
+				bot.getController().useChargeSkill(skill, System.currentTimeMillis() - skill.getCastStartTime());
+		}, Math.max(0, delay));
 	}
 
 	/** @return The bot's usable skills of one kind, in the order it should try them. */

@@ -429,7 +429,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// an operator sent it somewhere on purpose; let it arrive before it goes looking for its own fights
 			} else if (!posture.standUp()) { // stand up one tick before acting, so the animation has played out by then
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing.
-				if (!BotSkillManager.tryBuffSelf(getOwner()) && !BotSkillManager.tryChantMantra(getOwner()) && !day.pursue()) {
+				// the servant before the buffs, because it is the one of them that is still there in ten minutes and the class cannot fight without it
+				if (!BotSkillManager.trySummonServant(getOwner()) && !BotSkillManager.tryBuffSelf(getOwner())
+					&& !BotSkillManager.tryChantMantra(getOwner()) && !day.pursue()) {
 					// Starting a fight is the one thing the death penalty forbids, and it used to forbid everything: the bot sat where it stood for
 					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Walking, going home,
 					// buffing and the errands above are all things a player does on the way back from a death, so none of them is gated here.
