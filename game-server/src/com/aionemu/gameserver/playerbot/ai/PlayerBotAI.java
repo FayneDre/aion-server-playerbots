@@ -906,9 +906,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 		float y = ground != null ? ground.getY() : home.getY();
 		float z = ground != null ? ground.getZ() : home.getZ();
 		log.info("Bot {} could not move at all from {} {} and is put back home", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()));
+		day.forget(); // whatever it was doing was decided from a place it is no longer in
+		// Counted, because landing a bot back at its home only helps while the home is somewhere it can walk out of. When it is not, this rescue runs
+		// every thirteen seconds for as long as the server is up, and the bot needs a different home rather than another lift to the same one.
+		Vector3f moved = day.recordStranding();
+		if (moved != null) {
+			x = moved.getX();
+			y = moved.getY();
+			z = moved.getZ();
+		}
 		TeleportService.teleportTo(bot, bot.getWorldId(), x, y, z);
 		setAnchor(x, y, z);
-		day.forget(); // whatever it was doing was decided from a place it is no longer in
 	}
 
 	/**

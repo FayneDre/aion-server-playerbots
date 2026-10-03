@@ -54,6 +54,8 @@ class BotDay {
 	/** Deaths since the clock below started, which is how a home proves itself lethal without anybody working out why. */
 	private volatile int deathsAtHome;
 	private volatile long deathsSince;
+	private volatile int strandingsAtHome;
+	private volatile long strandingsSince;
 
 	BotDay(PlayerBotAI ai) {
 		this.ai = ai;
@@ -128,8 +130,42 @@ class BotDay {
 		log.info("Bot {} has died {} times at {} {} and moves to {} {}", bot.getName(), deathsAtHome, Math.round(home().getX()),
 			Math.round(home().getY()), Math.round(elsewhere.getX()), Math.round(elsewhere.getY()));
 		deathsAtHome = 0;
+		moveTo(elsewhere);
+	}
+
+	/**
+	 * Notes that the bot had to be rescued from where it was standing, and moves it out of a home that keeps producing that.
+	 * <p>
+	 * The sibling of {@link #recordDeath()}, and for the same reason: the rescue puts a bot back at its home, so a home that cannot be walked out of
+	 * makes the rescue feed the fault it exists to cure. One bot was put back five times in two minutes onto the top of a tower — ground the mesh
+	 * calls walkable and plans routes across, which the bot could nonetheless not cross a single metre of. There is no theory to have about why a
+	 * given spot does that, and none is needed: a home a character has to be rescued from three times is not a home.
+	 *
+	 * @return The new home when the bot has just moved, so the caller can put it there rather than leave it at the one it is leaving, or null.
+	 */
+	Vector3f recordStranding() {
+		long now = System.currentTimeMillis();
+		if (now - strandingsSince > DEATH_WINDOW_MILLIS) {
+			strandingsSince = now;
+			strandingsAtHome = 0;
+		}
+		if (++strandingsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned() || home() == null)
+			return null;
+		Player bot = ai.getOwner();
+		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getObjectId() + (int) now);
+		if (elsewhere == null || elsewhere.equals(home()))
+			return null;
+		log.info("Bot {} had to be freed {} times at {} {} and moves to {} {}", bot.getName(), strandingsAtHome, Math.round(home().getX()),
+			Math.round(home().getY()), Math.round(elsewhere.getX()), Math.round(elsewhere.getY()));
+		strandingsAtHome = 0;
+		moveTo(elsewhere);
+		return elsewhere;
+	}
+
+	/** Takes up a new home: everything else a bot does is written against the home or the anchor, so the rest follows on its own. */
+	private void moveTo(Vector3f elsewhere) {
 		home = elsewhere;
-		BotRoster.setHome(bot.getName(), elsewhere);
+		BotRoster.setHome(ai.getOwner().getName(), elsewhere);
 		ai.setAnchor(elsewhere.getX(), elsewhere.getY(), elsewhere.getZ());
 		forget();
 	}
