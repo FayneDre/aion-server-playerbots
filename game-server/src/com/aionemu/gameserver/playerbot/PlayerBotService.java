@@ -387,10 +387,15 @@ public class PlayerBotService {
 			//
 			// Below rather than at: a resident born on the ceiling has nowhere to go, earns nothing from its first minute, and is a career already
 			// over. Every new inhabitant gets at least one level of its own to climb.
-			// Between the region's own floor and its ceiling, and the floor is the half that was missing: clamped at 1, Verteron made characters of
-			// one to seventeen for a region whose middle is fourteen, and Theobomos of one to fifty. The ceiling was always right and the floor was
-			// never there, so every region quietly held a tail of characters far below anything living in it.
-			int level = Math.clamp(home.level() + Rnd.get(-1, 1), BotPlaces.bottomLevelOf(worldId), Math.max(1, BotPlaces.topLevelOf(worldId) - 1));
+			// The place's own level where the place belongs to the region, and a level drawn from the whole band where it does not.
+			//
+			// Clamping was the obvious thing and it piles people on the edges: Verteron holds 23 places worth 9 or less and 27 worth 17 or more, so
+			// 53 of its 84 inhabitants came out at exactly 10 or exactly 19 with a hollow in between. A place outside the band says nothing about
+			// what level lives there — it is a stretch of beach or a boss's lair, not a home — so it gets a level from the region at large instead of
+			// being pinned to the nearest bound.
+			int floor = BotPlaces.bottomLevelOf(worldId), ceiling = BotPlaces.topLevelOf(worldId);
+			int level = home.level() < floor || home.level() > ceiling ? Rnd.get(floor, ceiling)
+				: Math.clamp(home.level() + Rnd.get(-1, 1), floor, ceiling);
 			PlayerClass playerClass = classFor(level);
 			try {
 				Race race = chosen != null ? chosen : factionFor(worldId, home);
@@ -637,11 +642,13 @@ public class PlayerBotService {
 	 * minute old by the time this runs and a player covers ground in that time.
 	 *
 	 * @param watchers The real players on that map, as the director's own census found them.
+	 * @param insist Whether to bring it in even where somebody would see it happen. The director sets this once a region has been refused the same
+	 *          arrivals for long enough that the refusal has stopped being temporary — see {@code BotDirector}.
 	 * @return false if the bot cannot be brought in now, which is never final: the next review asks again.
 	 */
-	public Change wake(BotRoster.Resident resident, Collection<Player> watchers) {
+	public Change wake(BotRoster.Resident resident, Collection<Player> watchers, boolean insist) {
 		Vector3f spot = scatterAround(resident.worldId(), resident.home());
-		if (isOverlooked(resident.worldId(), spot, watchers))
+		if (!insist && isOverlooked(resident.worldId(), spot, watchers))
 			return Change.SEEN;
 		Player bot = loadAvailableBot(resident.name());
 		if (bot == null)

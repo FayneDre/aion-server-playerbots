@@ -89,7 +89,17 @@ public class BotPlaces {
 	/** How far around a settlement to read the countryside for the level it is worth. */
 	private static final float COUNTRYSIDE_RADIUS = 150f;
 	/** How far a character may be from a region's own level and still belong in it. */
+	/**
+	 * How far a single place's level may be from a character's before that place is no use to it. A local question — this ground, this character — and
+	 * not the region's band, which is measured rather than assumed.
+	 */
 	private static final int LEVEL_TOLERANCE = 4;
+	/** The quarter mark of what lives in a region, which is where its own people start. Below it is the odd stray near the gate. */
+	private static final int FLOOR_PERCENTILE = 25;
+	/** The ninth tenth, which is the top of what a region offers. Above it are the world bosses and the leftovers. */
+	private static final int CEILING_PERCENTILE = 90;
+	/** No character leaves its starting valley before this, so no region beyond them holds anybody under it. */
+	private static final int ASCENSION_LEVEL = 10;
 	/**
 	 * How far a bot's level may drift from its home's before it moves. Tighter than the map's tolerance on purpose: the map decides who lives in the
 	 * region, this decides which part of it, and the whole point is that a character of seven does not keep house on ground worth three.
@@ -97,7 +107,7 @@ public class BotPlaces {
 	private static final int HOME_LEVEL_TOLERANCE = 2;
 
 	private static final Map<Integer, List<Settlement>> settlementsByMap = new ConcurrentHashMap<>();
-	private static final Map<Integer, Integer> levelByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, int[]> bandByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> huntingByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
@@ -236,57 +246,68 @@ public class BotPlaces {
 	}
 
 	/**
-	 * What a whole map is worth fighting at, which is the level its inhabitants should be.
+	 * What levels a region is <b>for</b>: where its people start and where they top out.
 	 * <p>
-	 * The band belongs to the <b>region</b>, not to each camp within it: Poeta reads as Akarios 3 and its camps at 5, 6 and 7, but a character of
-	 * eight walks all of it, and one of thirty has no business anywhere in it. So this decides who lives on a map, and nothing decides where they go
-	 * once they do.
+	 * The middle of a region does not describe it. Taking the median and allowing four either side put Verteron's inhabitants at 10 to 17 for a
+	 * region the game runs from 10 to 20, and it is wrong in both directions at once — too narrow for a region that spans ten levels, too wide for
+	 * one that spans four. The spread is not a fixed width, so it has to be measured rather than assumed.
+	 * <p>
+	 * Measured as the quarter and the ninth tenth of what lives there. Both ends need trimming and for different reasons: every region holds a
+	 * handful of level 1 creatures somewhere near its gate, and most hold one or two of level 80 that are world bosses or leftovers, so the plain
+	 * minimum and maximum describe nothing. Against the regions as a player knows them this comes out right across the board — Verteron 10 to 19,
+	 * Eltnen 24 to 38, Heiron 35 to 44, Theobomos 45 to 49, Poeta 2 to 8.
+	 * <p>
+	 * Only what one character can fight counts, the same rule the hunting grounds use: a region's elites say what a group could do there, not what
+	 * somebody living there is.
 	 *
-	 * @return The middling level of everything on the map that would fight back, or 1 where nothing does.
+	 * @return The floor and the ceiling, in that order, never below 1 and never inverted.
 	 */
-	public static int levelOf(int worldId) {
-		return levelByMap.computeIfAbsent(worldId, id -> {
-			List<Float> levels = new ArrayList<>();
+	private static int[] bandOf(int worldId) {
+		return bandByMap.computeIfAbsent(worldId, id -> {
+			List<Integer> levels = new ArrayList<>();
 			for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(id)) {
 				NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
-				if (template == null || isTownsfolk(template) || template.getLevel() <= 0)
+				if (template == null || isTownsfolk(template) || template.getLevel() <= 0 || BotTargetSelector.needsAGroup(template))
 					continue;
 				for (int i = 0; i < group.getSpawnTemplates().size(); i++)
-					levels.add((float) template.getLevel());
+					levels.add((int) template.getLevel());
 			}
 			if (levels.isEmpty())
-				return 1;
+				return new int[] { 1, 1 };
 			levels.sort(null);
-			return Math.round(levels.get(levels.size() / 2));
+			int ceiling = Math.max(1, percentile(levels, CEILING_PERCENTILE));
+			int floor = Math.max(1, percentile(levels, FLOOR_PERCENTILE));
+			// A region above the ascension is reached by ascending, so nobody under ten lives there — the two starting valleys, whose ceiling is
+			// itself under ten, are the only places that hold characters below it.
+			if (ceiling >= ASCENSION_LEVEL)
+				floor = Math.max(floor, ASCENSION_LEVEL);
+			return new int[] { Math.min(floor, ceiling), ceiling };
 		});
+	}
+
+	private static int percentile(List<Integer> sorted, int percent) {
+		return sorted.get(Math.clamp((long) (sorted.size() - 1) * percent / 100, 0, sorted.size() - 1));
 	}
 
 	/** @return true if a character of this level belongs on this map at all. */
 	public static boolean suitsLevel(int worldId, int level) {
-		return Math.abs(levelOf(worldId) - level) <= LEVEL_TOLERANCE;
+		return level >= bottomLevelOf(worldId) && level <= topLevelOf(worldId);
 	}
 
-	/**
-	 * @return The highest level this region still has anything to offer. Poeta reads as 5 in the middle, so 9 at the top, which matches a valley of
-	 *         ones to eights.
-	 */
+	/** @return The highest level this region still has anything to offer, and the level at which a resident of it stops earning. */
 	public static int topLevelOf(int worldId) {
-		return levelOf(worldId) + LEVEL_TOLERANCE;
+		return bandOf(worldId)[1];
 	}
 
 	/**
 	 * @return The lowest level this region is any use to, which is where its inhabitants start rather than at one.
 	 *         <p>
 	 *         The counterpart of {@link #topLevelOf}, and it was missing while the ceiling was not — so a region's people were created from level one
-	 *         however high the region was. Verteron reads 14 in the middle and was making characters of 1 to 17; Theobomos reads 47 and was making
-	 *         them from 1 to 50. A level 9 priest standing in a region of fourteens is not a resident, it is somebody who would be killed by the
-	 *         countryside on their way out of the village.
-	 *         <p>
-	 *         Not a new rule but the one this module already states: {@link #suitsLevel} defines belonging on a map as being within
-	 *         {@value #LEVEL_TOLERANCE} of its middle, and creation was the one place that did not honour it.
+	 *         however high the region was. A level 9 priest standing in Verteron is not a resident, it is somebody the countryside would kill on
+	 *         their way out of the village.
 	 */
 	public static int bottomLevelOf(int worldId) {
-		return Math.max(1, levelOf(worldId) - LEVEL_TOLERANCE);
+		return bandOf(worldId)[0];
 	}
 
 	/** @return What the country around this place is worth fighting at, or the map's own band if the spot is not a place people gather. */
@@ -295,7 +316,7 @@ public class BotPlaces {
 			if (settlement.centre().equals(place))
 				return settlement.level();
 		}
-		return levelOf(worldId);
+		return (bottomLevelOf(worldId) + topLevelOf(worldId)) / 2; // not a place, so the middle of what the region is for
 	}
 
 	/**
