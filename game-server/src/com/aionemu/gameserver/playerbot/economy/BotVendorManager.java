@@ -264,6 +264,13 @@ public class BotVendorManager {
 			return false;
 		if (item.getItemTemplate().getItemGroup() == ItemGroup.QUEST)
 			return false;
+		// Never what the bot drinks. Flasks are COMMON, sellable and not quest items, so every one of them read as junk: a character is born with a
+		// hundred of each from player_initial_data, sold the lot on its first trip to a shop, bought twenty back at the counter it had just sold them
+		// over, and did that again on the next trip. Half the bots on the server had none left. Buying flasks did not cause this -- selling them did,
+		// since before the bot could buy, the till simply emptied and nothing refilled it -- but buying closed it into a circle, and paid the
+		// difference between the two prices every time round.
+		if (grants(item.getItemTemplate(), BotPotionManager.RESTORES_HEALTH) || grants(item.getItemTemplate(), BotPotionManager.RESTORES_MANA))
+			return false;
 		if (isForSomeoneElse(bot, item))
 			return true; // however fine it is, it will never be worn by this character
 		return item.getItemTemplate().getItemQuality().getQualityId() < ItemQuality.RARE.getQualityId();
