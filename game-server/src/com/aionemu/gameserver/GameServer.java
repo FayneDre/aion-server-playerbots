@@ -188,6 +188,7 @@ public class GameServer {
 
 		nioServer = initNioServer();
 		Runtime.getRuntime().addShutdownHook(ShutdownHook.getInstance());
+		ShutdownRequestWatcher.start();
 		PlayerBotService.getInstance().onStartUp(); // bots have no connection, so nothing else ever puts them back into the world
 		log.info("Game server started in " + (System.currentTimeMillis() / 1000 - START_TIME_SECONDS) + " seconds.");
 

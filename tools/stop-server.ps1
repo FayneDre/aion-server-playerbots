@@ -7,8 +7,13 @@
     console CTRL+C. Killing the process instead (Stop-Process / taskkill /F) skips it entirely and loses character
     positions, inventories and game time since the last periodic save.
 
-    This sends a real CTRL+C, then waits for the process to exit. Shutdown is immediate when only staff is online,
-    otherwise the server announces it and waits (gameserver.shutdown.delay, 120s by default).
+    This asks by writing <server>/game-server/shutdown.request, which ShutdownRequestWatcher picks up within half a
+    second and turns into the same System.exit every other shutdown uses. A real CTRL+C is kept as a fallback for a
+    server built before that watcher existed: it works, but only about half the time, because the console it has to
+    be sent through is shared with the cmd.exe running start.bat and is not ours to attach to reliably.
+
+    Shutdown is immediate when only staff is online, otherwise the server announces it and waits
+    (gameserver.shutdown.delay).
 
     Once the server has exited, the console window start.bat runs in is closed too. It would otherwise sit there
     waiting for a keypress, first on cmd's "terminate batch job?" prompt and then on the PAUSE that ends the
@@ -25,6 +30,7 @@
 #>
 param(
     [int]$TimeoutSeconds = 180,
+    [string]$ServerRoot = $env:AION_SERVER_HOME,
     [switch]$Force
 )
 
@@ -60,20 +66,55 @@ if (-not $process) {
 $hostShellPid = $process.ParentProcessId
 
 Write-Host "Shutting down the game server gracefully (PID $($process.ProcessId))..." -ForegroundColor Cyan
-$helper = Join-Path $PSScriptRoot 'send-ctrl-c.ps1'
-$sender = Start-Process -FilePath 'powershell.exe' -PassThru -Wait -WindowStyle Hidden `
-    -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$helper`"", '-TargetPid', $process.ProcessId
 
-if ($sender.ExitCode -ne 0) {
-    throw "Could not send CTRL+C to PID $($process.ProcessId) (exit code $($sender.ExitCode)). Shut the server down from its own window instead."
+<#
+    Asks the server to stop, and reports which way the request went out so a failure says where to look.
+    The file is preferred: the server owns the check and logs what it saw, where a console event is delivered
+    through a console we do not own and fails silently when it is not.
+#>
+$requested = $false
+if ($ServerRoot) {
+    $requestFile = Join-Path $ServerRoot 'game-server\shutdown.request'
+    try {
+        New-Item -ItemType File -Path $requestFile -Force | Out-Null
+        Write-Host "  asked through $requestFile" -ForegroundColor DarkGray
+        $requested = $true
+    } catch {
+        Write-Host "  could not write $requestFile ($($_.Exception.Message))" -ForegroundColor Yellow
+    }
 }
 
-$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+# Both are sent when the file could not be written, and only then: a server that honours the file is already on its
+# way out, and a CTRL+C would also reach the cmd.exe sharing its console and leave a prompt behind.
+if (-not $requested) {
+    $helper = Join-Path $PSScriptRoot 'send-ctrl-c.ps1'
+    $sender = Start-Process -FilePath 'powershell.exe' -PassThru -Wait -WindowStyle Hidden `
+        -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$helper`"", '-TargetPid', $process.ProcessId
+    if ($sender.ExitCode -ne 0) {
+        throw "Could not ask PID $($process.ProcessId) to stop (CTRL+C exit code $($sender.ExitCode)). Shut the server down from its own window instead."
+    }
+    Write-Host '  asked with CTRL+C (no server root given, so no request file)' -ForegroundColor DarkGray
+}
+
+# The watcher deletes the file as soon as it sees it, so the file still being there is the one honest sign that
+# nothing is listening -- a server built before the watcher existed. Ten seconds is twenty times its poll interval.
+$askedAt = Get-Date
+$fallbackAfter = $askedAt.AddSeconds(10)
+$deadline = $askedAt.AddSeconds($TimeoutSeconds)
+$fellBack = $false
+
 while ((Get-Date) -lt $deadline) {
     if (-not (Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue)) {
         Write-Host 'Game server stopped and saved.' -ForegroundColor Green
         Close-HostShell $hostShellPid
         exit 0
+    }
+    if ($requested -and -not $fellBack -and (Get-Date) -gt $fallbackAfter -and (Test-Path $requestFile)) {
+        Write-Host '  the server has not picked the file up, falling back to CTRL+C' -ForegroundColor Yellow
+        $fellBack = $true
+        $helper = Join-Path $PSScriptRoot 'send-ctrl-c.ps1'
+        Start-Process -FilePath 'powershell.exe' -Wait -WindowStyle Hidden `
+            -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$helper`"", '-TargetPid', $process.ProcessId | Out-Null
     }
     Start-Sleep -Milliseconds 500
 }
