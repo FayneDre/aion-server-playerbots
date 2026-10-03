@@ -116,37 +116,32 @@ always acts one beat late.
 
 ## Stigmas
 
-A build past level 20 **is** its stigmas, so a bot without them was being measured as a character missing half of itself. `BotStigmaFitter` sockets
-them, and nothing in it reimplements the engine: the sockets, their count, the kinah and the skills all belong to `StigmaService`, which the ordinary
-equip path already calls.
+Moved to [stigmas.md](stigmas.md).
 
-Which stones a class may wear is read rather than listed, through a join the data supports in only one direction:
+## Boarding a robot
 
-```
-skill_tree.xml   <skill skillId="500" minLevel="20" classId="GLADIATOR" stigma="1"/>
-skill_templates  skill_id="500"  group="FI_LOCKDOWNIMPACT"
-item_templates   id="140001115" "Lockdown"  <stigma gain_skill_group1="FI_LOCKDOWNIMPACT"/>
-```
+An aethertech's whole class sits behind one toggle. Every skill it knows carries a `RideRobotCondition` asking `isInRobotMode()`, and its Embark toggle
+also grants `ATTACK_RANGE +4000` — four metres. Out of its robot it can cast nothing and reach nothing, which in game was a bot standing five metres
+from the monster killing it, target selected, doing nothing at all. It was reported three times before the class turned out to be the common factor.
 
-The stone itself cannot be filtered on class — plenty of stigmas state a required level of 20 for all seventeen — so the tree is the only honest
-source. It is also the only place the **tier** is stated: `stigma="1"` is a regular socket, `"2"` and `"3"` advanced, `"4"` linked and granted on its
-own. The stone does not say, because `ItemGroup.STIGMA` names all six sockets at once.
+It never boarded because Embark is a toggle, and toggles were allowed to mantras alone — a rule written when mantras were the only ones anybody had
+looked at. The rule it protects still holds, so this asks first whether the robot is already on. Recognised by its `RideRobotEffect` rather than by
+name or id, and cast standing still, since Embark states `move_casting allow="false"`.
 
-Measured across the data: every one of the eleven advanced classes finds 9 to 13 regular stones by level 25 and advanced ones from 45, so no class
-comes up empty.
+## A floor under the mana bar
 
-Three traps, each of which would have failed quietly:
+Two separate things used to let a bot end up permanently out of mana.
 
-- **The socket count is zero until the stigma quest is complete** (1929 Elyos, 2900 Asmodian), whatever the level. A bot could hold every stone in the
-  game and socket none. Granted at creation, exactly as the ascension quest already was.
-- **`chargeable` reads backwards.** Every stone exists twice, as itself and as an inert copy granting the same group. The ordinary one is
-  `chargeable="true"` — it can be enchanted with a duplicate of itself — and the inert copy is false. `StigmaService.addLinkedStigmaSkills` settles
-  it: it refuses the linked stigma unless all six sockets hold chargeable stones.
-- **The skills are not stored with the character.** The stones persist as equipment; what they grant does not, and `PlayerEnterWorldService` hands it
-  back on every login. A bot that did not do the same would have been fitted once and gone silent at the first restart, still visibly wearing them.
+**It never rested for mana.** The engagement test looked at health alone, so a bot at full health and an empty bar fought on with its auto attack for
+ever — and never sat down, which is what pays the eightfold regeneration rate.
 
-Which stigmas, out of the fifty or so a class can reach, is the role's question: a tank takes the ones that hold aggro, a healer the ones that heal,
-and everyone else — and all of them as the tie-break — the stated power that already orders every other skill here.
+**And it emptied the bar on the first monster.** The reserve that stops a bot spending mana applied to healers only, on the reasoning that only a class
+with something to pay for later has anything to save for. True of one fight and false of a career: skills are picked strongest first, so "mana exists
+to be spent" meant meeting the second monster with nothing. The floor is everyone's now, and below it the fight is finished with the weapon, which
+costs nothing.
+
+The resting threshold sits **above** the spending floor on purpose. Were it at or below, a bot would rise from its rest already unable to cast and sit
+straight back down.
 
 ## Mantras
 

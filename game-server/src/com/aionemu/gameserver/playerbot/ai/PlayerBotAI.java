@@ -91,6 +91,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final int MAX_ATTACK_DELAY_MILLIS = 5000;
 	/** Health below which the bot waits to regenerate instead of looking for a fight. */
 	private static final int MIN_ENGAGE_HP_PERCENT = 90;
+	/**
+	 * Mana below which the bot sits down rather than starting another fight.
+	 * <p>
+	 * Nothing used to look at mana at all, so a bot at full health and an empty bar fought on for ever with its auto attack alone — and never sat, so
+	 * it never recovered, because sitting is what pays the eightfold regeneration rate. Seen across whole regions: casters permanently out of mana,
+	 * which also made every measurement of their damage a measurement of a character with its kit switched off.
+	 * <p>
+	 * Above {@code BotSkillManager.MANA_RESERVE_PERCENT} on purpose. The reserve is the point where the bot stops spending on skills; if the bot were
+	 * allowed to stand up at or below it, it would rise from its rest already unable to cast and sit straight back down.
+	 */
+	private static final int MIN_ENGAGE_MP_PERCENT = 35;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	/** The penalty skill a player carries after dying, under which a bot will not start a fight. */
 	private static final int SOUL_SICKNESS_SKILL = 8291;
@@ -456,7 +467,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (!posture.standUp()) { // stand up one tick before acting, so the animation has played out by then
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing.
 				// the servant before the buffs, because it is the one of them that is still there in ten minutes and the class cannot fight without it
-				if (!callUpServant() && !BotSkillManager.tryBuffSelf(getOwner())
+				if (!callUpServant() && !boardRobot() && !BotSkillManager.tryBuffSelf(getOwner())
 					&& !BotSkillManager.tryChantMantra(getOwner()) && !day.pursue()) {
 					// Starting a fight is the one thing the death penalty forbids, and it used to forbid everything: the bot sat where it stood for
 					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Walking, going home,
@@ -912,7 +923,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	private boolean isHealthyEnoughToFight() {
-		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT;
+		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT
+			&& getOwner().getLifeStats().getMpPercentage() >= MIN_ENGAGE_MP_PERCENT;
 	}
 
 	/**
@@ -936,6 +948,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 			&& moveController.isInMove())
 			return false;
 		return BotSkillManager.trySummonServant(getOwner());
+	}
+
+	/**
+	 * Gets an aethertech into its robot, which is the one upkeep its whole class is built on — see {@code BotSkillManager.tryBoardRobot}.
+	 * <p>
+	 * Standing still for the same reason the servant is called that way: Embark states {@code move_casting allow="false"}, so one started mid-stride
+	 * is thrown away. It is a toggle with no duration, so this fires once and the bot stays aboard; only the first fight after a spawn can begin
+	 * without it.
+	 */
+	private boolean boardRobot() {
+		if (getOwner().getMoveController() instanceof BotMoveController moveController && moveController.isInMove())
+			return false;
+		return BotSkillManager.tryBoardRobot(getOwner());
 	}
 
 	private Creature findAttacker() {

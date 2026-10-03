@@ -20,6 +20,7 @@ import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.effect.EffectTemplate;
 import com.aionemu.gameserver.skillengine.effect.EffectType;
 import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
+import com.aionemu.gameserver.skillengine.effect.RideRobotEffect;
 import com.aionemu.gameserver.skillengine.model.ChargeSkillEntry;
 import com.aionemu.gameserver.skillengine.model.ChargedSkill;
 import com.aionemu.gameserver.skillengine.model.HitType;
@@ -261,8 +262,8 @@ public class BotSkillManager {
 	}
 
 	public static boolean tryCastSkill(Player bot, Creature target) {
-		if (isSavingManaToHeal(bot))
-			return false; // the auto attack costs nothing, and the fight is not lost until the heal cannot be paid for
+		if (isSavingMana(bot))
+			return false; // the auto attack costs nothing, and no fight is lost by finishing it with the weapon
 		return cast(bot, target, skills(bot, BotSkillManager::isOffensive).stream().filter(template -> !alreadyAfflicts(target, template)).toList());
 	}
 
@@ -302,6 +303,36 @@ public class BotSkillManager {
 	}
 
 	/**
+	 * Puts an aethertech in its robot, without which the class cannot fight at all.
+	 * <p>
+	 * Every skill it knows carries a {@code RideRobotCondition} that asks {@code isInRobotMode()}, and its Embark toggle also grants
+	 * {@code ATTACK_RANGE +4000} — four metres. So out of its robot an aethertech can cast nothing and reach nothing, which in game is a bot standing
+	 * five metres from the monster killing it, target selected, doing nothing at all. Reported three times before the class was spotted as the common
+	 * factor.
+	 * <p>
+	 * It never boarded because Embark is a toggle, and toggles were allowed to mantras alone — a rule written when mantras were the only ones anybody
+	 * had looked at. The rule it was protecting still holds: casting a live toggle turns it off, so this asks first whether the robot is already on.
+	 *
+	 * @return true if the bot is busy boarding.
+	 */
+	public static boolean tryBoardRobot(Player bot) {
+		if (bot.isInRobotMode())
+			return false;
+		return cast(bot, bot, skills(bot, (owner, template) -> isRobotToggle(template)));
+	}
+
+	/** Recognised by its effect rather than by its name or id, so it holds for every rank and for both factions' copies. */
+	private static boolean isRobotToggle(SkillTemplate template) {
+		if (!template.isToggle() || template.getEffects() == null)
+			return false;
+		for (EffectTemplate effect : template.getEffects().getEffects()) {
+			if (effect instanceof RideRobotEffect)
+				return true;
+		}
+		return false;
+	}
+
+	/**
 	 * Counts the mantras currently running, by stack group rather than by skill, since the ranks of one mantra share a group and only one of them can
 	 * be up. Counted from the bot's own book instead of read off the effect controller, whose aura list is private to the engine.
 	 */
@@ -317,20 +348,18 @@ public class BotSkillManager {
 	}
 
 	/**
+	/**
 	 * Tells whether the bot should stop spending mana on damage.
 	 * <p>
-	 * Only a class that heals itself has anything to save mana for; for everyone else mana exists to be spent. Asked of the whole skill list rather
-	 * than of the usable one, because a heal on cooldown is still a heal the bot will want to pay for in a few seconds.
+	 * This used to apply to healers alone, on the reasoning that only a class with something to pay for later has anything to save for, and that for
+	 * everyone else mana exists to be spent. True of one fight and false of a career: a bot picks its skills strongest first, so "spend it" means
+	 * emptying the bar on the first monster and meeting the next one with nothing. Whole regions of casters were found permanently out of mana.
+	 * <p>
+	 * So the floor is everyone's now. Below it the bot finishes the fight with its weapon, which costs nothing, and the bar climbs back during the
+	 * fight instead of only after it.
 	 */
-	private static boolean isSavingManaToHeal(Player bot) {
-		if (bot.getLifeStats().getMpPercentage() >= MANA_RESERVE_PERCENT)
-			return false;
-		for (PlayerSkillEntry entry : bot.getSkillList().getAllSkills()) {
-			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
-			if (template != null && template.getProperties() != null && !template.isPassive() && isHeal(bot, template))
-				return true;
-		}
-		return false;
+	private static boolean isSavingMana(Player bot) {
+		return bot.getLifeStats().getMpPercentage() < MANA_RESERVE_PERCENT;
 	}
 
 	/**
@@ -581,8 +610,9 @@ public class BotSkillManager {
 		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId())).filter(template -> {
 			if (template == null || template.isPassive() || template.getProperties() == null)
 				return false;
-			// a toggle cast a second time turns itself off, so the only rule allowed near one is the mantra rule, which checks first that it is off
-			if (template.isToggle() && !isMantra(template))
+			// a toggle cast a second time turns itself off, so the only rules allowed near one are those that check first that it is off: the mantra
+			// rule, and the one that puts an aethertech in its robot
+			if (template.isToggle() && !isMantra(template) && !isRobotToggle(template))
 				return false;
 			if (bot.isSkillDisabled(template)) // cooldowns are keyed by cooldown id, not skill id, which this handles
 				return false;
