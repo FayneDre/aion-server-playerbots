@@ -98,3 +98,26 @@ levels actually gained, and a bot gains none while it is not in the world.
 What depends on that quietly is the outfitter: it will not put armour on a character that does not already hold the mastery for it — the same question the
 engine asks when it refuses a piece — so dressing before teaching leaves the character in its starting kit and says so at `debug` level only. Teach, then
 dress. This held for as long as it did only because teaching happened on the way into the world, which was once the only way a bot was ever dressed.
+
+## A creature's level does not say whether one character can fight it
+
+`rating` does, in one word, and nothing else in the template hints at it. An `ELITE` of a bot's own level is several times the creature a `NORMAL` one
+is, so every level-based filter passes it — which is how bots came to walk into the group quest camps and be torn apart. 16401 spawns are `ELITE`,
+6712 `HERO`, 1994 `LEGENDARY`: a quarter of Morheim and of Beluslan.
+
+Refusing to **attack** them is not enough, and the reason is in the same enum: `NpcRating` maps `ELITE` to `SEARCH1` and `HERO` and `LEGENDARY` to
+`SEARCH2`, so these creatures look for somebody to fight rather than waiting to be provoked. A bot that merely stood in such a camp was attacked
+without having chosen anything. They have to be kept out of the grounds bots are **sent** to as well — `BotPlaces.locateHuntingGrounds` and
+`BotQuestGrounds`.
+
+## Rift, base and siege spawns are not in the world's spawn list
+
+`SpawnsData` files them into indexes of their own (`riftSpawnMaps`, `baseSpawnMaps`, `siegeSpawnMaps`), and `getSpawnsByWorldId` reads only
+`allSpawnMaps`. So anything walking the world's spawns sees none of them: the Asmodian camp in Theobomos and the Elyos one in Brusthonin are invisible
+to the population code, which is correct for settling residents and wrong the day bots are meant to invade. `getRiftSpawnsByLocId` is the other door.
+
+## Quest data does not say which quests need a group
+
+`category` separates a mission from a task from an event and never mentions party size, so reading `quest_data.xml` as an itinerary sends a lone bot
+wherever the game sends five players. What answers the question is what the quest points at: a group quest names elites, so the target's `rating` is
+the filter, not anything on the quest.

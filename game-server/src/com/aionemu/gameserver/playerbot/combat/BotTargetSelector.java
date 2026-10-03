@@ -10,6 +10,7 @@ import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.npc.NpcRank;
 import com.aionemu.gameserver.model.templates.npc.NpcRating;
+import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.geo.GeoService;
 
@@ -69,6 +70,22 @@ public class BotTargetSelector {
 		return npc.getObjectTemplate().getRating() == NpcRating.JUNK || npc.getObjectTemplate().getRank() == NpcRank.NOVICE;
 	}
 
+	/**
+	 * @return true if this is more than one character is meant to take on alone.
+	 *         <p>
+	 *         The level gap does not catch these and cannot: an elite of a bot's own level is several times the creature a normal one is, and the
+	 *         data says so in one word rather than in its level. This is what sent bots into the group quest camps to be torn apart — they read as
+	 *         ordinary monsters of a suitable level, because by every number except this one they were.
+	 *         <p>
+	 *         It also explains why keeping bots out needed more than refusing to attack: {@code NpcRating} maps ELITE to {@code SEARCH1} and HERO and
+	 *         LEGENDARY to {@code SEARCH2}, so these creatures hunt for somebody to fight instead of waiting to be provoked. A bot that merely stood
+	 *         in such a camp was attacked without ever having picked anything. So they are kept out of the grounds bots are sent to as well.
+	 */
+	public static boolean needsAGroup(NpcTemplate template) {
+		NpcRating rating = template.getRating();
+		return rating == NpcRating.ELITE || rating == NpcRating.HERO || rating == NpcRating.LEGENDARY;
+	}
+
 	private static boolean isTakenByAnotherPlayer(Player bot, Npc npc) {
 		return isFighting(bot, npc.getTarget()) || isFighting(bot, BotTargetRegistry.getOwner(npc));
 	}
@@ -85,6 +102,10 @@ public class BotTargetSelector {
 		if (npc.getLevel() > bot.getLevel() + MAX_LEVEL_GAP)
 			return false; // this only limits what the bot picks: it still fights back against anything that attacks it
 		if (isScenery(npc))
+			return false;
+		// Only what the bot picks for itself. Defending itself and assisting its group both go another way and are untouched, which is right: an
+		// elite that attacks a bot is still to be fought, and a group is exactly what elites are for.
+		if (needsAGroup(npc.getObjectTemplate()))
 			return false;
 		if (npc.getLevel() < bot.getLevel() - MIN_LEVEL_GAP)
 			return false; // far enough beneath it to be worth nothing, and a player walks past those

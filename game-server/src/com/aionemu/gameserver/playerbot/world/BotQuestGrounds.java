@@ -16,7 +16,9 @@ import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.templates.QuestTemplate;
 import com.aionemu.gameserver.model.templates.quest.QuestDrop;
 import com.aionemu.gameserver.model.templates.quest.QuestKill;
+import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
+import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
 import com.aionemu.gameserver.utils.PositionUtil;
 
@@ -100,6 +102,12 @@ public class BotQuestGrounds {
 		List<List<Vector3f>> clusters = new ArrayList<>();
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
 			if (!targets.contains(group.getNpcId()))
+				continue;
+			// Not every quest is for one person, and the data does not say which are: the category tells a mission from a task and never mentions a
+			// group. What the target is, does. A group quest names elites, so reading the itinerary without this sent a lone bot exactly where the
+			// game sends five players — which is where they were found being torn apart.
+			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
+			if (template == null || BotTargetSelector.needsAGroup(template))
 				continue;
 			for (SpawnTemplate spawn : group.getSpawnTemplates())
 				addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));

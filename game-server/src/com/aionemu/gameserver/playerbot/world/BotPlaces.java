@@ -14,6 +14,7 @@ import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
+import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -462,6 +463,12 @@ public class BotPlaces {
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
 			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
 			if (template == null || isTownsfolk(template) || template.getLevel() <= 0)
+				continue;
+			// A ground is somewhere one character can work, so what needs a group is not part of one. Without this the group quest camps read as
+			// ordinary hunting country, the director sent residents to live in them, and they were torn apart — by creatures that come looking, so
+			// refusing to attack them was never going to be enough. Measured across the world: Morheim keeps 195 grounds of its 304 and Beluslan 196
+			// of 273, which are the two worst affected, and no region is left without any.
+			if (BotTargetSelector.needsAGroup(template))
 				continue;
 			for (SpawnTemplate spawn : group.getSpawnTemplates()) {
 				addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
