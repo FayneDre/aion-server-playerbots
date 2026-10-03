@@ -17,6 +17,18 @@ import com.aionemu.gameserver.skillengine.model.SkillTemplate;
  */
 public class BotPotionManager {
 
+	/**
+	 * What a flask does, as the data says it rather than as the name suggests.
+	 * <p>
+	 * The {@code PROC} variants are the whole point and were the whole bug: every drinkable in the game restores through
+	 * {@code procmphealinstant} or {@code prochealinstant} — a hundred and a hundred and forty six skills respectively — while
+	 * {@code MPHEAL} and {@code HEALINSTANT} belong to the spells a healer casts. Written with the spell effects alone, this class could never match
+	 * a potion, so no bot ever drank one, including the ones it had picked up itself. Both are kept: a flask that heals the way a spell does is still
+	 * a flask.
+	 */
+	public static final EffectType[] RESTORES_MANA = { EffectType.MPHEAL, EffectType.MPHEALINSTANT, EffectType.PROCMPHEALINSTANT };
+	public static final EffectType[] RESTORES_HEALTH = { EffectType.HEAL, EffectType.HEALINSTANT, EffectType.PROCHEALINSTANT };
+
 	private BotPotionManager() {
 	}
 
@@ -24,14 +36,14 @@ public class BotPotionManager {
 	public static boolean tryHealingPotion(Player bot, int belowPercent) {
 		if (bot.getLifeStats().getHpPercentage() >= belowPercent)
 			return false;
-		return drink(bot, EffectType.HEAL, EffectType.HEALINSTANT);
+		return drink(bot, RESTORES_HEALTH);
 	}
 
 	/** @return true if the bot drank something that restores mana. */
 	public static boolean tryManaPotion(Player bot, int belowPercent) {
 		if (bot.getLifeStats().getMpPercentage() >= belowPercent)
 			return false;
-		return drink(bot, EffectType.MPHEAL, EffectType.MPHEALINSTANT);
+		return drink(bot, RESTORES_MANA);
 	}
 
 	/**

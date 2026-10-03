@@ -98,6 +98,20 @@ would reshuffle itself whenever anybody returned to it. The same bot stands in t
 The spread is kept inside the anchor tolerance, so a bot on its own spot is still *at* its anchor and nothing that asks that question has to learn a
 second one.
 
+## Flasks, and the errand that buys them
+
+A bot used to walk to a shop only to sell, so it could drink only what it had picked up — and the creatures it fights drop next to no flasks. It now
+buys mana and life potions while it is standing there, from the purse it has carried since stigmas had to be paid for, and a bot down to half its
+stock will make the trip for that reason alone rather than waiting for a full bag.
+
+It takes the strongest flask it is allowed to use rather than the cheapest on the shelf: the walk is the expensive part of the errand, not the kinah.
+The price is left to the engine — the vendor's own rate and the server's modifier — so the order is offered in full first and then as one of each,
+instead of a copy of that sum being kept here to drift.
+
+**And the flasks were unreachable in a second way.** Every drinkable in the game restores through `procmphealinstant` or `prochealinstant`; `MPHEAL`
+and `HEALINSTANT` belong to the spells a healer casts. The bot looked for the spell effects, so it could not match a potion at all — not even one it
+had looted. Both sets are read now.
+
 ## Pacing progression
 
 `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` **stat**, so a bot's pace is adjustable per character with no core patch. Dwell time is

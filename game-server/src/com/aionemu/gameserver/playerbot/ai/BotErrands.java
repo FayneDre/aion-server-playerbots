@@ -152,7 +152,10 @@ class BotErrands {
 			// a full bag alone is not enough: one full of gear, quest items or anything rare never empties and would loop forever. An operator who
 			// asked for a trip has already made that judgement, and keeps the bot going until it has actually sold: without this, a first shop spot
 			// that turns out to be empty ends the errand here, since the bag it was never waiting for is still not full.
-			if (!sellingOnDemand && (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot)))
+			// Or because it has run out of flasks, which is a reason to walk to a shop in its own right: a bot with a tidy bag and no mana potion
+			// left would otherwise never go, and fight on empty until something killed it.
+			if (!sellingOnDemand && !BotVendorManager.needsPotions(bot)
+				&& (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot)))
 				return false;
 			vendorDestination = BotVendorManager.findVendor(bot, this::isIgnoredVendor);
 			if (vendorDestination == null) { // no shop left to walk to on this map
@@ -165,7 +168,9 @@ class BotErrands {
 		Npc vendor = BotVendorManager.findKnownVendor(bot);
 		if (vendor != null && BotVendorManager.isWithinTradeRange(bot, vendor)) {
 			int sold = BotVendorManager.sellJunk(bot, vendor);
-			log.info("Bot {} sold {} stack(s)", bot.getName(), sold);
+			// Selling first, and not only for the kinah: buying needs a free slot per kind, and a bag full enough to bring the bot here has none.
+			int bought = BotVendorManager.buyPotions(bot, vendor);
+			log.info("Bot {} sold {} stack(s) and bought {} kind(s) of flask", bot.getName(), sold, bought);
 			vendorDestination = null;
 			sellingOnDemand = false;
 			return false; // roams or fights again from here, and drifts back to its anchor like after any other trip

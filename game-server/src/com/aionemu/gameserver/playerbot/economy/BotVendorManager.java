@@ -18,6 +18,19 @@ import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
+import java.util.HashSet;
+import com.aionemu.gameserver.dataholders.DataManager;
+import com.aionemu.gameserver.model.templates.goods.GoodsList;
+import com.aionemu.gameserver.model.templates.item.actions.AbstractItemAction;
+import com.aionemu.gameserver.model.templates.item.actions.ItemActions;
+import com.aionemu.gameserver.model.templates.item.actions.SkillUseAction;
+import com.aionemu.gameserver.model.templates.tradelist.TradeListTemplate;
+import com.aionemu.gameserver.model.templates.tradelist.TradeListTemplate.TradeTab;
+import com.aionemu.gameserver.model.templates.tradelist.TradeNpcType;
+import com.aionemu.gameserver.model.trade.TradeItem;
+import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
+import com.aionemu.gameserver.skillengine.effect.EffectType;
+import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.model.trade.TradeList;
 import com.aionemu.gameserver.services.TradeService;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
@@ -40,6 +53,16 @@ public class BotVendorManager {
 	public static final float TRADE_RANGE = 5f;
 	/** Bag fill above which a bot stops farming and goes to sell. */
 	public static final float BAG_FULL_THRESHOLD = 0.9f;
+	/**
+	 * How many flasks of each kind a bot keeps. Enough to matter over a stretch of fighting, few enough that a bot is not carrying a shop: the trip
+	 * is worth making for the walk it saves, not for the kinah it spends.
+	 */
+	private static final int POTIONS_CARRIED = 20;
+	/**
+	 * Below this a bot does not shop for flasks. The first levels are fought against things that cannot kill a character at full health, the purse is
+	 * small, and a newborn bot walking to town before it has fought anything is not what a starter valley should look like.
+	 */
+	private static final int POTION_BUYING_LEVEL = 10;
 
 	/** Vendor positions per map, worked out once from the spawn data. */
 
@@ -132,6 +155,108 @@ public class BotVendorManager {
 			count++;
 		}
 		return count > 0 && TradeService.performSellToShop(bot, sale, null) ? count : 0;
+	}
+
+	/**
+	 * @return true if the bot is low enough on flasks to be worth a walk. Half the stock rather than none of it, so the trip is made before the bag
+	 *         is empty and not after the fight that emptied it.
+	 */
+	public static boolean needsPotions(Player bot) {
+		return bot.getLevel() >= POTION_BUYING_LEVEL
+			&& (held(bot, BotPotionManager.RESTORES_MANA) * 2 < POTIONS_CARRIED
+				|| held(bot, BotPotionManager.RESTORES_HEALTH) * 2 < POTIONS_CARRIED);
+	}
+
+	private static long held(Player bot, EffectType... effects) {
+		long count = 0;
+		for (Item item : bot.getInventory().getItems()) {
+			if (grants(item.getItemTemplate(), effects))
+				count += item.getItemCount();
+		}
+		return count;
+	}
+
+	/**
+	 * Buys the flasks the bot will need before the next trip.
+	 * <p>
+	 * The other half of a transaction that only ever had one. {@code BotPotionManager} has been able to drink since it was written, and almost never
+	 * did: a bot could only use what it had picked up, and the creatures it fights drop next to no flasks. So the two potion lines in the combat
+	 * chain were dead for nearly every bot, which is half of why casters were found permanently out of mana — the other half being that nothing made
+	 * them sit down.
+	 * <p>
+	 * Everything needed was already here. Bots have carried a purse since stigmas had to be paid for, and they already walk to a vendor and stand in
+	 * front of it to sell. Only the return leg was missing.
+	 *
+	 * @return How many stacks were bought.
+	 */
+	public static int buyPotions(Player bot, Npc vendor) {
+		if (bot.isDead() || !vendor.canSell())
+			return 0;
+		TradeListTemplate goods = DataManager.TRADE_LIST_DATA.getTradeListTemplate(vendor.getNpcId());
+		// Kinah is the only currency a bot has. An abyss or reward vendor would refuse it, and asking costs an audit line rather than a polite no.
+		if (goods == null || goods.getTradeNpcType() != TradeNpcType.NORMAL)
+			return 0;
+
+		Set<Integer> onSale = new HashSet<>();
+		for (TradeTab tab : goods.getTradeTablist()) {
+			GoodsList list = DataManager.GOODSLIST_DATA.getGoodsListById(tab.getId());
+			if (list != null && list.getItemIdList() != null)
+				onSale.addAll(list.getItemIdList());
+		}
+
+		TradeList order = new TradeList();
+		int kinds = 0;
+		kinds += addToOrder(bot, order, onSale, BotPotionManager.RESTORES_MANA) ? 1 : 0;
+		kinds += addToOrder(bot, order, onSale, BotPotionManager.RESTORES_HEALTH) ? 1 : 0;
+		if (kinds == 0)
+			return 0;
+		// Asked for in full first, and then for one of each. The price is the engine's to work out -- it reads the vendor's own rate and the
+		// server's modifier -- so rather than copy that sum here and watch it drift, the purse is tested by offering the order and seeing.
+		if (TradeService.performBuyFromShop(vendor, bot, order))
+			return kinds;
+		TradeList smaller = new TradeList();
+		for (TradeItem item : order.getTradeItems())
+			smaller.addItem(item.getItemId(), 1);
+		return TradeService.performBuyFromShop(vendor, bot, smaller) ? kinds : 0;
+	}
+
+	/**
+	 * Puts one kind of flask on the order, if the vendor has one the bot may drink and the bot is short of it.
+	 * <p>
+	 * The strongest it is allowed to use, by the level the item itself states. A bot buying the cheapest flask on the shelf would be back at the
+	 * vendor every few fights, and the walk is the expensive part of the errand, not the kinah.
+	 */
+	private static boolean addToOrder(Player bot, TradeList order, Set<Integer> onSale, EffectType... effects) {
+		ItemTemplate best = null;
+		for (int itemId : onSale) {
+			ItemTemplate template = DataManager.ITEM_DATA.getItemTemplate(itemId);
+			if (template == null || !grants(template, effects) || template.getLevel() > bot.getLevel())
+				continue;
+			if (best == null || template.getLevel() > best.getLevel())
+				best = template;
+		}
+		if (best == null)
+			return false;
+		long wanted = POTIONS_CARRIED - held(bot, effects);
+		if (wanted <= 0)
+			return false;
+		order.addItem(best.getTemplateId(), wanted);
+		return true;
+	}
+
+	/** Reads what an item does the same way {@code BotPotionManager} does when it decides to drink one: through the skill its use action casts. */
+	private static boolean grants(ItemTemplate template, EffectType... effects) {
+		ItemActions actions = template.getActions();
+		if (actions == null)
+			return false;
+		for (AbstractItemAction action : actions.getItemActions()) {
+			if (!(action instanceof SkillUseAction skillUse))
+				continue;
+			SkillTemplate skill = DataManager.SKILL_DATA.getSkillTemplate(skillUse.getSkillId());
+			if (skill != null && skill.hasAnyEffect(effects))
+				return true;
+		}
+		return false;
 	}
 
 	private static boolean isJunk(Player bot, Item item) {
