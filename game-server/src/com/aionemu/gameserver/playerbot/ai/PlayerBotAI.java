@@ -871,7 +871,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * @return true if the bot set off.
 	 */
 	boolean tryMoveTo(BotMoveController moveController, float x, float y, float z) {
-		if (moveController.moveToPoint(x, y, z)) {
+		// A sidestep is not progress. moveToPoint answers "on its way" whenever the reactive layer found some direction to try, including the one it
+		// has already tried and abandoned, so a bot wedged against scenery reported a move every tick and reset this counter every tick -- and the
+		// rescue below, which exists for exactly that bot, was never reached. Asking the controller whether the journey is blocked is the honest
+		// question: it says so only once it has given up, either walled in or making no headway, and it clears the moment a new journey is asked for.
+		if (moveController.moveToPoint(x, y, z) && !moveController.isBlocked()) {
 			refusedMoves = 0;
 			return true;
 		}
