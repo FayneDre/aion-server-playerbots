@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.ai.AIState;
 import com.aionemu.gameserver.ai.AITemplate;
+import com.aionemu.gameserver.controllers.attack.AggroTarget;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
@@ -24,6 +25,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
+import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -299,8 +301,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		if (tendToTheGroup())
 			return;
-		Creature assisted = BotGroupManager.targetToAssist(getOwner());
+		// A healer in a group does not join the attack, and that is the rule rather than a limitation. Assisting means closing to weapon range, and a
+		// cleric that walks into the mob is a cleric being hit, out of position and silent for the rest of the fight. Standing with the group and
+		// keeping it alive is the whole of the job. It still defends itself: {@link #findAttacker} is checked ahead of all of this, so something that
+		// comes for the healer is still answered.
+		Creature assisted = BotRole.of(getOwner()) == BotRole.HEALER ? null : BotGroupManager.targetToAssist(getOwner());
 		if (assisted == null) {
+			// Deliberately no exception for a tank. "Engages first" means first into the fight the group has chosen, not free to choose one: a bot
+			// that pulls brings a second mob into a fight nobody asked for, and a tank pulling is the worst version of it because the rest of the
+			// group then assists it. Starting a fight stays the player's.
 			followLeader(); // standing by is the default, not looking for something to do
 			return;
 		}
@@ -314,7 +323,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * @return true if a skill was cast, in which case the bot is busy with it.
 	 */
 	private boolean tendToTheGroup() {
-		Player hurt = BotGroupManager.mostHurtMember(getOwner(), BotSkillManager.HEAL_ALLY_PERCENT);
+		// A healer reads the danger as well as the damage; everyone else who happens to carry a heal reads the bar, as before. Giving every class
+		// the anticipating rule would have a chanter break off mid swing because somebody took a scratch.
+		boolean anticipate = BotRole.of(getOwner()) == BotRole.HEALER;
+		Player hurt = BotGroupManager.mostHurtMember(getOwner(), BotSkillManager.HEAL_ALLY_PERCENT, anticipate);
 		if (BotSkillManager.tryHealAlly(getOwner(), hurt))
 			return true;
 		for (Player member : BotGroupManager.membersToTendTo(getOwner())) {
@@ -418,7 +430,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// busy with a corpse, everything else can wait
 			} else if (errands.dressUp()) {
 				// dressing itself, which is five seconds of stillness the bot has to commit to rather than hope for
-			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following)) {
+			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following) && !mustHoldTheLine(following)) {
 				if (!walkOffTheObelisk()) // never sit down where it resurrected: that spot is shared by everyone who died in the region
 					recover();
 			} else if (following) {
@@ -627,6 +639,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 			if (BotSkillManager.tryApproachUnseen(bot))
 				return true;
 		}
+		// Holding the mob is the tank's whole job, and it is the one case where a skill must be preferred over a stronger one: a taunt that lands
+		// keeps the mob off the cleric, and the damage the bot gave up for it is damage the group deals instead. Only in a group — a templar alone
+		// taunting the thing already hitting it is a wasted cast — and only on something that is not already looking at the bot.
+		if (bot.getCurrentTeam() != null && BotRole.of(bot) == BotRole.TANK && !bot.equals(target.getAggroList().getTarget(AggroTarget.MOST_HATED))
+			&& BotSkillManager.tryTaunt(bot, target))
+			return true;
 		if (!openingSpent) {
 			openingSpent = true;
 			// before the first blow, because a burst spent on a mob already dying is a burst thrown away — and self buffs need no range, so this works
@@ -845,6 +863,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (posture.standUp())
 			return true; // on its feet first, and the client is owed the tick it takes to draw that
 		return returnToAnchor();
+	}
+
+	/**
+	 * @return true when a tank must stay on its feet although it is hurt, because its group is in a fight.
+	 *         <p>
+	 *         Sitting down at ninety percent is right for a bot alone in a field and catastrophic for the one member holding the mob: the moment it
+	 *         rests it stops being hit, the mob picks the cleric instead, and the group loses the fight it was winning. The health rule is kept for
+	 *         every other role and for the same tank the moment the fight is over.
+	 */
+	private boolean mustHoldTheLine(boolean following) {
+		return following && BotRole.of(getOwner()) == BotRole.TANK && BotGroupManager.targetToAssist(getOwner()) != null;
 	}
 
 	private boolean isHealthyEnoughToFight() {

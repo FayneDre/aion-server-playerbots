@@ -26,6 +26,12 @@ public class BotGroupManager {
 	private static final float FORMATION_ANGLE_SPREAD = 0.35f;
 	/** How much nearer or further than the nominal radius a bot may stand. */
 	private static final float FORMATION_RADIUS_SPREAD = 0.25f;
+	/**
+	 * How many points of health being under attack is worth, when a healer weighs who to tend to first. It is both a tie-break and a widening: a
+	 * member this far above the healing threshold is healed anyway while something is hitting it, because by the time the cast lands it will be
+	 * under it.
+	 */
+	private static final int UNDER_FIRE_URGENCY = 20;
 
 	private BotGroupManager() {
 	}
@@ -148,8 +154,35 @@ public class BotGroupManager {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		if (team == null)
 			return null;
-		Creature chosen = engagedTarget(bot, team.getLeaderObject());
+		// The tank's target before the leader's, and that order is the whole of what makes a group fight as one. A leader is whoever formed the
+		// party; the tank is whoever is holding the mob. Assisting the leader spreads a group of five over as many mobs as the leader happens to
+		// click, while the one bot that is actually being hit fights alone.
+		Creature chosen = engagedTarget(bot, tankOf(bot, team));
+		if (chosen == null)
+			chosen = engagedTarget(bot, team.getLeaderObject());
 		return chosen != null ? chosen : npcFightingTheTeam(bot, team);
+	}
+
+	/**
+	 * @return The member holding this group together, or null when nobody is. The bot itself is never the answer: a tank does not assist itself, it
+	 *         picks its own fight, and returning it here would make {@code engagedTarget} refuse anyway.
+	 *         <p>
+	 *         A real player is preferred over a bot of the same role. If somebody is playing a templar, they are the tank and the group follows them;
+	 *         a bot templar standing next to them is a second pair of hands, not a second plan.
+	 */
+	public static Player tankOf(Player bot, TemporaryPlayerTeam<?> team) {
+		if (team == null)
+			return null;
+		Player found = null;
+		for (Player member : team.getMembers()) {
+			if (member.equals(bot) || member.isDead() || BotRole.of(member) != BotRole.TANK)
+				continue;
+			if (!member.isBot())
+				return member;
+			if (found == null)
+				found = member;
+		}
+		return found;
 	}
 
 	/**
@@ -183,21 +216,55 @@ public class BotGroupManager {
 	 *         one thing it can do for others that they cannot do for themselves.
 	 */
 	public static Player mostHurtMember(Player bot, int belowPercent) {
+		return mostHurtMember(bot, belowPercent, false);
+	}
+
+	/**
+	 * @param anticipate Whether to count the danger a member is in as well as the damage already done to it, which is what separates a healer from
+	 *          everyone else who happens to carry a heal. Lowest health alone is a rule that always acts one beat late: the member on 80% with three
+	 *          mobs on it is the one about to die, and the member on 60% that nothing is hitting will be fine. A healer that waits for the bar to
+	 *          drop heals a corpse.
+	 */
+	public static Player mostHurtMember(Player bot, int belowPercent, boolean anticipate) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		if (team == null)
 			return null;
-		Player worst = null;
-		int worstPercent = belowPercent;
+		List<Player> candidates = new ArrayList<>();
+		int widened = belowPercent + (anticipate ? UNDER_FIRE_URGENCY : 0);
 		for (Player member : team.getMembers()) {
 			if (member.equals(bot) || member.isDead() || !isNearEnoughToHelp(bot, member))
 				continue;
-			int percent = member.getLifeStats().getHpPercentage();
-			if (percent < worstPercent) {
-				worstPercent = percent;
+			if (member.getLifeStats().getHpPercentage() < widened)
+				candidates.add(member);
+		}
+		if (candidates.isEmpty())
+			return null;
+		// one sweep of the neighbourhood for the lot, rather than one per member: this runs on every tick of every healer in every group
+		List<Player> underFire = anticipate ? membersUnderFire(bot, candidates) : List.of();
+		Player worst = null;
+		int worstUrgency = belowPercent;
+		for (Player member : candidates) {
+			int urgency = member.getLifeStats().getHpPercentage() - (underFire.contains(member) ? UNDER_FIRE_URGENCY : 0);
+			if (urgency < worstUrgency) {
+				worstUrgency = urgency;
 				worst = member;
 			}
 		}
 		return worst;
+	}
+
+	/** @return Which of these members something is currently trying to kill. */
+	private static List<Player> membersUnderFire(Player bot, List<Player> members) {
+		List<Player> hunted = new ArrayList<>();
+		bot.getKnownList().forEachNpc(npc -> {
+			if (npc.isDead() || !npc.isSpawned())
+				return;
+			for (Player member : members) {
+				if (!hunted.contains(member) && npc.getAggroList().isHating(member))
+					hunted.add(member);
+			}
+		});
+		return hunted;
 	}
 
 	/** @return A group mate to look after, or null. Used to spread buffs around without a list of who has what. */
