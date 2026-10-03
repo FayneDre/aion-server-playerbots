@@ -37,7 +37,8 @@ public class Bot extends AdminCommand {
 			kind <characterName> [resident|adventurer] - Reads or sets whether the bot levels up. Residents stay at their region's level.
 			nav - Lists the navmeshes loaded in memory.
 			number [region] - Counts the bots on a map, by faction. Takes a map id or part of its name; yours by default.
-			pool - What the last population review found: awake, total and wanted, a line per map.
+			pool [mapId|here] - What the last population review found: awake, total and wanted, split between villages and countryside.
+			  A line per map, or just the one asked for.
 			list - Lists all currently spawned bots.
 			clear - Deletes your own bot characters. Staff clear the whole world, which then has to be populated again.
 			See docs/bot-commands.md for what each one does.
@@ -78,7 +79,7 @@ public class Bot extends AdminCommand {
 			case "kind" -> kind(admin, params);
 			case "number" -> sendInfo(admin, PlayerBotService.getInstance().count(params.length > 1 ? String.join(" ", java.util.Arrays.copyOfRange(params, 1, params.length)) : null, admin));
 			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
-			case "pool" -> sendInfo(admin, describePool());
+			case "pool" -> sendInfo(admin, describePool(admin, params));
 			default -> sendInfo(admin);
 		}
 	}
@@ -87,10 +88,19 @@ public class Bot extends AdminCommand {
 	 * @return What the director concluded last time it looked, which is the one window onto a population that is mostly asleep: //bot number counts
 	 *         what is in the world, and says nothing about what should be.
 	 */
-	private static String describePool() {
+	private static String describePool(Player admin, String[] params) {
 		List<String> review = BotDirector.getInstance().lastReview();
 		if (review.isEmpty())
 			return "No population review has run yet. The first one is half a minute after startup.";
+		// A world of eighteen populated maps answers in eighteen lines, which is a wall in a chat window when seventeen of them are not the one being
+		// looked at. "here" rather than a map id, because somebody standing in a region knows where they are and not what it is numbered.
+		if (params.length > 1) {
+			String wanted = params[1].equalsIgnoreCase("here") ? String.valueOf(admin.getWorldId()) : params[1];
+			List<String> only = review.stream().filter(line -> line.startsWith("map " + wanted + ":")).toList();
+			if (only.isEmpty())
+				return "Nothing was reviewed for map " + wanted + ". It may hold no inhabitants, or the name may be a map id this world does not have.";
+			return String.join(System.lineSeparator(), only);
+		}
 		return String.join(System.lineSeparator(), review);
 	}
 

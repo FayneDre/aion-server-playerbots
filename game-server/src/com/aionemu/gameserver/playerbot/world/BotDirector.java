@@ -218,11 +218,15 @@ public class BotDirector {
 
 		List<BotRoster.Resident> toWake = new ArrayList<>();
 		List<Player> toSleep = new ArrayList<>();
+		Map<Vector3f, Integer> stillShort = new LinkedHashMap<>();
 		villages.forEach((home, wanted) -> {
 			int missing = wanted - awakeInVillage.getOrDefault(home, List.of()).size();
 			List<BotRoster.Resident> available = asleepInVillage.getOrDefault(home, List.of());
-			for (int i = 0; i < Math.min(missing, available.size()); i++)
+			int local = Math.min(missing, available.size());
+			for (int i = 0; i < local; i++)
 				toWake.add(available.get(i));
+			if (missing > local)
+				stillShort.put(home, missing - local);
 		});
 		// Anybody awake in a village the region no longer asks for, which includes every village the plan has stopped naming at all.
 		awakeInVillage.forEach((home, here) -> {
@@ -230,10 +234,24 @@ public class BotDirector {
 			for (int i = keep; i < here.size(); i++)
 				toSleep.add(here.get(i));
 		});
-		for (int i = 0; i < Math.min(hunters - awakeInField.size(), asleepInField.size()); i++)
+		int fieldWoken = Math.max(0, Math.min(hunters - awakeInField.size(), asleepInField.size()));
+		for (int i = 0; i < fieldWoken; i++)
 			toWake.add(asleepInField.get(i));
 		for (int i = hunters; i < awakeInField.size(); i++)
 			toSleep.add(awakeInField.get(i));
+		// A village post that nobody lives at is filled by moving somebody in, because the alternative is that it is never filled at all. The
+		// countryside was given this property from the start — "a hunting ground is interchangeable with another" — and villages were not, on the
+		// grounds that a village is a place rather than a slot. True of the place, false of the person: a resident can move house, and a region that
+		// cannot reach its own target because its people were settled against a plan that has since shifted is worse than one whose villager came
+		// from the next valley. Measured on Verteron: 25 village posts, 11 villagers, and 14 hunters asleep in a countryside already full.
+		List<BotRoster.Resident> spare = new ArrayList<>(asleepInField.subList(fieldWoken, asleepInField.size()));
+		for (Map.Entry<Vector3f, Integer> village : stillShort.entrySet()) {
+			for (int i = 0; i < village.getValue() && !spare.isEmpty(); i++) {
+				BotRoster.Resident mover = spare.remove(spare.size() - 1);
+				BotRoster.setHome(mover.name(), village.getKey());
+				toWake.add(new BotRoster.Resident(mover.playerId(), mover.name(), mover.worldId(), village.getKey()));
+			}
+		}
 		int villagersAwake = awakeInVillage.values().stream().mapToInt(List::size).sum();
 		int villagersAsleep = asleepInVillage.values().stream().mapToInt(List::size).sum();
 		return new Difference(awake, toWake, toSleep, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
