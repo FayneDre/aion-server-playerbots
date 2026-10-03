@@ -100,17 +100,14 @@ second one.
 
 ## Flasks, and the errand that buys them
 
-A bot used to walk to a shop only to sell, so it could drink only what it had picked up — and the creatures it fights drop next to no flasks. It now
-buys mana and life potions while it is standing there, from the purse it has carried since stigmas had to be paid for, and a bot down to half its
-stock will make the trip for that reason alone rather than waiting for a full bag.
+A bot used to walk to a shop only to sell, so it could drink only what it had picked up, and what it fights drops next to no flasks. It now buys mana
+and life potions while it is there, from the purse it has carried since stigmas, and one down to half its stock makes the trip for that reason alone.
 
-It takes the strongest flask it is allowed to use rather than the cheapest on the shelf: the walk is the expensive part of the errand, not the kinah.
-The price is left to the engine — the vendor's own rate and the server's modifier — so the order is offered in full first and then as one of each,
-instead of a copy of that sum being kept here to drift.
+It takes the strongest flask it may use, not the cheapest: the walk is the expensive part, not the kinah. The price is left to the engine, so the
+order is offered in full and then as one of each rather than a copy of that sum being kept here to drift.
 
-**And the flasks were unreachable in a second way.** Every drinkable in the game restores through `procmphealinstant` or `prochealinstant`; `MPHEAL`
-and `HEALINSTANT` belong to the spells a healer casts. The bot looked for the spell effects, so it could not match a potion at all — not even one it
-had looted. Both sets are read now.
+**The flasks were unreachable a second way.** Every drinkable restores through `procmphealinstant` or `prochealinstant`; `MPHEAL` and `HEALINSTANT`
+belong to a healer's spells. The bot read the spell effects, so it could not match a potion at all — not even a looted one. Both sets are read now.
 
 ## Pacing progression
 
