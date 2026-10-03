@@ -40,6 +40,11 @@ class BotErrands {
 	/** A corpse the bot means to walk back to, set when a fight ends over something it may loot. */
 	/** How long a bot waits before walking to a shop for flasks again, after one that sold it none. */
 	private static final long FLASK_TRIP_COOLDOWN_MILLIS = 600000;
+	/**
+	 * How long a bot leaves shops alone after a walk that could not be planned. Shorter than {@link #EMPTY_SHOP_MILLIS}: a shop spot that is wrong
+	 * stays wrong, whereas a route may be refused because of where the bot happens to be standing, and it moves.
+	 */
+	private static final long UNREACHABLE_SHOP_COOLDOWN_MILLIS = 120000;
 
 	private volatile int pendingCorpse;
 	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
@@ -52,6 +57,8 @@ class BotErrands {
 	private volatile boolean sellingOnDemand;
 	/** Until when this bot stops making the walk for flasks, after a shop that had none to sell it. */
 	private volatile long noFlasksUntil;
+	/** Until when this bot stops setting out for a shop at all, after a walk the map refused. */
+	private volatile long noShopUntil;
 
 	BotErrands(PlayerBotAI ai) {
 		this.ai = ai;
@@ -164,7 +171,11 @@ class BotErrands {
 			// that turns out to be empty ends the errand here, since the bag it was never waiting for is still not full.
 			// Or because it has run out of flasks, which is a reason to walk to a shop in its own right: a bot with a tidy bag and no mana potion
 			// left would otherwise never go, and fight on empty until something killed it.
-			if (!sellingOnDemand && !wantsFlasks(bot) && (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot)))
+			// A trip that the map has just refused is not worth announcing again on the next tick. Without this the bot stood where its route ran
+			// out, declared a trip and abandoned it once per tick for as long as there were shop spots left to burn -- measured at 191 departures
+			// against 16 sales, and seen in game as a knot of bots at the citadel steps doing nothing at all.
+			if (!sellingOnDemand && (System.currentTimeMillis() < noShopUntil
+				|| !wantsFlasks(bot) && (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot))))
 				return false;
 			vendorDestination = BotVendorManager.findVendor(bot, this::isIgnoredVendor);
 			if (vendorDestination == null) { // no shop left to walk to on this map
@@ -210,8 +221,21 @@ class BotErrands {
 		float x = vendor != null ? vendor.getX() : vendorDestination.x;
 		float y = vendor != null ? vendor.getY() : vendorDestination.y;
 		float z = vendor != null ? vendor.getZ() : vendorDestination.z;
+		if (vendor != null) {
+			// Stop short of the keeper rather than aiming at its feet. Shop keepers stand on counters, podiums and shop fronts, and the mesh does not
+			// always carry a polygon under one: the route to the exact spot is then refused although the bot only ever needed to be near it. Trading
+			// happens anywhere inside TRADE_RANGE, so the destination is a point on the line between them, just inside it.
+			double distance = PositionUtil.getDistance(bot.getX(), bot.getY(), x, y);
+			if (distance > BotVendorManager.TRADE_RANGE) {
+				float fraction = (float) ((distance - BotVendorManager.TRADE_RANGE + 1) / distance);
+				x = bot.getX() + (x - bot.getX()) * fraction;
+				y = bot.getY() + (y - bot.getY()) * fraction;
+				z = bot.getZ() + (z - bot.getZ()) * fraction;
+			}
+		}
 		if (moveController.isBlocked() || !ai.tryMoveTo(moveController, x, y, z)) {
 			log.info("Bot {} cannot reach a shop and gives up selling", bot.getName());
+			noShopUntil = System.currentTimeMillis() + UNREACHABLE_SHOP_COOLDOWN_MILLIS;
 			// remembered, exactly as an empty spot is. Forgetting it only meant the next trip chose the same nearest shop and failed the same way,
 			// which is how one unreachable spot produced thousands of trips and no sales.
 			ignoredVendors.put(vendorDestination, System.currentTimeMillis() + EMPTY_SHOP_MILLIS);
@@ -222,13 +246,17 @@ class BotErrands {
 		return true;
 	}
 
+	/**
+	 * @return true if this spot, or one close enough to share its fate, has already defeated the bot.
+	 *         <p>
+	 *         By neighbourhood and not by point, because shops come in rows: a dozen keepers of the citadel stand within a few metres of each other,
+	 *         and {@code BotMoveController} already refuses them all as one journey once it has refused any of them. Matching exactly meant the bot
+	 *         set out for each in turn and was refused instantly each time.
+	 */
 	private boolean isIgnoredVendor(Vector3f spot) {
-		Long until = ignoredVendors.get(spot);
-		if (until == null)
-			return false;
-		if (until > System.currentTimeMillis())
-			return true;
-		ignoredVendors.remove(spot);
-		return false;
+		long now = System.currentTimeMillis();
+		ignoredVendors.values().removeIf(until -> until <= now);
+		return ignoredVendors.keySet().stream()
+			.anyMatch(known -> PositionUtil.getDistance(known.x, known.y, spot.x, spot.y) <= VENDOR_SPOT_TOLERANCE);
 	}
 }
