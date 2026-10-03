@@ -26,8 +26,13 @@ public class Heightfield {
 	public static final float SLOPE_WINDOW = 2f;
 	/** Steepest ground a bot may walk on, matching the 45° the engine's own movement probe allows. */
 	public static final float MAX_SLOPE_COSINE = (float) Math.cos(Math.toRadians(45));
-	/** How many cells of walkable ground to shave off along every edge, so routes keep a body's width from what a body cannot pass. */
-	public static final int AGENT_RADIUS_CELLS = 1;
+	/**
+	 * How many cells of walkable ground to shave off along every edge, so routes keep a body's width from what a body cannot pass.
+	 * <p>
+	 * Overridable with {@code -Dnavmesh.erode=<cells>} so the offline tool can measure what erosion costs in connectivity. It is the one generation
+	 * rule that removes ground no obstacle stands on, so when the mesh comes out in pieces this is the first thing to vary.
+	 */
+	public static final int AGENT_RADIUS_CELLS = Integer.getInteger("navmesh.erode", 1);
 	/** Fine cells per side of a coarse cell, making the coarse grid 4 m. */
 	public static final int COARSE_FACTOR = 8;
 	private static final int[] NEIGHBOUR_X = { 1, 1, 0, -1, -1, -1, 0, 1 }, NEIGHBOUR_Y = { 0, 1, 1, 1, 0, -1, -1, -1 };
