@@ -50,7 +50,11 @@ public class SchemaUpdater {
 				log.warn("No reference schema in this build, cannot check the database against it");
 				return;
 			}
-			reference = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+			// The file is checked in with Windows line endings, and every column line therefore ends with a carriage return the column pattern cannot
+			// match: `(.+?),?$` has no MULTILINE flag, so `$` is the end of the input and a trailing \r is not it. The table pattern survived it and
+			// the column one did not, which is the worst of both — missing tables were created, missing columns silently never were, and the first
+			// anybody heard of it was a query failing on `b.owner_id` in a database the server had just reported as up to date.
+			reference = new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
 		} catch (IOException e) {
 			log.error("Could not read the reference schema", e);
 			return;
