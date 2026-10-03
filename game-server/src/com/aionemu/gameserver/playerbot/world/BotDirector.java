@@ -145,8 +145,11 @@ public class BotDirector {
 			int hunters = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline)).size();
 
 			Difference difference = sort(bots, worldId, residents, villages, hunters);
-			report.add(String.format("map %d: %d awake of %d, wants %d%s", worldId, difference.awake(), residents.size(),
-				villages.values().stream().mapToInt(count -> count).sum() + hunters, busy ? " (" + watchers.size() + " player(s))" : ""));
+			report.add(String.format("map %d: %d awake of %d, wants %d%s — villages %d/%d awake, %d asleep; field %d/%d awake, %d asleep", worldId,
+				difference.awake(), residents.size(), villages.values().stream().mapToInt(count -> count).sum() + hunters,
+				busy ? " (" + watchers.size() + " player(s))" : "", difference.villagersAwake(),
+				villages.values().stream().mapToInt(count -> count).sum(), difference.villagersAsleep(), difference.huntersAwake(), hunters,
+				difference.huntersAsleep()));
 			// The band holds departures back and lets arrivals through, because only one of the two directions can churn. A region that wakes its way
 			// up to its target then stops: there is nothing left to ask for. A region that sleeps its way down to it sits on the boundary, and the next
 			// review finds it one over, or one under, and moves somebody again. Applied to both, the band left a map one inhabitant short for ever —
@@ -231,11 +234,21 @@ public class BotDirector {
 			toWake.add(asleepInField.get(i));
 		for (int i = hunters; i < awakeInField.size(); i++)
 			toSleep.add(awakeInField.get(i));
-		return new Difference(awake, toWake, toSleep);
+		int villagersAwake = awakeInVillage.values().stream().mapToInt(List::size).sum();
+		int villagersAsleep = asleepInVillage.values().stream().mapToInt(List::size).sum();
+		return new Difference(awake, toWake, toSleep, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
 	}
 
-	/** What one region is short of and what it has too much of, as one answer so the counting is done once. */
-	private record Difference(int awake, List<BotRoster.Resident> toWake, List<Player> toSleep) {
+	/**
+	 * What one region is short of and what it has too much of, as one answer so the counting is done once.
+	 * <p>
+	 * The four tallies are there because the aggregate cannot say why a region is stuck. Villages are filled place by place — only a sleeper whose
+	 * home is that very village can take its post — while the countryside is interchangeable, so "70 awake of 84, wants 84" has two quite different
+	 * explanations and the same shape. Split in two it reads at a glance: villagers asleep while villages are short means posts nobody lives at,
+	 * hunters asleep while the field is full means the countryside is simply over-supplied.
+	 */
+	private record Difference(int awake, List<BotRoster.Resident> toWake, List<Player> toSleep, int villagersAwake, int villagersAsleep,
+		int huntersAwake, int huntersAsleep) {
 	}
 
 	/** @return How much of a region's countryside is awake at this moment. Settlements are not scaled at all — see {@link BotPresence#civic}. */
