@@ -15,6 +15,7 @@ import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_UPDATE_PLAYER_APPEARANCE;
 import com.aionemu.gameserver.services.item.ItemActionService;
+import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
 import com.aionemu.gameserver.utils.PacketSendUtility;
 
 /**
@@ -91,10 +92,19 @@ public class BotEquipManager {
 			return 0;
 		if (template.isTwoHandWeapon())
 			return mask; // it claims both hands, and the engine expects to be told exactly that
-		// a weapon goes in the main hand. The off hand holds a second weapon, which needs a dual wield skill, and filling it by accident costs the
-		// bot its shield
-		if (template.isWeapon())
-			return (mask & ItemSlot.MAIN_HAND.getSlotIdMask()) != 0 ? ItemSlot.MAIN_HAND.getSlotIdMask() : firstSlot(mask);
+		if (template.isWeapon()) {
+			long main = ItemSlot.MAIN_HAND.getSlotIdMask(), sub = ItemSlot.SUB_HAND.getSlotIdMask();
+			if ((mask & main) == 0)
+				return firstSlot(mask);
+			// The off hand, but only once the main hand is full and only for a class trained to wield two. Both halves matter: without the first the
+			// bot puts its best weapon in the wrong hand and fights with the spare, and without the second the engine quietly moves the request back
+			// to the main hand — equipItem does that itself, with no message — so the second weapon replaced the first and an assassin was still
+			// holding one dagger. Anything else gets nothing here, which leaves the hand free for the shield it is meant to carry.
+			if ((mask & sub) != 0 && bot.getEquipment().isSlotEquipped(main) && !bot.getEquipment().isSlotEquipped(sub)
+				&& WeaponDualEffect.hasDualWieldEffect(bot))
+				return sub;
+			return main;
+		}
 		long occupied = 0;
 		for (ItemSlot slot : ItemSlot.getSlotsFor(mask)) {
 			long id = slot.getSlotIdMask();
@@ -223,7 +233,13 @@ public class BotEquipManager {
 	 *         first, so an upgrade over the lesser of a pair is sometimes missed — it is picked up the next time something better drops.
 	 */
 	private static Item wornInPlaceOf(Player bot, Item candidate) {
-		long slot = candidate.getItemTemplate().getItemSlot();
+		ItemTemplate template = candidate.getItemTemplate();
+		long slot = template.getItemSlot();
+		// An empty off hand on a class that wields two is a free place, not the main hand's place. A one handed weapon reads as "either hand", so it
+		// matched the weapon already held, lost the comparison to it, and the hand stayed empty for the rest of the character's life.
+		if (template.isOneHandWeapon() && (slot & ItemSlot.SUB_HAND.getSlotIdMask()) != 0
+			&& !bot.getEquipment().isSlotEquipped(ItemSlot.SUB_HAND.getSlotIdMask()) && WeaponDualEffect.hasDualWieldEffect(bot))
+			return null;
 		for (Item worn : bot.getEquipment().getEquippedItemsWithoutStigma()) {
 			if ((worn.getEquipmentSlot() & slot) != 0)
 				return worn;

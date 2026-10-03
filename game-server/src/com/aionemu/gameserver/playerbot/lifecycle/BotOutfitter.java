@@ -28,9 +28,16 @@ import com.aionemu.gameserver.services.item.ItemFactory;
  */
 public class BotOutfitter {
 
-	/** The places worth filling. Rings and earrings come in pairs and are left out: jewellery is not what makes a character look equipped. */
+	/**
+	 * The places worth filling, main hand first. Rings and earrings come in pairs and are left out: jewellery is not what makes a character look
+	 * equipped.
+	 * <p>
+	 * The off hand is filled last and only after the main hand, because what may go in it is decided by what is already held: a shield for a class
+	 * with shield mastery, a second weapon for one trained to wield two, and nothing at all for the rest. Leaving it out entirely is what sent
+	 * templars out without a shield and assassins holding one dagger.
+	 */
 	private static final ItemSlot[] DRESSED_SLOTS = { ItemSlot.MAIN_HAND, ItemSlot.TORSO, ItemSlot.PANTS, ItemSlot.GLOVES, ItemSlot.BOOTS,
-		ItemSlot.SHOULDER };
+		ItemSlot.SHOULDER, ItemSlot.SUB_HAND };
 	/** Nothing fancier than this: a village of people in heroic armour reads as a costume party, not a village. */
 	private static final ItemQuality BEST_QUALITY = ItemQuality.RARE;
 
@@ -52,17 +59,7 @@ public class BotOutfitter {
 	public static int dress(Player bot) {
 		int worn = 0;
 		for (ItemSlot slot : DRESSED_SLOTS) {
-			ItemTemplate template = pick(bot, slot);
-			if (template == null)
-				continue;
-			Item item = ItemFactory.newItem(template.getTemplateId());
-			item.setTuneCount(Math.max(0, item.getTuneCount())); // identified: nobody hands out an unread piece as a uniform
-			item.setSoulBound(true);
-			if (bot.getInventory().add(item) == null)
-				continue;
-			// one slot, never the template's mask of every slot it could go in: a one handed weapon reads as "either hand", and a two slot mask is
-			// refused outright. That is why bots were created with armour and empty hands
-			if (BotEquipManager.wear(bot, item.getObjectId(), template))
+			if (fill(bot, slot))
 				worn++;
 		}
 		// Not a warning, and it took a screenshot of a console full of red to notice. Below level four there is barely any gear made for players at
@@ -74,10 +71,44 @@ public class BotOutfitter {
 		return worn;
 	}
 
-	/** @return One of the better pieces this character could wear in that place, chosen at random among them so a crowd is not in uniform. */
-	private static ItemTemplate pick(Player bot, ItemSlot slot) {
+	/**
+	 * Fills one place, trying the candidates in turn until one actually goes on.
+	 * <p>
+	 * Picking a single piece and hoping was the whole of the weapon problem. Only the engine knows whether a character may hold a thing — the
+	 * masteries are the part no filter here can honestly reproduce — so one refusal left the hand empty, and a bot with an empty hand cannot use the
+	 * skills that need a weapon either. The complaint reads as "bots spawn with no weapon, or refuse to equip one"; it is one refusal, never retried.
+	 * <p>
+	 * A refused piece is taken straight back out of the bag. Left in it, it is dead weight the character carries for the rest of its life, and
+	 * {@code BotEquipManager} picks it up and is refused it again on every pass.
+	 *
+	 * @return true if the place ended up filled.
+	 */
+	private static boolean fill(Player bot, ItemSlot slot) {
 		List<ItemTemplate> wearable = candidates.computeIfAbsent(key(bot, slot), _ -> gatherFor(bot, slot));
-		return wearable.isEmpty() ? null : wearable.get(Rnd.get(0, wearable.size() - 1));
+		if (wearable.isEmpty())
+			return false;
+		// started at a random point rather than at the top, so a crowd is not in uniform, and then gone round in order so the best of what fits is
+		// still reached
+		int start = Rnd.get(0, wearable.size() - 1);
+		for (int attempt = 0; attempt < wearable.size(); attempt++) {
+			ItemTemplate template = wearable.get((start + attempt) % wearable.size());
+			// The off hand is the one place where what belongs there depends on what is already held, so the piece is asked where it would actually
+			// go and dropped if the answer is not here. Without it a templar's second sword is offered for the shield hand, the engine quietly moves
+			// it to the main hand — it does that itself, with no message — and the better weapon already drawn is replaced by the spare.
+			if (slot == ItemSlot.SUB_HAND && BotEquipManager.slotFor(bot, template) != slot.getSlotIdMask())
+				continue;
+			Item item = ItemFactory.newItem(template.getTemplateId());
+			item.setTuneCount(Math.max(0, item.getTuneCount())); // identified: nobody hands out an unread piece as a uniform
+			item.setSoulBound(true);
+			if (bot.getInventory().add(item) == null)
+				return false; // no room, and the next candidate would find none either
+			// one slot, never the template's mask of every slot it could go in: a one handed weapon reads as "either hand", and a two slot mask is
+			// refused outright. That is why bots were created with armour and empty hands
+			if (BotEquipManager.wear(bot, item.getObjectId(), template))
+				return true;
+			bot.getInventory().delete(item);
+		}
+		return false;
 	}
 
 	private static String key(Player bot, ItemSlot slot) {
@@ -128,7 +159,12 @@ public class BotOutfitter {
 		// Heaviest armour first, then newest. A class may legally wear anything lighter than its own — a scout is taught cloth proficiency alongside
 		// leather, so the engine accepts a robe on it and says nothing — and sorting on level alone therefore dressed a scout in a robe whenever the
 		// robe happened to be a level newer. Nobody plays that way: you wear the heaviest your class allows, and only fall back when nothing fits.
-		found.sort(Comparator.comparingInt(BotOutfitter::armourWeight).thenComparingInt(ItemTemplate::getLevel).reversed());
+		Comparator<ItemTemplate> bestFirst = Comparator.comparingInt(BotOutfitter::armourWeight).thenComparingInt(ItemTemplate::getLevel).reversed();
+		// Ahead of all of it, what the character can actually hold today. Weapons are not filtered on mastery above, and deliberately so — a caster
+		// is taught its own weapon only on becoming an advanced class, and refusing the rest left every mage unarmed — but "not filtered out" was
+		// taken to mean "as good as any", so a shortlist of eight could be eight weapons the engine refuses one after another. Sorted rather than
+		// filtered: what it will be taught later stays on the list, below what it can hold now.
+		found.sort(Comparator.comparing((ItemTemplate template) -> !isTrainedFor(bot, template)).thenComparing(bestFirst));
 		return found.subList(0, Math.min(8, found.size()));
 	}
 
