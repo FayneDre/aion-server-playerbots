@@ -99,7 +99,7 @@ public class BotPathFinder {
 	private static Route findLongPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
 		List<Vector3f> guide = coarseRoute(mesh, startX, startY, goalX, goalY);
 		if (guide.isEmpty())
-			return new Route(List.of(), true);
+			return new Route(List.of(), shareGround(mesh, startX, startY, goalX, goalY));
 
 		List<Vector3f> full = new ArrayList<>();
 		float fromX = startX, fromY = startY, fromZ = startZ;
@@ -154,6 +154,21 @@ public class BotPathFinder {
 				return guide;
 		}
 		return List.of();
+	}
+
+	/**
+	 * @return true when both ends stand on a stretch of ground the rough grid joins.
+	 *         <p>
+	 *         Asked so that an empty rough route can be told apart from a proof. {@link #coarseRoute} returns nothing both when the two ends share no
+	 *         ground at all — which settles the question — and when its own search ran out of nodes, which settles nothing; reporting both as a
+	 *         search that gave up let a bot keep walking at a goal already known to be unreachable, which is the same mistake this file's caller had
+	 *         one level up.
+	 */
+	public static boolean shareGround(Navmesh mesh, float startX, float startY, float goalX, float goalY) {
+		int factor = mesh.coarseFactor();
+		int startCell = coarseCellNear(mesh, mesh.cellX(startX) / factor, mesh.cellY(startY) / factor);
+		int goalCell = coarseCellNear(mesh, mesh.cellX(goalX) / factor, mesh.cellY(goalY) / factor);
+		return startCell != -1 && goalCell != -1 && !sharedRegions(mesh, startCell, goalCell).isEmpty();
 	}
 
 	/** @return The stretches of ground both ends stand on, largest region id last; empty when they have none in common. */
