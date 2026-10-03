@@ -161,7 +161,17 @@ public class BotDirector {
 				if (woken >= budget)
 					break;
 				woken++;
-				BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(bots.wake(resident), 1, Integer::sum));
+				// A move is recorded only once the bot is actually in the world. Written before the wake, as it first was, a refused wake still
+				// changed where the bot lived: it stayed asleep, but it was a villager now, so it left the countryside's pool of sleepers and the
+				// village it had been assigned to no longer needed it. A few per review, permanently set aside -- seen in the database as a village
+				// post holding twelve inhabitants of which seven were awake, while the region sat at 61 of a target of 29 and would not fall.
+				boolean movingHouse = difference.movingHouse().contains(resident.playerId());
+				BotScheduler.getInstance().enterOrLeaveWorld(() -> {
+					PlayerBotService.Change change = bots.wake(resident);
+					if (movingHouse && change == PlayerBotService.Change.DONE)
+						BotRoster.setHome(resident.name(), resident.home());
+					arrivals.merge(change, 1, Integer::sum);
+				});
 			}
 			for (Player bot : difference.toSleep()) {
 				if (slept >= budget)
@@ -219,12 +229,14 @@ public class BotDirector {
 		List<BotRoster.Resident> toWake = new ArrayList<>();
 		List<Player> toSleep = new ArrayList<>();
 		Map<Vector3f, Integer> stillShort = new LinkedHashMap<>();
+		Map<Vector3f, Integer> takenLocally = new HashMap<>();
 		villages.forEach((home, wanted) -> {
 			int missing = wanted - awakeInVillage.getOrDefault(home, List.of()).size();
 			List<BotRoster.Resident> available = asleepInVillage.getOrDefault(home, List.of());
-			int local = Math.min(missing, available.size());
+			int local = Math.max(0, Math.min(missing, available.size()));
 			for (int i = 0; i < local; i++)
 				toWake.add(available.get(i));
+			takenLocally.put(home, local);
 			if (missing > local)
 				stillShort.put(home, missing - local);
 		});
@@ -245,16 +257,24 @@ public class BotDirector {
 		// cannot reach its own target because its people were settled against a plan that has since shifted is worse than one whose villager came
 		// from the next valley. Measured on Verteron: 25 village posts, 11 villagers, and 14 hunters asleep in a countryside already full.
 		List<BotRoster.Resident> spare = new ArrayList<>(asleepInField.subList(fieldWoken, asleepInField.size()));
+		// A village's own sleepers beyond the post it has to fill can move on too. Without this a bot settled at a village the plan has since
+		// shrunk is stranded there: the countryside only ever wakes its own sleepers, so it is never hunted with again, and no amount of shortage
+		// anywhere else can reach it.
+		asleepInVillage.forEach((home, there) -> {
+			for (int i = takenLocally.getOrDefault(home, 0); i < there.size(); i++)
+				spare.add(there.get(i));
+		});
+		Set<Integer> movingHouse = new HashSet<>();
 		for (Map.Entry<Vector3f, Integer> village : stillShort.entrySet()) {
 			for (int i = 0; i < village.getValue() && !spare.isEmpty(); i++) {
 				BotRoster.Resident mover = spare.remove(spare.size() - 1);
-				BotRoster.setHome(mover.name(), village.getKey());
+				movingHouse.add(mover.playerId());
 				toWake.add(new BotRoster.Resident(mover.playerId(), mover.name(), mover.worldId(), village.getKey()));
 			}
 		}
 		int villagersAwake = awakeInVillage.values().stream().mapToInt(List::size).sum();
 		int villagersAsleep = asleepInVillage.values().stream().mapToInt(List::size).sum();
-		return new Difference(awake, toWake, toSleep, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
+		return new Difference(awake, toWake, toSleep, movingHouse, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
 	}
 
 	/**
@@ -265,8 +285,8 @@ public class BotDirector {
 	 * explanations and the same shape. Split in two it reads at a glance: villagers asleep while villages are short means posts nobody lives at,
 	 * hunters asleep while the field is full means the countryside is simply over-supplied.
 	 */
-	private record Difference(int awake, List<BotRoster.Resident> toWake, List<Player> toSleep, int villagersAwake, int villagersAsleep,
-		int huntersAwake, int huntersAsleep) {
+	private record Difference(int awake, List<BotRoster.Resident> toWake, List<Player> toSleep, Set<Integer> movingHouse, int villagersAwake,
+		int villagersAsleep, int huntersAwake, int huntersAsleep) {
 	}
 
 	/** @return How much of a region's countryside is awake at this moment. Settlements are not scaled at all — see {@link BotPresence#civic}. */
