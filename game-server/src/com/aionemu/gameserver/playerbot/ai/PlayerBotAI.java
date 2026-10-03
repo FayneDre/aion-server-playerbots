@@ -11,6 +11,7 @@ import com.aionemu.gameserver.ai.AIState;
 import com.aionemu.gameserver.ai.AITemplate;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
+import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
@@ -77,7 +78,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Health below which the bot waits to regenerate instead of looking for a fight. */
 	private static final int MIN_ENGAGE_HP_PERCENT = 90;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
-	/** The penalty skill a player carries after dying, which a bot now sits out rather than fighting under. */
+	/** The penalty skill a player carries after dying, under which a bot will not start a fight. */
 	private static final int SOUL_SICKNESS_SKILL = 8291;
 	/** How little life a target needs for the bot to stop looking after itself and simply end the fight. */
 	private static final int FINISH_IT_PERCENT = 20;
@@ -86,6 +87,14 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final float FOLLOW_DISTANCE = 2f;
 	/** Roughly the time a player spends looking at the resurrection window. */
 	private static final int REVIVE_DELAY_MILLIS = 10000;
+	/**
+	 * How far from its bind point a bot gets before it is willing to sit down.
+	 * <p>
+	 * An obelisk is the one spot in a region that every death in it leads back to, and a bot comes back from one at a quarter of its health with
+	 * ninety to climb to — minutes of resting, spent precisely where the next corpse will appear. Ten of them seated on the same steps is not a
+	 * population, it is a queue, and it is what a screenshot of Morheim showed. Wide enough to clear the plinth and whatever stands on it.
+	 */
+	private static final float OBELISK_CLEARANCE = 60f;
 
 	/** Guards the scheduled tasks against concurrent starts and stops, since events and ticks run on different pool threads. */
 	private final Object combatLock = new Object();
@@ -409,11 +418,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// busy with a corpse, everything else can wait
 			} else if (errands.dressUp()) {
 				// dressing itself, which is five seconds of stillness the bot has to commit to rather than hope for
-			} else if (isRecoveringFromDeath()) {
-				recover(); // sits out the sickness rather than walking back into a fight at a quarter of its strength
-			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following))
-				recover();
-			else if (following) {
+			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following)) {
+				if (!walkOffTheObelisk()) // never sit down where it resurrected: that spot is shared by everyone who died in the region
+					recover();
+			} else if (following) {
 				serveTheGroup(); // a member has no business picking its own fights, so the rest of this chain is not its to run
 			} else if (errands.runVendorTrip()) {
 				// bag is full and a shop is being walked to or worked, everything else waits
@@ -422,7 +430,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (!posture.standUp()) { // stand up one tick before acting, so the animation has played out by then
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing.
 				if (!BotSkillManager.tryBuffSelf(getOwner()) && !BotSkillManager.tryChantMantra(getOwner()) && !day.pursue()) {
-					Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
+					// Starting a fight is the one thing the death penalty forbids, and it used to forbid everything: the bot sat where it stood for
+					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Walking, going home,
+					// buffing and the errands above are all things a player does on the way back from a death, so none of them is gated here.
+					Creature target = isRecoveringFromDeath() ? null : BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 					if (target == null)
 						roam();
 					else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
@@ -590,9 +601,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/**
 	 * @return true while the bot is still carrying the penalty it got for dying.
 	 *         <p>
-	 *         A player who has just resurrected waits it out, because it takes a large bite out of every stat and walking back into a fight under it
-	 *         is how you die a second time. A bot that went straight back to work read as exactly what it was: something that does not understand
-	 *         what just happened to it. Defending itself is untouched — that comes before all of this — and so is being dragged along by a group.
+	 *         It takes a large bite out of every stat, and picking a fight under it is how you die a second time — so that one thing waits, and
+	 *         nothing else does. The first version waited out the whole of it doing nothing at all, which is how obelisks came to hold a dozen
+	 *         seated bots apiece. Defending itself, going home, resting, running an errand and following a group are all untouched.
 	 */
 	private boolean isRecoveringFromDeath() {
 		return getOwner().getEffectController().hasAbnormalEffect(SOUL_SICKNESS_SKILL);
@@ -806,6 +817,32 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 		posture.sitDown();
+	}
+
+	/**
+	 * Walks a bot that has just resurrected off the obelisk before it settles down to heal.
+	 * <p>
+	 * The resting itself is right and stays: eight times the regeneration rate is the difference between a minute and ten. What was wrong is only
+	 * <i>where</i>, and the reason it was wrong is that nothing in the chain distinguished the ground a bot fell on from the ground it comes back on.
+	 * A player does the walk back; that walk is what empties the obelisk, and a bot refusing to make it is what filled one.
+	 * <p>
+	 * It only ever applies within {@value #OBELISK_CLEARANCE} metres of the bind point, so a bot hurt anywhere else sits down where it stands exactly
+	 * as before, and a bot whose home happens to be the obelisk's own ground has nowhere to go and is left alone.
+	 *
+	 * @return true if the bot is busy getting clear, in which case it must not rest this tick.
+	 */
+	private boolean walkOffTheObelisk() {
+		Player bot = getOwner();
+		BindPointPosition bind = bot.getBindPoint();
+		if (bind == null || bind.getMapId() != bot.getWorldId())
+			return false;
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), bind.getX(), bind.getY()) > OBELISK_CLEARANCE)
+			return false;
+		if (isAtAnchor())
+			return false;
+		if (posture.standUp())
+			return true; // on its feet first, and the client is owed the tick it takes to draw that
+		return returnToAnchor();
 	}
 
 	private boolean isHealthyEnoughToFight() {
