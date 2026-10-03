@@ -144,9 +144,11 @@ public class Bot extends AdminCommand {
 			sendInfo(admin, "Count must be between 0 and " + MAX_POPULATE + ", or 0 for as many as the map asks for");
 			return;
 		}
-		// the commander's own race when none is given: populating the map you are standing on with the other faction is never what was meant
-		String race = params.length > 2 ? params[2] : admin.getRace().name();
-		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin.getWorldId(), race));
+		// No race unless one is typed, in which case every place names its own: Asmodae is Asmodian ground whoever is standing on it, and reading
+		// the race off the commander put a village of Elyos in Morheim, where every guard in sight is hostile to them. On contested ground, where the
+		// map has no single answer, each fort answers for itself — Teminon Elyos, Primum Asmodian — so one command populates both sides correctly.
+		// A race given here still overrides the lot, which is what you want when seeding an invasion.
+		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin.getWorldId(), params.length > 2 ? params[2] : null));
 	}
 
 	private void withName(Player admin, String[] params, Function<String, String> action) {

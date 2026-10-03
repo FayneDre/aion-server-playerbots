@@ -40,7 +40,6 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
-import com.aionemu.gameserver.world.WorldType;
 import com.aionemu.gameserver.world.World;
 
 /**
@@ -166,14 +165,16 @@ public class PlayerBotService {
 	private void populateEveryOpenMap() {
 		int populated = 0;
 		for (WorldMapTemplate map : DataManager.WORLD_MAPS_DATA) {
-			if (map.isInstance() || map.getWorldType() != WorldType.ELYSEA && map.getWorldType() != WorldType.ASMODAE)
+			// null for an instance and for ground that belongs to neither faction, which is the same skip. Contested ground is deliberately left
+			// out of the automatic pass: Reshanta is the largest map in the game and has no mesh, so building one here would be minutes added to
+			// every first start. It is populated by command, which is where somebody can wait for it.
+			if (raceOfMap(map.getMapId()) == null)
 				continue;
 			if (PlayerBotCreationService.hasBotsOn(map.getMapId()))
 				continue;
-			NavmeshBuilder.ensureMesh(map.getMapId()); // before anyone is put on it: a map without one is a map bots cannot plan a route across
-			Race race = map.getWorldType() == WorldType.ASMODAE ? Race.ASMODIANS : Race.ELYOS;
-			// no count: the region says how many it wants, from its own civilians rather than from its monsters
-			log.info("Populating map {}: {}", map.getMapId(), populate(0, map.getMapId(), race.name()));
+			// no count: the region says how many it wants, from its own civilians rather than from its monsters. No race either: each place names
+			// its own, and on a faction's own ground every one of them names this map's.
+			log.info("Populating map {}: {}", map.getMapId(), populate(0, map.getMapId(), null));
 			populated++;
 		}
 		log.info("Populated {} map(s) automatically", populated);
@@ -210,7 +211,6 @@ public class PlayerBotService {
 					log.info("Map {} already has bots living on it, leaving it alone", worldId);
 					continue;
 				}
-				NavmeshBuilder.ensureMesh(worldId); // before anyone is put on it, and before the server opens
 				log.info("Populating map {}: {}", worldId, populate(count, worldId, parts[2]));
 			} catch (NumberFormatException e) {
 				log.warn("Cannot read the populate setting '{}', expected <mapId>:<count>:<race>", order);
@@ -321,9 +321,6 @@ public class PlayerBotService {
 	}
 
 	/**
-	 * Creates several bots at once with generated names, for populating an area.
-	 */
-	/**
 	 * Fills a region with people who belong to it.
 	 * <p>
 	 * The old version cloned one template character count times, so a map ended up with one class, one level and one set of training gear repeated.
@@ -331,12 +328,17 @@ public class PlayerBotService {
 	 * the classes are spread over those a character of that level could be, and the gear is fitted to each one. They are residents from birth, so
 	 * they stay the level their home is worth.
 	 *
-	 * @param commander Whoever asked, whose map is populated and whose race and looks the new characters borrow.
+	 * @param count How many to make, or 0 for as many as the region still asks for.
+	 * @param raceName The faction to make them all, or null to let each place name its own — which is the usual answer, and the only one that gets
+	 *          contested ground right. See {@link #factionFor}.
 	 */
 	public String populate(int count, int worldId, String raceName) {
-		Race race = raceOf(raceName);
-		if (race == null)
-			return "Unknown race " + raceName + ", expected ELYOS or ASMODIANS";
+		Race chosen = null;
+		if (raceName != null && !raceName.isBlank()) {
+			chosen = raceOf(raceName);
+			if (chosen == null)
+				return "Unknown race " + raceName + ", expected ELYOS or ASMODIANS";
+		}
 		// One entry per inhabitant the region asks for, each naming the place it belongs to. A busy village appears many times over and a roadside
 		// camp once, so going round the list in order puts the population where the world put its own people — which is what the count times a
 		// density never did, because that count was fed by how many monsters a map holds.
@@ -346,6 +348,13 @@ public class PlayerBotService {
 		// and 37 with somebody playing: created at 19, a player's arrival raised the target to 37 and the director had nobody left to wake, so a map
 		// with a player on it was no busier than an empty one. Creating at the fuller plan also spreads the homes over far more of the countryside,
 		// which is what lets the director find a sleeper for a ground that needs one.
+		// Before anybody is put on it, and on every path into here rather than on the two that remembered. A map without a navmesh is a map whose
+		// inhabitants can plan no route at all: they are created, they are stored, and then they stand wherever they were dropped for ever, because
+		// every journey any of them asks for is refused. It was called from the two startup paths and not from the command, so a map populated by
+		// hand — a capital, typically, since those are the ones the config does not cover — got a population that could not move.
+		//
+		// Cheap when the mesh is already there, which is every call but the first for a given map.
+		NavmeshBuilder.ensureMesh(worldId);
 		List<BotPlaces.Settlement> plan = BotPresence.wanted(worldId, true);
 		if (plan.isEmpty())
 			return "Nothing lives on this map, so there is nowhere to put anyone";
@@ -380,6 +389,9 @@ public class PlayerBotService {
 			int level = Math.clamp(home.level() + Rnd.get(-1, 1), 1, Math.max(1, BotPlaces.topLevelOf(worldId) - 1));
 			PlayerClass playerClass = classFor(level);
 			try {
+				Race race = chosen != null ? chosen : factionFor(worldId, home);
+				if (race == null)
+					return report(created, "nothing on this map says which faction lives here, so name one: //bot populate " + count + " ELYOS");
 				Player bot = PlayerBotCreationService.create(name, playerClass, level, race);
 				BotRoster.setResident(name, true);
 				BotRoster.setHome(name, home.centre());
@@ -472,6 +484,38 @@ public class PlayerBotService {
 		} catch (IllegalArgumentException e) {
 			return null;
 		}
+	}
+
+	/**
+	 * @return Which faction the inhabitant of a given place should belong to, or null when nothing says.
+	 *         <p>
+	 *         The place first, the map only as a fallback, and that order is the whole of what makes contested ground work. On a faction's own
+	 *         ground the two always agree, so nothing changes there. In Reshanta the map has no answer at all and each fort has its own: Teminon is
+	 *         Elyos, Primum Asmodian, and the proportion between them comes out of how much of the region each side holds rather than out of a
+	 *         setting somebody has to keep true. It is the same argument the rest of this module makes about levels and densities — ask the world.
+	 */
+	private static Race factionFor(int worldId, BotPlaces.Settlement place) {
+		return place.race() != null ? place.race() : raceOfMap(worldId);
+	}
+
+	/**
+	 * @return The faction a map's <b>type</b> declares, or null when it declares none — an instance, the Abyss, Panesterra, and all of Balaurea,
+	 *         whose regions carry one world type between them although Inggison is Elyos and Gelkmaros Asmodian. So this is a coarse answer and only
+	 *         a fallback: {@link #factionFor} asks the place first, and the place is right in every one of those cases.
+	 *         <p>
+	 *         Which map it is, never who is asking. A region's inhabitants are its own: filling Morheim with Elyos because an Elyos happened to be
+	 *         standing in it populates the map with people the guards would kill on sight, and that is exactly what happened the first time somebody
+	 *         ran {@code //bot populate} on the other faction's ground.
+	 */
+	public static Race raceOfMap(int worldId) {
+		WorldMapTemplate map = DataManager.WORLD_MAPS_DATA.getTemplate(worldId);
+		if (map == null || map.isInstance())
+			return null;
+		return switch (map.getWorldType()) {
+			case ELYSEA -> Race.ELYOS;
+			case ASMODAE -> Race.ASMODIANS;
+			default -> null;
+		};
 	}
 
 	/**

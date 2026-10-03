@@ -181,6 +181,13 @@ The faction split comes out even on its own, because the world was built in mirr
 Theobomos 179 ↔ Brusthonin 181. No per-faction tuning, ever. The 76 bots between the two halves come from the field cap biting unevenly, not from the
 model.
 
+**Which side a bot is on is asked of the place, not of the map.** A civilian's tribe already says it — `GENERAL` is a friend of `PC` and
+`GENERAL_DARK` of `PC_DARK` — so each settlement carries the faction of the people standing in it, and a hunting ground takes it from the settlement
+nearest it. A faction's own region answers the same thing everywhere and is unchanged; contested ground (Reshanta, Silentera, the Idian Depths,
+Kaldor, Levinshor, Panesterra) has no single answer, so one `//bot populate` fills Teminon with Elyos and Primum with Asmodians in whatever proportion
+the region itself holds. Balaurea is **not** contested — Inggison and Cygnea are Elyos, Gelkmaros and Enshar Asmodian — and the startup pass still
+covers the faction regions only, because Reshanta has no mesh and is the largest map in the game.
+
 Giving the countryside its own share is also what took the weight off the capitals. Hunting country is on another scale from settlement —
 Brusthonin's grounds cover 3.3 million m² against its villages' 76 thousand — so a share for the field moved people into the regions without making
 any single place denser or thinner than before.

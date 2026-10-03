@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.world;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,7 +10,7 @@ import java.util.function.Predicate;
 
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
-import com.aionemu.gameserver.model.TribeClass;
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
@@ -109,8 +110,12 @@ public class BotPlaces {
 	 * @param townsfolk How many civilian npcs stand here.
 	 * @param level The middling level of the creatures within {@value #COUNTRYSIDE_RADIUS} metres, which is what says who belongs here. Poeta reads
 	 *          as Akarios 3, then camps at 5, 6 and 7 — a valley that steepens as you walk away from the village.
+	 * @param race Whose place this is, read off the civilians who stand in it, or null where nothing says. On a faction's own ground every place
+	 *          answers the same thing and this changes nothing; it exists for the contested regions, where a map has no single answer and the
+	 *          question has to be asked of each fort rather than of the region. Teminon is Elyos and Primum is Asmodian, and no setting anywhere says
+	 *          so — the world does.
 	 */
-	public record Settlement(Vector3f centre, float reach, int townsfolk, int level) {
+	public record Settlement(Vector3f centre, float reach, int townsfolk, int level, Race race) {
 
 		/** @return The ground this place covers, which is what decides how many people it holds without feeling packed. */
 		public float area() {
@@ -397,27 +402,35 @@ public class BotPlaces {
 	 * apart. Lone npcs are dropped — a road keeper is not a village.
 	 */
 	private static List<Settlement> locateSettlements(int worldId) {
-		List<List<Vector3f>> clusters = new ArrayList<>();
+		// Clustered per faction rather than all together, which is what lets a place say whose it is. On a faction's own ground there is only ever one
+		// of these lists and the result is what it always was; in Reshanta there are two, and Teminon does not absorb Primum because they are a few
+		// hundred metres apart in the same data.
+		Map<Race, List<List<Vector3f>>> clustersByRace = new EnumMap<>(Race.class);
 		List<float[]> countryside = new ArrayList<>(); // x, y and level of everything that would fight back
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
 			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
 			if (template == null)
 				continue;
+			Race race = factionOf(template);
 			for (SpawnTemplate spawn : group.getSpawnTemplates()) {
-				if (isTownsfolk(template))
-					addToCluster(clusters, new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
+				if (race != null)
+					addToCluster(clustersByRace.computeIfAbsent(race, _ -> new ArrayList<>()), new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
 				else if (template.getLevel() > 0)
 					countryside.add(new float[] { spawn.getX(), spawn.getY(), template.getLevel() });
 			}
 		}
 		List<Settlement> settlements = new ArrayList<>();
-		clusters.sort(Comparator.comparingInt(List<Vector3f>::size).reversed());
-		for (List<Vector3f> cluster : clusters) {
-			if (cluster.size() >= SETTLEMENT_SIZE) {
-				Vector3f centre = anchorOf(worldId, cluster);
-				settlements.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(countryside, centre)));
+		for (Map.Entry<Race, List<List<Vector3f>>> entry : clustersByRace.entrySet()) {
+			for (List<Vector3f> cluster : entry.getValue()) {
+				if (cluster.size() >= SETTLEMENT_SIZE) {
+					Vector3f centre = anchorOf(worldId, cluster);
+					settlements.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(countryside, centre), entry.getKey()));
+				}
 			}
 		}
+		// largest first, as before and across both factions at once. The order is not cosmetic: the plan is walked from the top, so it decides which
+		// places are filled when a region is given fewer people than it asks for.
+		settlements.sort(Comparator.comparingInt(Settlement::townsfolk).reversed());
 		return settlements;
 	}
 
@@ -448,7 +461,8 @@ public class BotPlaces {
 			Vector3f centre = anchorOf(worldId, cluster);
 			// the level of what stands here, not of the country around it: a ground is a handful of creatures in one spot, and averaging over a
 			// hundred and fifty metres of everything nearby is exactly how a place of eights came to read as a place of twos
-			grounds.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS)));
+			grounds.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS),
+				factionNearest(worldId, centre)));
 		}
 		return grounds;
 	}
@@ -462,8 +476,42 @@ public class BotPlaces {
 	 *         home, an anchor or anywhere to stand about, and the hunting grounds absorbed the villages instead.
 	 */
 	private static boolean isTownsfolk(NpcTemplate template) {
-		TribeClass tribe = template.getTribe();
-		return tribe == TribeClass.GENERAL || tribe == TribeClass.GENERAL_DARK;
+		return factionOf(template) != null;
+	}
+
+	/**
+	 * @return Which faction a civilian belongs to, or null if it is not a civilian at all.
+	 *         <p>
+	 *         The same two tribes {@link #isTownsfolk} already turned on, read for the one more thing they say. {@code TribeRelationService} settles
+	 *         what they mean: {@code GENERAL} is a friend of {@code PC} and {@code GENERAL_DARK} of {@code PC_DARK}, which is the engine's own
+	 *         statement of whose people these are. Nothing had to be authored for it and nothing can drift from it.
+	 */
+	private static Race factionOf(NpcTemplate template) {
+		return switch (template.getTribe()) {
+			case GENERAL -> Race.ELYOS;
+			case GENERAL_DARK -> Race.ASMODIANS;
+			default -> null;
+		};
+	}
+
+	/**
+	 * @return Whose country a spot is in, taken from the settlement nearest it, or null where the map holds no settlement at all.
+	 *         <p>
+	 *         A hunting ground is a cluster of monsters, and a monster belongs to nobody — so the ground has to inherit its side from the people who
+	 *         work it. Nearest rather than within a radius: in a contested region the two factions' grounds meet somewhere in the middle, and a
+	 *         distance threshold would leave exactly that middle unclaimed and unpopulated, which is the one part of the map worth populating.
+	 */
+	private static Race factionNearest(int worldId, Vector3f spot) {
+		Race race = null;
+		double nearest = Double.MAX_VALUE;
+		for (Settlement settlement : settlements(worldId)) {
+			double distance = PositionUtil.getDistance(spot.x, spot.y, settlement.centre().x, settlement.centre().y);
+			if (distance < nearest) {
+				nearest = distance;
+				race = settlement.race();
+			}
+		}
+		return race;
 	}
 
 	/**
