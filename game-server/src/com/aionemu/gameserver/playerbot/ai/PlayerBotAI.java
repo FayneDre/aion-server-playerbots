@@ -73,6 +73,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private static final long STALLED_FIGHT_MILLIS = 15000;
 	/**
+	 * How long a fight may run without the bot landing anything before it is given up.
+	 * <p>
+	 * A different failure from the one above, and invisible to it: the attack loop is alive and ticking, and every tick does nothing. The loop only
+	 * swings through {@code BotAttackManager.autoAttack}, which requires line of sight, so a target standing in reach behind a rock, a root or the
+	 * lip of a slope is attacked for ever at no cost to itself -- while it answers, which is how it was seen: a bot at four metres, facing the thing
+	 * killing it, never swinging. {@link #STALLED_FIGHT_MILLIS} cannot catch this because it measures the gap between ticks, and the ticks are fine.
+	 * <p>
+	 * Longer than {@link #MAX_CHASE_MILLIS}, because a bot crossing open ground to something far away has landed nothing yet either, and that is not
+	 * a stuck fight but a fight that has not started.
+	 */
+	private static final long FRUITLESS_FIGHT_MILLIS = 20000;
+	/**
 	 * Longest a swing may be scheduled ahead. No weapon in the game is slower than this, so a larger figure is a stat gone wrong rather than a slow
 	 * weapon, and scheduling it would park the bot for as long as it says.
 	 */
@@ -110,6 +122,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private long attackGeneration;
 	/** When the attack loop last ran, so the decision tick can tell a fight in progress from one that has silently stopped. */
 	private volatile long lastAttackTick;
+	/** When the bot last actually did something to its target -- a swing sent or a skill cast, not a tick that decided to do neither. */
+	private volatile long lastBlow;
 	private ScheduledFuture<?> thinkTask;
 	/** Non null between death and resurrection, which also marks the death as already handled. */
 	private ScheduledFuture<?> reviveTask;
@@ -442,7 +456,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (!posture.standUp()) { // stand up one tick before acting, so the animation has played out by then
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing.
 				// the servant before the buffs, because it is the one of them that is still there in ten minutes and the class cannot fight without it
-				if (!BotSkillManager.trySummonServant(getOwner()) && !BotSkillManager.tryBuffSelf(getOwner())
+				if (!callUpServant() && !BotSkillManager.tryBuffSelf(getOwner())
 					&& !BotSkillManager.tryChantMantra(getOwner()) && !day.pursue()) {
 					// Starting a fight is the one thing the death penalty forbids, and it used to forbid everything: the bot sat where it stood for
 					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Walking, going home,
@@ -475,6 +489,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		combatEndedAt = 0; // fighting again, so the pending sheathe is off
 		openingSpent = false;
 		approachSpent = false;
+		lastBlow = System.currentTimeMillis(); // a fight that has just started has landed nothing yet, and that is not a stalled one
 		BotTargetRegistry.forceClaim(target, getOwner()); // retaliation and commands are not negotiable
 		boolean gettingUp = posture.standUp(); // canAttack() is false while resting
 		if (getOwner().isProtectionActive()) // CM_ATTACK does this for a real player
@@ -516,11 +531,30 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * Lets go of a fight the attack loop has stopped running, so the bot can decide again instead of standing beside its target for ever.
 	 */
 	private void abandonStalledFight() {
-		if (!isAttacking() || System.currentTimeMillis() - lastAttackTick < STALLED_FIGHT_MILLIS)
+		if (!isAttacking())
 			return;
-		log.warn("Bot {} has been fighting {} for {} s without a swing, so its attack loop is gone; letting the fight go", getOwner().getName(),
-			getOwner().getTarget() == null ? "nothing" : getOwner().getTarget().getName(), (System.currentTimeMillis() - lastAttackTick) / 1000);
+		long now = System.currentTimeMillis();
+		if (now - lastAttackTick >= STALLED_FIGHT_MILLIS) {
+			log.warn("Bot {} has been fighting {} for {} s without a tick, so its attack loop is gone; letting the fight go", getOwner().getName(),
+				nameOfTarget(), (now - lastAttackTick) / 1000);
+			stopAttacking();
+			return;
+		}
+		if (now - lastBlow < FRUITLESS_FIGHT_MILLIS)
+			return;
+		// Left alone afterwards, like one that could not be reached: something about where this thing stands makes it unfightable from here, and the
+		// bot has no way to tell what. Without that, the next decision tick picks the same target back out of the same list and the fight that
+		// landed nothing starts again -- which is what standing still in front of a monster looks like from outside.
+		Creature target = getOwner().getTarget() instanceof Creature creature ? creature : null;
+		log.warn("Bot {} has been fighting {} for {} s without landing anything; letting the fight go", getOwner().getName(), nameOfTarget(),
+			(now - lastBlow) / 1000);
 		stopAttacking();
+		if (target != null)
+			ignoredTargets.put(target.getObjectId(), now + UNREACHABLE_MILLIS);
+	}
+
+	private String nameOfTarget() {
+		return getOwner().getTarget() == null ? "nothing" : getOwner().getTarget().getName();
 	}
 
 	private void attackTick(long generation) {
@@ -556,9 +590,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
 			chaseStartTime = 0;
 			stopMoving();
-			if (!useBestSkill(target))
-				BotAttackManager.autoAttack(bot, target);
+			if (useBestSkill(target) || BotAttackManager.autoAttack(bot, target))
+				lastBlow = System.currentTimeMillis();
 		} else if (castFromAfar(target)) {
+			lastBlow = System.currentTimeMillis();
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
 		} else if (!chase(target)) {
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
@@ -884,6 +919,25 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * @return An npc currently attacking the bot, or null. Being hit overrides every other consideration, including the health threshold that
 	 *         normally sends the bot resting: sitting down under fire is both suicidal and absurd to watch.
 	 */
+	/**
+	 * Calls the servant up, but only while the bot is standing still.
+	 * <p>
+	 * A summon has a cast time and a cast roots the caster, so one started mid-stride is cancelled by the next step. The decision tick comes round
+	 * every second and the servant is the first thing it tries, so a spirit master that was walking anywhere started the cast, walked out of it, and
+	 * started it again -- seen in game as a caster running across a field conjuring nothing, over and over.
+	 * <p>
+	 * It waits for a pause rather than stopping the bot where it stands, because a bot halted to cast is a bot that never gets anywhere if the cast
+	 * cannot succeed for some other reason -- no mana, a cooldown, a skill it does not have yet. Pauses are not rare: every occupation ends in one.
+	 *
+	 * @return true if the bot is busy with the cast.
+	 */
+	private boolean callUpServant() {
+		if (getOwner().getSummon() == null && getOwner().getMoveController() instanceof BotMoveController moveController
+			&& moveController.isInMove())
+			return false;
+		return BotSkillManager.trySummonServant(getOwner());
+	}
+
 	private Creature findAttacker() {
 		Player bot = getOwner();
 		Creature[] attacker = { null };

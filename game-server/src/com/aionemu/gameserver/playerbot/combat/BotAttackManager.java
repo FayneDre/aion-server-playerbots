@@ -64,12 +64,17 @@ public class BotAttackManager {
 	/**
 	 * Performs a single auto attack if the target is reachable. Closing the distance is the caller's job.
 	 */
-	public static void autoAttack(Player bot, Creature target) {
-		if (isInAttackRange(bot, target) && GeoService.getInstance().canSee(bot, target)) {
-			bot.getPosition().setH(PositionUtil.getHeadingTowards(bot, target));
-			// PlayerController applies its own range, line of sight and attack speed checks, so bots obey the same rules as real players
-			bot.getController().attackTarget(target, 0, true);
-		}
+	/**
+	 * @return true if a swing was sent. The caller needs the answer rather than the act: line of sight is checked here, and a target in reach but
+	 *         behind something is attacked by a loop that never lands, which from outside is a bot standing still while it is killed.
+	 */
+	public static boolean autoAttack(Player bot, Creature target) {
+		if (!isInAttackRange(bot, target) || !GeoService.getInstance().canSee(bot, target))
+			return false;
+		bot.getPosition().setH(PositionUtil.getHeadingTowards(bot, target));
+		// PlayerController applies its own range, line of sight and attack speed checks, so bots obey the same rules as real players
+		bot.getController().attackTarget(target, 0, true);
+		return true;
 	}
 
 	public static boolean isInAttackRange(Player bot, Creature target) {
