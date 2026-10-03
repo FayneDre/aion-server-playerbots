@@ -50,6 +50,11 @@ public class BotMoveController extends PlayerMoveController {
 	private static final float PROGRESS_STEP = 1.0f;
 	/** Without that progress, the route is abandoned rather than letting the bot grind against an obstacle forever. */
 	private static final long PROGRESS_TIMEOUT = 5000;
+	/**
+	 * How long a destination abandoned for lack of headway is refused. Long enough that the caller's refusals accumulate towards its rescue rather
+	 * than being reset by a fresh attempt every few seconds, short enough that ground blocked by a passing creature is tried again soon.
+	 */
+	private static final long NO_HEADWAY_MEMORY = 30000;
 	/** A new destination this close to the previous one continues the same journey, typically a target that moved a little. */
 	private static final float SAME_JOURNEY_TOLERANCE = 10f;
 	/**
@@ -89,6 +94,9 @@ public class BotMoveController extends PlayerMoveController {
 	/** The last destination the planner answered "no route" for, kept so the refusal can be given synchronously to whoever asks again. */
 	private volatile float noRouteX, noRouteY;
 	private volatile boolean hasNoRoute;
+	/** The last destination abandoned for lack of headway, and until when asking for it again is refused rather than tried afresh. */
+	private volatile float noHeadwayX, noHeadwayY;
+	private volatile long noHeadwayUntil;
 	private volatile boolean hasGoal;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
@@ -111,6 +119,12 @@ public class BotMoveController extends PlayerMoveController {
 		// caller therefore never hears the refusal, asks again on the next tick, and gets "on its way" again: two bots stood in a pocket of the map
 		// asking for the same village sixty-six times in three minutes. Remembering the refusal is what turns it into an answer.
 		if (hasNoRoute && PositionUtil.getDistance(noRouteX, noRouteY, x, y) < SAME_JOURNEY_TOLERANCE)
+			return false;
+		// A destination just abandoned for lack of headway is refused for a while, instead of being set out for again as though it were new.
+		// Giving up calls stop(), which clears hasGoal, so the identical destination asked for on the next tick no longer counted as the same
+		// journey: the blocked flag was wiped, the attempt reported a move, and the caller's anti-stuck counter went back to zero. A bot wedged two
+		// metres from its goal rode that loop for five minutes without ever being rescued, because nothing above it was ever told anything was wrong.
+		if (System.currentTimeMillis() < noHeadwayUntil && PositionUtil.getDistance(noHeadwayX, noHeadwayY, x, y) < SAME_JOURNEY_TOLERANCE)
 			return false;
 		hasNoRoute = false; // somewhere else is being asked for, so the last refusal says nothing about it
 		BotRestManager.standUp(owner); // a seated bot would slide across the ground
@@ -442,6 +456,9 @@ public class BotMoveController extends PlayerMoveController {
 			log.info("Bot {} makes no headway from {} towards {} and gives up moving", owner.getName(),
 				describe(owner.getX(), owner.getY(), owner.getZ()), describe(goalX, goalY, goalZ));
 			blocked = true;
+			noHeadwayX = finalX;
+			noHeadwayY = finalY;
+			noHeadwayUntil = now + NO_HEADWAY_MEMORY;
 			stop();
 		}
 	}
