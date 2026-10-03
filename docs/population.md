@@ -92,9 +92,10 @@ thinking.
 
 **Only the countryside breathes**, and the reason is geometric rather than a matter of tuning. A player arrives at a bind obelisk, in a town — where this
 module deliberately puts bots' bind points too. Every villager's home is one place's centre with fifteen metres of scatter, so while that player stands
-there all of them are inside the ninety five metres a client is told about: a village thinned while nobody watched could never be refilled until the
-player left, and the one place a person looks at would be the one place the director cannot fix. So settlements are a fixed cast, and the hunting grounds
-— spread apart by construction, nowhere near a bind point — are what fills and empties.
+there all of them are inside the ninety five metres a client is told about. A village thinned while nobody watched would therefore be refilled in plain
+sight of whoever came back to it, and emptied again the moment they left — the one place a person actually looks at would be the one place that never
+holds still. So settlements are a fixed cast, and the hunting grounds — spread apart by construction, nowhere near a bind point — are what fills and
+empties.
 
 | situation | share of the countryside awake |
 |---|---:|
@@ -106,11 +107,14 @@ player left, and the one place a person looks at would be the one place the dire
 That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
 a world asleep overnight comes back to the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
 
-Two rules, because neither can be repaired after the fact. **Nobody ever watches it happen**: a wake is tested against the real players on that map at
-150 m — the engine's own 95 m sight radius plus room for somebody walking towards the spot — and a sleep asks the bot's own known list, which is exactly
-the set of clients that would be told rather than an estimate of who is near. A refused wake is simply not done, and the next review asks again. And
-**the director never picks the moment**: it decides that a region holds too many, the bot decides whether it may go now, and in a fight, dead, mid-journey
-or grouped with a real player it stays.
+Two rules, because neither can be repaired after the fact. **Nobody watches a departure**: a sleep asks the bot's own known list, which is exactly the set
+of clients that would be told rather than an estimate of who is near, and a refusal costs nothing — the region is already as full as it should be, and
+the next review asks again. Arrivals used to ask the same question and no longer do. It was the wrong question for this game: on any server people log
+in and appear where they stand, in front of whoever is there, and nobody reads it as a fault. It was also the one refusal that could not resolve itself
+— a villager's home is the village, and a client is told about everything within 95 m, so while a player stands in a place there is no unseen spot
+anywhere in it. Verteron held 67 of the 84 it wanted and refused the same 17 arrivals every half minute for as long as somebody stayed in the citadel.
+And **the director never picks the moment**: it decides that a region holds too many, the bot decides whether it may go now, and in a fight, dead,
+mid-journey or grouped with a real player it stays.
 
 **And it removes the need to travel.** A bot that outgrows Poeta logs out and logs back in at Verteron. Nobody watches a ten-minute walk, and a walk can
 get stuck. Following a *player* between regions is a different matter and is cheap — see [roadmap.md](roadmap.md) under Flight.

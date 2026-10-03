@@ -33,13 +33,14 @@ import com.aionemu.gameserver.world.World;
  * inhabitants where a region is short and puts them back to sleep where it is over-full, and a player arriving on a map is what raises the density
  * around them. That is the one change which alters what the world feels like rather than what it contains.
  * <p>
- * <b>Only the countryside breathes.</b> Settlements are a fixed cast — see {@link BotPresence#civic}. A village thinned while nobody was watching
- * could never be filled again while somebody stood in it, because every villager's home is within sight of the obelisk a player arrives at.
+ * <b>Only the countryside breathes.</b> Settlements are a fixed cast — see {@link BotPresence#civic}.
  * <p>
- * Three rules hold the whole thing together, and each of them is a thing that cannot be taken back once it has been seen or lost:
+ * Two rules hold the whole thing together, and each of them is a thing that cannot be taken back once it has been seen or lost:
  * <ul>
- * <li><b>Nobody watches it happen.</b> A character materialising in front of a player is worse than an empty field, so a wake refused is a wake not
- * done — the next review asks again half a minute later, and refusing costs one comparison.
+ * <li><b>Departures are not watched; arrivals do not care.</b> A bot does not vanish in front of somebody, and refusing costs nothing because the
+ * region is already as full as it should be. Arrivals used to ask the same question and it was the wrong one: on any server people log in and appear
+ * where they stand, so nobody reads that as a fault — and asking left a village permanently short, since a villager's home is the one place a player
+ * is standing in.
  * <li><b>The bot picks the moment, not this.</b> Here decides that a region holds too many; {@code PlayerBotAI.tryRetire} decides whether this
  * particular one may go now.
  * <li><b>A bot somebody owns is not part of any of this.</b> It is not counted, woken, slept or moved. The pool query settles that at the source.
@@ -54,14 +55,6 @@ public class BotDirector {
 	 * place by the time a player has walked somewhere, not by the time they have turned round.
 	 */
 	private static final long REVIEW_INTERVAL_MILLIS = 30000;
-	/**
-	 * How many reviews a region may be refused its arrivals before they are brought in regardless of who is watching. Half a minute apart, so this is
-	 * a couple of minutes of a village standing short before it is filled in front of somebody.
-	 */
-	private static final int PATIENCE = 4;
-	/** Consecutive reviews, per map, that asked for arrivals and got none in. */
-	private static final Map<Integer, Integer> refusals = new ConcurrentHashMap<>();
-
 	/** Share of the countryside that is awake on a map somebody is playing on. All of it: this is the density the plan already raised. */
 	private static final float ATTENTION_BUSY = 1f;
 	/** On a quiet map, with somebody playing elsewhere. A fifth of the countryside reads as a countryside; the rest is cost nobody is observing. */
@@ -158,26 +151,15 @@ public class BotDirector {
 			// up to its target then stops: there is nothing left to ask for. A region that sleeps its way down to it sits on the boundary, and the next
 			// review finds it one over, or one under, and moves somebody again. Applied to both, the band left a map one inhabitant short for ever —
 			// seen in game, a village missing its last resident with nobody anywhere near it, and nothing in the log to say why.
-			if (difference.toWake().isEmpty() && difference.toSleep().size() <= DEAD_BAND) {
-				refusals.remove(worldId); // nothing is being held back here, so the patience starts again from nothing
+			if (difference.toWake().isEmpty() && difference.toSleep().size() <= DEAD_BAND)
 				continue;
-			}
 
-			// A village cannot be filled while somebody stands in it, and that is geometry rather than bad luck: a villager's home is the village,
-			// and a client is told about everything within 95 m, so there is no unseen spot anywhere in the place. Verteron sat at 67 of the 84 it
-			// wanted, refusing the same 17 arrivals every half minute for as long as a player stayed in the citadel.
-			//
-			// So the refusal is given a limit. Somebody appearing is a bad moment; a quarter of a village permanently missing is a bad region, and it
-			// lasts. After this many reviews of being put off with nothing getting through, the region brings its people in anyway.
-			boolean insist = refusals.merge(worldId, 1, Integer::sum) > PATIENCE;
 			for (BotRoster.Resident resident : difference.toWake()) {
 				if (woken >= budget)
 					break;
 				woken++;
-				BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(bots.wake(resident, watchers, insist), 1, Integer::sum));
+				BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(bots.wake(resident), 1, Integer::sum));
 			}
-			if (insist)
-				refusals.remove(worldId);
 			for (Player bot : difference.toSleep()) {
 				if (slept >= budget)
 					break;

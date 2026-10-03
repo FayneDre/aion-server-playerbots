@@ -62,11 +62,6 @@ public class PlayerBotService {
 	private static final float SETTLING_SPREAD = 15f;
 	/** How many spots to try before giving up and standing on the place itself. A handful: most spots around a place are fine. */
 	private static final int SETTLING_ATTEMPTS = 8;
-	/**
-	 * How far from a real player an inhabitant may be brought into the world. The engine tells a client about anything within 95 m
-	 * ({@code VisibleObject.getVisibleDistance}); the rest is for a player walking towards the spot while the decision is being carried out.
-	 */
-	private static final float OUT_OF_SIGHT = 150f;
 	/** The setting that means "work it out": every open world map of both races, each taking as many inhabitants as its own civilians call for. */
 	private static final String AUTOMATIC = "auto";
 
@@ -638,18 +633,22 @@ public class PlayerBotService {
 	 * Brings one of the world's own inhabitants into the world, at the place it lives.
 	 * <p>
 	 * Runs on the lifecycle lane, never on a tick thread: loading a character is some twenty blocking database round trips before the first navmesh
-	 * lookup. The spot is tested against the watchers given <b>here</b> rather than when the director decided, because that decision is up to half a
-	 * minute old by the time this runs and a player covers ground in that time.
+	 * lookup.
+	 * <p>
+	 * <b>Whether anybody is watching is not asked.</b> It was, on the reasoning that a character materialising in front of somebody is worse than an
+	 * empty field, and the reasoning was wrong about the game it is in: on any server people log in, and they appear where they log in, in front of
+	 * whoever is standing there. Nobody reads that as a fault because it is what the world does.
+	 * <p>
+	 * It was also the one refusal that could never resolve itself. A villager's home is the village and a client is told about everything within 95 m,
+	 * so while a player stands in a place there is no unseen spot anywhere in it: Verteron held 67 of the 84 it wanted and refused the same 17
+	 * arrivals every half minute for as long as somebody stayed in the citadel. Departures still ask — see {@link #sleep} — and that asymmetry is the
+	 * point rather than an oversight: a refused departure costs nothing, because the region is already as full as it should be and the next review
+	 * will ask again, while a refused arrival leaves the region short for exactly as long as the player stays.
 	 *
-	 * @param watchers The real players on that map, as the director's own census found them.
-	 * @param insist Whether to bring it in even where somebody would see it happen. The director sets this once a region has been refused the same
-	 *          arrivals for long enough that the refusal has stopped being temporary — see {@code BotDirector}.
 	 * @return false if the bot cannot be brought in now, which is never final: the next review asks again.
 	 */
-	public Change wake(BotRoster.Resident resident, Collection<Player> watchers, boolean insist) {
+	public Change wake(BotRoster.Resident resident) {
 		Vector3f spot = scatterAround(resident.worldId(), resident.home());
-		if (!insist && isOverlooked(resident.worldId(), spot, watchers))
-			return Change.SEEN;
 		Player bot = loadAvailableBot(resident.name());
 		if (bot == null)
 			return Change.UNAVAILABLE; // deleted, or still on its way out of the world; either way not this review's business
@@ -690,31 +689,15 @@ public class PlayerBotService {
 	/**
 	 * Why a change to the population did or did not happen, in either direction.
 	 * <p>
-	 * Three refusals rather than one boolean, because the reasons are not interchangeable to anybody reading the log. Being <b>seen</b> is the rule
-	 * working: the region stays short on purpose while somebody is stood in it. Being <b>busy</b> is a bot in a fight or on a road, which passes on its
-	 * own within a tick or two. Only <b>unavailable</b> is a surprise. Saying "refused" and leaving the cause to be guessed is how a server with
-	 * nobody on it came to report that a dozen departures had been refused for being watched.
+	 * Three refusals rather than one boolean, because the reasons are not interchangeable to anybody reading the log. Being <b>seen</b> now only ever
+	 * holds a departure back — arrivals no longer ask, since people appearing is what a server looks like. Being <b>busy</b> is a bot in a fight or on
+	 * a road, which passes on its own within a tick or two. Only <b>unavailable</b> is a surprise. Saying "refused" and leaving the cause to be guessed
+	 * is how a server with nobody on it came to report that a dozen departures had been refused for being watched.
 	 */
 	public enum Change {
 		DONE, SEEN, BUSY, UNAVAILABLE
 	}
 
-	/**
-	 * @return true if bringing a character in at this spot would happen in front of somebody.
-	 *         <p>
-	 *         The margin is the engine's own sight radius with room to spare: a client is told about anything within 95 m
-	 *         ({@code VisibleObject.getVisibleDistance}), and the rest is for a player who is walking towards the spot while this is being decided. A
-	 *         bot that appears out of nothing is worse than an empty field, so the test errs outwards.
-	 */
-	private static boolean isOverlooked(int worldId, Vector3f spot, Collection<Player> watchers) {
-		for (Player watcher : watchers) {
-			if (watcher.getWorldId() != worldId)
-				continue;
-			if (PositionUtil.isInRange(watcher, spot.getX(), spot.getY(), spot.getZ(), OUT_OF_SIGHT))
-				return true;
-		}
-		return false;
-	}
 
 	/**
 	 * Answers yes to a pending question window, which a bot can never answer itself since it has no client.
