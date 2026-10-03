@@ -108,6 +108,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** How little life a target needs for the bot to stop looking after itself and simply end the fight. */
 	private static final int FINISH_IT_PERCENT = 20;
 	private static final float ANCHOR_TOLERANCE = 5f;
+	/**
+	 * How far from the place it shares a bot stands.
+	 * <p>
+	 * Every bot of a camp was given the same point to walk to and the same five metre tolerance for having arrived, so they settled on top of one
+	 * another: seen in game as a pile of characters with a ring of corpses around it, which reads as a spawner rather than as people working a
+	 * ground. Kept inside {@link #ANCHOR_TOLERANCE}, so a bot standing on its own spot is still at its anchor and nothing that asks that question
+	 * has to learn a second one.
+	 */
+	private static final float SPREAD_RADIUS = 4f;
+	/** How close a bot gets to its own spot before it stops. Tight, because the spot is already its own and not worth haggling over. */
+	private static final float SPOT_TOLERANCE = 1.5f;
 	/** How near its place in the formation a follower settles. Small, because that place is already set apart from the leader. */
 	private static final float FOLLOW_DISTANCE = 2f;
 	/** Roughly the time a player spends looking at the resurrection window. */
@@ -800,9 +811,28 @@ public class PlayerBotAI extends AITemplate<Player> {
 	boolean returnToAnchor() {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
 			return true;
-		if (isAtAnchor())
+		Vector3f spot = standingSpot();
+		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), spot.getX(), spot.getY()) <= SPOT_TOLERANCE)
 			return true;
-		return tryMoveTo(moveController, anchorX, anchorY, anchorZ);
+		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
+	}
+
+	/**
+	 * @return This bot's own place at the ground it shares, a fixed offset from the anchor.
+	 *         <p>
+	 *         Derived from the object id rather than drawn at random, because a spot drawn afresh would move every time the bot came back and the
+	 *         camp would shuffle itself whenever anybody returned to it. The same bot therefore stands in the same place all its life, which is what
+	 *         somebody working a patch of ground looks like.
+	 *         <p>
+	 *         The height is the anchor's: the offset puts the spot a few metres away on ground the move controller samples as it walks, so it ends
+	 *         up on the real surface whatever this says.
+	 */
+	private Vector3f standingSpot() {
+		int id = getOwner().getObjectId();
+		double angle = Math.toRadians(id % 360);
+		// Two independent digits of the id, so bots with neighbouring ids do not end up on the same ray out of the centre.
+		float radius = SPREAD_RADIUS * (0.4f + 0.6f * (id / 360 % 10) / 9f);
+		return new Vector3f(anchorX + (float) (Math.cos(angle) * radius), anchorY + (float) (Math.sin(angle) * radius), anchorZ);
 	}
 
 	/**
