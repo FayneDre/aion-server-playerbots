@@ -1042,7 +1042,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Player bot = getOwner();
 		if (bot.isDead() || !bot.isSpawned() || isRecoveringFromDeath())
 			return false;
-		List<Creature> attackers = findAttackers();
+		// Ignored ones do not count: they are what the bot has already decided to leave, and counting them again would re-decide the same retreat on
+		// every tick -- seen in the log as one bot breaking off from the same two attackers four times in as many seconds. Once everything on it is
+		// ignored the chain below walks it home, which is the retreat continuing rather than a new one.
+		List<Creature> attackers = findAttackers().stream().filter(npc -> !isIgnored(npc)).toList();
 		if (attackers.isEmpty())
 			return false;
 		boolean outmatched = attackers.stream().anyMatch(npc -> npc.getLevel() > bot.getLevel() + BotTargetSelector.MAX_LEVEL_GAP);

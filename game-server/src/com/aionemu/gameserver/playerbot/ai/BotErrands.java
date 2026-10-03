@@ -38,6 +38,9 @@ class BotErrands {
 
 	private final PlayerBotAI ai;
 	/** A corpse the bot means to walk back to, set when a fight ends over something it may loot. */
+	/** How long a bot waits before walking to a shop for flasks again, after one that sold it none. */
+	private static final long FLASK_TRIP_COOLDOWN_MILLIS = 600000;
+
 	private volatile int pendingCorpse;
 	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
 	private volatile long dressingIdleUntil;
@@ -47,6 +50,8 @@ class BotErrands {
 	private volatile Vector3f vendorDestination;
 	/** Set when an operator asked for a trip, which waives the full bag test for the whole errand rather than only to start it. */
 	private volatile boolean sellingOnDemand;
+	/** Until when this bot stops making the walk for flasks, after a shop that had none to sell it. */
+	private volatile long noFlasksUntil;
 
 	BotErrands(PlayerBotAI ai) {
 		this.ai = ai;
@@ -146,6 +151,11 @@ class BotErrands {
 	 *
 	 * @return true while a trip is starting or under way, so nothing else is decided this tick.
 	 */
+	/** @return true if the bot wants flasks and is not serving out a wait from a shop that had none for it. */
+	private boolean wantsFlasks(Player bot) {
+		return System.currentTimeMillis() >= noFlasksUntil && BotVendorManager.needsPotions(bot);
+	}
+
 	boolean runVendorTrip() {
 		Player bot = ai.getOwner();
 		if (vendorDestination == null) {
@@ -154,8 +164,7 @@ class BotErrands {
 			// that turns out to be empty ends the errand here, since the bag it was never waiting for is still not full.
 			// Or because it has run out of flasks, which is a reason to walk to a shop in its own right: a bot with a tidy bag and no mana potion
 			// left would otherwise never go, and fight on empty until something killed it.
-			if (!sellingOnDemand && !BotVendorManager.needsPotions(bot)
-				&& (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot)))
+			if (!sellingOnDemand && !wantsFlasks(bot) && (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot)))
 				return false;
 			vendorDestination = BotVendorManager.findVendor(bot, this::isIgnoredVendor);
 			if (vendorDestination == null) { // no shop left to walk to on this map
@@ -170,7 +179,14 @@ class BotErrands {
 			int sold = BotVendorManager.sellJunk(bot, vendor);
 			// Selling first, and not only for the kinah: buying needs a free slot per kind, and a bag full enough to bring the bot here has none.
 			int bought = BotVendorManager.buyPotions(bot, vendor);
-			log.info("Bot {} sold {} stack(s) and bought {} kind(s) of flask", bot.getName(), sold, bought);
+			// A shop that sold the bot nothing is one it must not walk straight back to. Not every vendor stocks flasks, and the bot still wants them
+			// when it gets home, so without this it turned round and came again -- measured at 733 fruitless trips against 91 that bought something,
+			// from 37 bots, inside two minutes. The wait is per bot rather than per shop: which shop was wrong is not the useful question when the
+			// answer may equally be that the purse is empty.
+			if (bought == 0)
+				noFlasksUntil = System.currentTimeMillis() + FLASK_TRIP_COOLDOWN_MILLIS;
+			if (sold > 0 || bought > 0)
+				log.info("Bot {} sold {} stack(s) and bought {} kind(s) of flask", bot.getName(), sold, bought);
 			vendorDestination = null;
 			sellingOnDemand = false;
 			return false; // roams or fights again from here, and drifts back to its anchor like after any other trip
