@@ -36,6 +36,15 @@ suits it, and a village square has no level worth comparing against. Ungated, th
 director filling village posts nobody lived at, this evicting every one of them on the next tick, a region asking for arrivals and departures in the
 same breath with the village count stuck at 11 of 25.
 
+**And it leaves a home that keeps killing it.** Three deaths inside ten minutes and the bot moves, with no theory of why. This is the backstop under
+every rule that is meant to prevent that — the level a ground is worth, the fights a bot may start, the ones it breaks off from — because each of those
+is a judgement read from data, and a judgement read from data is wrong somewhere.
+
+**Ground is judged strictly upwards, loosely downwards.** Four either way sent a bot to work ground four over its head while it refused any fight more
+than three above it — it stood in a camp it could attack nothing in, and the camp attacked it. Downwards the question is whether a fight is worth
+having; upwards it is whether the bot survives, and two is what the measurement supports: about 45% of a region's ground open at the bottom of its
+band, 80% in the middle, all of it at the top, across all thirteen outdoor regions. It costs no population, only where each resident wanders.
+
 **A ceiling, for now.** A bot stops gaining experience at the top of its region's band — Poeta tops out at nine. This is a stopgap and should be
 deleted: what *should* happen is that the director finds it a region its new level belongs to. What must not happen meanwhile is a starter valley
 quietly filling with characters that have outgrown it.

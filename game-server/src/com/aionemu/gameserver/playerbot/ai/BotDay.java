@@ -36,6 +36,11 @@ class BotDay {
 	/** How close to somebody else a bot may stop. Bots pass through npcs, so nothing but this keeps one from halting inside a blacksmith. */
 	private static final float PERSONAL_SPACE = 2.5f;
 
+	/** How many deaths in the window below mean the home is the problem rather than the fight. */
+	private static final int DEATHS_BEFORE_MOVING = 3;
+	/** Long enough that a bot having a bad evening is not re-housed, short enough to catch a loop. */
+	private static final long DEATH_WINDOW_MILLIS = 600000;
+
 	private final PlayerBotAI ai;
 	/** What the bot is doing with its day, and until when. */
 	private volatile Occupation occupation = Occupation.FARMING;
@@ -46,6 +51,9 @@ class BotDay {
 	private volatile Vector3f home;
 	/** Places this bot has proved it cannot get to, so it stops choosing them. */
 	private final Set<Vector3f> unreachable = ConcurrentHashMap.newKeySet();
+	/** Deaths since the clock below started, which is how a home proves itself lethal without anybody working out why. */
+	private volatile int deathsAtHome;
+	private volatile long deathsSince;
 
 	BotDay(PlayerBotAI ai) {
 		this.ai = ai;
@@ -92,6 +100,38 @@ class BotDay {
 		if (home == null)
 			home = ai.anchor();
 		return home;
+	}
+
+	/**
+	 * Moves a bot out of a home that keeps killing it.
+	 * <p>
+	 * The backstop under every rule that is supposed to stop this happening in the first place — the level a ground is worth, the fights a bot may
+	 * start, the ones it breaks off from. Each of those is a judgement made from data, and a judgement made from data is wrong somewhere. This needs
+	 * no theory of why: three deaths inside ten minutes is a place this character cannot live, whatever the reason, and it moves.
+	 * <p>
+	 * The window matters as much as the count. Three deaths over an evening is a bot playing; three in ten minutes is a loop, which is what was
+	 * reported — bots resurrecting at an obelisk, walking back to the ground beside the thing that killed them, and dying again, at nil survival
+	 * after five minutes.
+	 */
+	void recordDeath() {
+		long now = System.currentTimeMillis();
+		if (now - deathsSince > DEATH_WINDOW_MILLIS) {
+			deathsSince = now;
+			deathsAtHome = 0;
+		}
+		if (++deathsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned())
+			return;
+		Player bot = ai.getOwner();
+		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getObjectId() + (int) now);
+		if (elsewhere == null || elsewhere.equals(home()))
+			return; // nowhere else on this map suits it; the region's ceiling is what stops it growing into trouble
+		log.info("Bot {} has died {} times at {} {} and moves to {} {}", bot.getName(), deathsAtHome, Math.round(home().getX()),
+			Math.round(home().getY()), Math.round(elsewhere.getX()), Math.round(elsewhere.getY()));
+		deathsAtHome = 0;
+		home = elsewhere;
+		BotRoster.setHome(bot.getName(), elsewhere);
+		ai.setAnchor(elsewhere.getX(), elsewhere.getY(), elsewhere.getZ());
+		forget();
 	}
 
 	/**

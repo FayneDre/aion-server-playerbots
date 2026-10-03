@@ -26,7 +26,7 @@ public class BotTargetSelector {
 	/** Height difference above which a target is treated as being on another level (a cliff, a roof, the floor below) and left alone. */
 	private static final float MAX_Z_DELTA = 8f;
 	/** How far above its own level a bot will pick a fight it started. Anything higher kills it, and it would just keep dying. */
-	private static final int MAX_LEVEL_GAP = 3;
+	public static final int MAX_LEVEL_GAP = 3;
 	/** How far beneath its own level a bot will still bother. Below that the fight is worth nothing and a player walks past it. */
 	private static final int MIN_LEVEL_GAP = 6;
 

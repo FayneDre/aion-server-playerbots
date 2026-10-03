@@ -1,5 +1,7 @@
 package com.aionemu.gameserver.playerbot.ai;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
@@ -89,6 +91,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * weapon, and scheduling it would park the bot for as long as it says.
 	 */
 	private static final int MAX_ATTACK_DELAY_MILLIS = 5000;
+	/**
+	 * Health below which a bot that is outnumbered breaks off and leaves.
+	 * <p>
+	 * Being outmatched on level needs no threshold — that fight is lost at full health and the bot runs at once — but being set upon by two things
+	 * its own size is a fight it may well win, and leaving at the first scratch would mean never finishing one.
+	 */
+	private static final int RETREAT_HP_PERCENT = 40;
+	/** How long whatever drove the bot off is left alone afterwards, so it does not turn round and walk back into it. */
+	private static final long RETREAT_AVOIDED_MILLIS = 30000;
 	/** Health below which the bot waits to regenerate instead of looking for a fight. */
 	private static final int MIN_ENGAGE_HP_PERCENT = 90;
 	/**
@@ -458,6 +469,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// the Bandage Heal every character knows incants for four, so each decision that landed inside one either started a competing cast or
 			// walked off and cancelled it — five hundred times in three minutes across a populated map. The attack tick has held this line from the
 			// start; the decision tick never did.
+		} else if (autonomous && !following && retreatIfLosing()) {
+			// Running from a fight it cannot win, which is the one thing a bot never did: it defended itself against anything, at any level, in any
+			// number, until it died -- then resurrected, walked back to the home it still had beside the thing that killed it, and did it again.
+			// Measured at the Tursin Outpost on Verteron, where survival at five minutes was nil.
 		} else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
 			Creature attacker = findAttacker();
 			if (attacker != null)
@@ -1003,6 +1018,58 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return BotSkillManager.tryBoardRobot(getOwner());
 	}
 
+	/**
+	 * Leaves a fight the bot is losing, and walks home.
+	 * <p>
+	 * Two ways to be losing, and they are judged differently on purpose:
+	 * <ul>
+	 * <li><b>Outmatched.</b> Something more than {@code MAX_LEVEL_GAP} above the bot is hitting it. That is the same figure which already decides
+	 * which fights a bot may <i>start</i>, and the hole this closes is that the figure was never applied to the fights that start themselves — a
+	 * level 12 bot walking within ten metres of a level 19 monster was attacked, and fought to the death with no rule anywhere to say otherwise. A
+	 * fight not worth starting is not worth finishing, so this one goes at once, at whatever health.
+	 * <li><b>Outnumbered.</b> More than one thing hating the bot at the same time. Winnable often enough to be worth trying, so it is left until the
+	 * health is going. This is where density belongs: not as a property of ground, where it measured at one extra monster in the median, but as a
+	 * fact about the fight actually happening.
+	 * </ul>
+	 * Leaving works because monsters leash: the bot does not have to outrun anything, only to stop being there. Whatever drove it off is left alone
+	 * afterwards, or {@link #findAttacker} would pick it straight back up and the retreat would last one tick.
+	 * <p>
+	 * Never in a group. A member that runs is a hole in the party, which is the same reason {@link #mustHoldTheLine} keeps one from sitting down.
+	 *
+	 * @return true if the bot is leaving, in which case nothing else is decided this tick.
+	 */
+	private boolean retreatIfLosing() {
+		Player bot = getOwner();
+		if (bot.isDead() || !bot.isSpawned() || isRecoveringFromDeath())
+			return false;
+		List<Creature> attackers = findAttackers();
+		if (attackers.isEmpty())
+			return false;
+		boolean outmatched = attackers.stream().anyMatch(npc -> npc.getLevel() > bot.getLevel() + BotTargetSelector.MAX_LEVEL_GAP);
+		boolean outnumbered = attackers.size() > 1 && bot.getLifeStats().getHpPercentage() < RETREAT_HP_PERCENT;
+		if (!outmatched && !outnumbered)
+			return false;
+		long until = System.currentTimeMillis() + RETREAT_AVOIDED_MILLIS;
+		for (Creature attacker : attackers)
+			ignoredTargets.put(attacker.getObjectId(), until);
+		log.info("Bot {} breaks off from {} attacker(s) at {}% health and heads home", bot.getName(), attackers.size(),
+			bot.getLifeStats().getHpPercentage());
+		stopAttacking();
+		returnToAnchor();
+		return true;
+	}
+
+	/** @return Everything that has decided to kill this bot, which is how both halves of a lost fight are counted. */
+	private List<Creature> findAttackers() {
+		Player bot = getOwner();
+		List<Creature> attackers = new ArrayList<>();
+		bot.getKnownList().forEachNpc(npc -> {
+			if (!npc.isDead() && !BotTargetSelector.isScenery(npc) && npc.getAggroList().isHating(bot))
+				attackers.add(npc);
+		});
+		return attackers;
+	}
+
 	private Creature findAttacker() {
 		Player bot = getOwner();
 		Creature[] attacker = { null };
@@ -1014,7 +1081,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// scenery is skipped here too, not only when picking a fight. A training dummy holds a grudge like anything else once it has been hit,
 			// and a bot that answers it stands there swinging at furniture — which is precisely what one did, two minutes after resurrecting beside
 			// one. Nothing that counts as scenery can hurt a bot, so there is nothing to defend against.
-			if (attacker[0] == null && !npc.isDead() && !BotTargetSelector.isScenery(npc) && npc.getAggroList().isHating(bot))
+			// isIgnored as well, which it did not use to be: a bot that has just broken off is still hated by what it ran from, so without this the
+			// very next tick turned it round and walked it back into the fight it had decided to leave.
+			if (attacker[0] == null && !npc.isDead() && !BotTargetSelector.isScenery(npc) && npc.getAggroList().isHating(bot) && !isIgnored(npc))
 				attacker[0] = npc;
 		});
 		return attacker[0];
@@ -1106,6 +1175,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		cancelCombat();
 		setStateIfNot(AIState.DIED);
 		log.info("Bot {} died at {} {} {} (anchor {} {} {})", bot.getName(), bot.getX(), bot.getY(), bot.getZ(), anchorX, anchorY, anchorZ);
+		day.recordDeath(); // a home that keeps killing its resident is a home the resident leaves, whatever the reason turns out to be
 	}
 
 	/**

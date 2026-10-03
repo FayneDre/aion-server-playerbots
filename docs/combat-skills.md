@@ -111,6 +111,26 @@ It never boarded because Embark is a toggle, and toggles were allowed to mantras
 looked at. The rule it protects still holds, so this asks first whether the robot is already on. Recognised by its `RideRobotEffect` rather than by
 name or id, and cast standing still, since Embark states `move_casting allow="false"`.
 
+## Leaving a fight
+
+A bot used to defend itself against anything, at any level, in any number, until it died — then resurrect, walk back to the home it still had beside
+the thing that killed it, and do it again. Measured at the Tursin Outpost on Verteron: survival at five minutes, nil.
+
+The hole was exact. `BotTargetSelector` refuses a target more than `MAX_LEVEL_GAP` above the bot, which governs the fights it *chooses*; a fight that
+chooses the bot went through `findAttacker` into `startAttacking` with no level test and no way out.
+
+Two ways to be losing, judged differently:
+
+- **outmatched** — something more than that same gap above it is hitting it. A fight not worth starting is not worth finishing, so it goes at once, at
+  whatever health.
+- **outnumbered** — more than one thing hating it at once. Winnable often enough to be worth trying, so it leaves only once its health is going.
+
+This is where density belongs. As a property of ground it measured at one extra monster in the median, in the very place that prompted it; as a fact
+about the fight actually happening it is exactly right.
+
+Leaving works because monsters leash: the bot does not have to outrun anything, only to stop being there. What drove it off is left alone for a while,
+or `findAttacker` picks it straight back up and the retreat lasts one tick. Never in a group — a member that runs is a hole in the party.
+
 ## A floor under the mana bar
 
 Two separate things used to let a bot end up permanently out of mana.

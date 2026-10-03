@@ -94,6 +94,19 @@ public class BotPlaces {
 	 * not the region's band, which is measured rather than assumed.
 	 */
 	private static final int LEVEL_TOLERANCE = 4;
+	/**
+	 * How far <b>above</b> a character a place may be, which is a different question and was being answered with the same number.
+	 * <p>
+	 * Four either way let a bot be sent to work ground four levels over its head, while {@code BotTargetSelector.MAX_LEVEL_GAP} refuses any fight
+	 * more than three above it: the bot stood in a camp it was not allowed to attack anything in, and the camp attacked it. Downwards the question is
+	 * only whether the fight is worth having, so four stays; upwards it is whether the bot survives, and two is what the measurement supports.
+	 * <p>
+	 * Measured across all thirteen outdoor regions as the share of a region's hunting ground a character may use: about 45% at the bottom of its
+	 * band, 80% in the middle, 100% at the top. It costs no population — the plan is per ground and residents are homed by level already — only where
+	 * each one may wander. At the Tursin Outpost on Verteron, 17 to 20 with all 443 of its monsters rated NORMAL, it is the difference between being
+	 * sent there at level 13 and not.
+	 */
+	private static final int LEVEL_TOLERANCE_ABOVE = 2;
 	/** The quarter mark of what lives in a region, which is where its own people start. Below it is the odd stray near the gate. */
 	private static final int FLOOR_PERCENTILE = 25;
 	/** The ninth tenth, which is the top of what a region offers. Above it are the world bosses and the leftovers. */
@@ -310,13 +323,43 @@ public class BotPlaces {
 		return bandOf(worldId)[0];
 	}
 
-	/** @return What the country around this place is worth fighting at, or the map's own band if the spot is not a place people gather. */
+	/**
+	 * @return What the country around this place is worth fighting at, or the map's own band where the spot is not a place people gather.
+	 *         <p>
+	 *         Hunting grounds are read as well as settlements, and were not. That left every caller comparing a bot against the region's middle
+	 *         rather than against the ground it stands on: {@code BotDay.moveOutIfOutgrown} has been testing a constant, and a bot whose home was a
+	 *         level 19 camp in a region banded 10-19 was never found to have outgrown or undergrown anything. The Tursin Outpost runs 17 to 20 with
+	 *         every one of its 443 monsters rated NORMAL, so nothing else in this module could see it as dangerous either.
+	 */
 	public static int levelAt(int worldId, Vector3f place) {
 		for (Settlement settlement : settlements(worldId)) {
 			if (settlement.centre().equals(place))
 				return settlement.level();
 		}
+		for (Settlement ground : huntingGrounds(worldId)) {
+			if (ground.centre().equals(place))
+				return ground.level();
+		}
 		return (bottomLevelOf(worldId) + topLevelOf(worldId)) / 2; // not a place, so the middle of what the region is for
+	}
+
+	/**
+	 * @return What the ground nearest a spot is worth fighting at, which is the question anybody walking somewhere has.
+	 *         <p>
+	 *         By reach rather than by centre: a ground is a disc, and a bot standing at its edge is standing in it. Where nothing claims the spot the
+	 *         region's middle is the answer, as above — open country between camps is not more dangerous than the region it is in.
+	 */
+	public static int levelAround(int worldId, float x, float y) {
+		Settlement nearest = null;
+		double best = Double.MAX_VALUE;
+		for (Settlement ground : huntingGrounds(worldId)) {
+			double distance = PositionUtil.getDistance(x, y, ground.centre().getX(), ground.centre().getY());
+			if (distance <= ground.reach() && distance < best) {
+				best = distance;
+				nearest = ground;
+			}
+		}
+		return nearest == null ? (bottomLevelOf(worldId) + topLevelOf(worldId)) / 2 : nearest.level();
 	}
 
 	/**
@@ -406,10 +449,15 @@ public class BotPlaces {
 	 *         the well. Its own hunting ground, drawn near where it lives, is the whole of the instruction — everything downstream already works off
 	 *         the anchor.
 	 */
+	/** @return Whether a character of this level has any business on ground of that one. Generous below, strict above — see {@link #LEVEL_TOLERANCE_ABOVE}. */
+	private static boolean isFitFor(int placeLevel, int characterLevel) {
+		return placeLevel - characterLevel <= LEVEL_TOLERANCE_ABOVE && characterLevel - placeLevel <= LEVEL_TOLERANCE;
+	}
+
 	public static Vector3f groundToWork(int worldId, Vector3f from, int level, int pick) {
 		List<Vector3f> within = new ArrayList<>();
 		for (Settlement ground : huntingGrounds(worldId)) {
-			if (Math.abs(ground.level() - level) > LEVEL_TOLERANCE)
+			if (!isFitFor(ground.level(), level))
 				continue;
 			if (PositionUtil.getDistance(from.x, from.y, ground.centre().x, ground.centre().y) > WANDERING_RANGE)
 				continue;
@@ -423,7 +471,7 @@ public class BotPlaces {
 		for (Settlement place : homes(worldId)) {
 			if (place.centre().equals(from) || within.contains(place.centre()))
 				continue;
-			if (Math.abs(place.level() - level) > LEVEL_TOLERANCE)
+			if (!isFitFor(place.level(), level))
 				continue;
 			if (PositionUtil.getDistance(from.x, from.y, place.centre().x, place.centre().y) > WANDERING_RANGE)
 				continue;
