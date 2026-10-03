@@ -273,6 +273,21 @@ public class BotPlaces {
 		return levelOf(worldId) + LEVEL_TOLERANCE;
 	}
 
+	/**
+	 * @return The lowest level this region is any use to, which is where its inhabitants start rather than at one.
+	 *         <p>
+	 *         The counterpart of {@link #topLevelOf}, and it was missing while the ceiling was not — so a region's people were created from level one
+	 *         however high the region was. Verteron reads 14 in the middle and was making characters of 1 to 17; Theobomos reads 47 and was making
+	 *         them from 1 to 50. A level 9 priest standing in a region of fourteens is not a resident, it is somebody who would be killed by the
+	 *         countryside on their way out of the village.
+	 *         <p>
+	 *         Not a new rule but the one this module already states: {@link #suitsLevel} defines belonging on a map as being within
+	 *         {@value #LEVEL_TOLERANCE} of its middle, and creation was the one place that did not honour it.
+	 */
+	public static int bottomLevelOf(int worldId) {
+		return Math.max(1, levelOf(worldId) - LEVEL_TOLERANCE);
+	}
+
 	/** @return What the country around this place is worth fighting at, or the map's own band if the spot is not a place people gather. */
 	public static int levelAt(int worldId, Vector3f place) {
 		for (Settlement settlement : settlements(worldId)) {

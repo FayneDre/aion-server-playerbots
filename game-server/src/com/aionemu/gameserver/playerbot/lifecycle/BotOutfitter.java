@@ -17,8 +17,10 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
+import com.aionemu.gameserver.model.templates.item.WeaponStats;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.services.item.ItemFactory;
+import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
 
 /**
  * Dresses a freshly created bot in gear that suits its class and level.
@@ -154,12 +156,20 @@ public class BotOutfitter {
 			// its own weapon only on becoming an advanced class, and asking here left every mage unarmed.
 			if (template.isArmor() && !isTrainedFor(bot, template))
 				continue;
+			// The off hand holds one of two things and which one is settled by the class, not by what happens to score highest. There are far more
+			// weapons in the game than shields, so a shortlist of eight for this slot came out all weapons, every one of them was then dropped
+			// because a templar cannot wield two, and the templar went out with a bare left hand — which is exactly what was reported.
+			if (slot == ItemSlot.SUB_HAND && template.isWeapon() && !WeaponDualEffect.hasDualWieldEffect(bot))
+				continue;
 			found.add(template);
 		}
 		// Heaviest armour first, then newest. A class may legally wear anything lighter than its own — a scout is taught cloth proficiency alongside
 		// leather, so the engine accepts a robe on it and says nothing — and sorting on level alone therefore dressed a scout in a robe whenever the
 		// robe happened to be a level newer. Nobody plays that way: you wear the heaviest your class allows, and only fall back when nothing fits.
-		Comparator<ItemTemplate> bestFirst = Comparator.comparingInt(BotOutfitter::armourWeight).thenComparingInt(ItemTemplate::getLevel).reversed();
+		Comparator<ItemTemplate> bestFirst = Comparator.comparingInt(BotOutfitter::armourWeight)
+			.thenComparingInt(template -> weaponWorth(bot, template))
+			.thenComparingInt(ItemTemplate::getLevel)
+			.reversed();
 		// Ahead of all of it, what the character can actually hold today. Weapons are not filtered on mastery above, and deliberately so — a caster
 		// is taught its own weapon only on becoming an advanced class, and refusing the rest left every mage unarmed — but "not filtered out" was
 		// taken to mean "as good as any", so a shortlist of eight could be eight weapons the engine refuses one after another. Sorted rather than
@@ -187,6 +197,26 @@ public class BotOutfitter {
 	 * @return How protective a piece's armour type is, so that the heaviest a class can wear is the one it gets. Weapons and anything without a type
 	 *         all score the same, which leaves them sorted by level as before.
 	 */
+	/**
+	 * @return What a weapon is worth to this character, or 0 for anything that is not one — which leaves armour sorted as it was.
+	 *         <p>
+	 *         Weapons were ranked on item level alone, so a gladiator took a dagger one level newer than the sword beside it and went to war with it.
+	 *         Legal, because the game lets a gladiator hold a dagger, and wrong, because nobody plays that way. The data states what a weapon is
+	 *         worth and it is not its level: damage per swing, how many swings it lands and how fast it swings for a class that hits, and the magical
+	 *         boost for a class that casts. The same argument as ranking skills by their stated power rather than by the order they were learned in.
+	 */
+	private static int weaponWorth(Player bot, ItemTemplate template) {
+		if (!template.isWeapon())
+			return 0;
+		WeaponStats stats = template.getWeaponStats();
+		if (stats == null)
+			return 0;
+		if (!bot.getPlayerClass().isPhysicalClass())
+			return stats.getBoostMagicalSkill();
+		int speed = Math.max(1, stats.getAttackSpeed()); // milliseconds per swing; a zero here would be a stat gone wrong, not a fast weapon
+		return Math.round(stats.getMeanDamage() * Math.max(1, stats.getHitCount()) * 1000f / speed);
+	}
+
 	private static int armourWeight(ItemTemplate template) {
 		return switch (template.getItemGroup().getItemSubType()) {
 			case PLATE -> 4;

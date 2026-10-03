@@ -480,6 +480,11 @@ public class Skill {
 	private boolean isSuspiciousClientHitTime(int clientHitTime, int serverHitTime, int tolerance, Player player) {
 		if (clientHitTime >= serverHitTime - tolerance)
 			return false;
+		// A bot has no client, so there is no claim here to disbelieve: the whole check weighs what a client reported against what the server worked
+		// out, and a bot reports nothing at all. Left in, it accused every bot that released a charge skill of cheating, into the chat of everyone
+		// with the audit rights to see it. The server's own timing is still used above, which is the part that matters.
+		if (player.isBot())
+			return false;
 		if (clientHitTime == 0 && (itemTemplate != null || skillTemplate.getMotion() != null && skillTemplate.getMotion().isInstantSkill()))
 			return false; // effects apply immediately (damage too, though visually delayed)
 		if (clientHitTime == 0 && player.isInRobotMode() && (player.getLastSkill().isMultiCast() || DataManager.SKILL_CHARGE_DATA.isChargeSkill(player.getLastSkill())))

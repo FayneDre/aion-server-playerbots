@@ -387,7 +387,10 @@ public class PlayerBotService {
 			//
 			// Below rather than at: a resident born on the ceiling has nowhere to go, earns nothing from its first minute, and is a career already
 			// over. Every new inhabitant gets at least one level of its own to climb.
-			int level = Math.clamp(home.level() + Rnd.get(-1, 1), 1, Math.max(1, BotPlaces.topLevelOf(worldId) - 1));
+			// Between the region's own floor and its ceiling, and the floor is the half that was missing: clamped at 1, Verteron made characters of
+			// one to seventeen for a region whose middle is fourteen, and Theobomos of one to fifty. The ceiling was always right and the floor was
+			// never there, so every region quietly held a tail of characters far below anything living in it.
+			int level = Math.clamp(home.level() + Rnd.get(-1, 1), BotPlaces.bottomLevelOf(worldId), Math.max(1, BotPlaces.topLevelOf(worldId) - 1));
 			PlayerClass playerClass = classFor(level);
 			try {
 				Race race = chosen != null ? chosen : factionFor(worldId, home);

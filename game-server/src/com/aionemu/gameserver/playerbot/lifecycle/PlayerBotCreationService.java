@@ -88,6 +88,13 @@ public class PlayerBotCreationService {
 			throw new IllegalArgumentException("Invalid character name: " + name);
 		if (PlayerDAO.isNameUsed(name))
 			throw new IllegalArgumentException("Name already taken: " + name);
+		// A class and a level the game could actually have produced together. An advanced class is something you become by ascending at ten, so a
+		// gladiator of two is not a character that exists — and one was seen standing in Verteron, because the command takes both from whoever typed
+		// it and nothing asked whether they agreed. The region path cannot violate this, which is exactly why the guard belongs here and not there.
+		if (playerClass.isStartingClass() != (level < 10))
+			throw new IllegalArgumentException(
+				playerClass + " is " + (playerClass.isStartingClass() ? "a starting class, so it cannot be above level 9"
+					: "an advanced class, so it cannot be below level 10") + ", but level " + level + " was asked for");
 
 		int accountId = allocateAccountId();
 		String accountName = "bot" + accountId;
