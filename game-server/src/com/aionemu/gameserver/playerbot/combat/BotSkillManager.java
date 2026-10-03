@@ -74,6 +74,7 @@ public class BotSkillManager {
 	 * How far short of the full charge a held skill is let go. Just enough that the engine's own cancellation, scheduled for the same instant,
 	 * never wins the race.
 	 */
+	/** How far inside the top stage the bot lets go, so rounding and thread scheduling cannot drop the release back into the stage below. */
 	private static final long CHARGE_RELEASE_MARGIN_MILLIS = 200;
 	/** Auras a bot keeps running. The engine ends the oldest past this many (see {@code EffectController}), so going further would only cycle them. */
 	private static final int MAX_MANTRAS = 3;
@@ -600,19 +601,26 @@ public class BotSkillManager {
 	 * no client to send. So a bard would start a three stage harp skill, stand there for its whole duration playing the animation, and land nothing
 	 * at all, over and over, which is exactly what was reported.
 	 * <p>
-	 * Released just short of the end, so the top stage is reached and the engine's own cancellation never beats it to the skill. The charge data is
-	 * read for the stage times rather than guessed at, and the cast speed ratio the skill already worked out is applied to them, because that is what
-	 * {@code useChargeSkill} compares the elapsed time against on the other side.
+	 * Released as soon as the top stage is entered, which is <b>not</b> the end of the charge data. The last stage's time is how long the skill may be
+	 * held at full charge before the engine cancels it, not time needed to get there: a three stage skill reads 1600, 1600, 5000, so the top stage
+	 * begins at 3.2 s and waiting out all 8.2 s buys nothing. The whole total was being waited out, so a bot stood channelling for five seconds after
+	 * its blow was ready, every cast, on all 163 charge skills in the game -- reported on an aethertech, but a bard or a gunner was doing the same.
+	 * <p>
+	 * The charge data is read for the stage times rather than guessed at, and the cast speed ratio the skill already worked out is applied to them,
+	 * because that is what {@code useChargeSkill} compares the elapsed time against on the other side. Its own minimum is honoured too, since
+	 * releasing before it logs the bot as a speed hacker.
 	 */
 	private static void releaseWhenCharged(Player bot, Skill skill) {
 		SkillChargeCondition condition = skill.getSkillTemplate().getSkillChargeCondition();
 		ChargeSkillEntry charged = condition == null ? null : DataManager.SKILL_CHARGE_DATA.getChargedSkillEntry(condition.getValue());
 		if (charged == null || charged.getSkills().isEmpty())
 			return;
-		int fullCharge = 0;
-		for (ChargedSkill stage : charged.getSkills())
-			fullCharge += stage.getTime();
-		long delay = (long) (fullCharge * skill.getCastSpeedForAnimationBoostAndChargeSkills()) - CHARGE_RELEASE_MARGIN_MILLIS;
+		List<ChargedSkill> stages = charged.getSkills();
+		int toTopStage = 0;
+		for (int stage = 0; stage < stages.size() - 1; stage++)
+			toTopStage += stages.get(stage).getTime();
+		long delay = (long) ((Math.max(toTopStage, charged.getMinTime()) + CHARGE_RELEASE_MARGIN_MILLIS)
+			* skill.getCastSpeedForAnimationBoostAndChargeSkills());
 		BotScheduler.getInstance().schedule(() -> {
 			// still the same cast: the bot may have died, been interrupted or moved on, and releasing a skill it is no longer holding would reach
 			// into whatever it is doing now
