@@ -180,6 +180,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** Where the bot belongs: it fights around this point and returns to it rather than following a target across the map. */
 	private volatile float anchorX, anchorY, anchorZ;
+	/** This bot's chosen place to stand, and the anchor it was chosen for. Kept because choosing it asks the mesh, and the answer only changes with the anchor. */
+	private volatile Vector3f standingSpot;
+	private volatile float spotForX, spotForY;
 	private volatile long chaseStartTime;
 	private volatile long lastChaseRoute;
 	/**
@@ -854,11 +857,38 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 *         up on the real surface whatever this says.
 	 */
 	private Vector3f standingSpot() {
+		Vector3f known = standingSpot;
+		if (known != null && spotForX == anchorX && spotForY == anchorY)
+			return known;
 		int id = getOwner().getObjectId();
 		double angle = Math.toRadians(id % 360);
 		// Two independent digits of the id, so bots with neighbouring ids do not end up on the same ray out of the centre.
 		float radius = SPREAD_RADIUS * (0.4f + 0.6f * (id / 360 % 10) / 9f);
-		return new Vector3f(anchorX + (float) (Math.cos(angle) * radius), anchorY + (float) (Math.sin(angle) * radius), anchorZ);
+		float x = anchorX + (float) (Math.cos(angle) * radius), y = anchorY + (float) (Math.sin(angle) * radius);
+		Vector3f chosen = reachableSpot(x, y);
+		standingSpot = chosen;
+		spotForX = anchorX;
+		spotForY = anchorY;
+		return chosen;
+	}
+
+	/**
+	 * @return The offered spot once the mesh agrees a body stands there and can walk to it from the anchor, or the anchor itself.
+	 *         <p>
+	 *         Geometry alone was choosing these, and in the open that is fine — four metres from a camp fire is grass. Inside a fortress it is a
+	 *         pillar, an arcade or the inside of a wall, and because the offset is derived from the object id the same bot was sent to the same
+	 *         impossible spot for the whole of its life: refused, refused again, and finally teleported home by the anti-stuck rescue, which is what
+	 *         a fortress full of bots freezing and blinking away actually was.
+	 */
+	private Vector3f reachableSpot(float x, float y) {
+		Vector3f anchor = new Vector3f(anchorX, anchorY, anchorZ);
+		NavmeshService navmesh = NavmeshService.getInstance();
+		Vector3f ground = navmesh.groundNear(getOwner().getWorldId(), x, y, anchorZ);
+		if (ground == null)
+			return anchor; // no mesh for this map, or nothing walkable within reach of the offset
+		// Standable is not reachable: the far side of a wall is good ground that joins nothing, and a bot posted on one spends its life asking for a
+		// way out. The same question BotPlaces already asks when it scatters villagers around a village centre.
+		return navmesh.canReach(getOwner().getWorldId(), anchorX, anchorY, anchorZ, ground.getX(), ground.getY(), ground.getZ()) ? ground : anchor;
 	}
 
 	/**
