@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.TaskId;
 import com.aionemu.gameserver.model.gameobjects.Item;
+import com.aionemu.gameserver.model.gameobjects.Persistable.PersistentState;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
@@ -17,6 +18,7 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_UPDATE_PLAYER_APPEAR
 import com.aionemu.gameserver.services.item.ItemActionService;
 import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
 import com.aionemu.gameserver.utils.PacketSendUtility;
+import com.aionemu.gameserver.utils.idfactory.IDFactory;
 
 /**
  * Keeps a bot wearing the best of what it owns.
@@ -58,6 +60,24 @@ public class BotEquipManager {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Throws away a piece that was created and then refused, and gives its object id back.
+	 * <p>
+	 * The giving back is the part that is not obvious and cannot be left out. {@code Item.setPersistentState} turns a {@code DELETED} on a
+	 * {@code NEW} item into {@code NOACTION} — correct, since something never written has nothing to delete — but the consequence is that the item
+	 * never reaches {@code InventoryDAO.deleteItems}, which is the only place object ids are released. So every refused piece leaked one, for as long
+	 * as the server was up. It did not matter while nothing was ever discarded; it matters now that dressing tries a whole shortlist and that stigmas
+	 * are offered on every spawn.
+	 * <p>
+	 * The state is asked rather than assumed, because a save sweep runs on its own thread and may have written the item in between. If it did, the
+	 * state is {@code DELETED}, the database will remove it and release the id, and releasing it here as well would be a double release.
+	 */
+	public static void discard(Player bot, Item item) {
+		bot.getInventory().delete(item);
+		if (item.getPersistentState() == PersistentState.NOACTION)
+			IDFactory.getInstance().releaseId(item.getObjectId());
 	}
 
 	/**

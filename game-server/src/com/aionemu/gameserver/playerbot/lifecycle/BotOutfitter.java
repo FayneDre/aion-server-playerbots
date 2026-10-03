@@ -116,7 +116,7 @@ public class BotOutfitter {
 			// refused outright. That is why bots were created with armour and empty hands
 			if (BotEquipManager.wear(bot, item.getObjectId(), template))
 				return true;
-			bot.getInventory().delete(item);
+			BotEquipManager.discard(bot, item);
 		}
 		return false;
 	}

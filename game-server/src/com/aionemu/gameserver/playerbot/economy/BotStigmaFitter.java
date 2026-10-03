@@ -79,6 +79,11 @@ public class BotStigmaFitter {
 		for (ItemTemplate stone : stones) {
 			if (worn >= MAX_SOCKETS || refused >= REFUSALS_BEFORE_GIVING_UP)
 				break;
+			// One refusal after something has already gone in means the sockets are full, and nothing else does: the stones are all of the same tier
+			// and the same price, so what changed between the two attempts can only be the room. Without this a character of 20 to 29, which has one
+			// socket, filled it and then offered three more stones it could never wear — on every spawn, for the rest of its life.
+			if (worn > 0 && refused > 0)
+				break;
 			long slot = freeSlot(bot, slots);
 			if (slot == 0)
 				break; // every socket of this kind is full, whatever the engine would have said
@@ -103,7 +108,7 @@ public class BotStigmaFitter {
 			return false;
 		if (bot.getEquipment().equipItem(item.getObjectId(), slot) != null)
 			return true;
-		bot.getInventory().delete(item);
+		BotEquipManager.discard(bot, item);
 		return false;
 	}
 
