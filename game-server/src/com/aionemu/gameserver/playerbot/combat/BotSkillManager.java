@@ -5,9 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.aionemu.gameserver.ai.follow.FollowStartService;
 import com.aionemu.gameserver.dataholders.DataManager;
-import com.aionemu.gameserver.model.TaskId;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
@@ -184,27 +182,10 @@ public class BotSkillManager {
 	 */
 	public static boolean trySummonServant(Player bot) {
 		if (bot.getSummon() != null) {
-			keepItClose(bot);
+			BotServantAI.take(bot);
 			return false;
 		}
 		return cast(bot, bot, skills(bot, BotSkillManager::isSummon));
-	}
-
-	/**
-	 * Sets a servant walking after its master, which nothing on the server does by itself.
-	 * <p>
-	 * A pet's movement is the client's work: the player's client walks it and reports where it went, through {@code CM_SUMMON_EMOTION}. A bot has no
-	 * client, so its spirit was called up and then stood exactly where it appeared for the rest of its life, which is what was seen. The engine does
-	 * have a server-side follower — {@code FollowSummonTaskAI}, written for siege weapons — and it is general: it takes a leader and a summon and
-	 * fires the move events at it. It also releases a summon that falls more than fifty metres behind, so a spirit cannot be left stranded.
-	 * <p>
-	 * Idempotent, and asked on the tick rather than at the moment of summoning, because the spirit does not exist yet when the cast is made: the
-	 * effect creates it when the cast ends.
-	 */
-	private static void keepItClose(Player bot) {
-		if (bot.getController().hasScheduledTask(TaskId.SUMMON_FOLLOW))
-			return;
-		bot.getController().addTask(TaskId.SUMMON_FOLLOW, FollowStartService.newFollowingToTargetCheckTask(bot.getSummon(), bot));
 	}
 
 	private static boolean isSummon(Player bot, SkillTemplate template) {

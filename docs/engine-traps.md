@@ -109,6 +109,31 @@ object watches it dissolve, and no animation can be passed through `delete()`. T
 `ObjectDeleteAnimation.NONE` first; `removeObject` then skips its own despawn. It matters wherever the server removes what nobody asked it to: a bot put to
 sleep must be *gone*, not seen leaving.
 
+## A summon is not driven by the server at all
+
+**Its movement method is empty.** `SummonMoveController.moveToTargetObject()` has no body, and `PlayableMoveController` gates the interpolation it does
+implement behind a private `isControlled()` that is only true under fear or confuse — the same gate `BotMoveController` works around for players.
+
+**Its ai is never started.** `VisibleObjectSpawner.spawnSummon` sends `AIEventType.SPAWNED` only when the template's ai name is `siege_weapon`. So
+`FollowSummonTaskAI`, which the engine provides and which looks like the answer, fires `MOVE_VALIDATE` at an ai that is not running, through a move
+method that does nothing. It was hung on a bot twice before anybody read where it led.
+
+Everything a pet does comes from its master's client: `CM_SUMMON_MOVE`, `CM_SUMMON_ATTACK`, `CM_SUMMON_CASTSPELL`, `CM_SUMMON_COMMAND`. A headless
+master means a statue. See `playerbot/combat/BotServantAI` and `playerbot/movement/BotServantMoveController`.
+
+**A summon extends `Creature`, not `Npc`**, so it has no `getSkillList()` — and no `ai/handler` or `ai/manager` class applies to it, since every one of
+those is typed `NpcAI`.
+
+**Its skills are in `npc_skills.xml`, not `pet_skills.xml`.** `SummonController.useSkill` checks the pet table before casting, which reads like the
+source of truth and is not: everything in that file is a toy pet of the 833000 range, and no combat summon appears in it, so that path can never fire
+for a spirit. The combat summons are in the npc table — its very first entry is npc 201010, a summon. `PetSkillData.petHasSkill` also threw rather than
+answering false for anything absent from its map, which is reachable from a client packet.
+
+**`SummonController.attackTarget` audits a fast swing as a speed hack**, writing to the server log and to every administrator's chat. Anything driving a
+summon must pace itself by `getAttackSpeed()`, exactly as the client does. The stigma work hit the same wall from the other side.
+
+**`Summon.setMode` clears the skill order queue** on any mode that is not `ATTACK`, so orders have to be queued after the mode is set.
+
 ## When diagnosing, mind where the truth lives
 
 **The database lags by up to five minutes.** Bots are saved on a timer and on a clean shutdown, so a query run too soon reports the state before whatever is being tested. Several conclusions today were drawn from stale rows and had to be taken back.

@@ -154,6 +154,31 @@ A chanter's mantras are toggles, and the rule that stops a bot switching its own
 
 Up to three run at once, which is the engine's own limit (`EffectController` ends the oldest past three). The count is taken from the bot's own book by stack group rather than read off the effect controller, whose aura list is private. Highest id first, as elsewhere, so the most recently learned mantras win the three slots.
 
+## Servants
+
+A spirit master is its spirit, so the summon is cast before any buff: it is the one upkeep still there in ten minutes, and the class cannot fight
+without it. Only the lasting companion — the rest of the `SUMMON` family puts a totem, a trap or a gate on the ground, each a tactic with a moment
+rather than something to call up because the bot happens to know how.
+
+**Cast only while standing still.** A summon has a cast time and a cast roots the caster, so one started mid-stride is cancelled by the next step. With
+the decision tick coming round every second this looped for ever — a caster running across a field conjuring nothing, which is how it was reported. The
+bot is not *stopped* to cast: a bot halted for a cast that fails for some other reason never gets anywhere again. Every occupation ends in a pause.
+
+Once the servant exists, `BotServantAI` drives it, because **nothing on the server does** — see `docs/engine-traps.md`. Its order is:
+
+```
+gone?      master or servant dead, released          -> the tick takes itself off
+too far?   beyond the follow distance                -> walk, and nothing else this tick
+defend     anything hating the master or the servant -> attack it
+assist     what the master is attacking              -> same target
+```
+
+Following outranks fighting, or the servant stops for whatever it passes and is released at the fifty metre leash. Defending outranks assisting,
+because something already hitting the master is a fact where the master's target is an intention — the same ordering the bot uses for itself.
+
+It walks in a straight line with ground sampling, and does **not** pathfind. A servant never navigates: it goes where its master has just walked, and
+the master does the planning. Where that is not enough the engine's own leash releases it and the bot calls up another at its next pause.
+
 ## Procs, and what is left unlabelled
 
 A proc arms something that fires later, so its own effects say nothing about which way it points. What decides is the blow that sets it off: `ProvokerEffect` installs an observer on the bearer's **attacks** for `NMLATK` and `BACKATK`, and on the bearer being **hit** for everything else. That single line is mirrored rather than guessed at, which took 29 more abilities off the unlabelled pile — 20 offensive, 9 defensive. It needed one accessor in the engine, `EffectTemplate.getHitType()`, over a field that was already there.

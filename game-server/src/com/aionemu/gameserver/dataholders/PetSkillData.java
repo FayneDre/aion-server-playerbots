@@ -46,6 +46,7 @@ public class PetSkillData {
 	}
 
 	public boolean petHasSkill(int petNpcId, int skillId) {
-		return petSkillsMap.get(petNpcId).contains(skillId);
+		List<Integer> skills = petSkillsMap.get(petNpcId); // absent for anything that is not a toy pet, where this used to throw
+		return skills != null && skills.contains(skillId);
 	}
 }
