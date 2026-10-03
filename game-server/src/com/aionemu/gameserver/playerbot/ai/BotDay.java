@@ -112,7 +112,16 @@ class BotDay {
 			return false; // somebody's own bot lives where they left it; moving it is the world rearranging a character that is not the world's
 		Player bot = ai.getOwner();
 		Vector3f where = home();
-		if (where == null || Math.abs(BotPlaces.levelAt(bot.getWorldId(), where) - bot.getLevel()) <= HOME_LEVEL_DRIFT)
+		if (where == null)
+			return false;
+		// A villager stays put. It lives there because the population director gave it the post, not because the ground suits its level, and a
+		// village has no level worth comparing against: the nearest thing BotPlaces can answer for a village square is the rating of the beginners'
+		// ground beside it. Left ungated, the two systems moved the same bot back and forth for ever -- the director emptied the countryside into
+		// the village posts nobody lived at, and this evicted every one of them on the next tick. Seen in the log as a region asking for arrivals
+		// and departures in the same breath, half a minute apart, with the village count never moving off 11 of 25.
+		if (BotPlaces.isSettlement(bot.getWorldId(), where))
+			return false;
+		if (Math.abs(BotPlaces.levelAt(bot.getWorldId(), where) - bot.getLevel()) <= HOME_LEVEL_DRIFT)
 			return false;
 		Vector3f better = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getObjectId());
 		if (better == null || better.equals(where))

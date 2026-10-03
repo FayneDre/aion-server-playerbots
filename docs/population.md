@@ -31,7 +31,10 @@ door `EnchantEffect` uses. Set to **1%**, which is what a measurement gave and n
 **Its address.** A bot outgrows where it lives. Poeta reads as Akarios 3 and its camps at 5, 6 and 7 — the valley steepens as you walk away from the
 village — so when a bot's level drifts more than two from its home's, it moves to a place that fits. Only the home moves; everything written against
 the home or the anchor follows by itself. Without this a bot reached seven while still keeping house on ground worth three, which is what it looked
-like in game within an hour of levelling being turned on.
+like in game within an hour of levelling being turned on. **A villager is exempt**: it lives where the director posted it, not where the ground
+suits it, and a village square has no level worth comparing against. Ungated, the two rules moved the same bot back and forth for ever — the
+director filling village posts nobody lived at, this evicting every one of them on the next tick, a region asking for arrivals and departures in the
+same breath with the village count stuck at 11 of 25.
 
 **A ceiling, for now.** A bot stops gaining experience at the top of its region's band — Poeta tops out at nine. This is a stopgap and should be
 deleted: what *should* happen is that the director finds it a region its new level belongs to. What must not happen meanwhile is a starter valley
