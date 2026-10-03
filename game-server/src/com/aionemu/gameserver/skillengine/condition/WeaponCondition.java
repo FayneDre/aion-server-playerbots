@@ -25,6 +25,11 @@ public class WeaponCondition extends Condition {
 	@XmlAttribute(name = "weapon")
 	private List<ItemGroup> itemGroups;
 
+	/** @return The weapons this skill may be used with. A skill naming one or two states something about its class; one naming thirteen does not. */
+	public List<ItemGroup> getItemGroups() {
+		return itemGroups;
+	}
+
 	@Override
 	public boolean validate(Skill env) {
 		if (env.getSkillMethod() != SkillMethod.CAST)

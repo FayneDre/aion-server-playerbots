@@ -2,6 +2,8 @@ package com.aionemu.gameserver.playerbot.lifecycle;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,10 +19,14 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
+import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.item.WeaponStats;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.services.item.ItemFactory;
+import com.aionemu.gameserver.skillengine.condition.WeaponCondition;
 import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
+import com.aionemu.gameserver.skillengine.model.SkillLearnTemplate;
+import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 
 /**
  * Dresses a freshly created bot in gear that suits its class and level.
@@ -45,6 +51,8 @@ public class BotOutfitter {
 
 	/** Candidates per class, level and slot are the same for every bot of that kind, and the item list is long enough to be worth remembering. */
 	private static final Map<String, List<ItemTemplate>> candidates = new ConcurrentHashMap<>();
+	/** What each class is built to hold, worked out once from its skill book. */
+	private static final Map<String, Set<ItemGroup>> weaponsByClass = new ConcurrentHashMap<>();
 
 	private BotOutfitter() {
 	}
@@ -174,8 +182,55 @@ public class BotOutfitter {
 		// is taught its own weapon only on becoming an advanced class, and refusing the rest left every mage unarmed — but "not filtered out" was
 		// taken to mean "as good as any", so a shortlist of eight could be eight weapons the engine refuses one after another. Sorted rather than
 		// filtered: what it will be taught later stays on the list, below what it can hold now.
-		found.sort(Comparator.comparing((ItemTemplate template) -> !isTrainedFor(bot, template)).thenComparing(bestFirst));
+		// Then the weapon the class's own skill book asks for, ahead of raw numbers. A ranger that takes two swords because they out-damage a bow
+		// cannot use a single one of its 210 bow skills — it is the "no weapon, no skills" failure again, wearing a weapon. Reported as "I thought
+		// there were no rangers, but they have two swords instead of a bow".
+		Set<ItemGroup> trade = weaponsOfTrade(bot);
+		found.sort(Comparator.comparing((ItemTemplate template) -> !isTrainedFor(bot, template))
+			.thenComparing(template -> !(template.isWeapon() && trade.contains(template.getItemGroup())))
+			.thenComparing(bestFirst));
 		return found.subList(0, Math.min(8, found.size()));
+	}
+
+	/**
+	 * @return The weapons this class is actually built around, or an empty set when its skills do not say.
+	 *         <p>
+	 *         Read from the class's own skill book rather than authored. A skill may state what it must be held to be used, and the statement is
+	 *         worth exactly as much as it is narrow: a condition naming one weapon says what the class is, one naming all thirteen says nothing. So
+	 *         each skill contributes one share split between the weapons it names, and what survives at half the best score is the class's trade.
+	 *         <p>
+	 *         Measured over every class: a ranger scores 210 on bow against 10 on sword, a songweaver 307 on harp, a gunner 208 on gun. A templar
+	 *         comes out 43 / 35 / 35 across greatsword, mace and sword, which is a class that genuinely uses all three — so nothing is excluded for
+	 *         it, and the ranking below decides as before. The rule only ever bites where the data is emphatic, which is exactly where bots were
+	 *         picking the wrong thing. Casters state no weapon condition at all and are untouched.
+	 */
+	private static Set<ItemGroup> weaponsOfTrade(Player bot) {
+		return weaponsByClass.computeIfAbsent(bot.getPlayerClass() + "/" + bot.getRace(), _ -> gatherWeaponsOfTrade(bot));
+	}
+
+	private static Set<ItemGroup> gatherWeaponsOfTrade(Player bot) {
+		Map<ItemGroup, Double> score = new EnumMap<>(ItemGroup.class);
+		for (int level = 1; level <= DataManager.PLAYER_EXPERIENCE_TABLE.getMaxLevel(); level++) {
+			for (SkillLearnTemplate learn : DataManager.SKILL_TREE_DATA.getTemplatesFor(bot.getPlayerClass(), level, bot.getRace())) {
+				SkillTemplate skill = DataManager.SKILL_DATA.getSkillTemplate(learn.getSkillId());
+				WeaponCondition condition = skill == null ? null : skill.getWeaponCondition();
+				if (condition == null || condition.getItemGroups() == null || condition.getItemGroups().isEmpty())
+					continue;
+				double share = 1d / condition.getItemGroups().size();
+				for (ItemGroup group : condition.getItemGroups())
+					score.merge(group, share, Double::sum);
+			}
+		}
+		// The whole class book, not what it has learned so far: a ranger of ten is a ranger, and the weapon it is going to live by is the same one.
+		double best = score.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
+		if (best <= 0)
+			return Set.of();
+		Set<ItemGroup> trade = EnumSet.noneOf(ItemGroup.class);
+		for (Map.Entry<ItemGroup, Double> entry : score.entrySet()) {
+			if (entry.getValue() >= best / 2)
+				trade.add(entry.getKey());
+		}
+		return trade;
 	}
 
 	/**
