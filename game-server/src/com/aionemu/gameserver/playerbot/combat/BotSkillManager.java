@@ -53,6 +53,8 @@ public class BotSkillManager {
 	public static final int DEFENSIVE_COOLDOWN_PERCENT = 70;
 	/** Mana a bot that can heal keeps out of reach of its attacks, so a fight it is losing does not find it unable to pay for a heal. */
 	public static final int MANA_RESERVE_PERCENT = 25;
+	/** Above this, a healer's mana is more than its own job needs and the surplus may go on damage. */
+	public static final int HEALER_SPARE_MANA_PERCENT = 60;
 	/**
 	 * Longest cooldown a bot will spend at the start of an ordinary fight. Above it the ability is rare enough that a player keeps it for something
 	 * that warrants it, and a bot has no way to tell that a given mob does — so it keeps it for the moment it is in trouble instead.
@@ -139,6 +141,8 @@ public class BotSkillManager {
 	 * @return true if one was cast. One per call, a second apart, which is also how a player does it.
 	 */
 	public static boolean tryBuffSelf(Player bot) {
+		if (isSavingMana(bot))
+			return false; // upkeep is the most deferrable thing a bot spends on, and the first that should stop when it is poor
 		return cast(bot, bot, skills(bot, BotSkillManager::isMissingSelfBuff));
 	}
 
@@ -255,7 +259,7 @@ public class BotSkillManager {
 	 * @return true if one was cast.
 	 */
 	public static boolean tryBuffAlly(Player bot, Player ally) {
-		if (ally == null || ally.getLifeStats().isDead())
+		if (ally == null || ally.getLifeStats().isDead() || isSavingMana(bot))
 			return false;
 		return cast(bot, ally, skills(bot, (caster, template) -> isSelfBuff(template) && reachesOthers(template) && isWorthKeepingUp(template)
 			&& !coversAnApproach(template) && !isAlreadyUp(ally, template)));
@@ -289,7 +293,7 @@ public class BotSkillManager {
 	 * @return true if one was turned on. One per call, like any other buff.
 	 */
 	public static boolean tryChantMantra(Player bot) {
-		if (activeMantras(bot) >= MAX_MANTRAS)
+		if (isSavingMana(bot) || activeMantras(bot) >= MAX_MANTRAS)
 			return false;
 		return cast(bot, bot, skills(bot, BotSkillManager::isMissingMantra));
 	}
@@ -360,6 +364,18 @@ public class BotSkillManager {
 	 */
 	private static boolean isSavingMana(Player bot) {
 		return bot.getLifeStats().getMpPercentage() < MANA_RESERVE_PERCENT;
+	}
+
+	/**
+	 * Whether a healer has more mana than its own job needs, and may spend the surplus on damage.
+	 * <p>
+	 * A cleric in a group used to do nothing but heal, for the whole of an instance, whatever its mana said — reported from a run of the Fire Temple
+	 * where its damage was "néant". The rule it obeyed is still right at low mana and was simply stated too strongly: a healer's mana belongs to the
+	 * people it is keeping alive, and only what is left over belongs to the monster. Well above {@link #MANA_RESERVE_PERCENT}, because the surplus is
+	 * what this spends and a healer that dips into its reserve has stopped being a healer.
+	 */
+	public static boolean hasManaToSpare(Player bot) {
+		return bot.getLifeStats().getMpPercentage() >= HEALER_SPARE_MANA_PERCENT;
 	}
 
 	/**

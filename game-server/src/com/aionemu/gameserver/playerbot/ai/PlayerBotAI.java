@@ -617,6 +617,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		} else if (castFromAfar(target)) {
 			lastBlow = System.currentTimeMillis();
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
+		} else if (BotRole.of(bot) == BotRole.HEALER && bot.getCurrentTeam() != null) {
+			// Out of reach of anything it knows, and a healer does not walk closer: holding position beside the group is the whole of the job, and
+			// the surplus damage it was spending is not worth leaving it for. It waits instead; the group's own fight brings the target into range,
+			// and where it never does the stalled fight watchdog lets this one go.
 		} else if (!chase(target)) {
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
 			ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
@@ -699,9 +703,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// Holding the mob is the tank's whole job, and it is the one case where a skill must be preferred over a stronger one: a taunt that lands
 		// keeps the mob off the cleric, and the damage the bot gave up for it is damage the group deals instead. Only in a group — a templar alone
 		// taunting the thing already hitting it is a wasted cast — and only on something that is not already looking at the bot.
-		if (bot.getCurrentTeam() != null && BotRole.of(bot) == BotRole.TANK && !bot.equals(target.getAggroList().getTarget(AggroTarget.MOST_HATED))
-			&& BotSkillManager.tryTaunt(bot, target))
-			return true;
+		if (bot.getCurrentTeam() != null && BotRole.of(bot) == BotRole.TANK) {
+			if (!bot.equals(target.getAggroList().getTarget(AggroTarget.MOST_HATED)) && BotSkillManager.tryTaunt(bot, target))
+				return true;
+			// The one it is swinging at is only half the job. A monster that has got past the tank and is hitting somebody else is the half a group
+			// actually feels, and the half that was missing: "le templier ne gère pas correctement l'aggro si plus de 1 mob".
+			Creature loose = BotGroupManager.enemyLooseOnAMate(bot);
+			if (loose != null && BotSkillManager.tryTaunt(bot, loose))
+				return true;
+		}
 		if (!openingSpent) {
 			openingSpent = true;
 			// before the first blow, because a burst spent on a mob already dying is a burst thrown away — and self buffs need no range, so this works

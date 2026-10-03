@@ -143,6 +143,8 @@ public class BotOutfitter {
 				continue;
 			if (template.getRace() != Race.PC_ALL && template.getRace() != bot.getRace())
 				continue;
+			if (wearsTheOtherSidesModel(bot, template))
+				continue;
 			int required = template.getRequiredLevel(bot.getPlayerClass());
 			// No floor on how old a piece may be, only a ceiling on how new. Once npc costume is excluded there is little enough left at the lowest
 			// levels that insisting on a close match left whole classes with nothing at all, and something slightly behind is what a real character
@@ -207,6 +209,29 @@ public class BotOutfitter {
 	 *         A preference and not a filter: it sorts ahead of the ranking, below what the character is actually trained for, so a class too low to
 	 *         have earned its own weapon still gets something rather than nothing.
 	 */
+	/**
+	 * Keeps a bot out of the other faction's armour, which the client cannot draw on it.
+	 * <p>
+	 * Reported from in game as a cleric of thirty with only its head and arms visible, wearing a "Defeated Guardian's Hauberk", greaves and boots. The
+	 * piece is not Asmodian as far as this server is concerned — <b>no armour template in the whole table declares a race</b>, so the race filter
+	 * above, which does its job for weapons and accessories, has nothing to read. The faction lives only in the model name the client is told to
+	 * draw, and an Elyos body has no Asmodian model to put on, so the part simply vanishes.
+	 * <p>
+	 * The third segment of that name is the faction: {@code ch_torso_d_n_c1_light_30a} against {@code ch_torso_n_c_10a}. Verified against zones
+	 * rather than assumed — every Altgard, Morheim and Pandaemonium piece is {@code d}, every Verteron, Eltnen and Sanctum piece is {@code n} or
+	 * {@code g}, with nothing crossing over. Markers outside those three are left alone: abyss and npc models are their own thing and there is no
+	 * evidence they are one faction's, so excluding them would strip gear to fix nothing.
+	 */
+	private static boolean wearsTheOtherSidesModel(Player bot, ItemTemplate template) {
+		if (!template.isArmor() || template.getCName() == null)
+			return false;
+		String[] parts = template.getCName().split("_");
+		if (parts.length < 3)
+			return false;
+		String marker = parts[2];
+		return bot.getRace() == Race.ELYOS ? marker.equals("d") : marker.equals("n") || marker.equals("g");
+	}
+
 	private static Set<ItemGroup> weaponsOfTrade(Player bot) {
 		return switch (bot.getPlayerClass()) {
 			case GLADIATOR -> Set.of(ItemGroup.POLEARM); // everything else is a heavy loss of damage, dual wielding included

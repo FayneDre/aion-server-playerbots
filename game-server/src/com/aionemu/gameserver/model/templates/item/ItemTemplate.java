@@ -40,6 +40,12 @@ public class ItemTemplate extends VisibleObjectTemplate {
 	private ItemActions actions;
 	@XmlAttribute(name = "mask")
 	private int mask;
+	/**
+	 * The model the client draws for this item. Read because it is the only place an armour piece's faction is stated: no armour template declares a
+	 * race, and an Elyos body has no model for an Asmodian piece, so wearing one makes that part of the character disappear.
+	 */
+	@XmlAttribute(name = "cName")
+	private String cName;
 	@XmlAttribute(name = "weapon_boost")
 	private int weaponBoost;
 	@XmlAttribute(name = "price")
@@ -159,6 +165,11 @@ public class ItemTemplate extends VisibleObjectTemplate {
 			if (maxEnchantBonus == 0 && optionSlotBonus == 0 && rndBonusId == 0)
 				maxTuneCount = 0;
 		}
+	}
+
+	/** @return The client-side model name, e.g. {@code ch_torso_d_n_c1_light_30a}, or null where the item names none. */
+	public String getCName() {
+		return cName;
 	}
 
 	public int getMask() {

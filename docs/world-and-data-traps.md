@@ -121,3 +121,15 @@ to the population code, which is correct for settling residents and wrong the da
 `category` separates a mission from a task from an event and never mentions party size, so reading `quest_data.xml` as an itinerary sends a lone bot
 wherever the game sends five players. What answers the question is what the quest points at: a group quest names elites, so the target's `rating` is
 the filter, not anything on the quest.
+
+## No armour template states its faction
+
+A bot was seen as a cleric of thirty with only its head and arms visible, wearing a "Defeated Guardian's Hauberk", greaves and boots. The pieces are
+Asmodian, but **not one armour template in the table declares a race** — the outfitter's race filter, which works for weapons and accessories, has
+nothing to read. The faction lives only in the model name the client is told to draw, and an Elyos body has no Asmodian model, so the part vanishes.
+
+The third segment of `cName` is the faction: `ch_torso_d_n_c1_light_30a` against `ch_torso_n_c_10a`. Verified against zones rather than assumed —
+every Altgard, Morheim and Pandaemonium piece is `d`, every Verteron, Eltnen and Sanctum piece is `n` or `g`, nothing crossing over. Other markers
+(`a`, `npc`, `t`) are left alone: there is no evidence they belong to one side, and excluding them would strip gear to fix nothing.
+
+`cName` was not mapped on `ItemTemplate` at all and had to be added to read it.

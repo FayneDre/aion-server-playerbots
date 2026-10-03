@@ -128,6 +128,25 @@ It never boarded because Embark is a toggle, and toggles were allowed to mantras
 looked at. The rule it protects still holds, so this asks first whether the robot is already on. Recognised by its `RideRobotEffect` rather than by
 name or id, and cast standing still, since Embark states `move_casting allow="false"`.
 
+## What a healer does with a surplus
+
+A cleric in a group used to heal and nothing else, for a whole instance, whatever its bar said — watched that way through the Fire Temple, damage
+"néant". The rule it obeyed is right at low mana and was stated too strongly: a healer's mana belongs to the people it keeps alive, and only the
+surplus belongs to the monster. Above 60% it joins the attack; below, it goes back to its own job.
+
+What has not changed is that it keeps its distance. A healer never chases: out of reach of anything it knows, it holds position beside the group rather
+than walking into weapon range, where a cleric is a cleric being hit and silent for the rest of the fight.
+
+## Two monsters, one tank
+
+Preferring a taunt on the target the tank is already swinging at is half the job. The half a group feels is the monster that got past and is hitting
+somebody else — "le templier ne gère pas correctement l'aggro si plus de 1 mob". A tank now also looks for an enemy whose chosen victim is a team mate
+and pulls it back.
+
+Whoever it is on, not the worst case: the aggro list says who is most hated, not who can least afford it. And the one it is actually hitting, not one
+it merely holds a grudge against — a monster hates everything that has touched it, and answering every grudge would mean taunting things already
+looking at the tank.
+
 ## A floor under the mana bar
 
 Two separate things used to let a bot end up permanently out of mana.

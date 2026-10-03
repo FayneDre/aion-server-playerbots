@@ -1,5 +1,6 @@
 package com.aionemu.gameserver.playerbot.social;
 
+import com.aionemu.gameserver.controllers.attack.AggroTarget;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
@@ -192,6 +193,36 @@ public class BotGroupManager {
 	 * selection is on something else, or who never clicked the mob that jumped them, is being attacked all the same. The mob's own aggro list is the
 	 * honest source: it remembers who it is fighting, whatever anyone has selected.
 	 */
+	/**
+	 * Finds a monster that has got loose and is hitting somebody else in the group.
+	 * <p>
+	 * A tank's job is not one monster, it is all of them, and holding only the one it is swinging at is what a group feels as "the templar cannot
+	 * cope with more than one" — reported from the Fire Temple exactly that way. The target the bot is attacking is already handled by preferring
+	 * taunts on it; this is the other half, the one nobody is pulling back.
+	 * <p>
+	 * Whoever it is on, rather than the worst case, because the aggro list says who is most hated and not who can least afford it, and a rule that
+	 * ranked mates would be guessing at a group's intentions. First found is enough: the taunt is cheap and comes round again every swing.
+	 *
+	 * @return An npc whose chosen victim is a team mate other than this bot, or null when the tank already has them all.
+	 */
+	public static Creature enemyLooseOnAMate(Player bot) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return null;
+		List<Player> members = team.getMembers();
+		Creature[] found = { null };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (found[0] != null || !isWorthAssistingOn(bot, npc))
+				return;
+			// The one it is actually hitting, not merely one it holds a grudge against: a monster hates everything that has touched it, and a tank
+			// that answered every grudge would spend the fight taunting things already looking at it.
+			Creature victim = npc.getAggroList().getTarget(AggroTarget.MOST_HATED);
+			if (victim != null && !victim.equals(bot) && members.contains(victim))
+				found[0] = npc;
+		});
+		return found[0];
+	}
+
 	private static Creature npcFightingTheTeam(Player bot, TemporaryPlayerTeam<?> team) {
 		Player leader = team.getLeaderObject();
 		// getMembers, not getOnlineMembers: the latter filters on isOnline, which is the very question bots make ambiguous
