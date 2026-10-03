@@ -26,6 +26,7 @@ import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
@@ -893,9 +894,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 		refusedMoves = 0;
 		if (home == null)
 			return;
+		// Onto ground the mesh agrees a body stands on, which is not the same as the recorded home. A home is a spot chosen from spawn data, and
+		// sending a bot back to one that sits on a roof or inside a rock is how the rescue came to feed the fault it exists to cure: one bot was put
+		// back home five times and was still stuck twenty-five minutes later, because every landing was as unwalkable as the place it left.
+		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), home.getX(), home.getY(), home.getZ());
+		float x = ground != null ? ground.getX() : home.getX();
+		float y = ground != null ? ground.getY() : home.getY();
+		float z = ground != null ? ground.getZ() : home.getZ();
 		log.info("Bot {} could not move at all from {} {} and is put back home", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()));
-		TeleportService.teleportTo(bot, bot.getWorldId(), home.getX(), home.getY(), home.getZ());
-		setAnchor(home.getX(), home.getY(), home.getZ());
+		TeleportService.teleportTo(bot, bot.getWorldId(), x, y, z);
+		setAnchor(x, y, z);
 		day.forget(); // whatever it was doing was decided from a place it is no longer in
 	}
 

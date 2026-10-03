@@ -160,6 +160,12 @@ public class BotMoveController extends PlayerMoveController {
 			// keeping the route, but its waypoints are all behind us: the last stretch is walked at the destination itself, which may have shifted
 			aimAtNextWaypoint();
 		}
+		// A short journey is planned inside the call above, so offerRoute has already run and may have proved there is no way -- it says so by
+		// clearing hasGoal. Falling through from here would hand the goal to the reactive layer, which walks straight at it, and the reset just
+		// below would wipe the very flags that recorded the refusal. The bot then alternates between being proved wrong and stepping aside, which
+		// is how one spent twenty-five minutes on a roof: every sidestep counted as a move, so the anti-stuck rescue was never reached.
+		if (!hasGoal)
+			return false;
 		if (!sameJourney) {
 			blocked = false;
 			detourSide = 0;
@@ -219,17 +225,24 @@ public class BotMoveController extends PlayerMoveController {
 	 * Takes a route planned elsewhere, if the bot is still going where it was asked to. Stored rather than applied: the movement thread picks it up
 	 * at the end of the current leg, which keeps a background thread from rewriting the destination mid-stride.
 	 */
-	private void offerRoute(List<Vector3f> planned, float forX, float forY) {
+	private void offerRoute(BotPathFinder.Route answer, float forX, float forY) {
 		if (!hasGoal || forX != finalX || forY != finalY)
 			return; // an answer to a journey that is over, or to an older one
 		awaitingPlan = false; // answered, whether or not it found a way: either way the bot stops waiting
+		List<Vector3f> planned = answer.waypoints();
 		if (planned.isEmpty()) {
-			log.info("Bot {} has no route to {}", owner.getName(), String.format("%.1f %.1f", forX, forY));
-			// Over a long distance, "no route" ends the journey rather than leaving the bot walking at it. The reactive layer can cross a field and
-			// step round a rock; it cannot find its way across a region the mesh says is not joined to this one. Left to walk anyway, the bot never
-			// arrives and never reports a failure either, so the ai keeps choosing the same destination — one villager in a pocket of the map asked
-			// for the same village sixty times in three minutes, and nothing above ever heard that it could not be had.
-			if (PositionUtil.getDistance(owner.getX(), owner.getY(), forX, forY) > BotPathFinder.LONG_DISTANCE) {
+			log.info("Bot {} has no route to {}{}", owner.getName(), String.format("%.1f %.1f", forX, forY),
+				answer.gaveUp() ? " (the search gave up)" : "");
+			// "No route" ends the journey rather than leaving the bot walking at it. The reactive layer can cross a field and step round a rock; it
+			// cannot find its way across a region the mesh says is not joined to this one. Left to walk anyway, the bot never arrives and never
+			// reports a failure either, so the ai keeps choosing the same destination — one villager in a pocket of the map asked for the same
+			// village sixty times in three minutes, and nothing above ever heard that it could not be had.
+			//
+			// A search that gave up is not that: it ran out of budget and proved nothing, so the bot still sets off, and distance is the only guide
+			// left as to whether that is reasonable. A search that finished empty is proof, and proof holds at any distance. That distinction was
+			// missing, and it is what kept a bot on a roof walking at a goal eighty metres below it for the whole twenty-five minutes the server was
+			// up: the way down had been disproved, over sixty-five metres, and the proof was discarded for being a short journey.
+			if (!answer.gaveUp() || PositionUtil.getDistance(owner.getX(), owner.getY(), forX, forY) > BotPathFinder.LONG_DISTANCE) {
 				noRouteX = forX;
 				noRouteY = forY;
 				hasNoRoute = true;
