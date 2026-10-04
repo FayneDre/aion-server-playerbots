@@ -130,23 +130,31 @@ Priority five. Bots forming and filling legions, which mostly falls out of group
 - **Zero automated tests** on roughly 10400 lines, much of it concurrent — the repo has a test layout and other modules use it, the bot module
   simply has none. This is why the combat half of `PlayerBotAI` has not been split: a mistake there is silent rather than loud.
 
-## Open after the population churn of 2026-10-04
+## After the population churn of 2026-10-04
 
-The churn itself is fixed — see [population-director.md](population-director.md) and the float trap in
-[world-and-data-traps.md](world-and-data-traps.md). What it uncovered and did not close:
+The churn is fixed, and so is most of what it uncovered — see [population-director.md](population-director.md) and the float trap in
+[world-and-data-traps.md](world-and-data-traps.md). What the follow-up found, and where it stopped:
 
-- **Coordinate equality is not audited anywhere else.** The rule is now written down — a world coordinate that has crossed the database is compared
-  for nearness, never for equality — but only `BotPlaces` was changed to obey it. `BotDay.recordStranding` does `elsewhere.equals(home())` across the
-  same boundary, and nothing has been swept for others. Each one is a silent fault of the same shape: it costs nothing until the two spellings of one
-  place end up on opposite sides of a decision.
-- **A post no bot can walk to is still a post.** Eltnen's fortress is in the air, so the village posts inside it cannot be reached on foot and cannot
-  be filled; with the accounting now honest, a region simply sits a few short for ever. Verteron reads 23 of 25. `NavmeshService.canReach` already
-  answers this question and `BotPlaces` already filters standing spots on it, so the plan could drop a post nothing can reach — an address nobody can
-  live at is not a post.
-- **Bots wedge on staircases and against the citadel geometry.** Seen in Verteron's fortress. Not diagnosed; distinct from both the churn and the
-  reactive-steering limits below.
-- **`BotDay.restingSpot` runs two full path searches per candidate spot**, twelve candidates per bot. It never showed up in the profile once the
-  vendor sweep was capped, so it is churn rather than a fault — the same shape as the one that cost four and a half cores.
+**The equality audit the float trap called for is done.** Five more comparisons put a coordinate that had been to the database against one the plan
+holds, and every one of them answered no. `reachAt` was the expensive one: it returned its 12 m fallback instead of a village's real reach, so
+villagers scattered over a twelfth of the ground meant for them and stood on the obelisk. Measured on Eltnen, mean distance from home 8.3 m and
+furthest 13.5, against 16 and 37 once the question is asked by nearness. `levelAt` returned the region's middle level — the very constant it was
+written to stop `moveOutIfOutgrown` testing. One predicate now, `BotPlaces.isSamePlace`, and no exact place equality is left in the module.
+
+**Posts nobody could fill were the same fault, not the geography.** Every map now fills its village posts exactly: Eltnen 32/32, Verteron 25/25 where
+it had sat at 23, Ishalgen 9/9, with no departures and nothing put off. Eltnen's fortress being in the air turns out not to produce an unfillable post.
+The underlying hazard is still real and still unguarded in the plan — `NavmeshTool 210020000 components` reports **19299 islands of walkable ground,
+the largest only 42% of the map** — but `canReach` already keeps bots off the ones that lead nowhere, so nothing is currently posted where it cannot
+live. A plan that dropped posts no bot can walk to would make that a guarantee rather than a happy outcome.
+
+**Bots still wedge, but it is no longer a pattern.** Rescues went from 30 in seven minutes, clustered eight deep on single spots, to 7 in eight minutes
+at eight different places, with no house-moving at all. What is left is the staircase and citadel geometry seen in Verteron, which is the
+reactive-steering limit below rather than anything the director does. Not separately diagnosed.
+
+**`BotDay.restingSpot`'s two searches per candidate are not worth changing.** Measured at 360 bot-thread samples with 7 in a path search, 6 of those
+the route pool planning journeys, and `restingSpot` in none of them. Fixing `reachAt` plausibly took most of its cost away as a side effect — a spread
+of 40 m instead of 12 crowds far fewer candidates, so the first one usually serves — though that part is inference, not measurement. Changing it now
+would be optimising against a cost nobody can find.
 
 ## Known limits, in order of how much they will bite
 
