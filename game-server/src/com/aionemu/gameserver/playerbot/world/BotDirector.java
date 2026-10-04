@@ -142,9 +142,10 @@ public class BotDirector {
 			boolean busy = isBusy(worldId, watchers, now);
 			List<BotRoster.Resident> residents = residentsByMap.getOrDefault(worldId, List.of());
 			Map<Vector3f, Integer> villages = countByPlace(BotPresence.civic(worldId));
-			int hunters = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline)).size();
+			List<Settlement> fieldPlan = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline));
+			int hunters = fieldPlan.size();
 
-			Difference difference = sort(bots, worldId, residents, villages, hunters);
+			Difference difference = sort(bots, worldId, residents, villages, fieldPlan);
 			int wanted = villages.values().stream().mapToInt(count -> count).sum() + hunters;
 			report.add(String.format("map %d: %d awake of %d, wants %d%s — villages %d/%d awake, %d asleep; field %d/%d awake, %d asleep", worldId,
 				difference.awake(), residents.size(), villages.values().stream().mapToInt(count -> count).sum() + hunters,
@@ -154,7 +155,7 @@ public class BotDirector {
 			// The home moves first, and they cost no budget: a row each, and no bot enters or leaves the world for them. Done before the wakes so
 			// that a post filled by a mover is a post the next review already counts as lived at.
 			if (!difference.rehoused().isEmpty())
-				log.info("map {}: moving {} sleeper(s) into village posts nobody lives at", worldId, difference.rehoused().size());
+				log.info("map {}: moving {} sleeper(s) house", worldId, difference.rehoused().size());
 			difference.rehoused().forEach(mover -> BotRoster.setHome(mover.name(), mover.home()));
 			// The band holds departures back and lets arrivals through, because only one of the two directions can churn. A region that wakes its way
 			// up to its target then stops: there is nothing left to ask for. A region that sleeps its way down to it sits on the boundary, and the next
@@ -206,7 +207,8 @@ public class BotDirector {
 	 * only the places that disagree produce any work.
 	 */
 	private static Difference sort(PlayerBotService bots, int worldId, List<BotRoster.Resident> residents, Map<Vector3f, Integer> villages,
-		int hunters) {
+		List<Settlement> fieldPlan) {
+		int hunters = fieldPlan.size();
 		Map<Vector3f, List<BotRoster.Resident>> asleepInVillage = new LinkedHashMap<>();
 		Map<Vector3f, List<Player>> awakeInVillage = new LinkedHashMap<>();
 		List<BotRoster.Resident> asleepInField = new ArrayList<>();
@@ -270,10 +272,16 @@ public class BotDirector {
 		// A village's own sleepers beyond the post it has to fill can move on too. Without this a bot settled at a village the plan has since
 		// shrunk is stranded there: the countryside only ever wakes its own sleepers, so it is never hunted with again, and no amount of shortage
 		// anywhere else can reach it.
+		//
+		// Listed apart because these are also the ones that may have to go back to the countryside, and because taking from the end of `spare`
+		// spends them before any hunter: a village post is better filled by somebody another village does not need than by taking a hunter out of
+		// a countryside that is itself short.
+		List<BotRoster.Resident> spareVillagers = new ArrayList<>();
 		asleepInVillage.forEach((home, there) -> {
 			for (int i = takenLocally.getOrDefault(home, 0); i < there.size(); i++)
-				spare.add(there.get(i));
+				spareVillagers.add(there.get(i));
 		});
+		spare.addAll(spareVillagers);
 		// Moved house where they sleep, and not woken to do it. Waking them was the whole fault: when a countryside is over its target, nothing is
 		// drawn from it by the field rule, so `spare` holds every one of its sleepers -- which is to say exactly the bots the same review has just
 		// ordered to sleep for being surplus. The region then put them to sleep by one rule and pulled them straight back out by the other, and did
@@ -289,6 +297,26 @@ public class BotDirector {
 			for (int i = 0; i < village.getValue() && !spare.isEmpty(); i++) {
 				BotRoster.Resident mover = spare.remove(spare.size() - 1);
 				rehoused.add(new BotRoster.Resident(mover.playerId(), mover.name(), mover.worldId(), village.getKey()));
+			}
+		}
+		// And the way back out of a village, which was missing and is what made the move into one a door that only opened once. A sleeper given a
+		// village post stays a villager for ever otherwise: the countryside wakes only its own sleepers, and nothing ever hands one back. Verteron
+		// settled at 44 residents holding 25 village posts while its countryside, wanting 59, held 40 and had no sleeper left at all -- nineteen
+		// people shut in villages that did not want them, and a region that could not reach its target however long it ran.
+		//
+		// Only when the countryside is actually short of people, so a village is never emptied to feed a field that has enough; and only sleepers
+		// the villages have no post for, which is what is left in `spare` once the short posts above have taken what they need.
+		int fieldShort = hunters - (awakeInField.size() + asleepInField.size());
+		if (fieldShort > 0 && !fieldPlan.isEmpty()) {
+			int ground = 0;
+			for (BotRoster.Resident villager : spareVillagers) {
+				if (fieldShort <= 0 || !spare.contains(villager))
+					continue; // already spent on a short village post, which is the nearer need
+				fieldShort--;
+				// round the plan rather than all to the nearest ground: the plan is already spread over the region, which is the whole reason a
+				// countryside is described as a list of grounds rather than as a number.
+				Vector3f home = fieldPlan.get(ground++ % fieldPlan.size()).centre();
+				rehoused.add(new BotRoster.Resident(villager.playerId(), villager.name(), villager.worldId(), home));
 			}
 		}
 		int villagersAwake = awakeInVillage.values().stream().mapToInt(List::size).sum();
