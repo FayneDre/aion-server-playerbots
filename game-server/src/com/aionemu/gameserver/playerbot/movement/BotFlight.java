@@ -51,6 +51,8 @@ public class BotFlight {
 	private static final long HOVER_MILLIS = 4000;
 	/** How far a journey may go. Flight is for a terrace over a wall, not for crossing a region, which is what the director's teleport is for. */
 	private static final float MAX_JOURNEY = 300;
+	/** The shortest journey worth leaving the ground for. Under it, walking is the answer and a refusal to walk was about something else. */
+	static final float MIN_JOURNEY = 10;
 	/**
 	 * How far above the higher of its two ends a journey cruises when it has to go over something.
 	 * <p>
@@ -281,6 +283,11 @@ public class BotFlight {
 		if (ground == null)
 			ground = target; // no mesh on this map: the spot asked for is the best answer anybody has
 		float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), ground.getX(), ground.getY());
+		// A journey of nothing is not a journey. Routes are refused for reasons that have nothing to do with distance -- a destination the bot is
+		// already standing on is one of them -- and flying such a refusal has the bot leap into the air and land again, which is what a map full of
+		// freshly woken residents looked like after a populate: they appeared flying.
+		if (distance < MIN_JOURNEY)
+			return bot.getName() + " is already there, " + Math.round(distance) + " m away";
 		if (distance > MAX_JOURNEY)
 			return bot.getName() + " is " + Math.round(distance) + " m away, and a flight is for a terrace over a wall, not for crossing a region";
 

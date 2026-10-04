@@ -417,7 +417,10 @@ public class BotMoveController extends PlayerMoveController {
 				// nothing and gets no flight, or a slow search would have bots taking off all over a map they could perfectly well have walked.
 				// It refuses itself in every ordinary case (not a daeva, no fly zone, not enough flight points, too far), and then this is an
 				// ordinary refused journey again.
-				if (BotFlight.tryFlyTo(owner, new Vector3f(forX, forY, finalZ))) {
+				// and only for somewhere actually worth flying to: a proof is a proof at any distance, but a bot that cannot route to a spot under
+				// its own feet has a problem that leaving the ground does not solve
+				if (PositionUtil.getDistance(owner.getX(), owner.getY(), forX, forY) >= BotFlight.MIN_JOURNEY
+					&& BotFlight.tryFlyTo(owner, new Vector3f(forX, forY, finalZ))) {
 					hasGoal = false; // the flight owns the body now, and gives it back on the ground
 					gaveUpCount = 0;
 					return;
