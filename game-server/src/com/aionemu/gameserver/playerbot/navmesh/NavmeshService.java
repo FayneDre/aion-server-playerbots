@@ -79,6 +79,33 @@ public class NavmeshService {
 		return mesh == null || !BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ).isEmpty();
 	}
 
+	/** What a reachability question came back with, for a caller that means to remember the answer. */
+	public enum Reach {
+		/** A route exists. */
+		YES,
+		/** The search finished having found nothing, which is proof that the ground does not connect. */
+		NO,
+		/** The search ran out of budget, or the map has no mesh to ask. Says nothing either way. */
+		UNKNOWN
+	}
+
+	/**
+	 * Asks whether one spot can be walked to from another, keeping the distinction {@link #canReach} throws away.
+	 * <p>
+	 * It exists because {@code canReach} answers a boolean, so a search that gave up for want of budget is indistinguishable from one that proved
+	 * there is no way through — and a caller that writes the answer down needs them apart. A proof holds for as long as the ground does not move and
+	 * is worth keeping; a give-up holds for nothing and must not be stored, or one slow search bars a shop the bot could have walked to all along.
+	 */
+	public Reach reach(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return Reach.UNKNOWN; // a map with no mesh refuses nothing: its bots walk without a plan, which is not the same as having nowhere to go
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ);
+		if (!route.isEmpty())
+			return Reach.YES;
+		return route.gaveUp() ? Reach.UNKNOWN : Reach.NO;
+	}
+
 	/**
 	 * Plans a journey and hands the result back when it is ready.
 	 * <p>

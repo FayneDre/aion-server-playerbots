@@ -1,6 +1,8 @@
 package com.aionemu.gameserver.playerbot.ai;
 
+import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -51,6 +53,15 @@ class BotErrands {
 	private volatile long dressingIdleUntil;
 	/** Shop spots that turned out to have no shop keeper standing on them, so the next trip goes somewhere else. */
 	private final Map<Vector3f, Long> ignoredVendors = new ConcurrentHashMap<>();
+	/**
+	 * Shop spots the mesh has proved this bot cannot walk to.
+	 * <p>
+	 * Kept without expiry, unlike {@link #ignoredVendors}: a shop that stood empty may be served again within the hour, but ground that does not
+	 * connect to other ground does not change its mind. Forgetting these on a timer only bought back the sweep they were written down to stop.
+	 */
+	private final Set<Vector3f> unreachableVendors = ConcurrentHashMap.newKeySet();
+	/** The map {@link #unreachableVendors} was gathered on, so a bot that moves house does not carry another map's refusals to its new one. */
+	private volatile int unreachableOn;
 	/** Where the bot is headed to sell, non null only while a trip is in progress. */
 	private volatile Vector3f vendorDestination;
 	/** Set when an operator asked for a trip, which waives the full bag test for the whole errand rather than only to start it. */
@@ -145,7 +156,7 @@ class BotErrands {
 		Player bot = ai.getOwner();
 		if (!BotVendorManager.hasJunk(bot))
 			return false;
-		Vector3f vendor = BotVendorManager.findVendor(bot, this::isIgnoredVendor);
+		Vector3f vendor = BotVendorManager.findVendor(bot, this::isIgnoredVendor, this::rememberUnreachableVendor);
 		if (vendor == null)
 			return false;
 		vendorDestination = vendor;
@@ -177,8 +188,15 @@ class BotErrands {
 			if (!sellingOnDemand && (System.currentTimeMillis() < noShopUntil
 				|| !wantsFlasks(bot) && (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot))))
 				return false;
-			vendorDestination = BotVendorManager.findVendor(bot, this::isIgnoredVendor);
-			if (vendorDestination == null) { // no shop left to walk to on this map
+			vendorDestination = BotVendorManager.findVendor(bot, this::isIgnoredVendor, this::rememberUnreachableVendor);
+			if (vendorDestination == null) {
+				// Nothing was armed here at first, and it was the dearest line of the errand. The gate above lets the bot through on every tick for
+				// as long as it wants flasks or carries junk, so a bot with no shop within reach ran the whole look -- a path search per shop -- once
+				// per tick, for ever. The two failures that do arm a wait are both further down, past the look that had already been paid for.
+				noShopUntil = System.currentTimeMillis() + UNREACHABLE_SHOP_COOLDOWN_MILLIS;
+				// The flask errand needs its own wait, because it has its own gate: a bot that wants flasks and can reach no shop would otherwise
+				// come straight back through the door above the moment it opened, having learnt nothing in the meantime.
+				noFlasksUntil = System.currentTimeMillis() + FLASK_TRIP_COOLDOWN_MILLIS;
 				sellingOnDemand = false;
 				return false;
 			}
@@ -256,7 +274,26 @@ class BotErrands {
 	private boolean isIgnoredVendor(Vector3f spot) {
 		long now = System.currentTimeMillis();
 		ignoredVendors.values().removeIf(until -> until <= now);
-		return ignoredVendors.keySet().stream()
-			.anyMatch(known -> PositionUtil.getDistance(known.x, known.y, spot.x, spot.y) <= VENDOR_SPOT_TOLERANCE);
+		return isNear(ignoredVendors.keySet(), spot) || isNear(unreachableVendors, spot);
+	}
+
+	private static boolean isNear(Collection<Vector3f> known, Vector3f spot) {
+		return known.stream().anyMatch(spot2 -> PositionUtil.getDistance(spot2.x, spot2.y, spot.x, spot.y) <= VENDOR_SPOT_TOLERANCE);
+	}
+
+	/**
+	 * Writes down a shop the mesh proved this bot cannot walk to, so the next look spends its budget on shops it has not tried yet.
+	 * <p>
+	 * This is what makes a capped look safe: the cap would otherwise hide the fourth nearest shop for ever from a bot whose first three are walled
+	 * off. With the refusals remembered, each look tests three <em>fresh</em> shops, so the map is explored in full a few at a time and the cost per
+	 * tick stays bounded.
+	 */
+	private void rememberUnreachableVendor(Vector3f spot) {
+		int worldId = ai.getOwner().getWorldId();
+		if (unreachableOn != worldId) {
+			unreachableVendors.clear();
+			unreachableOn = worldId;
+		}
+		unreachableVendors.add(spot);
 	}
 }

@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.economy;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.List;
 
@@ -85,21 +86,49 @@ public class BotVendorManager {
 	}
 
 	/**
-	 * @return Where the nearest shop stands, or null if that map has none.
+	 * How many shops one look tests against the mesh before giving up for this tick.
+	 * <p>
+	 * Because each test is a full path search, and the dearest search of all is the one that comes back with nothing: it has to exhaust the whole
+	 * reachable region before it can say so, which the budget caps at seconds rather than milliseconds. Testing every shop on the map was therefore
+	 * not a sweep of fifteen cheap questions but of fifteen dear ones, run on the bot's own thread. Measured after {@code //bot populate 0} on
+	 * Eltnen — 102 new residents, 15 shops, most of them in towns no countryside post can walk to — at four and a half cores doing nothing else.
+	 * <p>
+	 * A cap alone would hide a shop the bot could have reached, so it works with the caller's memory: the refusals this look proves are written down,
+	 * and the next one spends its three tests on shops that have not been tried. The map is still explored in full, a few shops at a time.
 	 */
-	public static Vector3f findVendor(Player bot, Predicate<Vector3f> isIgnored) {
+	private static final int VENDORS_PROBED = 3;
+
+	/**
+	 * @param isIgnored The caller's own memory: shops it has already been defeated by, and does not want tested again.
+	 * @param whenUnreachable Told of each shop the mesh <b>proves</b> this bot cannot walk to, for the caller to remember. Never told of a search
+	 *          that merely gave up — that is not evidence, and storing it would bar a shop for a slow answer rather than for a wall.
+	 * @return Where the nearest usable shop stands, or null when none of the ones tested will serve. Null does not mean the map has none left: it
+	 *         means this look found nothing, and the caller is expected to wait before asking again.
+	 */
+	public static Vector3f findVendor(Player bot, Predicate<Vector3f> isIgnored, Consumer<Vector3f> whenUnreachable) {
 		List<Vector3f> vendors = new ArrayList<>();
 		bot.getPosition().getWorldMapInstance().forEachNpc(npc -> {
 			NpcTemplate template = npc.getObjectTemplate();
 			if (npc.isSpawned() && template != null && template.supportsAction(DialogAction.SELL))
 				vendors.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
 		});
-		// The nearest one it can actually walk to, not simply the nearest. Sorted first and tested lazily, so the usual case asks the navmesh once;
-		// without the test, a shop behind a wall or on another storey is chosen for ever because it is closest as the crow flies.
-		return vendors.stream().filter(spot -> !isIgnored.test(spot))
-			.sorted(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y)))
-			.filter(spot -> NavmeshService.getInstance().canReach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y, spot.z))
-			.findFirst().orElse(null);
+		// The nearest one it can actually walk to, not simply the nearest: without the test, a shop behind a wall or on another storey is chosen for
+		// ever because it is closest as the crow flies. Nearest first, so the cheap case — a bot in town, with a shop it can reach in front of it —
+		// still asks the mesh once.
+		vendors.removeIf(isIgnored);
+		vendors.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y)));
+		int probed = 0;
+		for (Vector3f spot : vendors) {
+			if (probed++ == VENDORS_PROBED)
+				break;
+			// anything but a proof is worth walking to: a mesh that gave up, or a map with no mesh at all, has said nothing against this shop, and
+			// the walk itself is the cheaper way to find out. A refusal there is caught by the mover and remembered with its own, shorter patience.
+			if (NavmeshService.getInstance().reach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y,
+				spot.z) != NavmeshService.Reach.NO)
+				return spot;
+			whenUnreachable.accept(spot);
+		}
+		return null;
 	}
 
 	/** @return The shop the bot is standing next to, or null. */
