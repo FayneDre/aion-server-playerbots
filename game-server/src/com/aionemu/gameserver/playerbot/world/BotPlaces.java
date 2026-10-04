@@ -572,24 +572,69 @@ public class BotPlaces {
 			if (votes.isEmpty())
 				return new Places(settlements, grounds); // no mesh for this map, so nothing has been shown to be cut off
 			int mainland = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
-			List<Settlement> reachableSettlements = onTheMainland(id, settlements, mainland);
-			List<Settlement> reachableGrounds = onTheMainland(id, grounds, mainland);
-			int dropped = settlements.size() - reachableSettlements.size() + grounds.size() - reachableGrounds.size();
+			long began = System.currentTimeMillis();
+			Places onTheGrid = new Places(onTheMainland(id, settlements, mainland), onTheMainland(id, grounds, mainland));
+			Places walkable = offThePockets(id, onTheGrid);
+			int dropped = everywhere.size() - walkable.settlements().size() - walkable.huntingGrounds().size();
 			if (dropped > 0)
-				log.info("Map {}: {} of {} place(s) stand on ground nothing walks off, and nobody is housed there", id, dropped, everywhere.size());
-			return new Places(reachableSettlements, reachableGrounds);
+				log.info("Map {}: {} of {} place(s) cannot be walked to, and nobody is housed there ({} by the coarse grid, {} for having no ground to speak of, {} ms)", id,
+					dropped, everywhere.size(), everywhere.size() - onTheGrid.settlements().size() - onTheGrid.huntingGrounds().size(),
+					onTheGrid.settlements().size() + onTheGrid.huntingGrounds().size() - walkable.settlements().size()
+						- walkable.huntingGrounds().size(),
+					System.currentTimeMillis() - began);
+			return walkable;
 		});
+	}
+
+	/**
+	 * Drops the places the coarse grid let through that still cannot be walked to, by measuring how much ground each one has.
+	 * <p>
+	 * The grid settles the gross cases for the price of an array lookup and cannot settle the near ones, because it is four metres wide and carries
+	 * every stretch of ground in its column at every height. Eltnen's marooned village is the case it reads wrong: four walkable floors pass through
+	 * that column, at z 240, 270, 276 and 294, and one of them is joined to the rest of the map. The villagers are on another. So the cell names the
+	 * mainland and the pocket keeps its seventeen inhabitants.
+	 * <p>
+	 * Asking for a route instead was the obvious repair and it does not work, which was worth measuring rather than assuming: past 150 m a search is
+	 * planned on that same coarse grid, and every way the plan can fail is honestly reported as a search that gave up. 152 probes over Eltnen took 73
+	 * seconds and proved nothing new. What is provable is the opposite question — the ground a place stands on is walked outwards until it either runs
+	 * out, which proves there is no way off it, or passes the bound, which is all a place needs. See {@link NavmeshService#isPocket}.
+	 */
+	private static Places offThePockets(int worldId, Places places) {
+		Predicate<Settlement> liveable = place -> {
+			Vector3f centre = place.centre();
+			if (!NavmeshService.getInstance().isPocket(worldId, centre.getX(), centre.getY(), centre.getZ()))
+				return true;
+			// named rather than counted, because a count cannot be checked: every place this drops is a place the map will never populate again, and
+			// the only way to tell a marooned village from an over-eager bound is to go and stand on the coordinates it printed
+			log.info("Map {}: nothing walks off {} {} {}, so its {} townsfolk get no residents", worldId, centre.getX(), centre.getY(), centre.getZ(),
+				place.townsfolk());
+			return false;
+		};
+		return new Places(new ArrayList<>(places.settlements().stream().filter(liveable).toList()),
+			new ArrayList<>(places.huntingGrounds().stream().filter(liveable).toList()));
+	}
+
+	/**
+	 * Reads a map's places now rather than when the first bot needs them.
+	 * <p>
+	 * Called on the lifecycle lane at startup, ahead of the director's first review, because the probe above is a hundred and fifty route searches and
+	 * none of them belongs on a thread bots are thinking on.
+	 */
+	public static void warmUp(int worldId) {
+		places(worldId);
 	}
 
 	private static List<Settlement> onTheMainland(int worldId, List<Settlement> places, int mainland) {
 		List<Settlement> joined = new ArrayList<>();
 		for (Settlement place : places) {
-			for (int region : NavmeshService.getInstance().regionsAt(worldId, place.centre().getX(), place.centre().getY())) {
-				if (region == mainland) {
-					joined.add(place);
-					break;
-				}
-			}
+			boolean onIt = false;
+			for (int region : NavmeshService.getInstance().regionsAt(worldId, place.centre().getX(), place.centre().getY()))
+				onIt |= region == mainland;
+			if (onIt)
+				joined.add(place);
+			else
+				log.info("Map {}: {} {} {} is on an island of its own, so its {} townsfolk get no residents", worldId, place.centre().getX(),
+					place.centre().getY(), place.centre().getZ(), place.townsfolk());
 		}
 		return joined;
 	}

@@ -71,7 +71,7 @@ Its own problem, and the one that gates the most.
 
 Needed for crossing between the Abyss's islands, for gliding shortcuts, for aerial PvP, for a handful of quest routes — and, less obviously, for a
 share of the ordinary countryside: every map with `GLIDE` puts npcs on terraces and ledges that no walker reaches, and the civic plan has to drop
-those places today. Measured on Eltnen, 12 of its 152 places, and that count is a floor rather than a total. What it needs is a second
+those places today — 12 of Eltnen's 152, 5 of Verteron's 123, and 235 townsfolk between them with nobody to keep them company. What it needs is a second
 navigation answer: the mesh describes **surfaces**, and flight is a volume. Plus the flight state machine — flying against gliding, flight time,
 landing, and what happens when time runs out over a gap.
 
@@ -143,12 +143,17 @@ villagers scattered over a twelfth of the ground meant for them and stood on the
 furthest 13.5, against 16 and 37 once the question is asked by nearness. `levelAt` returned the region's middle level — the very constant it was
 written to stop `moveOutIfOutgrown` testing. One predicate now, `BotPlaces.isSamePlace`, and no exact place equality is left in the module.
 
-**Places no walker can reach are now dropped from the plan, but only the obvious ones.** `BotPlaces` drops a place that does not carry the walkable
-stretch its fellow places vote for — Eltnen loses 12 of 152, Verteron 4 of 123 — and the director moves anybody left living at a place that no longer
-exists, because no other rule would: theirs is neither short nor over-full. The test is a coarse-grid lookup, which is why it is cheap and why it
-misses the case that prompted it: a 4 m cell carries every stretch in its column at every height, and Eltnen's village square has four walkable floors
-stacked at z 240, 270, 276 and 294. See [world-and-data-traps.md](world-and-data-traps.md). An exact answer wants a fine search counting only a proof,
-run once per map off the decision thread; storing the fine region per surface is the other way and is not cheap — 39.4 million surfaces on Eltnen.
+**Places no walker can reach are dropped from the plan, by two tests that answer different halves of it.** A place is dropped when it does not carry
+the walkable stretch its fellow places vote for — a coarse-grid lookup, which names the large separate islands — *or* when the ground it stands on runs
+out inside 1000 m², which is a flood fill over the fine surfaces and names the pockets the grid's 4 m columns read wrong. Eltnen loses 12 of 152 and
+Verteron 5 of 123, every one of them named in the log with its coordinates, because a count cannot be checked and a place dropped in error is a place
+the map never populates again. The director then moves anybody left living at a place that no longer exists, because no other rule would: theirs is
+neither short nor over-full.
+
+Asking for a *route* instead was the obvious repair and does not work — at range every failure is honestly reported as a search that gave up, so 152
+probes over Eltnen cost 73 seconds and proved nothing the grid had not. The fill costs 397 ms and proves what it claims. See
+[world-and-data-traps.md](world-and-data-traps.md), which also records why the fill's bound had to be measured. Both tests run once per map on the
+lifecycle lane at startup, ahead of the director's first review.
 
 **This is a flight question wearing a navigation costume.** Those places are not broken ground. Eltnen, Verteron and Poeta all carry `GLIDE`, and a
 terrace a player glides onto is an island only to something that walks. So the filter is a statement about what a bot can do, not about the map, and
@@ -156,10 +161,8 @@ the day bots glide it should loosen rather than go. Which also means flight buys
 and rooftop the world put npcs on and no bot can settle at.
 
 **Posts nobody could fill were the same fault, not the geography.** Every map now fills its village posts exactly: Eltnen 32/32, Verteron 25/25 where
-it had sat at 23, Ishalgen 9/9, with no departures and nothing put off. Eltnen's fortress being in the air turns out not to produce an unfillable post.
-The underlying hazard is still real and still unguarded in the plan — `NavmeshTool 210020000 components` reports **19299 islands of walkable ground,
-the largest only 42% of the map** — but `canReach` already keeps bots off the ones that lead nowhere, so nothing is currently posted where it cannot
-live. A plan that dropped posts no bot can walk to would make that a guarantee rather than a happy outcome.
+it had sat at 23, Ishalgen 9/9, with no departures and nothing put off. Eltnen's fortress being in the air turns out not to produce an unfillable post,
+and with the plan now dropping the places no walker reaches, nothing is posted where it cannot live by guarantee rather than by luck.
 
 **Bots still wedge, but it is no longer a pattern.** Rescues went from 30 in seven minutes, clustered eight deep on single spots, to 7 in eight minutes
 at eight different places, with no house-moving at all. What is left is the staircase and citadel geometry seen in Verteron, which is the

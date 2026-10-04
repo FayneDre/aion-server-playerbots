@@ -85,11 +85,29 @@ public class PlayerBotService {
 		BotScheduler.getInstance().scheduleAtFixedRate(this::saveDue, SAVE_SWEEP_MILLIS, SAVE_SWEEP_MILLIS);
 		runStandingOrders();
 		restoreRoster();
+		warmUpPlaces();
 		// Last, and it used to be first. The director reviews what each region holds against what it should hold, and both of the steps above change
 		// that answer wholesale: populating a fresh installation builds a navmesh and creates thousands of characters across eighteen maps, which
 		// takes minutes. Started first, the director's opening review fired into a world a tenth of the way up and began correcting a figure that was
 		// still moving — on the same threads doing the populating.
 		BotDirector.getInstance().start();
+	}
+
+	/**
+	 * Reads every open map's places before anything needs them.
+	 * <p>
+	 * Finding them is cheap and proving each one can be walked to is not: the ground under every place is walked outwards until it runs out or proves
+	 * big enough, some hundred and fifty times on a region. Left to the first caller, that bill lands wherever the first bot happens to ask — a tick
+	 * thread, with forty other bots waiting behind it. Queued here it lands on the lifecycle lane, which exists to block, and ahead of the director's
+	 * first review because that review runs on the same lane and the lane keeps its order.
+	 */
+	private void warmUpPlaces() {
+		for (WorldMapTemplate map : DataManager.WORLD_MAPS_DATA) {
+			if (raceOfMap(map.getMapId()) == null)
+				continue; // an instance, or contested ground, which is populated by command
+			int worldId = map.getMapId();
+			BotScheduler.getInstance().enterOrLeaveWorld(() -> BotPlaces.warmUp(worldId));
+		}
 	}
 
 	/**

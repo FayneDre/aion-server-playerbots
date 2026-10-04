@@ -166,6 +166,31 @@ public class NavmeshService {
 		return regions;
 	}
 
+	/**
+	 * How much ground a place must have joined to it to be somewhere a bot can live, in cells — 1000 m² at half metre cells, a square 32 m on a side.
+	 * <p>
+	 * Measured rather than chosen, because the first number tried was chosen and was wrong by an order of magnitude. A place's ground comes in two
+	 * clearly separated sizes across the maps this was run on: 23 m², 79 m², 283 m² and 615 m² for the pockets — a shelf, a rooftop, the floor of a
+	 * ravine — against 4560 m², 4664 m² and 12127 m² for the whole settled part of a small map, which two or three places share and which is perfectly
+	 * liveable. A bound of 12500 m² read those three as pockets and emptied two maps completely. The gap between the two groups is wide, and 1000 m²
+	 * sits in the middle of it.
+	 * <p>
+	 * A large island that is genuinely cut off is not this test's business; the coarse grid already names those, because a stretch that big votes for a
+	 * region of its own.
+	 */
+	private static final int LIVEABLE_CELLS = 4_000;
+
+	/**
+	 * @return true when the ground under a spot has been proved to lead nowhere, false when it has not — including where the map has no mesh, since
+	 *         absence of a mesh proves nothing.
+	 *         <p>
+	 *         Costs no route search: see {@link BotPathFinder#isPocket}, which also says why a route search is the wrong question here.
+	 */
+	public boolean isPocket(int worldId, float x, float y, float z) {
+		Navmesh mesh = get(worldId);
+		return mesh != null && BotPathFinder.isPocket(mesh, x, y, z, LIVEABLE_CELLS);
+	}
+
 	/** @return A human readable summary, for the admin command. */
 	public String describe() {
 		if (open.isEmpty())

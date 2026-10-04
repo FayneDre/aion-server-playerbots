@@ -76,13 +76,25 @@ The mesh keeps, for each 4 m cell, the ids of the walkable stretches passing thr
 the fine grid keeps apart". That makes it a cheap way to ask whether two places are joined: `NavmeshService.regionsAt` reads it without touching a tile.
 
 **It is necessary and not sufficient, and the gap is vertical.** A cell covers a 4 m column and carries every stretch in it, at every height. Measured
-at Eltnen's village square, 268 2730: four walkable surfaces stacked at z 240, 270, 276 and 294. The villagers stand on the one at 270; one of the
-others is joined to the rest of the map, so the cell carries the mainland's stretch and the test says yes about a floor that is not on it. No
-refinement of the grid at ground level reaches that — the ambiguity is between floors, not between neighbours. Twelve of the map's 152 places are
-caught; the one that prompted the work is not.
+at Eltnen's village square, 268 2730: four walkable surfaces stacked at z 240, 270, 276 and 294. Were the villagers on a floor other than the one the
+mainland reaches, the cell would carry the mainland's stretch and the test would say yes about a floor that is not on it. No refinement of the grid at
+ground level reaches that — the ambiguity is between floors, not between neighbours.
 
-An exact answer wants either the fine region of the surface itself — which the mesh does not store, and at 39.4 million surfaces on Eltnen would cost
-79 MB a map at two bytes each — or a fine search, where only a *proof* counts and a search that ran out of budget proves nothing.
+**Asking for a route does not close the gap, which is worth knowing before writing one.** Past `LONG_DISTANCE` a search is planned on that same coarse
+grid and refined stretch by stretch, so every way the plan can fail is reported as a search that gave up — honestly, since one blocked corridor is no
+proof that another does not exist. The only refusal a long search can therefore *prove* is the one the grid already settles. Measured: 152 route probes
+across Eltnen took 73 seconds and proved nothing new.
+
+**What does close it is asking the opposite question.** Not "can this place be reached from over there", which needs the whole map, but "how much ground
+does this place have" — a flood fill over the fine surfaces, bounded, which either runs out of ground (a proof that nothing walks off it, whatever the
+column overhead says) or passes the bound. Eltnen's 152 places cost 397 ms that way, against 73 seconds, and `BotPathFinder.isPocket` carries the
+reasoning. The two tests are complementary and both are kept: the grid names a large island that votes for a region of its own, the fill names a pocket
+too small to be anywhere.
+
+**Its bound had to be measured, and the first one chosen was wrong by an order of magnitude.** Ground comes in two clearly separated sizes: 23, 79, 283
+and 615 m² for the pockets — a rooftop, a shelf, a ravine floor — against 4560, 4664 and 12127 m² for the whole settled part of a small map, shared by
+two or three places and perfectly liveable. A bound of 12500 m² read those three as pockets and emptied two maps of every place they had. 1000 m² sits
+in the middle of the gap. **A number invented for a threshold will be wrong in whichever direction nobody measured.**
 
 **And the islands themselves are not a fault.** Reading 19299 stretches on one map as a broken mesh was wrong. Eltnen, Verteron and Poeta all carry
 the `GLIDE` flag, and the mesh describes the terrain correctly: a map of cliffs, terraces, rooftops and ledges has thousands of walkable islands by

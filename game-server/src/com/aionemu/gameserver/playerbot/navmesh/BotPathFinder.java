@@ -1,11 +1,14 @@
 package com.aionemu.gameserver.playerbot.navmesh;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 
@@ -250,6 +253,56 @@ public class BotPathFinder {
 			}
 		}
 		return -1;
+	}
+
+	/**
+	 * Walks every piece of ground joined to a spot, up to a bound, and reports whether the ground ran out first.
+	 * <p>
+	 * It exists because asking for a route cannot answer this at any distance. Past {@link #LONG_DISTANCE} a search is planned on the coarse grid
+	 * first, and every way that plan can fail is reported as a search that gave up — correctly, since one blocked corridor is no proof that another
+	 * does not exist. So the only refusal a long search can prove is the one the coarse grid already settles, and the places it reads wrong are
+	 * exactly the ones it cannot be asked about. Measured: 152 route probes over Eltnen took 73 seconds and proved nothing the grid had not.
+	 * <p>
+	 * A flood fill proves the other direction instead. It does not ask whether somewhere can be reached from here; it asks how much ground this spot
+	 * has, and an answer under the bound is a proof that there is no way off it — whatever the grid says about the column overhead. The bound is what
+	 * makes it cheap: open country passes it in a fraction of the ground it actually covers, and a pocket closes long before it.
+	 *
+	 * @param maxCells How much ground is enough to count as somewhere rather than a pocket, in cells.
+	 * @return true when the fill closed within the bound, which is proof that nothing walks off this spot. false when it did not, and when the spot
+	 *         has no walkable surface at all — nothing has been proved about ground that is not there.
+	 */
+	public static boolean isPocket(Navmesh mesh, float x, float y, float z, int maxCells) {
+		long start = nodeAt(mesh, x, y, z, SNAP_RANGE);
+		if (start == -1)
+			return false;
+
+		Set<Long> reached = new HashSet<>();
+		ArrayDeque<Long> pending = new ArrayDeque<>();
+		reached.add(start);
+		pending.add(start);
+		while (!pending.isEmpty()) {
+			if (reached.size() > maxCells)
+				return false;
+			long current = pending.poll();
+			int cellX = keyX(mesh, current), cellY = keyY(mesh, current);
+			float z0 = mesh.surfaceZ(cellX, cellY, keySurface(current));
+			for (int direction = 0; direction < NEIGHBOUR_X.length; direction++) {
+				int nextX = cellX + NEIGHBOUR_X[direction], nextY = cellY + NEIGHBOUR_Y[direction];
+				if (!mesh.contains(nextX, nextY))
+					continue;
+				boolean diagonal = NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0;
+				for (int surface = 0; surface < mesh.surfaceCount(nextX, nextY); surface++) {
+					// the same step rule the route search uses, so ground this calls a pocket is ground that search cannot leave either
+					if (!mesh.isWalkable(nextX, nextY, surface)
+						|| Math.abs(mesh.surfaceZ(nextX, nextY, surface) - z0) > maxClimb(mesh, diagonal))
+						continue;
+					long next = key(mesh, nextX, nextY, surface);
+					if (reached.add(next))
+						pending.add(next);
+				}
+			}
+		}
+		return true;
 	}
 
 	private static Route findDirectPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
