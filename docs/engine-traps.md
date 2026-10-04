@@ -134,6 +134,30 @@ summon must pace itself by `getAttackSpeed()`, exactly as the client does. The s
 
 **`Summon.setMode` clears the skill order queue** on any mode that is not `ATTACK`, so orders have to be queued after the mode is set.
 
+## Two buffs are the same buff when their effect ids collide, whatever their stack groups say
+
+**The stack group is not how the engine decides a buff is already up.** `EffectController.isConflicting` compares the *effect ids* of each template,
+within a target slot, and ends the weaker of two that collide — equal levels meaning the newcomer wins. The stack group never enters into it. So a bot
+that asks "is this buff up?" by stack group, which is the obvious way and the right way for telling two ranks of one skill apart, will believe a buff is
+missing that the engine considers present.
+
+**Where the data gives one effect two names, that belief costs an infinite loop.** The bot casts the buff; the engine ends the one already holding that
+effect id; the bot now finds *that* one missing and casts it back. Neither is ever up, and nothing in the log says so, because no one logs a buff.
+
+Both halves of it are in the live 4.8 data:
+
+| Skills | Stack groups | Shared effect |
+|---|---|---|
+| Bard, `Mvt. 2: Summer` / `Mvt. 3: Autumn` | `BA_SONGOFBRAVE` / `BA_SONGOFFIRM` | `statup` 944261 |
+| Ranger, `Transformation: White Tiger` / `Krall` | `RA_LIGHT_WHITETIGER` / `RA_LIGHT_KRALLSCOUT` | `shapechange` 175 |
+
+**A buff that cannot win its slot loops just as hard.** The ranger's Mau transformation carries the same `shapechange` 175 at `basiclvl` 160 against the
+others' 100, and `isConflicting` refuses a newcomer whose level is lower. With Mau up, White Tiger is refused for ever — so it never lands, never reads
+as up, and is recast for ever.
+
+**Upkeep rules read from cooldown versus duration will adopt transformations.** Those four polymorphs last 120 s on a 10 s cooldown, which is the exact
+signature of a buff worth keeping up. They have to be excluded by what they do — `EffectType.SHAPECHANGE` — not by how long they last.
+
 ## When diagnosing, mind where the truth lives
 
 **The database lags by up to five minutes.** Bots are saved on a timer and on a clean shutdown, so a query run too soon reports the state before whatever is being tested. Several conclusions today were drawn from stale rows and had to be taken back.
