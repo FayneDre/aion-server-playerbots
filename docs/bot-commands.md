@@ -49,8 +49,9 @@ a map by hand, or for a map the config does not cover.
 | `//bot attack <characterName>` | Sets the bot on your target, or on you if you have none — which is what makes it usable in a duel. |
 | `//bot stop <characterName>` | Ends the fight. |
 | `//bot come <characterName>` | Walks the bot to where you stand, and makes that its new home, so it will come back there when it has nothing to do. Answers that it is blocked when no route exists. |
-| `//bot fly <characterName> [height]` | Flies the bot straight up over the spot it stands on, holds it there four seconds, and lands it again. 25 m by default, capped at 60 and at its own fly zone's ceiling. Refuses with the reason: not a daeva, not in a fly zone, fighting, or short of the flight points the climb *and the landing back down* would cost. |
-| `//bot land <characterName>` | Brings a flying bot down now instead of when its hover is over. |
+| `//bot fly <characterName> [height]` | Flies the bot up on a slant, holds it there four seconds, and lands it again where it stood. 25 m by default, capped at 60 and at its own fly zone's ceiling. Refuses with the reason: not a daeva, not in a fly zone, fighting, or short of the flight points the climb *and the landing back down* would cost. |
+| `//bot flyto <characterName>` | Flies the bot to where **you** stand, climbing over whatever is in the way and landing on the walkable ground nearest your feet. The one way to aim a bot at a terrace, a ledge or a rooftop it has no way of walking to. Refuses past 300 m, and refuses any path that would leave its fly zone — a body that leaves one in flight is dumped out of flight and written into the audit log. |
+| `//bot land <characterName>` | Brings a flying bot down now, straight onto the ground beneath it, wherever it has got to. |
 | `//bot duel <characterName>` | Answers a duel request you have already sent. A bot has no window to click. |
 | `//bot auto <characterName>` | Turns autonomy off and on. A bot with autonomy off only does what it is told; it still defends itself. |
 

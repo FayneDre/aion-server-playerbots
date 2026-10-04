@@ -76,10 +76,18 @@ The flight is also defended against the tick it now depends on: `stop()` refuses
 drops is handed over again, and a leg that makes no headway for a second and a half is handed over with a line in the log. The arrival test and the
 removal test are the same test, which they had to be — see [moving-a-body.md](moving-a-body.md).
 
-**3. A short hop to a place a walker cannot reach.** The one the measurement above asks for: from ground, up to a terrace, inside one fly zone, with
-`getClosestCollision` refusing the leg if the air is not clear and `nearestGround` picking the touchdown. This is where the civic filter loosens — a
-place inside a fly zone stops being dropped once a bot can get to it, which is a one line change to a rule that is already written and already
-measured, so the before and after is 11 places on Eltnen.
+**3a. A short hop to a place a walker cannot reach. Done.** `//bot flyto <name>` flies a bot to where the commander stands — the only way to aim one at
+a terrace without writing its coordinates down. Straight there when `getClosestCollision` says the air is clear, which is what flying to a terrace
+looks like; over the top when it does not. The touchdown is `nearestGround`'s answer rather than the coordinates asked for. Measured over four
+journeys of 34 to 85 m: 6.6 to 12.6 s, 6 to 12 fp, every landing within half a metre of the spot.
+
+Every point of the path is checked against the fly zone before take-off, not only the two ends: a body that leaves one in flight is dumped out of
+flight by `PlayerController.onLeaveFlyArea` **and written into the audit log as a suspected hack**, so a path that would leave is refused with the
+coordinates where it would.
+
+**3b. The civic filter loosens.** A place inside a fly zone stops being dropped once a bot can get to it — 11 of Eltnen's 12, 2 of Verteron's 5. The
+filter is a one line change; what it needs underneath is a bot that falls back to flying when walking is *proved* impossible, or its new residents are
+stranded in a prettier way than before.
 
 **4. The flight state machine, properly.** Flying against gliding, the 10 s cooldown, what interrupts a flight (death, teleport, `NOFLY`, polymorph,
 a fight starting), and what a bot does when fp runs low mid-journey: land early, at the nearest ground, rather than at the destination. Verified by

@@ -811,6 +811,18 @@ public class PlayerBotService {
 		return BotFlight.takeOff(bot, height);
 	}
 
+	/**
+	 * Flies a bot to where the commander stands, which is the one way to aim a flight at somewhere no bot can walk to: a terrace, a ledge, a rooftop.
+	 */
+	public String flyTo(String characterName, Player commander) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+		if (bot.getWorldId() != commander.getWorldId())
+			return characterName + " is on another map";
+		return BotFlight.flyTo(bot, new Vector3f(commander.getX(), commander.getY(), commander.getZ()));
+	}
+
 	public String land(String characterName) {
 		Player bot = findSpawnedBot(characterName);
 		return bot == null ? "No bot spawned with name " + characterName : BotFlight.land(bot);
