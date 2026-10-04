@@ -40,6 +40,13 @@ mid-journey or grouped with a real player it stays.
 people were settled against a plan that has since shifted, so a sleeper from the countryside is given the empty post as its home — a row in the
 database, no world involved. It becomes a village sleeper, and the village rule wakes it when that village is genuinely short.
 
+**And a villager with no post goes back to the countryside.** The move into a village was a door that opened once: the countryside wakes only its own
+sleepers, so a bot given a village post stayed a villager whatever happened afterwards. Verteron settled at 44 residents holding 25 posts while its
+countryside, wanting 59, held 40 and had no sleeper left at all — nineteen people shut in villages that did not want them, and a region that could not
+reach its target however long it ran. The return happens only while the countryside is genuinely short, so a village is never emptied to feed a field
+that has enough, and only for sleepers no village has a post for. Measured the moment a player arrived and Verteron's field target rose from 1 to 59:
+nineteen moved at once, and the split went from 44/40 to exactly 25/59.
+
 Waking them to do it was the fault that made the whole population churn. When a countryside is over its target the field rule draws nobody from it, so
 *every* one of its sleepers is spare — which is to say exactly the bots the same review has just ordered to sleep for being surplus. The region put
 them to sleep by one rule and pulled them straight back out by the other, half a minute apart, for ever. Hence the second guard: **a region already
