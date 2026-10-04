@@ -94,6 +94,33 @@ Write-Host '  data/handlers'
 
 Write-Host "Deployed to $targetGameServer" -ForegroundColor Green
 
+# start.bat is deliberately not deployed: it carries the installation's own memory settings, and overwriting it would reset them on every deploy. But a
+# file nothing deploys is also a file nobody looks at, and that has a cost -- the installed game server ran on -Xmx8192m for days while the repo said
+# 2560m, which is how a 2.4 GB heap grew to 3.4 GB on a machine that runs the game client too, with a live set of 960 MB the whole time.
+# Reported and not refused, unlike the //bot doc check above: a local override is a legitimate thing to want. Going unnoticed is not.
+Write-Host 'Checking JVM options...' -ForegroundColor Cyan
+$javaLine = '^\s*JAVA\s+(.*?)\s+-cp'
+foreach ($module in @('game-server', 'login-server', 'chat-server')) {
+    $installedBat = Join-Path $ServerRoot "$module\start.bat"
+    $repoBat = Join-Path $repoRoot "$module\dist\start.bat"
+    if (-not (Test-Path $installedBat) -or -not (Test-Path $repoBat)) { continue }
+    $installedMatch = Select-String -Path $installedBat -Pattern $javaLine | Select-Object -First 1
+    $repoMatch = Select-String -Path $repoBat -Pattern $javaLine | Select-Object -First 1
+    if (-not $installedMatch -or -not $repoMatch) {
+        Write-Host "  $module : no JAVA line to compare" -ForegroundColor Yellow
+        continue
+    }
+    $installedOpts = $installedMatch.Matches[0].Groups[1].Value
+    $repoOpts = $repoMatch.Matches[0].Groups[1].Value
+    if ($installedOpts -eq $repoOpts) {
+        Write-Host "  $module matches the repo"
+    } else {
+        Write-Host "  $module start.bat differs from the repo, and no deploy will ever reconcile them:" -ForegroundColor Yellow
+        Write-Host "    installed: $installedOpts" -ForegroundColor Yellow
+        Write-Host "    repo:      $repoOpts" -ForegroundColor Yellow
+    }
+}
+
 if ($Restart) {
     & (Join-Path $PSScriptRoot 'start-server.ps1') -ServerRoot $ServerRoot
 } else {
