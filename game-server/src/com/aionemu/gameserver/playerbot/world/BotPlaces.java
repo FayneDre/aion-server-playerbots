@@ -3,6 +3,7 @@ package com.aionemu.gameserver.playerbot.world;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,6 +17,9 @@ import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
@@ -27,6 +31,8 @@ import com.aionemu.gameserver.utils.PositionUtil;
  * village and the three camps without a single new line of data being authored.
  */
 public class BotPlaces {
+
+	private static final Logger log = LoggerFactory.getLogger(BotPlaces.class);
 
 	/** How close two townsfolk must be to count as standing in the same place. */
 	private static final float GATHERING_RADIUS = 50f;
@@ -119,9 +125,8 @@ public class BotPlaces {
 	 */
 	private static final int HOME_LEVEL_TOLERANCE = 2;
 
-	private static final Map<Integer, List<Settlement>> settlementsByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, Places> placesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, int[]> bandByMap = new ConcurrentHashMap<>();
-	private static final Map<Integer, List<Settlement>> huntingByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
 
@@ -152,7 +157,7 @@ public class BotPlaces {
 
 	/** @return The settlements of a map, largest first, or an empty list where nobody lives. */
 	public static List<Settlement> settlements(int worldId) {
-		return settlementsByMap.computeIfAbsent(worldId, BotPlaces::locateSettlements);
+		return places(worldId).settlements();
 	}
 
 	/**
@@ -232,7 +237,7 @@ public class BotPlaces {
 
 	/** @return The places where enough hostile creatures stand together to be worth working, largest first. */
 	public static List<Settlement> huntingGrounds(int worldId) {
-		return huntingByMap.computeIfAbsent(worldId, BotPlaces::locateHuntingGrounds);
+		return places(worldId).huntingGrounds();
 	}
 
 	/**
@@ -413,6 +418,24 @@ public class BotPlaces {
 	}
 
 	/**
+	 * @return true when this spot is somewhere the plan still names — a village or a hunting ground.
+	 *         <p>
+	 *         Asked of a home, it answers whether the address still exists. One can stop existing: a place whose ground turns out to lead nowhere is
+	 *         dropped by {@link #places}, and its inhabitants are then living at a spot no plan mentions, which no rule above would ever move them
+	 *         off. Measured on Eltnen, where dropping twelve marooned places left seventeen people at a village square on 38 by 30 metres of ground
+	 *         joined to nothing at all.
+	 */
+	public static boolean isAPlace(int worldId, Vector3f spot) {
+		if (settlementAt(worldId, spot) != null)
+			return true;
+		for (Settlement ground : huntingGrounds(worldId)) {
+			if (isSamePlace(ground.centre(), spot))
+				return true;
+		}
+		return false;
+	}
+
+	/**
 	 * @return true when two coordinates mean the same place, which is the only way they may ever be compared once either of them has been to the
 	 *         database. See {@link #SAME_PLACE}.
 	 */
@@ -520,6 +543,57 @@ public class BotPlaces {
 	 * Greedy and good enough: townsfolk are few, and two clusters that should have been one merely give a wanderer two destinations a few paces
 	 * apart. Lone npcs are dropped — a road keeper is not a village.
 	 */
+	/** A map's places once the ones nothing can walk out of have been dropped. Both lists at once, because the mainland is decided by both together. */
+	private record Places(List<Settlement> settlements, List<Settlement> huntingGrounds) {
+	}
+
+	/**
+	 * Finds a map's places and keeps the ones a bot could actually live at.
+	 * <p>
+	 * Walkable ground comes in islands, and some of a map's places sit on one nothing walks off. Measured on Eltnen, which the mesh cuts into 19299
+	 * stretches: its village at 268 2730 stands on 38 by 30 metres of ground joined to nothing at all, and seventeen inhabitants lived there — able
+	 * to stand, unable to reach a shop, a hunting ground or each other's villages, and rescued back to the same square for as long as the server ran.
+	 * Another ten lived on a 152 by 382 m shelf. Thirty of the map's hundred and two people, housed where nobody can live.
+	 * <p>
+	 * The mainland is not "the largest island", which would want a sweep of the whole map, but the stretch the places themselves agree on: every
+	 * place votes with the ground under it and the winner takes it. On Eltnen 17 of the 20 busiest places name one stretch and the other three name
+	 * nothing anybody else does, which is the shape this is looking for. Verteron, for comparison, maroons one place in fourteen.
+	 */
+	private static Places places(int worldId) {
+		return placesByMap.computeIfAbsent(worldId, id -> {
+			List<Settlement> settlements = locateSettlements(id);
+			List<Settlement> grounds = locateHuntingGrounds(id, settlements);
+			List<Settlement> everywhere = new ArrayList<>(settlements);
+			everywhere.addAll(grounds);
+			Map<Integer, Integer> votes = new HashMap<>();
+			for (Settlement place : everywhere)
+				for (int region : NavmeshService.getInstance().regionsAt(id, place.centre().getX(), place.centre().getY()))
+					votes.merge(region, 1, Integer::sum);
+			if (votes.isEmpty())
+				return new Places(settlements, grounds); // no mesh for this map, so nothing has been shown to be cut off
+			int mainland = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
+			List<Settlement> reachableSettlements = onTheMainland(id, settlements, mainland);
+			List<Settlement> reachableGrounds = onTheMainland(id, grounds, mainland);
+			int dropped = settlements.size() - reachableSettlements.size() + grounds.size() - reachableGrounds.size();
+			if (dropped > 0)
+				log.info("Map {}: {} of {} place(s) stand on ground nothing walks off, and nobody is housed there", id, dropped, everywhere.size());
+			return new Places(reachableSettlements, reachableGrounds);
+		});
+	}
+
+	private static List<Settlement> onTheMainland(int worldId, List<Settlement> places, int mainland) {
+		List<Settlement> joined = new ArrayList<>();
+		for (Settlement place : places) {
+			for (int region : NavmeshService.getInstance().regionsAt(worldId, place.centre().getX(), place.centre().getY())) {
+				if (region == mainland) {
+					joined.add(place);
+					break;
+				}
+			}
+		}
+		return joined;
+	}
+
 	private static List<Settlement> locateSettlements(int worldId) {
 		// Clustered per faction rather than all together, which is what lets a place say whose it is. On a faction's own ground there is only ever one
 		// of these lists and the result is what it always was; in Reshanta there are two, and Teminon does not absorb Primum because they are a few
@@ -560,7 +634,7 @@ public class BotPlaces {
 	 * to keep somebody busy: two roadside beetles are scenery, not a place to spend an afternoon, and a population scattered over every pair of them
 	 * would be a population standing alone in the grass.
 	 */
-	private static List<Settlement> locateHuntingGrounds(int worldId) {
+	private static List<Settlement> locateHuntingGrounds(int worldId, List<Settlement> settlements) {
 		List<List<Vector3f>> clusters = new ArrayList<>();
 		List<float[]> creatures = new ArrayList<>();
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
@@ -587,7 +661,7 @@ public class BotPlaces {
 			// the level of what stands here, not of the country around it: a ground is a handful of creatures in one spot, and averaging over a
 			// hundred and fifty metres of everything nearby is exactly how a place of eights came to read as a place of twos
 			grounds.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS),
-				factionNearest(worldId, centre)));
+				factionNearest(settlements, centre)));
 		}
 		return grounds;
 	}
@@ -626,10 +700,14 @@ public class BotPlaces {
 	 *         work it. Nearest rather than within a radius: in a contested region the two factions' grounds meet somewhere in the middle, and a
 	 *         distance threshold would leave exactly that middle unclaimed and unpopulated, which is the one part of the map worth populating.
 	 */
-	private static Race factionNearest(int worldId, Vector3f spot) {
+	/**
+	 * @param settlements Handed in rather than fetched, because this is called while a map's places are still being worked out: asking for them
+	 *          through the cache re-entered the very entry being computed, which {@code ConcurrentHashMap} answers with "Recursive update".
+	 */
+	private static Race factionNearest(List<Settlement> settlements, Vector3f spot) {
 		Race race = null;
 		double nearest = Double.MAX_VALUE;
-		for (Settlement settlement : settlements(worldId)) {
+		for (Settlement settlement : settlements) {
 			double distance = PositionUtil.getDistance(spot.x, spot.y, settlement.centre().x, settlement.centre().y);
 			if (distance < nearest) {
 				nearest = distance;

@@ -146,6 +146,26 @@ public class NavmeshService {
 		});
 	}
 
+	/**
+	 * @return The stretches of walkable ground passing under a spot, or an empty array where the map has no mesh or nothing can be stood on there.
+	 *         <p>
+	 *         A stretch is ground a body can actually walk across, so two spots that share one are joined and two that share none are not. Read off
+	 *         the coarse grid, which the mesh keeps in memory always, so this costs an array lookup — no tile is read and no route is searched. It is
+	 *         a 4 m grid, so sharing a stretch is necessary for two places to be joined rather than sufficient: it settles the gross cases and leaves
+	 *         the near ones to {@link #canReach}.
+	 */
+	public int[] regionsAt(int worldId, float x, float y) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return new int[0];
+		int coarseX = mesh.cellX(x) / mesh.coarseFactor(), coarseY = mesh.cellY(y) / mesh.coarseFactor();
+		int count = mesh.coarseRegionCount(coarseX, coarseY);
+		int[] regions = new int[count];
+		for (int index = 0; index < count; index++)
+			regions[index] = mesh.coarseRegion(coarseX, coarseY, index);
+		return regions;
+	}
+
 	/** @return A human readable summary, for the admin command. */
 	public String describe() {
 		if (open.isEmpty())

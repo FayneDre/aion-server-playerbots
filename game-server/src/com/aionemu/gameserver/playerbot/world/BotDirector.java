@@ -365,6 +365,27 @@ public class BotDirector {
 	}
 
 	/**
+	 * Gives a new home to anybody living at a spot the plan no longer names.
+	 * <p>
+	 * Written straight to the roster and not queued as a change: it costs a row each, wakes nobody, and the next review reads the result. Measured on
+	 * Eltnen, where twelve places stood on ground nothing walks off and seventeen people lived at one of them.
+	 */
+	private static void evictFromNowhere(int worldId, List<BotRoster.Resident> residents) {
+		List<Settlement> countryside = BotPresence.field(worldId, true);
+		if (countryside.isEmpty())
+			return; // nowhere to send anybody, so leaving them where they are is the lesser harm
+		int ground = 0, moved = 0;
+		for (BotRoster.Resident resident : residents) {
+			if (BotPlaces.isAPlace(worldId, resident.home()))
+				continue;
+			BotRoster.setHome(resident.name(), countryside.get(ground++ % countryside.size()).centre());
+			moved++;
+		}
+		if (moved > 0)
+			log.info("map {}: moved {} inhabitant(s) off a place that no longer exists", worldId, moved);
+	}
+
+	/**
 	 * @return The real players of each map they are on. One pass over the world, because every map's answer comes out of the same walk — and a bot is
 	 *         not a player for this purpose however much the engine thinks it is one.
 	 */
