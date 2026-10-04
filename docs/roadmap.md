@@ -193,8 +193,7 @@ route pool, `restingSpot` in none. Changing it would be optimising against a cos
    throughout these docs as if they were ready: **Sanctum** (110010000) and **Reshanta** (400010000) have no mesh, so no bot plans a route on
    either. A mesh is also not a population: only Poeta has inhabitants, and the others open lazily, on the first map that needs one.
 2. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the mesh does not answer a bot can still wedge itself.
-3. **Walkable ground comes in islands.** A route between two of them does not exist; `NavmeshTool <mapId> components` says so before you suspect the
-   search.
+3. **Walkable ground comes in islands**, and a route between two of them does not exist. `NavmeshTool <mapId> components` says so.
 4. **How many characters a client tolerates in one place is unmeasured**, and it is the one ceiling this project does not control. It is also the only
    one a player feels directly.
 5. **A crash loses at most 5 minutes** of what bots did.
