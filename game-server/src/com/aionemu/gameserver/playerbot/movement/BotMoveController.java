@@ -109,6 +109,34 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile float gaveUpX, gaveUpY;
 	private volatile int gaveUpCount;
 	private volatile boolean hasGoal;
+	/**
+	 * How often a climbing body is told where it is, in milliseconds.
+	 * <p>
+	 * A flight packet carries a velocity, and a velocity is one second of travel: the clients fly the body to where it says and stop there. So this
+	 * has to be comfortably inside a second, or the body arrives and waits — which from the ground is a climb that sets off, stops and jumps. Ten
+	 * times a second is the other end of it and is worse: that many announcements of a change of direction never get going at all.
+	 */
+	private static final long FLIGHT_TELL_MILLIS = 500;
+	/**
+	 * The most time one flight step may account for, in seconds, however long its tick waited.
+	 * <p>
+	 * Movement is paced by the clock rather than by its own period, so a late step covers the ground it missed. On the ground that is invisible; in
+	 * the air a step delayed by seconds covers the whole climb in one move, and the body is simply at the top. Lateness beyond this is written off: a
+	 * starved flight is slower than it should be, and never a jump.
+	 */
+	private static final float LONGEST_FLIGHT_STEP_SECONDS = 0.3f;
+	/** Near enough to the end of a flight leg to call it reached. */
+	private static final float FLIGHT_ARRIVED = 0.5f;
+
+	/** True while the body is flying a leg, which is what tells {@link #moveToDestination} to leave the ground out of it. */
+	private volatile boolean flying;
+	/** True once the current flight leg has been reached, for the flight to move on to its next phase. */
+	private volatile boolean flightLegDone;
+	/** How fast the current flight leg is flown, which is not always the body's own speed: a flight that has failed comes down faster. */
+	private volatile float flightSpeed;
+	/** Whether this leg goes up, which decides how it is told to the clients -- see {@link #beginFlightVelocity}. */
+	private volatile boolean flightRising;
+	private long lastFlightTell;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
 	private double closestToGoal;
@@ -211,50 +239,119 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	/**
-	 * Announces a leg of a flight the way a walking journey is announced: the absolute destination, once, for each client to make its own way to.
+	 * Flies the body to a point in the air, on the tick the engine already runs for every moving creature.
 	 * <p>
-	 * Right for a descent and wrong for a climb, which is a distinction paid for in five rounds of watching a bot from the ground. A client given a
-	 * destination draws the body towards it along the ground — the target window reads "Altitude =" for the whole climb, and the body only arrives
-	 * overhead when the leg ends and the stop packet says where it really is. Coming down, the same clamp is simply the truth: the path ends on the
-	 * ground, and the descent is drawn perfectly.
+	 * This is what the flight itself used to do in a loop of its own, and the move was the whole of milestone two: moving a body is movement, it
+	 * belongs on the movement tick, and the loop that did it elsewhere had its first step wait 7.8 seconds behind eighty bots thinking.
+	 *
+	 * @param speed How fast to fly it, which is the body's own speed except when a failed flight is being brought down.
 	 */
-	public void beginFlightLeg(float x, float y, float z) {
+	public void flyLegTo(float x, float y, float z, float speed) {
+		flying = true;
+		flightLegDone = false;
+		flightSpeed = speed;
+		flightRising = z > owner.getZ() + FLIGHT_ARRIVED;
+		tellFlightLeg(x, y, z);
+		updateLastMove();
+		MoveTaskManager.getInstance().addCreature(owner);
+	}
+
+	/** @return true once the leg handed to {@link #flyLegTo} has been reached. */
+	public boolean isFlightLegDone() {
+		return flightLegDone;
+	}
+
+	/** @return true while this controller is flying the body, which is false again the moment anything interrupts it. */
+	public boolean isFlying() {
+		return flying;
+	}
+
+	/** Ends the flight: the body stops where it is, and the clients are told so rather than left interpolating past it. */
+	public void endFlight() {
+		flying = false;
+		MoveTaskManager.getInstance().removeCreature(owner);
+		setAndSendStopMove(owner);
+	}
+
+	/**
+	 * Tells the clients about the leg, in the form each half of it needs.
+	 * <p>
+	 * <b>Coming down, a destination is enough</b> — {@link #setAndSendStartMove}, the same announcement every walking journey makes, and each client
+	 * draws its own way there. Clients clamp a body they are drawing to the ground, and on a descent that clamp is simply the truth.
+	 * <p>
+	 * <b>Going up, the body has to be driven</b>, because no client lifts one on its own: given a destination overhead it walks the body there along
+	 * the ground, and the target window reads "Altitude =" for the whole climb. So the server says the position itself, in the player form —
+	 * {@code POSITION | MANUAL} with a velocity, which is what {@code SM_PLAYER_INFO} builds when it has only a destination
+	 * ({@code normalize(target - position) * movementSpeed}) and what {@code CM_MOVE} reads coming the other way. It is also the only form that gets
+	 * the flight animation drawn rather than the gliding one.
+	 */
+	private void tellFlightLeg(float x, float y, float z) {
+		lastFlightTell = System.currentTimeMillis();
+		if (flightRising)
+			beginFlightVelocity(x, y, z, flightSpeed);
+		else
+			beginFlightLeg(x, y, z);
+	}
+
+	private void beginFlightLeg(float x, float y, float z) {
 		// heading towards the destination, so the body faces where it is going -- a flight leg is a slant, and a slant has a direction
 		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
 		setAndSendStartMove(owner);
 	}
 
 	/**
-	 * Starts a climb: where the body is, and the velocity it leaves at.
-	 * <p>
-	 * A climb has to be driven rather than announced, because no client lifts a body off the ground on its own. Given a destination overhead it draws
-	 * the body towards it along the ground — the target window reads "Altitude =" for the whole climb — and only puts it up there when the leg ends.
-	 * So the server says the position itself, and says it in the two packets a moving client sends rather than in one of them repeated.
-	 * <p>
-	 * <b>And the vector is one second of travel, which is what sets the rate these go out at.</b> It is the direction times the speed —
-	 * {@code SM_PLAYER_INFO} builds it as {@code normalize(target - position) * movementSpeed}, and {@code CM_MOVE} confirms from the other side that
-	 * "the movement vector from the client already accounts for movement speed" — and a client reaches {@code position + vector} and stops there,
-	 * exactly as the server does with {@code setNewDirection(x + vectorX, ...)} when it receives one. So one of these per second has the body arrive
-	 * and wait for the next, which from the ground is a climb that sets off, stops, and jumps; and one every hundred milliseconds tells every onlooker
-	 * the body changed direction ten times a second, which never gets going at all. It is refreshed well inside the second it buys.
+	 * <b>The vector is one second of travel, which is what sets the rate these go out at.</b> A client reaches {@code position + vector} and stops
+	 * there, exactly as the server does with {@code setNewDirection(x + vectorX, ...)} when it receives one. See {@link #FLIGHT_TELL_MILLIS}.
 	 */
-	public void beginFlightVelocity(float x, float y, float z, float speed) {
+	private void beginFlightVelocity(float x, float y, float z, float speed) {
 		float gapX = x - owner.getX(), gapY = y - owner.getY(), gapZ = z - owner.getZ();
 		float gap = (float) Math.sqrt(gapX * gapX + gapY * gapY + gapZ * gapZ);
 		if (gap < 0.01f)
 			return;
-		vectorX = gapX / gap * speed;
-		vectorY = gapY / gap * speed;
-		vectorZ = gapZ / gap * speed;
+		// Never past the end of the leg. The vector is both the speed and a second of travel, so a full one sent when less than a second of climb
+		// remains points every client at a spot beyond the top: they fly through the apex, and the packet that ends the leg pulls them back down to
+		// it. Shortened, the last packets of a climb also slow it, which is what arriving somewhere looks like.
+		float carry = Math.min(speed, gap);
+		vectorX = gapX / gap * carry;
+		vectorY = gapY / gap * carry;
+		vectorZ = gapZ / gap * carry;
 		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
 		movementMask = (byte) (MovementMask.POSITION | MovementMask.MANUAL);
 		setInMove(true);
 		PacketSendUtility.broadcastToSightedPlayers(owner, new SM_MOVE(owner));
 	}
 
-	/** Ends a leg and tells the clients the bot is holding still, so they stop interpolating past the height it stopped at. */
-	public void endFlightLeg() {
-		setAndSendStopMove(owner);
+	/**
+	 * One step of a flight leg: the same interpolation walking does, in three dimensions and without the ground.
+	 * <p>
+	 * {@link #groundZ} is deliberately absent. It is what makes a walking bot follow a slope, and it is exactly what would pin a flying one to the
+	 * terrain -- the fault milestone one worked around by keeping its own loop.
+	 */
+	private void flyOneStep() {
+		float x = owner.getX(), y = owner.getY(), z = owner.getZ();
+		float gapX = getTargetX2() - x, gapY = getTargetY2() - y, gapZ = getTargetZ2() - z;
+		float gap = (float) Math.sqrt(gapX * gapX + gapY * gapY + gapZ * gapZ);
+		if (gap <= FLIGHT_ARRIVED) {
+			flightLegDone = true; // the same test MoveTaskManager will apply a moment later through isArrived, so the two cannot disagree
+			updateLastMove();
+			return;
+		}
+
+		float seconds = Math.min((System.currentTimeMillis() - getLastMoveUpdate()) / 1000f, LONGEST_FLIGHT_STEP_SECONDS);
+		float fraction = Math.min(flightSpeed * seconds / gap, 1);
+		World.getInstance().updatePosition(owner, x + gapX * fraction, y + gapY * fraction, z + gapZ * fraction, heading, true);
+		updateLastMove();
+		owner.getController().onMove();
+		// The step that reaches the target is the one that finishes the leg, and it has to say so itself: MoveTaskManager asks isArrived right after
+		// this and drops the body from the movement tick the moment it says yes, so there is no next step to notice. Left to the next step, every leg
+		// ended a second and a half late -- the watchdog in BotFlight fired twice a flight, at the apex and again on the ground.
+		// Asked of what is left *after* the move rather than of the move being a whole one, because the two have to agree with isArrived exactly: a
+		// step that stopped 47 cm short satisfied the removal and not the flag, and the leg hung there until the watchdog handed it over again.
+		if (gap * (1 - fraction) <= FLIGHT_ARRIVED)
+			flightLegDone = true;
+
+		if (flightRising && System.currentTimeMillis() - lastFlightTell >= FLIGHT_TELL_MILLIS)
+			tellFlightLeg(getTargetX2(), getTargetY2(), getTargetZ2());
 	}
 
 	/**
@@ -463,6 +560,8 @@ public class BotMoveController extends PlayerMoveController {
 	 * Ends the current movement and tells clients the authoritative position, so they stop extrapolating.
 	 */
 	public void stop() {
+		if (flying)
+			return; // a flight ends through endFlight, and every other caller of this is a walking journey being given up
 		hasGoal = false;
 		route = List.of();
 		pendingRoute = null;
@@ -474,7 +573,23 @@ public class BotMoveController extends PlayerMoveController {
 		}
 	}
 
+	/**
+	 * @return Whether the body has reached what it was last sent towards.
+	 *         <p>
+	 *         <b>In three dimensions while flying, and only then.</b> On foot the height is the ground's business and asking about it would have a bot
+	 *         on a slope believe it is still travelling; in the air it is the whole point. The two metre tolerance is also wrong for a flight leg,
+	 *         which ends where it ends.
+	 *         <p>
+	 *         What reads this is not only the caller you would expect: {@code MoveTaskManager} asks after every tick, through
+	 *         {@code PlayerBotAI.isDestinationReached}, and <b>removes the creature from the moving list when the answer is yes</b>. So a flat answer
+	 *         about a climb is not a cosmetic error — a bot slanting up to its apex reached the apex's x and y while still 25 m below it, was dropped
+	 *         from the movement tick there, and hung in the air until its flight points ran out. Having stopped being ticked it also stopped telling
+	 *         the clients where it was, and every one of them carried on drawing it upwards along the last velocity it had been given: 329 m up, by
+	 *         the target window, while the body sat still.
+	 */
 	public boolean isArrived() {
+		if (flying)
+			return PositionUtil.getDistance(owner.getX(), owner.getY(), owner.getZ(), getTargetX2(), getTargetY2(), getTargetZ2()) <= FLIGHT_ARRIVED;
 		return PositionUtil.getDistance(owner.getX(), owner.getY(), getTargetX2(), getTargetY2()) < ARRIVE_OFFSET;
 	}
 
@@ -493,8 +608,10 @@ public class BotMoveController extends PlayerMoveController {
 
 	@Override
 	public void moveToDestination() {
-		if (BotFlight.isInTheAir(owner))
-			return; // the flight owns this body until it lands; see moveToReachablePoint
+		if (flying) {
+			flyOneStep();
+			return;
+		}
 		if (!owner.canPerformMove()) {
 			if (started.compareAndSet(true, false))
 				setAndSendStopMove(owner);
@@ -571,6 +688,7 @@ public class BotMoveController extends PlayerMoveController {
 	@Override
 	public void abortMove() {
 		// engine code calls abortMove blindly (stun, teleport, despawn), so removal must be idempotent
+		flying = false; // and a flight interrupted this way is noticed by BotFlight, which flies the body down rather than leaving it up there
 		MoveTaskManager.getInstance().removeCreature(owner);
 		super.abortMove();
 	}

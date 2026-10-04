@@ -15,7 +15,6 @@ import com.aionemu.gameserver.model.templates.zone.ZoneType;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
-import com.aionemu.gameserver.world.World;
 import com.aionemu.gameserver.world.zone.ZoneInstance;
 
 /**
@@ -25,9 +24,10 @@ import com.aionemu.gameserver.world.zone.ZoneInstance;
  * No navigation and no decision making, because the two things worth getting right here are worth getting right on their own — that the bot comes down
  * under power, and that it never takes off without the flight points to finish.
  * <p>
- * <b>Why it has a stepping loop of its own.</b> {@link BotMoveController#moveToDestination} interpolates x and y and then replaces z with a geo probe
- * two metres either side of the interpolated height, so a bot that handed its climb to the mover would be snapped back to the ground on the first
- * step. Teaching the mover to fly is the next milestone; see {@code docs/flight-plan.md}.
+ * <b>It decides the phases and moves nothing.</b> The body is flown by {@link BotMoveController}, on the movement tick the engine already runs for
+ * every moving creature: this asks for a leg, waits for it to be reached, and asks for the next. It used to step the body itself, in a loop of its
+ * own, because the mover replaced z with the height of the ground underneath — and that loop then had its first step wait 7.8 seconds behind eighty
+ * bots thinking. Moving a body is movement; see {@code docs/flight-plan.md}.
  * <p>
  * <b>And why coming down is the hard half.</b> Falling is entirely client side: {@code CM_MOVE} is what sets {@code MovementMask.FALL} and calls
  * {@code updateFalling}, and no server code moves anything downwards. A bot that runs out of flight points at height does not fall — it hangs there,
@@ -47,7 +47,21 @@ public class BotFlight {
 	private static final float MAX_HEIGHT = 60;
 	/** How long the bot holds its height before coming down, which is what makes one command a whole cycle nobody has to finish by hand. */
 	private static final long HOVER_MILLIS = 4000;
-	private static final long STEP_MILLIS = 100;
+	/**
+	 * How long a leg may make no headway before it is handed to the mover again, in milliseconds.
+	 * <p>
+	 * The flight asks for a leg and the movement tick flies it, which means the flight depends on being ticked — and the one thing that went wrong
+	 * when it started depending on that was the tick quietly dropping the body: {@code MoveTaskManager} asks after every step whether the destination
+	 * is reached and removes anything that says yes. Nothing is ever told that it was dropped. So instead of trusting it, the flight watches the one
+	 * thing it can see for itself, which is whether the body is still moving, and asks again when it is not. A body that stops being flown also stops
+	 * telling the clients where it is, and they go on drawing it along the last velocity they were given — 329 m up, in the case that found this.
+	 */
+	private static final long NO_HEADWAY_MILLIS = 1500;
+	/** How far the body must get in that time for the leg to count as being flown. */
+	private static final float HEADWAY = 0.5f;
+
+	/** How often the phases are looked at. It decides and does not move, so it runs at the movement tick's own period rather than faster. */
+	private static final long STEP_MILLIS = 200;
 	/**
 	 * How long the take-off animation is given before the body starts moving.
 	 * <p>
@@ -58,17 +72,6 @@ public class BotFlight {
 	 * the one standing up and drawing a weapon already use. See {@code docs/engine-traps.md}.
 	 */
 	private static final long TAKE_OFF_MILLIS = 1200;
-	/**
-	 * How often a climb is told to the clients, in milliseconds.
-	 * <p>
-	 * A flight packet carries a velocity, and a velocity is one second of travel: the clients fly the body to where it says and stop there. So this
-	 * has to be comfortably inside a second, or the body arrives and waits for the next packet — which from the ground is a climb that sets off,
-	 * stops, and jumps. Ten times a second is the other end of it and is worse: that many announcements of a change of direction never get going at
-	 * all. Half a second leaves each one superseded at the half way point of what it bought.
-	 */
-	private static final long TELL_CLIENTS_MILLIS = 500;
-	/** Near enough to a target height to call it reached; a step at flight speed covers rather more than this. */
-	private static final float ARRIVED = 0.5f;
 	/**
 	 * Flight points held back over and above the climb, the hover and the descent.
 	 * <p>
@@ -89,19 +92,12 @@ public class BotFlight {
 	 * Reported from in game as a bot that stayed on the ground for the whole climb and then appeared at the top of it.
 	 * <p>
 	 * A slant is also the shape of the work after this one: reaching a terrace is a hop up and across, never a lift.
-	 */
-	private static final float FORWARD_SHARE = 0.6f;
-	/**
-	 * The most time one step may account for, in seconds, however long it actually waited for its turn.
 	 * <p>
-	 * The loop paces itself by the clock rather than by its own period, which is right — a step that arrives late has to cover the ground it missed,
-	 * or the flight runs slow. But the bot pool is shared with every other bot on the server, and a step delayed by seconds would then cover the whole
-	 * climb in one move: the body stands on the ground, and then it is at the top. Which is exactly what was reported from in game.
-	 * <p>
-	 * So lateness beyond this is written off rather than made up. A starved flight is slower than it should be; it is never a jump, and the warning
-	 * below says when it happened instead of leaving it to be guessed at from a video.
+	 * <b>And it is what sets how fast the body gains height.</b> A body flies at one speed, so the slant divides it between forward and up: half a
+	 * metre forward per metre up spends most of 9 m/s on the climb, which reads from the ground as a bot shooting into the sky rather than a player
+	 * taking off. Three metres forward for every two up puts the climb at about 5 m/s, which is what a daeva gaining height actually looks like.
 	 */
-	private static final float LONGEST_STEP_SECONDS = 0.3f;
+	private static final float FORWARD_SHARE = 1.5f;
 
 	private enum Phase {
 		TAKING_OFF,
@@ -121,10 +117,11 @@ public class BotFlight {
 	private long lastStep = System.currentTimeMillis();
 	/** The height the current leg was announced to the clients for, so a new leg is told apart from one already under way. */
 	private float legTarget = Float.NaN;
-	private long lastTold;
-	/** How many times the climb told the clients where the body was, and the longest it ever went without telling them. */
-	private int tells;
-	private long worstTellGap;
+	/** The leg the mover was last given, kept so an interrupted one can be handed back rather than lost. */
+	private float legX, legY, legZ;
+	/** Where the body was when it last made headway, and when that was. */
+	private float headwayX, headwayY, headwayZ;
+	private long headwayAt;
 	/** True once the flight has ended without this class asking, in which case the bot is brought down with no flight state at all. */
 	private boolean powerless;
 	private ScheduledFuture<?> task;
@@ -280,16 +277,12 @@ public class BotFlight {
 
 	private void step() {
 		long now = System.currentTimeMillis();
-		float seconds = (now - lastStep) / 1000f;
-		lastStep = now;
-		if (seconds > LONGEST_STEP_SECONDS) {
-			log.warn("Bot {}'s flight waited {} s for its turn on the bot pool, so that much of its climb is paced rather than covered",
-				bot.getName(), seconds);
-			seconds = LONGEST_STEP_SECONDS;
-		}
-
 		if (!bot.isSpawned() || bot.isDead()) {
 			finish("it left the world or died in the air");
+			return;
+		}
+		if (!(bot.getMoveController() instanceof BotMoveController mover)) {
+			finish("it has no bot move controller to fly it");
 			return;
 		}
 		if (!powerless && !bot.isFlying()) {
@@ -299,72 +292,68 @@ public class BotFlight {
 				bot.getLifeStats().getCurrentFp());
 			powerless = true;
 			phase = Phase.DESCENDING;
+			flyTo(mover, groundX, groundY, groundLevel);
 		}
-		if (phase != Phase.DESCENDING && phase != Phase.TAKING_OFF && bot.getLifeStats().getCurrentFp() <= FP_MARGIN) {
+		if (phase == Phase.CLIMBING && bot.getLifeStats().getCurrentFp() <= FP_MARGIN) {
 			log.info("Bot {} turns back at z {} with {} fp left", bot.getName(), bot.getZ(), bot.getLifeStats().getCurrentFp());
 			phase = Phase.DESCENDING;
+			flyTo(mover, groundX, groundY, groundLevel);
+		}
+		// a leg the engine dropped -- a stun, a teleport, anything that calls abortMove -- is simply asked for again, from wherever the body now is
+		boolean flyingALeg = phase == Phase.CLIMBING || phase == Phase.DESCENDING;
+		if (flyingALeg && !mover.isFlying() && !mover.isFlightLegDone())
+			flyTo(mover, legX, legY, legZ);
+		else if (flyingALeg && !mover.isFlightLegDone()) {
+			if (PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), headwayX, headwayY, headwayZ) >= HEADWAY) {
+				headwayX = bot.getX();
+				headwayY = bot.getY();
+				headwayZ = bot.getZ();
+				headwayAt = now;
+			} else if (now - headwayAt >= NO_HEADWAY_MILLIS) {
+				log.warn("Bot {}'s flight has not moved for {} ms at z {}, so its leg is handed over again", bot.getName(), now - headwayAt,
+					bot.getZ());
+				flyTo(mover, legX, legY, legZ);
+			}
 		}
 
 		switch (phase) {
 			case TAKING_OFF -> {
 				// nothing at all: the wings are coming out, and anything started inside that animation is swallowed by it
-				if (now - takenOffAt >= TAKE_OFF_MILLIS)
+				if (now - takenOffAt >= TAKE_OFF_MILLIS) {
 					phase = Phase.CLIMBING;
+					flyTo(mover, apexX, apexY, apexZ);
+				}
 			}
 			case CLIMBING -> {
-				if (flyTo(apexX, apexY, apexZ, seconds)) {
+				if (mover.isFlightLegDone()) {
 					phase = Phase.HOVERING;
 					hoverUntil = now + HOVER_MILLIS;
-					legTarget = Float.NaN;
-					if (bot.getMoveController() instanceof BotMoveController mover)
-						mover.endFlightLeg();
+					mover.endFlight(); // hold still up there, rather than leave every client interpolating past the top
 				}
 			}
 			case HOVERING -> {
-				if (now >= hoverUntil)
+				if (now >= hoverUntil) {
 					phase = Phase.DESCENDING;
+					flyTo(mover, groundX, groundY, groundLevel);
+				}
 			}
 			case DESCENDING -> {
-				if (flyTo(groundX, groundY, groundLevel, seconds))
+				if (mover.isFlightLegDone())
 					finish(null);
 			}
 		}
 	}
 
-	/**
-	 * Moves the bot towards a point in the air, announcing the leg and then keeping the server side position in step with what the clients draw.
-	 * <p>
-	 * The leg is announced once, when it starts, and nothing is sent in between: the clients have the destination and draw their way to it at the
-	 * body's own speed, which is the speed this moves it at. It is how a walking bot has always been drawn.
-	 *
-	 * @return true once the bot is there.
-	 */
-	private boolean flyTo(float x, float y, float z, float seconds) {
-		float gapX = x - bot.getX(), gapY = y - bot.getY(), gapZ = z - bot.getZ();
-		float gap = (float) Math.sqrt(gapX * gapX + gapY * gapY + gapZ * gapZ);
-		if (gap <= ARRIVED)
-			return true;
-
-		float speed = powerless ? POWERLESS_SPEED : speedOf(bot);
-		boolean rising = gapZ > 0;
-		boolean newLeg = legTarget != z;
-		legTarget = z;
-		long now = System.currentTimeMillis();
-		if (!rising) {
-			// coming down, a destination is enough: every client draws its own way there, and draws it perfectly
-			if (newLeg && bot.getMoveController() instanceof BotMoveController mover)
-				mover.beginFlightLeg(x, y, z);
-		} else if ((newLeg || now - lastTold >= TELL_CLIENTS_MILLIS) && bot.getMoveController() instanceof BotMoveController mover) {
-			if (!newLeg)
-				worstTellGap = Math.max(worstTellGap, now - lastTold);
-			lastTold = now;
-			tells++;
-			mover.beginFlightVelocity(x, y, z, speed); // a climb is driven, and each packet buys one second -- see beginFlightVelocity
-		}
-		float fraction = Math.min(speed * seconds / gap, 1);
-		World.getInstance().updatePosition(bot, bot.getX() + gapX * fraction, bot.getY() + gapY * fraction, bot.getZ() + gapZ * fraction,
-			bot.getHeading(), true);
-		return false;
+	/** Hands a leg to the mover and remembers it, so one dropped by an interruption can be asked for again. */
+	private void flyTo(BotMoveController mover, float x, float y, float z) {
+		legX = x;
+		legY = y;
+		legZ = z;
+		headwayX = bot.getX();
+		headwayY = bot.getY();
+		headwayZ = bot.getZ();
+		headwayAt = System.currentTimeMillis();
+		mover.flyLegTo(x, y, z, powerless ? POWERLESS_SPEED : speedOf(bot));
 	}
 
 	/**
@@ -380,20 +369,20 @@ public class BotFlight {
 	private void finish(String cutShort) {
 		if (task != null)
 			task.cancel(false);
+		// the mover first, so the body is out of the movement tick before anything else can ask it to walk, and the clients are told where it came to
+		// rest rather than left interpolating past it
+		if (bot.getMoveController() instanceof BotMoveController mover)
+			mover.endFlight();
 		inTheAir.remove(bot.getObjectId());
 		if (bot.isFlying())
 			bot.getFlyController().endFly(true);
-		// the authoritative position last, after the landing: a client that is still interpolating a leg has to be told where the body actually came
-		// to rest, and an onlooker who arrived mid flight has never been told at all
-		if (bot.isSpawned() && bot.getMoveController() instanceof BotMoveController mover)
-			mover.endFlightLeg();
 		if (cutShort != null)
 			log.info("Bot {}'s flight ended because {}", bot.getName(), cutShort);
 		else
 			// The climb is the half the clients cannot draw by themselves, so how regularly it was told to them is the one number that says whether
 			// a bad looking flight was this server's doing. Every packet is meant to be superseded at the half way point of the second it buys: a
 			// worst gap near TELL_CLIENTS_MILLIS is a flight that was told properly, and anything approaching a second is one that was not.
-			log.info("Bot {} lands at z {} with {} fp left, having told the clients {} times, worst gap {} ms{}", bot.getName(), bot.getZ(),
-				bot.getLifeStats().getCurrentFp(), tells, worstTellGap, powerless ? ", having lost its flight on the way" : "");
+			log.info("Bot {} lands at z {} with {} fp left after {} s{}", bot.getName(), bot.getZ(), bot.getLifeStats().getCurrentFp(),
+				(System.currentTimeMillis() - takenOffAt) / 1000f, powerless ? ", having lost its flight on the way" : "");
 	}
 }

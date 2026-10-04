@@ -63,6 +63,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/group-roles.md](docs/group-roles.md) — what tank, healer, support and damage change about how a bot fights in a group.
 - [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
 - [docs/navmesh-plan.md](docs/navmesh-plan.md) — design for real path planning, to replace reactive steering.
+- [docs/moving-a-body.md](docs/moving-a-body.md) — driving a body from the server: what a movement packet carries, how often, and the task manager that stops ticking a body that says it arrived.
 - [docs/flight-plan.md](docs/flight-plan.md) — how bots get off the ground: what the engine already does, what it leaves to the server, and the milestones in verifiable order.
 
 ### Secondary obstacle: headless `Player` lifecycle

@@ -64,13 +64,17 @@ landing within 20 cm of the take-off height, no errors. The fp for the descent a
 underneath — fp gone, a zone left, an effect landed — is still flown down rather than left hanging, since nothing falls server side.
 
 What it cost was six rounds of being watched from the ground, every one of them a different way of speaking the client's movement protocol wrongly;
-they are written up in [engine-traps.md](engine-traps.md). The two that were this server's own fault are worth naming here: the body was quoted *walk*
+they are written up in [moving-a-body.md](moving-a-body.md). The two that were this server's own fault are worth naming here: the body was quoted *walk*
 speed, because `getMovementSpeed` answers from a cascade of states and the bot was still in `WALK_MODE`; and the flight loop ran on the bot pool, where
 its first step waited 7.8 seconds behind eighty decision ticks. Moving a body is not thinking, and walking never used that pool either.
 
-**2. Flight in the mover.** `BotMoveController` learns a flying mode: z is interpolated towards the target instead of being snapped to the ground, and
-arrival is three dimensional. Half of it is already there — the mover announces flight legs and refuses to walk a body that is in the air — and what is
-left is folding the flight's own stepping loop into the one the engine ticks. Verified by a bot flying a fixed leg at a fixed height with no drift.
+**2. Flight in the mover. Done.** `BotMoveController` has a flying mode: the same interpolation walking uses, in three dimensions and without the geo
+probe that pins a body to the ground, on the movement tick the engine already runs. `BotFlight` decides the phases and moves nothing — it asks for a
+leg, waits for it, asks for the next. Measured at 15.8 s for the round trip, 15 fp, no warnings.
+
+The flight is also defended against the tick it now depends on: `stop()` refuses to interrupt a flight, `abortMove` ends it cleanly, a leg the engine
+drops is handed over again, and a leg that makes no headway for a second and a half is handed over with a line in the log. The arrival test and the
+removal test are the same test, which they had to be — see [moving-a-body.md](moving-a-body.md).
 
 **3. A short hop to a place a walker cannot reach.** The one the measurement above asks for: from ground, up to a terrace, inside one fly zone, with
 `getClosestCollision` refusing the leg if the air is not clear and `nearestGround` picking the touchdown. This is where the civic filter loosens — a

@@ -1177,6 +1177,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	protected void handleMoveArrived() {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
 			return;
+		if (moveController.isFlying())
+			return; // a flight leg that has been reached is the flight's business, and continueToGoal would hand the body to a walking route
 		if (moveController.continueToGoal())
 			return; // the goal is further away, another leg was started
 		if (!moveController.isBlocked()) // being blocked is logged where it is detected
