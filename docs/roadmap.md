@@ -130,6 +130,24 @@ Priority five. Bots forming and filling legions, which mostly falls out of group
 - **Zero automated tests** on roughly 10400 lines, much of it concurrent — the repo has a test layout and other modules use it, the bot module
   simply has none. This is why the combat half of `PlayerBotAI` has not been split: a mistake there is silent rather than loud.
 
+## Open after the population churn of 2026-10-04
+
+The churn itself is fixed — see [population-director.md](population-director.md) and the float trap in
+[world-and-data-traps.md](world-and-data-traps.md). What it uncovered and did not close:
+
+- **Coordinate equality is not audited anywhere else.** The rule is now written down — a world coordinate that has crossed the database is compared
+  for nearness, never for equality — but only `BotPlaces` was changed to obey it. `BotDay.recordStranding` does `elsewhere.equals(home())` across the
+  same boundary, and nothing has been swept for others. Each one is a silent fault of the same shape: it costs nothing until the two spellings of one
+  place end up on opposite sides of a decision.
+- **A post no bot can walk to is still a post.** Eltnen's fortress is in the air, so the village posts inside it cannot be reached on foot and cannot
+  be filled; with the accounting now honest, a region simply sits a few short for ever. Verteron reads 23 of 25. `NavmeshService.canReach` already
+  answers this question and `BotPlaces` already filters standing spots on it, so the plan could drop a post nothing can reach — an address nobody can
+  live at is not a post.
+- **Bots wedge on staircases and against the citadel geometry.** Seen in Verteron's fortress. Not diagnosed; distinct from both the churn and the
+  reactive-steering limits below.
+- **`BotDay.restingSpot` runs two full path searches per candidate spot**, twelve candidates per bot. It never showed up in the profile once the
+  vendor sweep was capped, so it is churn rather than a fault — the same shape as the one that cost four and a half cores.
+
 ## Known limits, in order of how much they will bite
 
 1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **24 meshes exist** (`data/navmesh/*.nav`, 23 distinct

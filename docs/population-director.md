@@ -36,6 +36,25 @@ anywhere in it. Verteron held 67 of the 84 it wanted and refused the same 17 arr
 And **the director never picks the moment**: it decides that a region holds too many, the bot decides whether it may go now, and in a fight, dead,
 mid-journey or grouped with a real player it stays.
 
+**A village post nobody lives at is filled by moving somebody in, and the move does not wake anybody.** A region cannot reach its target when its
+people were settled against a plan that has since shifted, so a sleeper from the countryside is given the empty post as its home — a row in the
+database, no world involved. It becomes a village sleeper, and the village rule wakes it when that village is genuinely short.
+
+Waking them to do it was the fault that made the whole population churn. When a countryside is over its target the field rule draws nobody from it, so
+*every* one of its sleepers is spare — which is to say exactly the bots the same review has just ordered to sleep for being surplus. The region put
+them to sleep by one rule and pulled them straight back out by the other, half a minute apart, for ever. Hence the second guard: **a region already
+holding more than it wants wakes nobody**, whatever any one place inside it is short of. It sheds first.
+
+**What made that visible, and what hid it.** The summary line — *"25 arrival(s) and 25 departure(s)"* — reads as orderly at every single review, and a
+population in perfect equilibrium while cycling 2200 times through the world looks identical to one holding still. Two things settle it: the per-map
+report is now written to the log on every review rather than only when somebody runs `//bot pool`, and counting *distinct* bots against total spawns
+separates a world filling up from a world on a treadmill. 2438 spawns over 222 bots is a treadmill; 79 spawns over 79 bots is a world filling up.
+
+**And underneath all of it was one bit of a float.** `home_z` is a `float` column and a coordinate does not come back from it bit for bit, so
+`isSettlement` — asking by equality — put 98 of Eltnen's 102 residents in open country with their homes sat on a village. The villages then read as
+empty and the countryside as over-supplied, which is what set the two rules against each other in the first place. A settlement is now matched by
+nearness, and the village maps are keyed by the centre the plan itself holds; see [world-and-data-traps.md](world-and-data-traps.md).
+
 **And it removes the need to travel.** A bot that outgrows Poeta logs out and logs back in at Verteron. Nobody watches a ten-minute walk, and a walk can
 get stuck. Following a *player* between regions is a different matter and is cheap — see [roadmap.md](roadmap.md) under Flight.
 
