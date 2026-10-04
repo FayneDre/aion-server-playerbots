@@ -54,3 +54,21 @@ and not the flag, and every leg ended a second and a half late.
 **A movement that depends on being ticked should check that it still is.** Not by trusting the manager, which never reports a removal, but by watching
 the one thing it can see for itself: whether the body is still moving. A second and a half of a leg making no headway hands it over again, with a line
 in the log naming where. It paid for itself the first time it ran.
+
+## A decision taken again is a decision never acted on
+
+Anything that re-decides every tick — an escort keeping station on a player, a chase, a formation — will re-decide the end of itself too. A flight
+down to fifteen flight points ordered a descent, then found itself short again a fifth of a second later and ordered another one from where the body
+still was, each order restarting the leg. The log wrote the same line at the same height eleven times and the body never moved; once the points ran out
+it did the same thing falling. **A loop that re-decides needs a state that says it has already decided**, and every path into that state has to check it
+first.
+
+## The ground under a body at altitude is not where the obvious call looks
+
+`GeoService.getZ(worldId, x, y, z, instanceId)` searches two metres either side of the height it is given, and the mesh's `groundNear` snaps within a
+radius of the point. Both are right for a body on the ground and useless 70 m above it: they answer nothing, or — worse — that the ground is where the
+body already is. A flight that asked them landed in mid air with its flight points intact, reported itself down, and then took off again, because
+walking anywhere from the sky is proved impossible.
+
+The question has to be asked as a drop: `getZ(worldId, x, y, z + 1, z - 500, instanceId)`, from just above the body to further down than any outdoor
+map is tall.

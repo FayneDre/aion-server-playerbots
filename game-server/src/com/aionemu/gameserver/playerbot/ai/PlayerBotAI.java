@@ -476,6 +476,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// the Bandage Heal every character knows incants for four, so each decision that landed inside one either started a competing cast or
 			// walked off and cancelled it — five hundred times in three minutes across a populated map. The attack tick has held this line from the
 			// start; the decision tick never did.
+		} else if (following && followIntoTheAir()) {
+			// up after the leader, and nothing else this tick: everything below is about ground the bot is no longer standing on
 		} else if (autonomous && !following && retreatIfLosing()) {
 			// Running from a fight it cannot win, which is the one thing a bot never did: it defended itself against anything, at any level, in any
 			// number, until it died -- then resurrected, walked back to the home it still had beside the thing that killed it, and did it again.
@@ -802,6 +804,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return tryMoveTo(moveController, target.getX(), target.getY(), target.getZ());
 	}
 
+	/**
+	 * Goes up after a leader who is flying, which is the one thing a grouped bot could not do.
+	 * <p>
+	 * Following is a walking route to wherever the leader is, and wherever a flying leader is has no floor under it: the bot stood on the ground
+	 * beneath them, or walked at a goal the mesh refused. Reported from in game the day flight was started.
+	 *
+	 * @return true if the bot has taken off, in which case the flight owns it until it lands.
+	 */
+	private boolean followIntoTheAir() {
+		Player leader = BotGroupManager.leaderToFollow(getOwner());
+		return leader != null && leader.isFlying() && BotFlight.tryEscort(getOwner(), leader);
+	}
+
 	void stopMoving() {
 		if (getOwner().getMoveController() instanceof BotMoveController moveController && moveController.isInMove())
 			moveController.stop();
@@ -937,6 +952,21 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * now spent minutes asking for routes that do not exist from where they stand. There is no diagnosis to make at that point and nothing to walk
 	 * out along, which is exactly why players are given an unstick command rather than advice.
 	 */
+	/**
+	 * How near its leader a grouped bot has to be for being unable to walk to count as waiting rather than being stuck.
+	 * <p>
+	 * Generous on purpose: a player who has flown off to a ledge is exactly the case this protects, and the distance to them says nothing about
+	 * whether the bot is in trouble. Past it, the bot has been left behind rather than kept, and the ordinary rescue is right again.
+	 */
+	private static final float STAY_WITH_THE_GROUP = 200;
+	/**
+	 * How near its home a bot has to be stranded for the stranding to be evidence about the home, in metres.
+	 * <p>
+	 * A home has fifteen metres of scatter, so this is a little over it: near enough to be "where it lives", far enough not to miss a resident put
+	 * down at the far edge of its own village.
+	 */
+	private static final float STRANDED_AT_HOME = 40;
+
 	private void freeItself() {
 		Player bot = getOwner();
 		Vector3f home = day.home();
@@ -950,11 +980,35 @@ public class PlayerBotAI extends AITemplate<Player> {
 		float x = ground != null ? ground.getX() : home.getX();
 		float y = ground != null ? ground.getY() : home.getY();
 		float z = ground != null ? ground.getZ() : home.getZ();
-		log.info("Bot {} could not move at all from {} {} and is put back home", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()));
+
+		// A bot in somebody's group is where it is for a reason, and a lift home is the one thing that cannot be allowed to happen to it: the whole
+		// point of following somebody is being with them. It waits instead -- for the player to land, to come back, or for its own flight points.
+		// Reported from in game as a bot that followed into the air, landed, and was gone: not a flight fault at all, but the oldest rescue in the
+		// module doing what it was written to do to a bot that had never been stuck.
+		Player leader = BotGroupManager.leaderToFollow(bot);
+		if (leader != null && PositionUtil.getDistance(bot, leader) <= STAY_WITH_THE_GROUP) {
+			log.info("Bot {} cannot move from {} {} but is {} m from {}, so it waits rather than being put back home", bot.getName(),
+				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(PositionUtil.getDistance(bot, leader)), leader.getName());
+			return;
+		}
+
+		// A bot that can fly out of here is not stuck, and a lift home is the wrong answer to a problem it can solve itself. This is now the ordinary
+		// way a flight ends somewhere with no way off it: an escort breaks off over a ledge, lands on it, finds every walking route refused -- and
+		// goes home through the air it came by, once its flight points are back.
+		if (BotFlight.tryFlyTo(bot, new Vector3f(x, y, z))) {
+			log.info("Bot {} could not walk off {} {} and is flying home instead", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()));
+			day.forget();
+			return;
+		}
+		// Counted only when it happened at home, which is the one place a stranding says anything about. The count exists to recognise a home a bot
+		// cannot walk out of -- without it, that rescue runs every thirteen seconds for as long as the server is up. Stranded somewhere else, the bot
+		// went there: on a terrace it flew to, at the end of an errand, behind a rock. Rehousing it for that moves a resident across the map for
+		// having gone somewhere, which is what an escort landing on a ledge made it do -- three rescues in under a minute, and its home 1200 m away.
+		boolean atHome = PositionUtil.getDistance(bot.getX(), bot.getY(), home.getX(), home.getY()) < STRANDED_AT_HOME;
+		log.info("Bot {} could not move at all from {} {} and is put back home{}", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()),
+			atHome ? ", which is where it already was" : "");
 		day.forget(); // whatever it was doing was decided from a place it is no longer in
-		// Counted, because landing a bot back at its home only helps while the home is somewhere it can walk out of. When it is not, this rescue runs
-		// every thirteen seconds for as long as the server is up, and the bot needs a different home rather than another lift to the same one.
-		Vector3f moved = day.recordStranding();
+		Vector3f moved = atHome ? day.recordStranding() : null;
 		if (moved != null) {
 			x = moved.getX();
 			y = moved.getY();

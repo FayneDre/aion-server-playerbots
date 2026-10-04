@@ -94,6 +94,18 @@ village back; Verteron from 5 to 3. Each one is named in the log with the neighb
 would have bots taking off all over a map they could have walked. Measured on the first minutes after a restart: six flights of 33 to 214 m, every one
 landed, no loops.
 
+**3c. A bot follows a player into the air. Done.** The first thing anybody asked of flight, months before any of it existed: a grouped bot stayed on
+the ground while its leader flew, because following is a walking route to wherever the leader is and wherever a flying leader is has no floor. It now
+takes off behind them, holds a place a few metres off rather than their exact spot, and re-aims only when they have moved far enough to be worth a new
+leg. It breaks off and lands under its own power when the leader lands, when it is left behind, when following would take it out of its fly zone, or at
+fifteen flight points — more than a planned flight keeps back, because this one has no plan and a bot that cannot land itself is a bot left in the sky.
+
+**What it cost was two rules about the rest of the module, both older than flight.** A bot only flies of its own accord with half its flight points
+back, because "can I afford this flight" and "have I recovered" are different questions and a bot that had just landed out of fuel could afford a ten
+metre hop straight back up. And **a bot in somebody's group is never given a lift home**: the anti-stuck rescue saw a bot that had landed on a ledge,
+read "no walking route" as "stuck", and teleported it away from the player it was following — then, after three of those, moved its home 1200 m. Being
+unable to walk, near the person you are following, is waiting.
+
 **4. The flight state machine, properly.** Flying against gliding, the 10 s cooldown, what interrupts a flight (death, teleport, `NOFLY`, polymorph,
 a fight starting), and what a bot does when fp runs low mid-journey: land early, at the nearest ground, rather than at the destination. Verified by
 forcing each interruption on one bot and reading what it did.

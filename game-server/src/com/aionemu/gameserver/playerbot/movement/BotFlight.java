@@ -60,6 +60,29 @@ public class BotFlight {
 	private static final float CRUISE_CLEARANCE = 8;
 	/** How far above the landing spot a journey aims, so the last of it is a short drop onto the ground rather than a dive at it. */
 	private static final float LANDING_CLEARANCE = 3;
+	/** How far the one being followed must move before the bot is pointed somewhere new, so a leg is not re-announced every tick. */
+	private static final float RETARGET = 4;
+	/** How far behind and to the side the bot flies, so it is following rather than occupying the same piece of sky. */
+	private static final float ESCORT_SPACING = 4;
+	/**
+	 * How many flight points an escort keeps for itself.
+	 * <p>
+	 * More than the margin a planned flight needs, because this one has no plan: nobody knows how long the player being followed means to stay up, and
+	 * the bot has to be able to break off and land under its own power at any moment. When these run out it comes down where it is, which is what a
+	 * player out of flight time does too.
+	 */
+	private static final int ESCORT_RESERVE = 15;
+	/**
+	 * What share of its flight points a bot must have back before it decides to fly again of its own accord.
+	 * <p>
+	 * Not the same question as whether it can afford this particular flight. A bot that has just come down out of fuel can afford a ten metre hop on
+	 * the fumes, and it was taking one -- landing, finding that the only way to its group was through the air again, and going back up on what it had
+	 * left. Flight points come back at half a point a second, so this is about a minute on the ground, which is also what it looks like: somebody who
+	 * has just landed, getting their breath back.
+	 * <p>
+	 * Only for the flights nobody asked for. A command is an instruction and is obeyed with whatever the bot has.
+	 */
+	private static final float REFUELLED = 0.5f;
 	/** How often the phases are looked at. It decides and does not move, so it runs at the movement tick's own period rather than faster. */
 	private static final long STEP_MILLIS = 200;
 	/**
@@ -82,6 +105,8 @@ public class BotFlight {
 	private static final float CEILING_CLEARANCE = 3;
 	/** How fast a bot that has lost its flight comes down. Faster than it flies, because nothing it does up there is any use to it now. */
 	private static final float POWERLESS_SPEED = 12;
+	/** How far below itself a flight looks for the ground when it has to come down. Taller than any outdoor map's own range of heights. */
+	private static final float MAX_DROP = 500;
 	/**
 	 * How long a leg may make no headway before it is handed to the mover again, in milliseconds.
 	 * <p>
@@ -111,6 +136,8 @@ public class BotFlight {
 	}
 
 	private final Player bot;
+	/** Who the bot is following through the air, or null for a flight that knows where it is going before it sets off. */
+	private final Player escorted;
 	/** The legs in order, each a point in the air except the last, which is the ground the bot lands on. */
 	private final List<Vector3f> legs;
 	/** After which leg the bot holds its height, or -1 for a journey, which does not stop on the way. */
@@ -124,12 +151,21 @@ public class BotFlight {
 	private long headwayAt;
 	/** True once the flight has ended without this class asking, in which case the bot is brought down with no flight state at all. */
 	private boolean powerless;
+	/**
+	 * True once the flight has given up on the rest of itself and is only coming down.
+	 * <p>
+	 * It exists because deciding to land is a decision, and an escort re-decides everything every tick: it was finding itself short of flight points,
+	 * ordering a descent, and then finding itself short again a fifth of a second later and ordering another one from where the body still was. The
+	 * log wrote the same line at the same height eleven times and the bot never moved — a decision taken again is a decision never acted on.
+	 */
+	private boolean landing;
 	private ScheduledFuture<?> task;
 
-	private BotFlight(Player bot, List<Vector3f> legs, int hoverAfter) {
+	private BotFlight(Player bot, List<Vector3f> legs, int hoverAfter, Player escorted) {
 		this.bot = bot;
 		this.legs = legs;
 		this.hoverAfter = hoverAfter;
+		this.escorted = escorted;
 	}
 
 	/**
@@ -146,7 +182,7 @@ public class BotFlight {
 		List<Vector3f> legs = new ArrayList<>();
 		legs.add(new Vector3f(bot.getX() + (float) Math.cos(angle) * forward, bot.getY() + (float) Math.sin(angle) * forward, ceiling));
 		legs.add(new Vector3f(bot.getX(), bot.getY(), bot.getZ()));
-		return begin(bot, legs, 0, Math.round(ceiling - bot.getZ()) + " m up and back");
+		return begin(bot, legs, 0, null, Math.round(ceiling - bot.getZ()) + " m up and back");
 	}
 
 	/**
@@ -171,7 +207,51 @@ public class BotFlight {
 	 *
 	 * @return true if the bot has taken off and the caller should let go of the body.
 	 */
+	/**
+	 * Takes a bot up after somebody who is flying, and keeps it with them until they land or it runs out of flight.
+	 * <p>
+	 * The one piece of flight that was asked for from in game before any of it existed: a bot in your group stays on the ground while you fly, because
+	 * following is a walking route to wherever you are, and wherever you are has no floor. It holds a place beside the player rather than their exact
+	 * spot, and re-aims only when they have moved far enough to be worth a new leg.
+	 * <p>
+	 * It keeps more flight points back than a planned flight does, because this one has no plan: nobody knows how long the player means to stay up,
+	 * and a bot that cannot break off and land under its own power is a bot left hanging in the sky.
+	 *
+	 * @return true if the bot is now flying after them.
+	 */
+	public static boolean tryEscort(Player bot, Player leader) {
+		if (isInTheAir(bot) || !leader.isFlying() || !refuelled(bot))
+			return false;
+		float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), leader.getX(), leader.getY(), leader.getZ());
+		if (distance > MAX_JOURNEY)
+			return false;
+		Vector3f spot = beside(leader);
+		List<Vector3f> legs = new ArrayList<>();
+		legs.add(spot);
+		if (bot.getLifeStats().getCurrentFp() < ESCORT_RESERVE + fpFor(bot, legs, false))
+			return false;
+		String answer = begin(bot, legs, -1, leader, "after " + leader.getName());
+		boolean flying = isInTheAir(bot);
+		if (!flying)
+			log.debug("Bot {} is not following {} into the air: {}", bot.getName(), leader.getName(), answer);
+		return flying;
+	}
+
+	/** @return Whether the bot has enough of its flight points back to be choosing to fly at all. See {@link #REFUELLED}. */
+	private static boolean refuelled(Player bot) {
+		return bot.getLifeStats().getCurrentFp() >= Math.max(ESCORT_RESERVE, bot.getLifeStats().getMaxFp() * REFUELLED);
+	}
+
+	/** @return A place beside the one being followed, a few metres off, so a group in the air is a group rather than a stack. */
+	private static Vector3f beside(Player leader) {
+		double angle = Math.toRadians(PositionUtil.convertHeadingToAngle(leader.getHeading()) + 180);
+		return new Vector3f(leader.getX() + (float) Math.cos(angle) * ESCORT_SPACING, leader.getY() + (float) Math.sin(angle) * ESCORT_SPACING,
+			leader.getZ());
+	}
+
 	public static boolean tryFlyTo(Player bot, Vector3f target) {
+		if (!refuelled(bot))
+			return false;
 		String answer = flyTo(bot, target);
 		boolean flying = isInTheAir(bot);
 		if (!flying)
@@ -204,7 +284,7 @@ public class BotFlight {
 			legs.add(new Vector3f(ground.getX(), ground.getY(), cruiseZ));
 			legs.add(ground);
 		}
-		return begin(bot, legs, -1,
+		return begin(bot, legs, -1, null,
 			"to " + Math.round(ground.getX()) + " " + Math.round(ground.getY()) + " " + Math.round(ground.getZ()) + ", " + Math.round(distance) + " m");
 	}
 
@@ -222,7 +302,7 @@ public class BotFlight {
 		return inTheAir.containsKey(bot.getObjectId());
 	}
 
-	private static String begin(Player bot, List<Vector3f> legs, int hoverAfter, String what) {
+	private static String begin(Player bot, List<Vector3f> legs, int hoverAfter, Player escorted, String what) {
 		if (inTheAir.containsKey(bot.getObjectId()))
 			return bot.getName() + " is already in the air";
 		String refusal = whyNot(bot, legs, hoverAfter >= 0);
@@ -239,7 +319,7 @@ public class BotFlight {
 		if (!bot.getFlyController().startFly(true, false))
 			return bot.getName() + " was refused its take-off by the engine, for a reason only a client would have been told";
 
-		BotFlight flight = new BotFlight(bot, legs, hoverAfter);
+		BotFlight flight = new BotFlight(bot, legs, hoverAfter, escorted);
 		inTheAir.put(bot.getObjectId(), flight);
 		// The engine's pool, not the bots' own. Moving a body is not thinking, and the bot pool is held to half the processors and runs eighty
 		// decision ticks behind whatever is queued ahead of them -- measured as a first step that waited 7.8 seconds with the wings already out.
@@ -386,6 +466,8 @@ public class BotFlight {
 			comeDown("it was down to " + bot.getLifeStats().getCurrentFp() + " fp");
 		}
 
+		if (escorted != null && !landing && phase == Phase.FLYING && !followOn(mover))
+			return;
 		if (phase == Phase.FLYING)
 			keepTheLegGoing(mover, now);
 
@@ -400,6 +482,8 @@ public class BotFlight {
 			case FLYING -> {
 				if (!mover.isFlightLegDone())
 					return;
+				if (escorted != null && !landing)
+					return; // keeping station: the next leg comes from where the player goes, not from a list
 				if (leg == hoverAfter) {
 					phase = Phase.HOVERING;
 					hoverUntil = now + HOVER_MILLIS;
@@ -425,6 +509,38 @@ public class BotFlight {
 	 * A leg the engine dropped — a stun, a teleport, anything that calls {@code abortMove}, or the movement tick deciding this body had arrived — is
 	 * simply handed over again, from wherever the body now is. Nothing ever reports a removal, which is why this asks rather than trusts.
 	 */
+	/**
+	 * Keeps the bot with the player it is following, and decides when to stop.
+	 *
+	 * @return false once the escort is over, in which case the flight is already coming down and this tick is done.
+	 */
+	private boolean followOn(BotMoveController mover) {
+		if (!escorted.isSpawned() || !escorted.isFlying()) {
+			comeDown(escorted.getName() + " is no longer in the air");
+			return false;
+		}
+		if (bot.getLifeStats().getCurrentFp() <= ESCORT_RESERVE) {
+			comeDown("it was down to " + bot.getLifeStats().getCurrentFp() + " fp and has to land under its own power");
+			return false;
+		}
+		Vector3f spot = beside(escorted);
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), spot.getX(), spot.getY(), spot.getZ()) > MAX_JOURNEY) {
+			comeDown(escorted.getName() + " is too far ahead to follow");
+			return false;
+		}
+		if (!insideAFlyZone(bot, spot)) {
+			// a body that leaves a fly zone in flight is dumped out of flight and written into the audit log, so the escort stops at the boundary
+			comeDown("following " + escorted.getName() + " would take it out of its fly zone");
+			return false;
+		}
+		Vector3f aimedAt = legs.get(leg);
+		if (PositionUtil.getDistance(aimedAt.getX(), aimedAt.getY(), aimedAt.getZ(), spot.getX(), spot.getY(), spot.getZ()) > RETARGET) {
+			legs.set(leg, spot);
+			flyLeg(mover);
+		}
+		return true;
+	}
+
 	private void keepTheLegGoing(BotMoveController mover, long now) {
 		if (mover.isFlightLegDone())
 			return;
@@ -450,17 +566,39 @@ public class BotFlight {
 	 * body is the one place a failing flight can always reach. The mesh is asked where that ground is, and the geometry answers for a map with no mesh.
 	 */
 	private void comeDown(String why) {
-		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
-		if (ground == null) {
-			float z = GeoService.getInstance().getZ(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), bot.getInstanceId());
-			ground = new Vector3f(bot.getX(), bot.getY(), Float.isNaN(z) ? bot.getZ() : z);
-		}
-		log.info("Bot {} comes down at z {} because {}", bot.getName(), bot.getZ(), why);
+		if (landing)
+			return; // already on its way down, and asking again would only start the descent over from wherever the body has fallen to
+		landing = true;
+		Vector3f ground = floorUnder(bot);
+		log.info("Bot {} comes down from z {} to z {} because {}", bot.getName(), bot.getZ(), ground.getZ(), why);
 		legs.subList(leg, legs.size()).clear();
 		legs.add(ground);
 		phase = Phase.FLYING;
 		if (bot.getMoveController() instanceof BotMoveController mover)
 			flyLeg(mover);
+	}
+
+	/**
+	 * @return The ground under a body, however far under it that is.
+	 *         <p>
+	 *         The one question a flight that has to end must have answered, and the two obvious ways to ask it are both wrong at altitude.
+	 *         {@code GeoService.getZ(worldId, x, y, z, instanceId)} looks two metres either side of the height it is given, and the mesh's
+	 *         {@code groundNear} snaps within a radius of the point: a body 70 m up gets no answer from either, or worse, the answer that the ground
+	 *         is where it already is. It then "lands" in mid air with its flight points intact, and whatever it does next it does from up there — in
+	 *         the case that found this, by taking off again, because walking anywhere from the sky is proved impossible.
+	 *         <p>
+	 *         So the question is asked as a drop: from just above the body, down as far as a map is tall.
+	 */
+	private static Vector3f floorUnder(Player bot) {
+		float floor = GeoService.getInstance().getZ(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ() + 1, bot.getZ() - MAX_DROP,
+			bot.getInstanceId());
+		if (!Float.isNaN(floor))
+			return new Vector3f(bot.getX(), bot.getY(), floor);
+		Vector3f mesh = NavmeshService.getInstance().groundNear(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
+		if (mesh != null)
+			return mesh;
+		log.warn("Bot {} has no ground under it at {} {} z {}, so it stays where it is", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
+		return new Vector3f(bot.getX(), bot.getY(), bot.getZ());
 	}
 
 	/** Hands the current leg to the mover, and starts the headway watch over. */
