@@ -69,9 +69,12 @@ What is left:
 
 Its own problem, and the one that gates the most.
 
+Planned in milestones, with what the engine already provides and what it leaves to the server: [flight-plan.md](flight-plan.md).
+
 Needed for crossing between the Abyss's islands, for gliding shortcuts, for aerial PvP, for a handful of quest routes — and, less obviously, for a
 share of the ordinary countryside: every map with `GLIDE` puts npcs on terraces and ledges that no walker reaches, and the civic plan has to drop
-those places today — 12 of Eltnen's 152, 5 of Verteron's 123, and 235 townsfolk between them with nobody to keep them company. What it needs is a second
+those places today — 12 of Eltnen's 152, 5 of Verteron's 123, and 235 townsfolk between them with nobody to keep them company. **Eleven of Eltnen's
+twelve stand inside a `ZoneType.FLY` zone**, which is the game's own data saying what they are. What it needs is a second
 navigation answer: the mesh describes **surfaces**, and flight is a volume. Plus the flight state machine — flying against gliding, flight time,
 landing, and what happens when time runs out over a gap.
 
@@ -180,10 +183,8 @@ swings were queued. It asks the `ScheduledFuture` now: still to run means a busy
 the fault the guard was written for and is unchanged. The congestion itself is untouched, and is a startup phenomenon — the director's budget is
 deliberately unlimited while nobody is online.
 
-**`BotDay.restingSpot`'s two searches per candidate are not worth changing.** Measured at 360 bot-thread samples with 7 in a path search, 6 of those
-the route pool planning journeys, and `restingSpot` in none of them. Fixing `reachAt` plausibly took most of its cost away as a side effect — a spread
-of 40 m instead of 12 crowds far fewer candidates, so the first one usually serves — though that part is inference, not measurement. Changing it now
-would be optimising against a cost nobody can find.
+**`BotDay.restingSpot`'s two searches per candidate are not worth changing.** Measured at 360 bot-thread samples: 7 in a path search, 6 of them the
+route pool, `restingSpot` in none. Changing it would be optimising against a cost nobody can find.
 
 ## Known limits, in order of how much they will bite
 
