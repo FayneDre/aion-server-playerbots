@@ -333,11 +333,11 @@ public class BotPlaces {
 	 */
 	public static int levelAt(int worldId, Vector3f place) {
 		for (Settlement settlement : settlements(worldId)) {
-			if (settlement.centre().equals(place))
+			if (isSamePlace(settlement.centre(), place))
 				return settlement.level();
 		}
 		for (Settlement ground : huntingGrounds(worldId)) {
-			if (ground.centre().equals(place))
+			if (isSamePlace(ground.centre(), place))
 				return ground.level();
 		}
 		return (bottomLevelOf(worldId) + topLevelOf(worldId)) / 2; // not a place, so the middle of what the region is for
@@ -406,12 +406,19 @@ public class BotPlaces {
 	 */
 	public static Vector3f settlementAt(int worldId, Vector3f place) {
 		for (Settlement settlement : settlements(worldId)) {
-			Vector3f centre = settlement.centre();
-			if (Math.abs(centre.getX() - place.getX()) <= SAME_PLACE && Math.abs(centre.getY() - place.getY()) <= SAME_PLACE
-				&& Math.abs(centre.getZ() - place.getZ()) <= SAME_PLACE)
-				return centre;
+			if (isSamePlace(settlement.centre(), place))
+				return settlement.centre();
 		}
 		return null;
+	}
+
+	/**
+	 * @return true when two coordinates mean the same place, which is the only way they may ever be compared once either of them has been to the
+	 *         database. See {@link #SAME_PLACE}.
+	 */
+	public static boolean isSamePlace(Vector3f one, Vector3f other) {
+		return one != null && other != null && Math.abs(one.getX() - other.getX()) <= SAME_PLACE
+			&& Math.abs(one.getY() - other.getY()) <= SAME_PLACE && Math.abs(one.getZ() - other.getZ()) <= SAME_PLACE;
 	}
 
 	/**
@@ -496,7 +503,7 @@ public class BotPlaces {
 	public static Vector3f placeToVisit(int worldId, Vector3f from, int level, int pick) {
 		List<Vector3f> within = new ArrayList<>();
 		for (Settlement place : homes(worldId)) {
-			if (place.centre().equals(from) || within.contains(place.centre()))
+			if (isSamePlace(place.centre(), from) || within.contains(place.centre()))
 				continue;
 			if (!isFitFor(place.level(), level))
 				continue;
@@ -646,7 +653,7 @@ public class BotPlaces {
 	/** @return How far the place at this spot spreads, or {@value #MIN_REACH} if the spot is not a place people gather. */
 	public static float reachAt(int worldId, Vector3f place) {
 		for (Settlement settlement : settlements(worldId)) {
-			if (settlement.centre().equals(place))
+			if (isSamePlace(settlement.centre(), place))
 				return settlement.reach();
 		}
 		return MIN_REACH;
