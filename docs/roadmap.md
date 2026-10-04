@@ -69,7 +69,9 @@ What is left:
 
 Its own problem, and the one that gates the most.
 
-Needed for crossing between the Abyss's islands, for gliding shortcuts, for aerial PvP, and for a handful of quest routes. What it needs is a second
+Needed for crossing between the Abyss's islands, for gliding shortcuts, for aerial PvP, for a handful of quest routes — and, less obviously, for a
+share of the ordinary countryside: every map with `GLIDE` puts npcs on terraces and ledges that no walker reaches, and the civic plan has to drop
+those places today. Measured on Eltnen, 12 of its 152 places, and that count is a floor rather than a total. What it needs is a second
 navigation answer: the mesh describes **surfaces**, and flight is a volume. Plus the flight state machine — flying against gliding, flight time,
 landing, and what happens when time runs out over a gap.
 
@@ -141,12 +143,17 @@ villagers scattered over a twelfth of the ground meant for them and stood on the
 furthest 13.5, against 16 and 37 once the question is asked by nearness. `levelAt` returned the region's middle level — the very constant it was
 written to stop `moveOutIfOutgrown` testing. One predicate now, `BotPlaces.isSamePlace`, and no exact place equality is left in the module.
 
-**Places nothing walks off are now dropped from the plan, but only the obvious ones.** `BotPlaces` drops a place that does not carry the walkable
+**Places no walker can reach are now dropped from the plan, but only the obvious ones.** `BotPlaces` drops a place that does not carry the walkable
 stretch its fellow places vote for — Eltnen loses 12 of 152, Verteron 4 of 123 — and the director moves anybody left living at a place that no longer
 exists, because no other rule would: theirs is neither short nor over-full. The test is a coarse-grid lookup, which is why it is cheap and why it
-misses the case that prompted it: a 4 m cell on a boundary carries both stretches, so Eltnen's 38 by 30 m village pocket still passes. See
-[world-and-data-traps.md](world-and-data-traps.md). An exact answer wants a fine search, counting only a proof, run once per map off the decision
-thread — or the fine region stored per surface, which costs a writer change and regenerating 24 meshes.
+misses the case that prompted it: a 4 m cell carries every stretch in its column at every height, and Eltnen's village square has four walkable floors
+stacked at z 240, 270, 276 and 294. See [world-and-data-traps.md](world-and-data-traps.md). An exact answer wants a fine search counting only a proof,
+run once per map off the decision thread; storing the fine region per surface is the other way and is not cheap — 39.4 million surfaces on Eltnen.
+
+**This is a flight question wearing a navigation costume.** Those places are not broken ground. Eltnen, Verteron and Poeta all carry `GLIDE`, and a
+terrace a player glides onto is an island only to something that walks. So the filter is a statement about what a bot can do, not about the map, and
+the day bots glide it should loosen rather than go. Which also means flight buys more than the Abyss and aerial PvP: it buys back every terrace, ledge
+and rooftop the world put npcs on and no bot can settle at.
 
 **Posts nobody could fill were the same fault, not the geography.** Every map now fills its village posts exactly: Eltnen 32/32, Verteron 25/25 where
 it had sat at 23, Ishalgen 9/9, with no departures and nothing put off. Eltnen's fortress being in the air turns out not to produce an unfillable post.
@@ -158,13 +165,10 @@ live. A plan that dropped posts no bot can walk to would make that a guarantee r
 at eight different places, with no house-moving at all. What is left is the staircase and citadel geometry seen in Verteron, which is the
 reactive-steering limit below rather than anything the director does. Not separately diagnosed.
 
-**The population review is under test, and the suite runs on deploy.** `BotDirector.sort` takes its two dependencies as arguments — "is this one
-awake" and "which village is this" — and deals in character ids, so what a review concludes is decidable from counts, ids and places alone. Seven
-cases, each a fault that actually happened. They caught one on the first run: with a single sleeper in a region, an empty village post and an empty
-hunting ground, the countryside took it, so the post waited on a surplus a short region never has. Settlements are a fixed cast, so short posts are
-set aside first now. The root pom skips tests, which keeps a plain `mvn package` fast; `deploy.ps1` overrides it for the one build whose output
-reaches a server, because a test nothing runs is a test that rots. The property has to be quoted — PowerShell splits `-Dmaven.test.skip=false` on
-the dots and hands Maven a lifecycle phase.
+**The population review is under test, and the suite runs on deploy.** `BotDirector.sort` takes its two dependencies as arguments and deals in
+character ids, so a review's conclusion is decidable from counts, ids and places alone. Seven cases, each a fault that actually happened; they caught
+one more on the first run, where the countryside took a region's last sleeper ahead of an empty village post. `deploy.ps1` overrides the root pom's
+skip for the one build whose output reaches a server — quoted, since PowerShell splits `-Dmaven.test.skip=false` on the dots.
 
 **The stalled-fight watchdog was blaming the loop for the schedule.** Its warnings never arrived singly: seventeen at one and the same second,
 thirty-three seconds after a start, and fifteen inside one second after the start before that, while the pool worked through a hundred wakes of some

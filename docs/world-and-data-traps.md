@@ -75,13 +75,20 @@ skill applied to it dies on a null controller.
 The mesh keeps, for each 4 m cell, the ids of the walkable stretches passing through it — derived from the fine regions, so "the rough grid knows what
 the fine grid keeps apart". That makes it a cheap way to ask whether two places are joined: `NavmeshService.regionsAt` reads it without touching a tile.
 
-**It is necessary and not sufficient, and the gap is where it hurts.** A cell is 4 m square, so one lying on the boundary carries *both* its pocket's
-stretch and the mainland's. A place whose edge touches the mainland without connecting to it therefore passes the test. Measured on Eltnen: the village
-at 268 2730 stands on 38 by 30 m of ground that the fine flood fill (`NavmeshTool <mapId> components`) reports as an island of its own, and the coarse
-test still calls it mainland. Twelve of the map's 152 places are caught; that one is not.
+**It is necessary and not sufficient, and the gap is vertical.** A cell covers a 4 m column and carries every stretch in it, at every height. Measured
+at Eltnen's village square, 268 2730: four walkable surfaces stacked at z 240, 270, 276 and 294. The villagers stand on the one at 270; one of the
+others is joined to the rest of the map, so the cell carries the mainland's stretch and the test says yes about a floor that is not on it. No
+refinement of the grid at ground level reaches that — the ambiguity is between floors, not between neighbours. Twelve of the map's 152 places are
+caught; the one that prompted the work is not.
 
-So the coarse test settles the gross cases and nothing more. An exact answer wants either the fine region under the surface — which the mesh does not
-store per surface — or a fine search, where only a *proof* counts and a search that ran out of budget proves nothing.
+An exact answer wants either the fine region of the surface itself — which the mesh does not store, and at 39.4 million surfaces on Eltnen would cost
+79 MB a map at two bytes each — or a fine search, where only a *proof* counts and a search that ran out of budget proves nothing.
+
+**And the islands themselves are not a fault.** Reading 19299 stretches on one map as a broken mesh was wrong. Eltnen, Verteron and Poeta all carry
+the `GLIDE` flag, and the mesh describes the terrain correctly: a map of cliffs, terraces, rooftops and ledges has thousands of walkable islands by
+construction, because a player reaches them through the air. They are islands *to something that walks*. So the question a bot asks is never "is this
+ground valid" but "can I get there on foot", which is a fact about the bot and not about the map — and one that stops being true the day bots glide.
+See `docs/roadmap.md` under Flight.
 
 ## A coordinate that has been to the database is not the number you wrote
 
