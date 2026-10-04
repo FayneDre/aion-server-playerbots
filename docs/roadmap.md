@@ -141,6 +141,13 @@ villagers scattered over a twelfth of the ground meant for them and stood on the
 furthest 13.5, against 16 and 37 once the question is asked by nearness. `levelAt` returned the region's middle level — the very constant it was
 written to stop `moveOutIfOutgrown` testing. One predicate now, `BotPlaces.isSamePlace`, and no exact place equality is left in the module.
 
+**Places nothing walks off are now dropped from the plan, but only the obvious ones.** `BotPlaces` drops a place that does not carry the walkable
+stretch its fellow places vote for — Eltnen loses 12 of 152, Verteron 4 of 123 — and the director moves anybody left living at a place that no longer
+exists, because no other rule would: theirs is neither short nor over-full. The test is a coarse-grid lookup, which is why it is cheap and why it
+misses the case that prompted it: a 4 m cell on a boundary carries both stretches, so Eltnen's 38 by 30 m village pocket still passes. See
+[world-and-data-traps.md](world-and-data-traps.md). An exact answer wants a fine search, counting only a proof, run once per map off the decision
+thread — or the fine region stored per surface, which costs a writer change and regenerating 24 meshes.
+
 **Posts nobody could fill were the same fault, not the geography.** Every map now fills its village posts exactly: Eltnen 32/32, Verteron 25/25 where
 it had sat at 23, Ishalgen 9/9, with no departures and nothing put off. Eltnen's fortress being in the air turns out not to produce an unfillable post.
 The underlying hazard is still real and still unguarded in the plan — `NavmeshTool 210020000 components` reports **19299 islands of walkable ground,
