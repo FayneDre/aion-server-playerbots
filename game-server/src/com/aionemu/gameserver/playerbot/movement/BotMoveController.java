@@ -55,6 +55,13 @@ public class BotMoveController extends PlayerMoveController {
 	 * than being reset by a fresh attempt every few seconds, short enough that ground blocked by a passing creature is tried again soon.
 	 */
 	private static final long NO_HEADWAY_MEMORY = 30000;
+	/**
+	 * How many give ups in a row on one destination are taken for a refusal. Three rather than one, because a single give up really does prove
+	 * nothing and the reactive layer crosses open ground perfectly well without a plan; three in a row on the same spot is not bad luck.
+	 */
+	private static final int GIVE_UPS_BEFORE_REFUSING = 3;
+	/** How long a destination given up on that often is left alone. Longer than {@link #NO_HEADWAY_MEMORY}: three searches is dearer evidence. */
+	private static final long GAVE_UP_MEMORY = 300000;
 	/** A new destination this close to the previous one continues the same journey, typically a target that moved a little. */
 	private static final float SAME_JOURNEY_TOLERANCE = 10f;
 	/**
@@ -97,6 +104,9 @@ public class BotMoveController extends PlayerMoveController {
 	/** The last destination abandoned for lack of headway, and until when asking for it again is refused rather than tried afresh. */
 	private volatile float noHeadwayX, noHeadwayY;
 	private volatile long noHeadwayUntil;
+	/** The destination the planner has been giving up on, and how many times in a row, so that a repeated give up can be read as the refusal it is. */
+	private volatile float gaveUpX, gaveUpY;
+	private volatile int gaveUpCount;
 	private volatile boolean hasGoal;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
@@ -260,6 +270,31 @@ public class BotMoveController extends PlayerMoveController {
 				noRouteX = forX;
 				noRouteY = forY;
 				hasNoRoute = true;
+				blocked = true;
+				hasGoal = false;
+				gaveUpCount = 0;
+				return;
+			}
+			// One give up proves nothing, and the bot is right to set off on the reactive layer. The same give up over and over is evidence of
+			// another kind: not that the ground is unjoined, but that nothing here is ever going to answer, and walking at it meanwhile is what
+			// puts a bot up the rock wall round Verteron. It climbs, wedges, is rescued home to the brazier, picks the same spot again -- because
+			// the only thing that ever recorded a refusal was a proof, and no proof was coming.
+			if (PositionUtil.getDistance(gaveUpX, gaveUpY, forX, forY) < SAME_JOURNEY_TOLERANCE) {
+				gaveUpCount++;
+			} else {
+				gaveUpX = forX;
+				gaveUpY = forY;
+				gaveUpCount = 1;
+			}
+			if (gaveUpCount >= GIVE_UPS_BEFORE_REFUSING) {
+				log.info("Bot {} gave up on {} {} times running and leaves it alone", owner.getName(),
+					String.format("%.1f %.1f", forX, forY), gaveUpCount);
+				// Timed rather than permanent, like the headway refusal it borrows: a search gives up for want of budget, and the budget it needed
+				// depends on where the bot was standing when it asked. Somewhere else, later, the same place may well answer.
+				noHeadwayX = forX;
+				noHeadwayY = forY;
+				noHeadwayUntil = System.currentTimeMillis() + GAVE_UP_MEMORY;
+				gaveUpCount = 0;
 				blocked = true;
 				hasGoal = false;
 			}

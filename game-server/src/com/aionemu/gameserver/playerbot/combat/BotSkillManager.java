@@ -22,6 +22,7 @@ import com.aionemu.gameserver.skillengine.effect.EffectType;
 import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
 import com.aionemu.gameserver.skillengine.effect.RideRobotEffect;
 import com.aionemu.gameserver.skillengine.model.ChargeSkillEntry;
+import com.aionemu.gameserver.skillengine.model.Effect;
 import com.aionemu.gameserver.skillengine.model.ChargedSkill;
 import com.aionemu.gameserver.skillengine.model.HitType;
 import com.aionemu.gameserver.skillengine.model.Skill;
@@ -201,7 +202,20 @@ public class BotSkillManager {
 	}
 
 	private static boolean isSelfBuff(SkillTemplate template) {
-		return template.getSubType() == SkillSubType.BUFF && template.getProperties().getTargetRelation() != TargetRelationAttribute.ENEMY;
+		return template.getSubType() == SkillSubType.BUFF && template.getProperties().getTargetRelation() != TargetRelationAttribute.ENEMY
+			&& !isTransformation(template);
+	}
+
+	/**
+	 * @return true for a skill whose point is to wear somebody else's body.
+	 *         <p>
+	 *         Excluded from every buff rule, for the same reason {@link #isSummon} takes only the lasting companion: a polymorph is a costume with a
+	 *         moment, not something a bot keeps up because it happens to know how. The data hands rangers four of them at level 10 — White Tiger,
+	 *         Krall, Mau — whose cooldowns are shorter than their durations, so the upkeep rule took them for ordinary buffs and a camp of rangers
+	 *         spent its life as a menagerie.
+	 */
+	private static boolean isTransformation(SkillTemplate template) {
+		return template.hasAnyEffect(EffectType.SHAPECHANGE);
 	}
 
 	/**
@@ -210,9 +224,43 @@ public class BotSkillManager {
 	 */
 	private static boolean isAlreadyUp(Creature target, SkillTemplate template) {
 		String stack = template.getStack();
-		if (stack != null)
-			return target.getEffectController().getAbnormalEffect(stack) != null;
-		return target.getEffectController().hasAbnormalEffect(template.getSkillId());
+		if (stack != null) {
+			if (target.getEffectController().getAbnormalEffect(stack) != null)
+				return true;
+		} else if (target.getEffectController().hasAbnormalEffect(template.getSkillId())) {
+			return true;
+		}
+		return coversTheSameEffect(target, template);
+	}
+
+	/**
+	 * @return true when something already on the target carries one of this skill's own effect ids, in the same slot.
+	 *         <p>
+	 *         Because the stack group is not how the engine decides two buffs are the same thing: {@code EffectController.isConflicting} compares
+	 *         effect ids within a target slot, and ends the weaker of two that collide. Where the data gives one effect two names, the bot therefore
+	 *         saw a buff that was missing and the engine saw one that was already there — so it cast it, which ended the other, which was then missing
+	 *         in its turn. That is a loop with nothing to stop it, and both halves of it are in the live data: a bard's Summer and Autumn are one
+	 *         {@code statup} 944261 under two stack groups, and a ranger's White Tiger and Krall are one {@code shapechange} 175 under two more.
+	 *         <p>
+	 *         Slot by slot, as the engine does it, so a debuff that happens to share an id with a buff is not mistaken for it.
+	 */
+	private static boolean coversTheSameEffect(Creature target, SkillTemplate template) {
+		if (template.getEffects() == null)
+			return false;
+		List<Effect> active = target.getEffectController().getAbnormalEffects();
+		for (EffectTemplate wanted : template.getEffects().getEffects()) {
+			if (wanted.getEffectId() == 0)
+				continue; // an effect with no id collides with nothing, the engine skips it too
+			for (Effect up : active) {
+				if (up.getTargetSlot() != template.getTargetSlot())
+					continue;
+				for (EffectTemplate alreadyUp : up.getEffectTemplates()) {
+					if (alreadyUp.getEffectId() == wanted.getEffectId())
+						return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/**
