@@ -25,6 +25,7 @@ import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
+import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
@@ -455,6 +456,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** What the bot decides to do this second, in priority order. Called only by {@link #botTick()}, which is what keeps it running. */
 	private void decide() {
+		if (BotFlight.isInTheAir(getOwner()))
+			return; // nothing is decided for a body in the air, and nothing above this line runs either: rehousing one would teleport it
 		sheathWhenCalm();
 		abandonStalledFight();
 		// A bot crosses its level, and joins and leaves a group, while it is playing rather than while it is loading, so both are settled here rather

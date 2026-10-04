@@ -27,6 +27,7 @@ import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.lifecycle.BotOutfitter;
+import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
@@ -790,6 +791,31 @@ public class PlayerBotService {
 	/**
 	 * Makes the bot walk to the given player's position.
 	 */
+	/**
+	 * Takes a bot off the ground and brings it back down, for watching flight work before anything decides to use it.
+	 *
+	 * @param heightArg How high to climb, in metres, or null for the default.
+	 */
+	public String fly(String characterName, String heightArg) {
+		Player bot = findSpawnedBot(characterName);
+		if (bot == null)
+			return "No bot spawned with name " + characterName;
+		float height = 0;
+		if (heightArg != null) {
+			try {
+				height = Float.parseFloat(heightArg);
+			} catch (NumberFormatException e) {
+				return "Not a height: " + heightArg;
+			}
+		}
+		return BotFlight.takeOff(bot, height);
+	}
+
+	public String land(String characterName) {
+		Player bot = findSpawnedBot(characterName);
+		return bot == null ? "No bot spawned with name " + characterName : BotFlight.land(bot);
+	}
+
 	public String come(String characterName, Player commander) {
 		Player bot = findSpawnedBot(characterName);
 		if (bot == null)

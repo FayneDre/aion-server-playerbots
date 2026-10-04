@@ -158,6 +158,35 @@ as up, and is recast for ever.
 **Upkeep rules read from cooldown versus duration will adopt transformations.** Those four polymorphs last 120 s on a 10 s cooldown, which is the exact
 signature of a buff worth keeping up. They have to be excluded by what they do — `EffectType.SHAPECHANGE` — not by how long they last.
 
+## A movement packet carries a velocity, and it is worth one second
+
+Driving a bot's body from the server is not sending it somewhere. It is speaking the protocol a player's own client speaks, and getting any part of it
+wrong shows up as a body that jumps, stalls or plays the wrong animation — six separate faults on one 25 m climb, each looking much like the others
+from the ground.
+
+**The three numbers are metres a second, not a distance.** `SM_PLAYER_INFO`, having only a destination to work from, converts it as
+`normalize(target - position) * movementSpeed`, and `CM_MOVE` says the same thing coming the other way: *"the movement vector from the client already
+accounts for movement speed"*. A vector of the full remaining gap tells every client to fly at the gap's length in metres a second.
+
+**So one packet buys exactly one second.** The destination is `position + vector` — `CM_MOVE` writes `setNewDirection(x + vectorX, ...)` on the way in.
+A body that is told once arrives a second later and stops dead until something tells it again, and a leg refreshed only as it expires is a stop at every
+refresh. Refresh well inside the second.
+
+**And ten a second is worse than one.** `POSITION | MANUAL` means *"start move or change direction"*. Sent at every step it announces a change of
+direction ten times a second, and a body forever restarting its movement never gets anywhere at all.
+
+**The npc form and the player form are different bodies.** `MovementMask.NPC_STARTMOVE` sets `ABSOLUTE`, which the mask's own comment calls "mouse
+related movement" and which carries a destination instead of a velocity. For a flying body, clients draw that as the *gliding* animation and walk the
+body to the destination along the ground — the target window reads "Altitude =" for the whole climb. `SM_PLAYER_INFO` says as much by refusing to send
+it: it converts the absolute form to a velocity before writing.
+
+**Nothing lifts a body but the server.** Clients draw a descent perfectly from one announced destination, because the path ends on the ground and their
+own clamp agrees with it. Upwards they do not: a climb has to be driven, with the server saying the position itself.
+
+**And taking off is an animation like any other.** Leaving the ground takes about as long as standing up or drawing a weapon, and a climb started
+inside it is swallowed by it: the body sets off, stops, and arrives at the top only when the leg ends. The rule above — *nothing starts inside an
+animation already playing* — is not only about sliding feet.
+
 ## When diagnosing, mind where the truth lives
 
 **The database lags by up to five minutes.** Bots are saved on a timer and on a clean shutdown, so a query run too soon reports the state before whatever is being tested. Several conclusions today were drawn from stale rows and had to be taken back.

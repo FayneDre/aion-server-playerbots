@@ -39,6 +39,8 @@ public class Bot extends AdminCommand {
 			number [region] - Counts the bots on a map, by faction. Takes a map id or part of its name; yours by default.
 			pool [mapId|here] - What the last population review found: awake, total and wanted, split between villages and countryside.
 			  A line per map, or just the one asked for.
+			fly <name> [height] - Flies the bot straight up, holds it there and lands it again. Default 25 m, capped at 60 and at its fly zone's ceiling.
+			land <name> - Brings a flying bot down now.
 			list - Lists all currently spawned bots.
 			clear - Deletes your own bot characters. Staff clear the whole world, which then has to be populated again.
 			See docs/bot-commands.md for what each one does.
@@ -70,6 +72,8 @@ public class Bot extends AdminCommand {
 			case "attack" -> withName(admin, params, name -> PlayerBotService.getInstance().attack(name, admin));
 			case "stop" -> withName(admin, params, name -> PlayerBotService.getInstance().stopAttacking(name));
 			case "come" -> withName(admin, params, name -> PlayerBotService.getInstance().come(name, admin));
+			case "fly" -> withName(admin, params, name -> PlayerBotService.getInstance().fly(name, params.length > 2 ? params[2] : null));
+			case "land" -> withName(admin, params, name -> PlayerBotService.getInstance().land(name));
 			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
 			case "sell" -> withName(admin, params, name -> PlayerBotService.getInstance().sell(name));
 			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());

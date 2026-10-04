@@ -58,13 +58,19 @@ A volume mesh is an Abyss question, not a terrace question, and it is deliberate
 
 Each one is verifiable on its own, and the verification is a measurement in the log, not a server that starts.
 
-**1. Take off, hover, land, on command.** A `//bot fly <name>` that raises a bot to a given height and brings it back down, through `FlyController`,
-with the fp reserve rule from the start. No navigation, no decision making. Verified by watching one bot in game and by the fp trace in the log: took
-off at 60, landed with the reserve intact, state cleared. Documented in [bot-commands.md](bot-commands.md) like every other command.
+**1. Take off, hover, land, on command. Done.** `//bot fly <name> [height]` holds the bot still for the take-off animation, climbs on a slant to 25 m,
+hovers four seconds and flies back down to the spot it left. Measured over five consecutive flights: 11.8 s each, 9.0 m/s, 11 fp of the 18 reserved,
+landing within 20 cm of the take-off height, no errors. The fp for the descent are reserved before the take-off, and a flight the engine ends from
+underneath — fp gone, a zone left, an effect landed — is still flown down rather than left hanging, since nothing falls server side.
 
-**2. Flight in the mover.** `BotMoveController` learns a flying mode: z is interpolated towards the target instead of being snapped to the ground, the
-movement mask and emotions say what is happening, and arrival is three dimensional. Verified by a bot flying a fixed leg at a fixed height with the
-geo probe disabled and no drift.
+What it cost was six rounds of being watched from the ground, every one of them a different way of speaking the client's movement protocol wrongly;
+they are written up in [engine-traps.md](engine-traps.md). The two that were this server's own fault are worth naming here: the body was quoted *walk*
+speed, because `getMovementSpeed` answers from a cascade of states and the bot was still in `WALK_MODE`; and the flight loop ran on the bot pool, where
+its first step waited 7.8 seconds behind eighty decision ticks. Moving a body is not thinking, and walking never used that pool either.
+
+**2. Flight in the mover.** `BotMoveController` learns a flying mode: z is interpolated towards the target instead of being snapped to the ground, and
+arrival is three dimensional. Half of it is already there — the mover announces flight legs and refuses to walk a body that is in the air — and what is
+left is folding the flight's own stepping loop into the one the engine ticks. Verified by a bot flying a fixed leg at a fixed height with no drift.
 
 **3. A short hop to a place a walker cannot reach.** The one the measurement above asks for: from ground, up to a terrace, inside one fly zone, with
 `getClosestCollision` refusing the leg if the air is not clear and `nearestGround` picking the touchdown. This is where the civic filter loosens — a

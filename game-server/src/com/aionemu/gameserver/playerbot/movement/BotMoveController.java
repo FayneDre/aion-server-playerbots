@@ -3,6 +3,7 @@ package com.aionemu.gameserver.playerbot.movement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.controllers.movement.MovementMask;
 import com.aionemu.gameserver.controllers.movement.PlayerMoveController;
 import java.util.List;
 
@@ -210,6 +211,53 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	/**
+	 * Announces a leg of a flight the way a walking journey is announced: the absolute destination, once, for each client to make its own way to.
+	 * <p>
+	 * Right for a descent and wrong for a climb, which is a distinction paid for in five rounds of watching a bot from the ground. A client given a
+	 * destination draws the body towards it along the ground — the target window reads "Altitude =" for the whole climb, and the body only arrives
+	 * overhead when the leg ends and the stop packet says where it really is. Coming down, the same clamp is simply the truth: the path ends on the
+	 * ground, and the descent is drawn perfectly.
+	 */
+	public void beginFlightLeg(float x, float y, float z) {
+		// heading towards the destination, so the body faces where it is going -- a flight leg is a slant, and a slant has a direction
+		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
+		setAndSendStartMove(owner);
+	}
+
+	/**
+	 * Starts a climb: where the body is, and the velocity it leaves at.
+	 * <p>
+	 * A climb has to be driven rather than announced, because no client lifts a body off the ground on its own. Given a destination overhead it draws
+	 * the body towards it along the ground — the target window reads "Altitude =" for the whole climb — and only puts it up there when the leg ends.
+	 * So the server says the position itself, and says it in the two packets a moving client sends rather than in one of them repeated.
+	 * <p>
+	 * <b>And the vector is one second of travel, which is what sets the rate these go out at.</b> It is the direction times the speed —
+	 * {@code SM_PLAYER_INFO} builds it as {@code normalize(target - position) * movementSpeed}, and {@code CM_MOVE} confirms from the other side that
+	 * "the movement vector from the client already accounts for movement speed" — and a client reaches {@code position + vector} and stops there,
+	 * exactly as the server does with {@code setNewDirection(x + vectorX, ...)} when it receives one. So one of these per second has the body arrive
+	 * and wait for the next, which from the ground is a climb that sets off, stops, and jumps; and one every hundred milliseconds tells every onlooker
+	 * the body changed direction ten times a second, which never gets going at all. It is refreshed well inside the second it buys.
+	 */
+	public void beginFlightVelocity(float x, float y, float z, float speed) {
+		float gapX = x - owner.getX(), gapY = y - owner.getY(), gapZ = z - owner.getZ();
+		float gap = (float) Math.sqrt(gapX * gapX + gapY * gapY + gapZ * gapZ);
+		if (gap < 0.01f)
+			return;
+		vectorX = gapX / gap * speed;
+		vectorY = gapY / gap * speed;
+		vectorZ = gapZ / gap * speed;
+		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
+		movementMask = (byte) (MovementMask.POSITION | MovementMask.MANUAL);
+		setInMove(true);
+		PacketSendUtility.broadcastToSightedPlayers(owner, new SM_MOVE(owner));
+	}
+
+	/** Ends a leg and tells the clients the bot is holding still, so they stop interpolating past the height it stopped at. */
+	public void endFlightLeg() {
+		setAndSendStopMove(owner);
+	}
+
+	/**
 	 * @return true while the bot still has somewhere to be. Goes false the moment a journey ends, however it ends — arrived, abandoned for lack of
 	 *         progress, walled in, stopped, or interrupted — which makes it the one honest answer to "is this bot still on its way".
 	 */
@@ -393,6 +441,12 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	private void moveToReachablePoint(float x, float y, float z) {
+		if (BotFlight.isInTheAir(owner)) {
+			// Two things writing one body's position is the oldest fault in this module, and in the air it is also the most visible: this one pins z
+			// to the ground on every tick while the flight pushes it up, so the clients are told two different places a second apart.
+			log.warn("Bot {} was asked to walk to {} {} while it is flying, and is not", owner.getName(), x, y);
+			return;
+		}
 		boolean destinationChanged = x != getTargetX2() || y != getTargetY2() || z != getTargetZ2();
 		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
 		if (!started.get()) {
@@ -439,6 +493,8 @@ public class BotMoveController extends PlayerMoveController {
 
 	@Override
 	public void moveToDestination() {
+		if (BotFlight.isInTheAir(owner))
+			return; // the flight owns this body until it lands; see moveToReachablePoint
 		if (!owner.canPerformMove()) {
 			if (started.compareAndSet(true, false))
 				setAndSendStopMove(owner);

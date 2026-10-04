@@ -49,8 +49,14 @@ a map by hand, or for a map the config does not cover.
 | `//bot attack <characterName>` | Sets the bot on your target, or on you if you have none — which is what makes it usable in a duel. |
 | `//bot stop <characterName>` | Ends the fight. |
 | `//bot come <characterName>` | Walks the bot to where you stand, and makes that its new home, so it will come back there when it has nothing to do. Answers that it is blocked when no route exists. |
+| `//bot fly <characterName> [height]` | Flies the bot straight up over the spot it stands on, holds it there four seconds, and lands it again. 25 m by default, capped at 60 and at its own fly zone's ceiling. Refuses with the reason: not a daeva, not in a fly zone, fighting, or short of the flight points the climb *and the landing back down* would cost. |
+| `//bot land <characterName>` | Brings a flying bot down now instead of when its hover is over. |
 | `//bot duel <characterName>` | Answers a duel request you have already sent. A bot has no window to click. |
 | `//bot auto <characterName>` | Turns autonomy off and on. A bot with autonomy off only does what it is told; it still defends itself. |
+
+Flight is at its first milestone: a bot can leave the ground and come back, and nothing decides to do it on its own yet. The landing is flown rather
+than fallen, because falling is client side and a bot out of flight points would otherwise hang in the air for ever — see
+[flight-plan.md](flight-plan.md).
 
 ## What a bot is, and what it carries
 
