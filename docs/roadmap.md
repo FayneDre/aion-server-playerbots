@@ -151,6 +151,21 @@ live. A plan that dropped posts no bot can walk to would make that a guarantee r
 at eight different places, with no house-moving at all. What is left is the staircase and citadel geometry seen in Verteron, which is the
 reactive-steering limit below rather than anything the director does. Not separately diagnosed.
 
+**The population review is under test, and the suite runs on deploy.** `BotDirector.sort` takes its two dependencies as arguments — "is this one
+awake" and "which village is this" — and deals in character ids, so what a review concludes is decidable from counts, ids and places alone. Seven
+cases, each a fault that actually happened. They caught one on the first run: with a single sleeper in a region, an empty village post and an empty
+hunting ground, the countryside took it, so the post waited on a surplus a short region never has. Settlements are a fixed cast, so short posts are
+set aside first now. The root pom skips tests, which keeps a plain `mvn package` fast; `deploy.ps1` overrides it for the one build whose output
+reaches a server, because a test nothing runs is a test that rots. The property has to be quoted — PowerShell splits `-Dmaven.test.skip=false` on
+the dots and hands Maven a lifecycle phase.
+
+**The stalled-fight watchdog was blaming the loop for the schedule.** Its warnings never arrived singly: seventeen at one and the same second,
+thirty-three seconds after a start, and fifteen inside one second after the start before that, while the pool worked through a hundred wakes of some
+twenty database round trips each. No exception had been thrown in either run and `attackTick` reschedules in a `finally`, so nothing was lost — the
+swings were queued. It asks the `ScheduledFuture` now: still to run means a busy server and the fight is kept; run without scheduling a successor is
+the fault the guard was written for and is unchanged. The congestion itself is untouched, and is a startup phenomenon — the director's budget is
+deliberately unlimited while nobody is online.
+
 **`BotDay.restingSpot`'s two searches per candidate are not worth changing.** Measured at 360 bot-thread samples with 7 in a path search, 6 of those
 the route pool planning journeys, and `restingSpot` in none of them. Fixing `reachAt` plausibly took most of its cost away as a side effect — a spread
 of 40 m instead of 12 crowds far fewer candidates, so the first one usually serves — though that part is inference, not measurement. Changing it now
