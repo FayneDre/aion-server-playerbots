@@ -162,6 +162,23 @@ public class BotFlight {
 	 * What it lands on is the mesh's answer rather than the coordinates asked for, so a target a metre above the floor or a hand's breadth inside a
 	 * wall still puts the bot somewhere it can stand.
 	 */
+	/**
+	 * Flies a bot somewhere walking has been <b>proved</b> not to reach, and says whether it is going.
+	 * <p>
+	 * For the journeys nobody typed: a resident of a terrace going to a shop, or coming home to one. Every refusal {@link #flyTo} can produce is a
+	 * quiet no here — not a daeva, no fly zone, not enough flight points, too far, the path would leave the zone — because this is a fallback and
+	 * there is always the ordinary answer of giving the errand up.
+	 *
+	 * @return true if the bot has taken off and the caller should let go of the body.
+	 */
+	public static boolean tryFlyTo(Player bot, Vector3f target) {
+		String answer = flyTo(bot, target);
+		boolean flying = isInTheAir(bot);
+		if (!flying)
+			log.debug("Bot {} is not flying to {} {}: {}", bot.getName(), target.getX(), target.getY(), answer);
+		return flying;
+	}
+
 	public static String flyTo(Player bot, Vector3f target) {
 		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), target.getX(), target.getY(), target.getZ());
 		if (ground == null)

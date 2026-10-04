@@ -85,9 +85,14 @@ Every point of the path is checked against the fly zone before take-off, not onl
 flight by `PlayerController.onLeaveFlyArea` **and written into the audit log as a suspected hack**, so a path that would leave is refused with the
 coordinates where it would.
 
-**3b. The civic filter loosens.** A place inside a fly zone stops being dropped once a bot can get to it — 11 of Eltnen's 12, 2 of Verteron's 5. The
-filter is a one line change; what it needs underneath is a bot that falls back to flying when walking is *proved* impossible, or its new residents are
-stranded in a prettier way than before.
+**3b. The civic filter loosens. Done.** A place the walking tests drop is kept when it shares a fly zone with a place that is on the mainland, within
+the range a flight will go — which is the bot's own question, asked with the bot's own limit. Eltnen goes from 12 dropped to 10 and gets its marooned
+village back; Verteron from 5 to 3. Each one is named in the log with the neighbour it would fly to and how far that is.
+
+**Reached is not enough: a resident has to be able to leave**, which is why the neighbour is part of the test and not an afterthought. Underneath it,
+`BotMoveController` now falls back to flying when the mesh *proves* there is no walking route — never on a search that merely gave up, or a slow search
+would have bots taking off all over a map they could have walked. Measured on the first minutes after a restart: six flights of 33 to 214 m, every one
+landed, no loops.
 
 **4. The flight state machine, properly.** Flying against gliding, the 10 s cooldown, what interrupts a flight (death, teleport, `NOFLY`, polymorph,
 a fight starting), and what a bot does when fp runs low mid-journey: land early, at the nearest ground, rather than at the destination. Verified by

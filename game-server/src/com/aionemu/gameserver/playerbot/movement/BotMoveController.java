@@ -412,6 +412,16 @@ public class BotMoveController extends PlayerMoveController {
 			// missing, and it is what kept a bot on a roof walking at a goal eighty metres below it for the whole twenty-five minutes the server was
 			// up: the way down had been disproved, over sixty-five metres, and the proof was discarded for being a short journey.
 			if (!answer.gaveUp() || PositionUtil.getDistance(owner.getX(), owner.getY(), forX, forY) > BotPathFinder.LONG_DISTANCE) {
+				// A proof that nothing walks there is exactly the case flight was built for, and the only one it is tried on: the places it opens up
+				// -- a terrace, a ledge, a rooftop -- are places the mesh correctly says have no way in on foot. A search that merely gave up proves
+				// nothing and gets no flight, or a slow search would have bots taking off all over a map they could perfectly well have walked.
+				// It refuses itself in every ordinary case (not a daeva, no fly zone, not enough flight points, too far), and then this is an
+				// ordinary refused journey again.
+				if (BotFlight.tryFlyTo(owner, new Vector3f(forX, forY, finalZ))) {
+					hasGoal = false; // the flight owns the body now, and gives it back on the ground
+					gaveUpCount = 0;
+					return;
+				}
 				noRouteX = forX;
 				noRouteY = forY;
 				hasNoRoute = true;

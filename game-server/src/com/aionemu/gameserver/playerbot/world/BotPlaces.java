@@ -12,6 +12,8 @@ import java.util.function.Predicate;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
+import com.aionemu.gameserver.model.templates.zone.ZoneClassName;
+import com.aionemu.gameserver.model.templates.zone.ZoneInfo;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
@@ -124,6 +126,14 @@ public class BotPlaces {
 	 * region, this decides which part of it, and the whole point is that a character of seven does not keep house on ground worth three.
 	 */
 	private static final int HOME_LEVEL_TOLERANCE = 2;
+
+	/**
+	 * How far a resident of a place no walker reaches may be from the rest of the world, in metres.
+	 * <p>
+	 * It is {@code BotFlight}'s own limit, and deliberately the same number: this asks whether a bot living there could fly to its neighbours, so it
+	 * has to ask the question the bot will ask. A flight is for a terrace over a wall, not for crossing a region.
+	 */
+	private static final float FLIGHT_RANGE = 300;
 
 	private static final Map<Integer, Places> placesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, int[]> bandByMap = new ConcurrentHashMap<>();
@@ -574,14 +584,15 @@ public class BotPlaces {
 			int mainland = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
 			long began = System.currentTimeMillis();
 			Places onTheGrid = new Places(onTheMainland(id, settlements, mainland), onTheMainland(id, grounds, mainland));
-			Places walkable = offThePockets(id, onTheGrid);
-			int dropped = everywhere.size() - walkable.settlements().size() - walkable.huntingGrounds().size();
-			if (dropped > 0)
-				log.info("Map {}: {} of {} place(s) cannot be walked to, and nobody is housed there ({} by the coarse grid, {} for having no ground to speak of, {} ms)", id,
-					dropped, everywhere.size(), everywhere.size() - onTheGrid.settlements().size() - onTheGrid.huntingGrounds().size(),
-					onTheGrid.settlements().size() + onTheGrid.huntingGrounds().size() - walkable.settlements().size()
-						- walkable.huntingGrounds().size(),
-					System.currentTimeMillis() - began);
+			Places beforeFlight = offThePockets(id, onTheGrid);
+			Places walkable = withTheFlyable(id, everywhere, beforeFlight);
+			int onGrid = onTheGrid.settlements().size() + onTheGrid.huntingGrounds().size();
+			int afterFill = beforeFlight.settlements().size() + beforeFlight.huntingGrounds().size();
+			int kept = walkable.settlements().size() + walkable.huntingGrounds().size();
+			if (everywhere.size() != kept)
+				log.info("Map {}: {} of {} place(s) are no use to anybody ({} by the coarse grid, {} for having no ground to speak of, {} put back "
+					+ "for being flyable, {} ms)", id, everywhere.size() - kept, everywhere.size(), everywhere.size() - onGrid, onGrid - afterFill,
+					kept - afterFill, System.currentTimeMillis() - began);
 			return walkable;
 		});
 	}
@@ -622,6 +633,80 @@ public class BotPlaces {
 	 */
 	public static void warmUp(int worldId) {
 		places(worldId);
+	}
+
+	/**
+	 * Puts back the places a walker cannot reach but a flier can.
+	 * <p>
+	 * The two tests above answer "can this be walked to", which was the right question while walking was all a bot could do and is the wrong one now.
+	 * Measured when it still was: 11 of the 12 places Eltnen loses stand inside a {@code ZoneType.FLY} zone, and 2 of Verteron's 5. A terrace a player
+	 * glides onto is an island only to something that walks — the mesh was right about the ground and the rule was wrong about the bot.
+	 * <p>
+	 * <b>Reached is not enough; a resident has to be able to leave.</b> Somewhere with no way out is what the filter was written to prevent, and
+	 * putting people on a terrace they can fly to and not off would only have made the same fault prettier. So the test is that the place shares a fly
+	 * zone with a place that <i>is</i> on the mainland, within the range a flight will go: that is precisely a bot's own question, since it flies by
+	 * the same zone and the same limit.
+	 */
+	private static Places withTheFlyable(int worldId, List<Settlement> everywhere, Places walkable) {
+		List<Settlement> kept = new ArrayList<>(walkable.settlements());
+		kept.addAll(walkable.huntingGrounds());
+		List<Settlement> flyable = new ArrayList<>();
+		for (Settlement place : everywhere) {
+			if (kept.contains(place))
+				continue;
+			Settlement neighbour = flyableNeighbour(worldId, place, kept);
+			if (neighbour == null)
+				continue;
+			flyable.add(place);
+			log.info("Map {}: {} {} {} is dropped by the walking tests and kept anyway -- it shares a fly zone with {} {}, {} m away", worldId,
+				place.centre().getX(), place.centre().getY(), place.centre().getZ(), neighbour.centre().getX(), neighbour.centre().getY(),
+				Math.round(PositionUtil.getDistance(place.centre().getX(), place.centre().getY(), neighbour.centre().getX(), neighbour.centre().getY())));
+		}
+		if (flyable.isEmpty())
+			return walkable;
+		List<Settlement> settlements = new ArrayList<>(walkable.settlements());
+		List<Settlement> grounds = new ArrayList<>(walkable.huntingGrounds());
+		for (Settlement place : flyable) {
+			if (place.townsfolk() >= SETTLEMENT_SIZE)
+				settlements.add(place);
+			else
+				grounds.add(place);
+		}
+		return new Places(settlements, grounds);
+	}
+
+	/** @return A place on the mainland that this one shares a fly zone with and is close enough to fly to, or null if there is none. */
+	private static Settlement flyableNeighbour(int worldId, Settlement place, List<Settlement> mainland) {
+		List<ZoneInfo> zones = flyZonesOf(worldId, place.centre());
+		if (zones.isEmpty())
+			return null;
+		for (Settlement other : mainland) {
+			if (PositionUtil.getDistance(place.centre().getX(), place.centre().getY(), other.centre().getX(), other.centre().getY()) > FLIGHT_RANGE)
+				continue;
+			for (ZoneInfo zone : zones) {
+				if (zone.getArea().isInside3D(other.centre().getX(), other.centre().getY(), other.centre().getZ()))
+					return other;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * @return The fly zones a spot stands in, read from the zone data rather than from a live zone instance.
+	 *         <p>
+	 *         {@code ZoneService.getZoneInstancesByWorldId} builds fresh instances on every call and attaches siege shields as it goes, which is a
+	 *         great deal to set in motion for a geometric question. The templates answer it on their own.
+	 */
+	private static List<ZoneInfo> flyZonesOf(int worldId, Vector3f spot) {
+		List<ZoneInfo> inside = new ArrayList<>();
+		List<ZoneInfo> zones = DataManager.ZONE_DATA.getZones().get(worldId);
+		if (zones == null)
+			return inside;
+		for (ZoneInfo zone : zones) {
+			if (zone.getZoneTemplate().getZoneType() == ZoneClassName.FLY && zone.getArea().isInside3D(spot.getX(), spot.getY(), spot.getZ()))
+				inside.add(zone);
+		}
+		return inside;
 	}
 
 	private static List<Settlement> onTheMainland(int worldId, List<Settlement> places, int mainland) {
