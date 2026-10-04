@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntPredicate;
+import java.util.function.UnaryOperator;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -145,7 +147,8 @@ public class BotDirector {
 			List<Settlement> fieldPlan = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline));
 			int hunters = fieldPlan.size();
 
-			Difference difference = sort(bots, worldId, residents, villages, fieldPlan);
+			Difference difference = sort(id -> bots.spawnedBot(id) != null, home -> BotPlaces.settlementAt(worldId, home), residents, villages,
+				fieldPlan);
 			int wanted = villages.values().stream().mapToInt(count -> count).sum() + hunters;
 			report.add(String.format("map %d: %d awake of %d, wants %d%s — villages %d/%d awake, %d asleep; field %d/%d awake, %d asleep", worldId,
 				difference.awake(), residents.size(), villages.values().stream().mapToInt(count -> count).sum() + hunters,
@@ -176,9 +179,12 @@ public class BotDirector {
 					BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(bots.wake(resident), 1, Integer::sum));
 				}
 			}
-			for (Player bot : difference.toSleep()) {
+			for (int playerId : difference.toSleep()) {
 				if (slept >= budget)
 					break;
+				Player bot = bots.spawnedBot(playerId);
+				if (bot == null)
+					continue; // it left between the review and here, which is the outcome this was asking for anyway
 				slept++;
 				BotScheduler.getInstance().enterOrLeaveWorld(() -> departures.merge(bots.sleep(bot), 1, Integer::sum));
 			}
@@ -206,17 +212,17 @@ public class BotDirector {
 	 * Per place and not per map total, because a map total is satisfied by a crowd in one valley. Each place is compared with what it should hold, and
 	 * only the places that disagree produce any work.
 	 */
-	private static Difference sort(PlayerBotService bots, int worldId, List<BotRoster.Resident> residents, Map<Vector3f, Integer> villages,
-		List<Settlement> fieldPlan) {
+	static Difference sort(IntPredicate isAwake, UnaryOperator<Vector3f> settlementAt, List<BotRoster.Resident> residents,
+		Map<Vector3f, Integer> villages, List<Settlement> fieldPlan) {
 		int hunters = fieldPlan.size();
 		Map<Vector3f, List<BotRoster.Resident>> asleepInVillage = new LinkedHashMap<>();
-		Map<Vector3f, List<Player>> awakeInVillage = new LinkedHashMap<>();
+		Map<Vector3f, List<Integer>> awakeInVillage = new LinkedHashMap<>();
 		List<BotRoster.Resident> asleepInField = new ArrayList<>();
-		List<Player> awakeInField = new ArrayList<>();
+		List<Integer> awakeInField = new ArrayList<>();
 		int awake = 0;
 		for (BotRoster.Resident resident : residents) {
-			Player bot = bots.spawnedBot(resident.playerId());
-			if (bot != null)
+			boolean up = isAwake.test(resident.playerId());
+			if (up)
 				awake++;
 			// A villager belongs to its village and a hunter belongs to the countryside, and the two are counted differently on purpose. Compare the
 			// countryside place by place and most of it can never be filled: a region names fifty one hunting grounds and its inhabitants were given
@@ -225,21 +231,21 @@ public class BotDirector {
 			// with another — the bot works the country near its own home either way — where a village is a place, and the one a player walks into.
 			// Keyed by the centre the plan itself holds, never by the home the resident came back from the database with: the two are the same
 			// place and not the same number. See BotPlaces.SAME_PLACE.
-			Vector3f post = BotPlaces.settlementAt(worldId, resident.home());
+			Vector3f post = settlementAt.apply(resident.home());
 			if (post != null) {
-				if (bot == null)
-					asleepInVillage.computeIfAbsent(post, home -> new ArrayList<>()).add(resident);
+				if (up)
+					awakeInVillage.computeIfAbsent(post, home -> new ArrayList<>()).add(resident.playerId());
 				else
-					awakeInVillage.computeIfAbsent(post, home -> new ArrayList<>()).add(bot);
-			} else if (bot == null) {
-				asleepInField.add(resident);
+					asleepInVillage.computeIfAbsent(post, home -> new ArrayList<>()).add(resident);
+			} else if (up) {
+				awakeInField.add(resident.playerId());
 			} else {
-				awakeInField.add(bot);
+				asleepInField.add(resident);
 			}
 		}
 
 		List<BotRoster.Resident> toWake = new ArrayList<>();
-		List<Player> toSleep = new ArrayList<>();
+		List<Integer> toSleep = new ArrayList<>();
 		Map<Vector3f, Integer> stillShort = new LinkedHashMap<>();
 		Map<Vector3f, Integer> takenLocally = new HashMap<>();
 		villages.forEach((home, wanted) -> {
@@ -258,7 +264,12 @@ public class BotDirector {
 			for (int i = keep; i < here.size(); i++)
 				toSleep.add(here.get(i));
 		});
-		int fieldWoken = Math.max(0, Math.min(hunters - awakeInField.size(), asleepInField.size()));
+		// The posts no village can fill from its own sleepers are set aside before the countryside takes anybody, because a settlement is a fixed
+		// cast and the countryside is the part that breathes. Without it the field claimed the last sleepers first and an empty village post waited
+		// on a region being in surplus -- which a region short of people never is. Only for a review: a bot set aside is rehoused below, and is the
+		// village's own sleeper by the next one.
+		int reserved = Math.min(stillShort.values().stream().mapToInt(Integer::intValue).sum(), asleepInField.size());
+		int fieldWoken = Math.max(0, Math.min(hunters - awakeInField.size(), asleepInField.size() - reserved));
 		for (int i = 0; i < fieldWoken; i++)
 			toWake.add(asleepInField.get(i));
 		for (int i = hunters; i < awakeInField.size(); i++)
@@ -332,7 +343,9 @@ public class BotDirector {
 	 * explanations and the same shape. Split in two it reads at a glance: villagers asleep while villages are short means posts nobody lives at,
 	 * hunters asleep while the field is full means the countryside is simply over-supplied.
 	 */
-	private record Difference(int awake, List<BotRoster.Resident> toWake, List<Player> toSleep, List<BotRoster.Resident> rehoused, int villagersAwake,
+	/** What one review concluded about one region. Package private, and holding character ids rather than {@link Player}s, so the decision can be
+	 * tested without a world: everything here is a count, an id or a place. */
+	record Difference(int awake, List<BotRoster.Resident> toWake, List<Integer> toSleep, List<BotRoster.Resident> rehoused, int villagersAwake,
 		int villagersAsleep, int huntersAwake, int huntersAsleep) {
 	}
 

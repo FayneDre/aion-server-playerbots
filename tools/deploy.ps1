@@ -67,7 +67,11 @@ if (-not $SkipBuild) {
     Write-Host 'Building...' -ForegroundColor Cyan
     Push-Location $repoRoot
     try {
-        & mvn -q -pl game-server -am package
+        # Tests run here and nowhere else. The root pom sets maven.test.skip so a plain `mvn package` stays fast, which is what upstream wants and
+        # what every other build in this repo relies on -- but a test nothing runs is a test that rots, and the population director's two worst
+        # faults of 2026-10-04 were each a ten line assertion over a pure function. Overridden for the one build whose output reaches a server.
+        # quoted: PowerShell splits a bare -Dmaven.test.skip=false on the dots and hands Maven ".test.skip=false" as a lifecycle phase
+        & mvn -q -pl game-server -am package '-Dmaven.test.skip=false'
         if ($LASTEXITCODE -ne 0) { throw "Build failed (exit code $LASTEXITCODE)" }
     } finally {
         Pop-Location
