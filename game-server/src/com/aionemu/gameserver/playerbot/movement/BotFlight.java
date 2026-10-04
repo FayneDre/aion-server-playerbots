@@ -53,13 +53,6 @@ public class BotFlight {
 	private static final float MAX_JOURNEY = 300;
 	/** The shortest journey worth leaving the ground for. Under it, walking is the answer and a refusal to walk was about something else. */
 	static final float MIN_JOURNEY = 10;
-	/**
-	 * How far above the higher of its two ends a journey cruises when it has to go over something.
-	 * <p>
-	 * Only for the stepped path. A bot that climbs, crosses and comes down again when the air in front of it was clear all along is not flying to a
-	 * terrace, it is operating a lift — which is exactly what it looked like from the ground.
-	 */
-	private static final float CRUISE_CLEARANCE = 8;
 	/** How far above the landing spot a journey aims, so the last of it is a short drop onto the ground rather than a dive at it. */
 	private static final float LANDING_CLEARANCE = 3;
 	/** How far the one being followed must move before the bot is pointed somewhere new, so a leg is not re-announced every tick. */
@@ -207,12 +200,11 @@ public class BotFlight {
 	/**
 	 * Flies a bot to a spot it may well have no way of walking to, which is the whole point of the capability.
 	 * <p>
-	 * <b>Straight there when the air is clear</b>, which is what flying to a terrace actually looks like: one slanted leg to just above the spot, then
-	 * a short drop onto it. The geometry is asked first — {@code GeoService.getClosestCollision} along the line the body would fly, with the ground
-	 * ignored, since a flight is not walking.
-	 * <p>
-	 * <b>Over the top when it is not</b>: a climb to a cruising height that clears both ends, a level crossing, and a descent. That path used to be
-	 * the only one, and a bot that climbed and came down again with nothing in its way was operating a lift rather than flying.
+	 * <b>Only when the air is clear in a straight line</b>, which is what flying to a terrace actually looks like: one slanted leg to just above the
+	 * spot, then a short drop onto it. The geometry is asked first — {@code GeoService.getClosestCollision} along the line the body would fly, with
+	 * the ground ignored, since a flight is not walking — and a blocked line is a refusal rather than a detour. There was a detour, over the top of
+	 * whatever stood in the way, and it is gone: the engine casts a ray from the body's own position and from nowhere else, so the air along the legs
+	 * of a detour cannot be tested before setting off. It was flown on faith, and bots flew into the citadel.
 	 * <p>
 	 * What it lands on is the mesh's answer rather than the coordinates asked for, so a target a metre above the floor or a hand's breadth inside a
 	 * wall still puts the bot somewhere it can stand.
@@ -291,23 +283,16 @@ public class BotFlight {
 		if (distance > MAX_JOURNEY)
 			return bot.getName() + " is " + Math.round(distance) + " m away, and a flight is for a terrace over a wall, not for crossing a region";
 
-		List<Vector3f> legs = new ArrayList<>();
+		// Straight there or not at all. Flying over something was the other half of this and it is gone: the air along that path cannot be tested
+		// from here -- the engine's ray casts from the body's own position and nowhere else -- so it was flown on faith, and in a citadel full of
+		// towers the faith was misplaced. Reported from in game as bots that took off after a populate and flew into the buildings.
 		Vector3f approach = new Vector3f(ground.getX(), ground.getY(), ground.getZ() + LANDING_CLEARANCE);
-		if (airIsClear(bot, approach)) {
-			legs.add(approach);
-			legs.add(ground);
-		} else {
-			float cruiseZ = ceilingFor(bot, Math.max(bot.getZ(), ground.getZ()) + CRUISE_CLEARANCE);
-			if (cruiseZ < ground.getZ() + 1)
-				return bot.getName() + " cannot get above " + Math.round(ground.getZ()) + " inside its fly zone, so it has no way over";
-			// the climb runs along the way it is going, so the three legs make one path rather than a corner
-			float climbForward = Math.min((cruiseZ - bot.getZ()) * FORWARD_SHARE, distance);
-			float towardsX = distance < 0.01f ? 0 : (ground.getX() - bot.getX()) / distance;
-			float towardsY = distance < 0.01f ? 0 : (ground.getY() - bot.getY()) / distance;
-			legs.add(new Vector3f(bot.getX() + towardsX * climbForward, bot.getY() + towardsY * climbForward, cruiseZ));
-			legs.add(new Vector3f(ground.getX(), ground.getY(), cruiseZ));
-			legs.add(ground);
-		}
+		if (!airIsClear(bot, approach))
+			return bot.getName() + " has something in the way of " + Math.round(approach.getX()) + " " + Math.round(approach.getY()) + " "
+				+ Math.round(approach.getZ()) + ", and a flight it cannot see the whole of is one it does not take";
+		List<Vector3f> legs = new ArrayList<>();
+		legs.add(approach);
+		legs.add(ground);
 		return begin(bot, legs, -1, null,
 			"to " + Math.round(ground.getX()) + " " + Math.round(ground.getY()) + " " + Math.round(ground.getZ()) + ", " + Math.round(distance) + " m");
 	}

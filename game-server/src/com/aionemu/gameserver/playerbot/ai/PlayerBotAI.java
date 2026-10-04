@@ -16,6 +16,7 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
@@ -444,6 +445,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 			if (bot.isInGroup() || bot.isInAlliance())
 				return false;
 			if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isTravelling())
+				return false;
+			// And never in the air. Despawning takes the body out of the world mid flight -- the flight notices, but a player watching sees a bot rise
+			// and vanish, and the next review puts it back on the ground somewhere else. A journey is already refused here; a flight is a journey
+			// whose ending matters more, since nothing brings a body down but the flight itself.
+			if (BotFlight.isInTheAir(bot))
 				return false;
 			retiring = true;
 			if (thinkTask != null) {
@@ -1033,12 +1039,23 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * @return true if it was resting and has just stood up, in which case the caller should not act yet.
 	 */
 	/** Puts the weapon away once the bot has really stopped fighting, rather than at the end of every single kill. */
+	/**
+	 * Puts the weapon away once there is nothing to point it at.
+	 * <p>
+	 * Asked of the state and not only of the last fight. It used to run solely in the seconds after combat ended, so a bot holding its weapon for any
+	 * other reason held it for ever: the state belongs to the character rather than to this life, and a bot despawned mid fight came back to a town
+	 * with it drawn.
+	 */
 	private void sheathWhenCalm() {
-		if (combatEndedAt == 0 || isAttacking())
+		if (isAttacking() || posture.isAnimating())
 			return;
-		if (System.currentTimeMillis() - combatEndedAt < SHEATHE_DELAY_MILLIS)
+		if (combatEndedAt != 0) {
+			if (System.currentTimeMillis() - combatEndedAt < SHEATHE_DELAY_MILLIS)
+				return;
+			combatEndedAt = 0;
+		} else if (!getOwner().isInState(CreatureState.WEAPON_EQUIPPED)) {
 			return;
-		combatEndedAt = 0;
+		}
 		posture.sheathe();
 	}
 

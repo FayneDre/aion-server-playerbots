@@ -435,6 +435,8 @@ public class PlayerBotService {
 			}
 		}
 		log.info("Created {} inhabitant(s) for map {}, wearing {} piece(s) between them, all asleep", created.size(), worldId, worn);
+		// the map is now full of sleepers and empty of people, and whoever typed this is standing in it waiting
+		BotDirector.getInstance().reviewNow();
 		return report(created, null) + ", over " + places.size() + " places";
 	}
 

@@ -97,9 +97,15 @@ public class BotOutfitter {
 		List<ItemTemplate> wearable = candidates.computeIfAbsent(key(bot, slot), _ -> gatherFor(bot, slot));
 		if (wearable.isEmpty())
 			return false;
-		// started at a random point rather than at the top, so a crowd is not in uniform, and then gone round in order so the best of what fits is
-		// still reached
-		int start = Rnd.get(0, wearable.size() - 1);
+		// Started at a random point rather than at the top, so a crowd is not in uniform, and then gone round in order so the best of what fits is
+		// still reached. <b>Random within the right answers only</b>: the list is sorted with what the character can actually hold first and the
+		// weapon its own skill book asks for next, and entering it anywhere threw that away -- a ranger had seven chances in eight of starting past
+		// the bows and going out with two swords, which is exactly what came back from in game. Variety belongs among equally good pieces, not
+		// between a bow and the wrong weapon entirely.
+		int rightAnswers = 0;
+		while (rightAnswers < wearable.size() && isWhatItShouldHold(bot, wearable.get(rightAnswers)))
+			rightAnswers++;
+		int start = Rnd.get(0, Math.max(1, rightAnswers) - 1);
 		for (int attempt = 0; attempt < wearable.size(); attempt++) {
 			ItemTemplate template = wearable.get((start + attempt) % wearable.size());
 			// The off hand is the one place where what belongs there depends on what is already held, so the piece is asked where it would actually
@@ -119,6 +125,15 @@ public class BotOutfitter {
 			BotEquipManager.discard(bot, item);
 		}
 		return false;
+	}
+
+	/**
+	 * @return Whether this is one of the pieces the shortlist put first: something the character holds the mastery for, and — for a weapon — the one
+	 *         its class is meant to fight with. It is the same pair of questions {@code gatherFor} sorts by, asked again so that the randomness below
+	 *         can be confined to the answers that tie.
+	 */
+	private static boolean isWhatItShouldHold(Player bot, ItemTemplate template) {
+		return isTrainedFor(bot, template) && (!template.isWeapon() || weaponsOfTrade(bot).contains(template.getItemGroup()));
 	}
 
 	private static String key(Player bot, ItemSlot slot) {
@@ -217,19 +232,28 @@ public class BotOutfitter {
 	 * above, which does its job for weapons and accessories, has nothing to read. The faction lives only in the model name the client is told to
 	 * draw, and an Elyos body has no Asmodian model to put on, so the part simply vanishes.
 	 * <p>
-	 * The third segment of that name is the faction: {@code ch_torso_d_n_c1_light_30a} against {@code ch_torso_n_c_10a}. Verified against zones
-	 * rather than assumed — every Altgard, Morheim and Pandaemonium piece is {@code d}, every Verteron, Eltnen and Sanctum piece is {@code n} or
-	 * {@code g}, with nothing crossing over. Markers outside those three are left alone: abyss and npc models are their own thing and there is no
+	 * <b>And weapons are the same, which this said they were not.</b> It claimed the race filter did its job for them; it does not, because
+	 * <b>every one of the 12995 weapon templates in the table declares {@code PC_ALL}</b> — the filter has nothing to read there either. Reported from
+	 * in game as a songweaver of ten holding something that was not a harp: it was a harp, a "Rank 9 Asmodian Harp", on an Elyos character.
+	 * <p>
+	 * The marker is in the same place for both, counting from the end of the prefix, and the prefix is what differs: armour names its slot in two
+	 * words and a weapon names itself in one, so the faction is the third segment of {@code ch_torso_d_n_c1_light_30a} and the second of
+	 * {@code harp_d_n_r1_16n}. Measured over the whole table rather than assumed: of the weapons whose name says Asmodian, 541 of 541 carry
+	 * {@code d}; of those that say Elyos, 397 of 423 carry {@code n} or {@code g}, and the 26 others carry {@code u} or {@code e}, which belong to
+	 * neither side and so are left alone. Markers outside the three are left alone for the same reason: abyss and npc models are their own thing and there is no
 	 * evidence they are one faction's, so excluding them would strip gear to fix nothing.
 	 */
 	private static boolean wearsTheOtherSidesModel(Player bot, ItemTemplate template) {
-		if (!template.isArmor() || template.getCName() == null)
+		if (template.getCName() == null)
 			return false;
+		// Where the marker sits depends on how long the prefix is, and the two shapes are fixed: a piece of armour names its slot in two words
+		// (ch_torso_d_n_c1_light_30a) and a weapon names itself in one (harp_d_n_r1_16n).
+		int marker = template.isArmor() ? 2 : template.isWeapon() ? 1 : -1;
 		String[] parts = template.getCName().split("_");
-		if (parts.length < 3)
+		if (marker < 0 || parts.length <= marker)
 			return false;
-		String marker = parts[2];
-		return bot.getRace() == Race.ELYOS ? marker.equals("d") : marker.equals("n") || marker.equals("g");
+		String faction = parts[marker];
+		return bot.getRace() == Race.ELYOS ? faction.equals("d") : faction.equals("n") || faction.equals("g");
 	}
 
 	private static Set<ItemGroup> weaponsOfTrade(Player bot) {

@@ -113,12 +113,32 @@ public class BotDirector {
 	 * query, and a tick thread blocked on the database is bots standing still. Running on the same lane as the arrivals it orders also means a review
 	 * never overlaps the changes the last one asked for, so nothing is decided twice from a stale picture.
 	 */
+	/** Whether the reviews are running, which is false for the whole of startup. See {@link #reviewNow()}. */
+	private volatile boolean started;
+
 	public void start() {
+		started = true;
 		BotScheduler scheduler = BotScheduler.getInstance();
 		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(this::review), REVIEW_INTERVAL_MILLIS, REVIEW_INTERVAL_MILLIS);
 	}
 
 	/** Works out what each region should hold, and acts on the difference. */
+	/**
+	 * Asks for a review now rather than at the next turn of the clock.
+	 * <p>
+	 * For the moments when somebody is watching and waiting: a map that has just been populated holds a hundred sleepers and nobody at all, and the
+	 * ordinary half minute between reviews is half a minute of staring at an empty village. It changes the timing and nothing else — the same review,
+	 * with the same budget, so arrivals still come at the pace that keeps them from appearing in a flood.
+	 */
+	public void reviewNow() {
+		// Not before the director itself has started, and this is not a nicety. A populate at startup runs from the standing orders, which happen
+		// *before* the roster is put back: a review queued there raced restoreRoster for the same characters and spawned sixteen of them twice,
+		// which the world refuses with a DuplicateAionObjectException apiece. The order in onStartUp is deliberate and this has to respect it.
+		if (!started)
+			return;
+		BotScheduler.getInstance().enterOrLeaveWorld(this::review);
+	}
+
 	private void review() {
 		List<BotRoster.Resident> pool = BotRoster.pool();
 		Map<Integer, List<Player>> playersByMap = realPlayersByMap();
