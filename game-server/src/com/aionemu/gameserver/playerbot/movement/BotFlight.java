@@ -108,6 +108,15 @@ public class BotFlight {
 	/** How far below itself a flight looks for the ground when it has to come down. Taller than any outdoor map's own range of heights. */
 	private static final float MAX_DROP = 500;
 	/**
+	 * How far a body may move between two of the flight's own ticks before the flight concludes it was not the one that moved it.
+	 * <p>
+	 * At flight speed a tick covers about two metres and a starved one three. Anything beyond this is somebody else's doing — a teleport, a summon,
+	 * an administrator — and carrying on would fly a leg that was planned for a place the body is no longer anywhere near.
+	 */
+	private static final float TELEPORTED = 40;
+	/** What {@code FlyController.FLY_REUSE_TIME} is, which is private there and has to be known here to say how long is left of it. */
+	private static final long FLY_REUSE_MILLIS = 10000;
+	/**
 	 * How long a leg may make no headway before it is handed to the mover again, in milliseconds.
 	 * <p>
 	 * The flight depends on being ticked, and the one thing that goes wrong with that is the tick quietly dropping the body: {@code MoveTaskManager}
@@ -146,6 +155,10 @@ public class BotFlight {
 	private Phase phase = Phase.TAKING_OFF;
 	private final long takenOffAt = System.currentTimeMillis();
 	private long hoverUntil;
+	/** The map the flight started on, so one that ends somewhere else is recognised rather than flown. */
+	private final int worldId;
+	/** Where the body was at the previous tick, for telling the flight's own movement from somebody else's. */
+	private float wasAtX, wasAtY, wasAtZ;
 	/** Where the body was when it last made headway, and when that was. */
 	private float headwayX, headwayY, headwayZ;
 	private long headwayAt;
@@ -163,6 +176,10 @@ public class BotFlight {
 
 	private BotFlight(Player bot, List<Vector3f> legs, int hoverAfter, Player escorted) {
 		this.bot = bot;
+		this.worldId = bot.getWorldId();
+		this.wasAtX = bot.getX();
+		this.wasAtY = bot.getY();
+		this.wasAtZ = bot.getZ();
 		this.legs = legs;
 		this.hoverAfter = hoverAfter;
 		this.escorted = escorted;
@@ -356,6 +373,11 @@ public class BotFlight {
 			return bot.getName() + " is polymorphed into something that cannot fly";
 		if (bot.isCasting() || bot.getAi() != null && bot.getAi().isInState(AIState.FIGHT))
 			return bot.getName() + " is busy fighting";
+		// Ten seconds between take-offs, and the engine does not merely refuse one inside them: FlyController.startFly writes the character into the
+		// audit log as "possibly using fly cooldown hack". Asked here so the answer is a reason and the log stays about flight.
+		long cooldown = bot.getFlyReuseTime() - System.currentTimeMillis();
+		if (cooldown > 0)
+			return bot.getName() + " took off " + (FLY_REUSE_MILLIS - cooldown) / 1000 + " s ago and cannot do it again yet";
 
 		// Every point of the path has to be inside the fly zone, not only the two ends. A body that leaves one in flight has its flight ended by
 		// PlayerController.onLeaveFlyArea and is written into the audit log as a suspected hack -- so a path that would leave is refused here rather
@@ -457,11 +479,30 @@ public class BotFlight {
 			finish("it has no bot move controller to fly it");
 			return;
 		}
+		if (bot.getWorldId() != worldId) {
+			finish("it is on another map now"); // a teleport between maps, which no flight survives and none should try to
+			return;
+		}
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), wasAtX, wasAtY, wasAtZ) > TELEPORTED) {
+			finish("something moved it " + Math.round(PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), wasAtX, wasAtY, wasAtZ))
+				+ " m in one tick, which was not this flight");
+			return;
+		}
+		wasAtX = bot.getX();
+		wasAtY = bot.getY();
+		wasAtZ = bot.getZ();
+
 		if (!powerless && !bot.isFlying()) {
 			// the engine ended it from under us: flight points gone, a zone left, an effect landed. Nothing falls server side, so the bot would hang
 			// where it is for ever unless this brings it down.
 			powerless = true;
 			comeDown("it lost its flight with " + bot.getLifeStats().getCurrentFp() + " fp");
+		} else if (bot.getEffectController().isAbnormalSet(AbnormalState.NOFLY)) {
+			// The effect forbids flying and does not end a flight in progress, so a bot under it keeps its wings and its height until something else
+			// decides otherwise. It comes down instead, which is what it would have to do anyway the moment anything interrupted it.
+			comeDown("an effect forbids it to fly");
+		} else if (bot.getTransformModel().cantFly()) {
+			comeDown("it has been polymorphed into something that cannot fly");
 		} else if (phase == Phase.FLYING && leg < legs.size() - 1 && bot.getLifeStats().getCurrentFp() <= FP_MARGIN) {
 			comeDown("it was down to " + bot.getLifeStats().getCurrentFp() + " fp");
 		}

@@ -106,9 +106,22 @@ metre hop straight back up. And **a bot in somebody's group is never given a lif
 read "no walking route" as "stuck", and teleported it away from the player it was following — then, after three of those, moved its home 1200 m. Being
 unable to walk, near the person you are following, is waiting.
 
-**4. The flight state machine, properly.** Flying against gliding, the 10 s cooldown, what interrupts a flight (death, teleport, `NOFLY`, polymorph,
-a fight starting), and what a bot does when fp runs low mid-journey: land early, at the nearest ground, rather than at the destination. Verified by
-forcing each interruption on one bot and reading what it did.
+**4. The flight state machine. Done, bar gliding.** Every way a flight can be interrupted now ends it with a reason in the log: another map, the body
+moved more than 40 m in a tick by something that was not this flight, an `AbnormalState.NOFLY` effect — which *forbids* flight without ending one in
+progress, so a bot under it kept its wings and its height — a polymorph that cannot fly, death, despawn, and the engine cutting the flight for want of
+points. Running low mid-journey was already a landing straight down rather than at the destination.
+
+The 10 s cooldown is now a named refusal rather than a silent one, and that is not cosmetic: `FlyController.startFly` writes a character that retries
+inside it into the audit log as *"possibly using fly cooldown hack"*. A bot retrying in a loop was dirtying the GM log.
+
+**Only the cooldown was verified in game**; the other four guards cannot be provoked from the server and are reasoned from the engine's code.
+
+**Gliding is deliberately left out, and the reason is not its cost.** Server side it is nearly free — `switchToGliding` needs only a daeva that is not
+polymorphed, costs no cooldown from an existing flight, and the halved drain falls out of `triggerFpReduce` by itself. What it would cost is a new
+packet shape, the `GLIDE` mask bit and its flag, whose bits are also how npc gaits are encoded: several rounds of watching a bot from the ground. And
+the gain is small here. On a descent it saves a point or two. On an escort, where doubling 45 seconds of endurance would matter, it cannot be used at
+all: a gliding body loses height continuously, and holding a place beside a flying player is flight. It belongs with milestone 5, where a bot will have
+reason to descend for a long time.
 
 **5. Volume navigation, and only then the Abyss.** Reshanta's islands need a route through open air over a gap with no ground under it, which is the
 only case the straight line plus ray cannot answer, and it also needs Reshanta's mesh, which has not been generated. Budget it separately; see
