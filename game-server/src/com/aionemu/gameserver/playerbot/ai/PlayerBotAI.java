@@ -576,7 +576,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		long now = System.currentTimeMillis();
 		if (now - lastAttackTick >= STALLED_FIGHT_MILLIS) {
-			log.warn("Bot {} has been fighting {} for {} s without a tick, so its attack loop is gone; letting the fight go", getOwner().getName(),
+			synchronized (combatLock) {
+				// A swing still waiting its turn is a busy server, not a lost loop, and the two want opposite things done about them. Every
+				// occurrence measured so far has been the second kind and not the first: seventeen bots at one and the same second, thirty three
+				// seconds after a start, while the pool worked through a hundred wakes of some twenty database round trips each -- and in the run
+				// before that, fifteen inside one second, likewise just after a start. Letting those fights go threw the fight away and blamed the
+				// loop for the schedule, which is a cause invented rather than found.
+				if (attackTask != null && !attackTask.isDone()) {
+					log.debug("Bot {} has gone {} s without a swing at {}, which is queued behind a busy pool", getOwner().getName(),
+						(now - lastAttackTick) / 1000, nameOfTarget());
+					return;
+				}
+			}
+			log.warn("Bot {} has been fighting {} for {} s and its attack loop has stopped; letting the fight go", getOwner().getName(),
 				nameOfTarget(), (now - lastAttackTick) / 1000);
 			stopAttacking();
 			return;
