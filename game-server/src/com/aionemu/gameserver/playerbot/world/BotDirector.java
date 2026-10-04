@@ -145,11 +145,17 @@ public class BotDirector {
 			int hunters = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline)).size();
 
 			Difference difference = sort(bots, worldId, residents, villages, hunters);
+			int wanted = villages.values().stream().mapToInt(count -> count).sum() + hunters;
 			report.add(String.format("map %d: %d awake of %d, wants %d%s — villages %d/%d awake, %d asleep; field %d/%d awake, %d asleep", worldId,
 				difference.awake(), residents.size(), villages.values().stream().mapToInt(count -> count).sum() + hunters,
 				busy ? " (" + watchers.size() + " player(s))" : "", difference.villagersAwake(),
 				villages.values().stream().mapToInt(count -> count).sum(), difference.villagersAsleep(), difference.huntersAwake(), hunters,
 				difference.huntersAsleep()));
+			// The home moves first, and they cost no budget: a row each, and no bot enters or leaves the world for them. Done before the wakes so
+			// that a post filled by a mover is a post the next review already counts as lived at.
+			if (!difference.rehoused().isEmpty())
+				log.info("map {}: moving {} sleeper(s) into village posts nobody lives at", worldId, difference.rehoused().size());
+			difference.rehoused().forEach(mover -> BotRoster.setHome(mover.name(), mover.home()));
 			// The band holds departures back and lets arrivals through, because only one of the two directions can churn. A region that wakes its way
 			// up to its target then stops: there is nothing left to ask for. A region that sleeps its way down to it sits on the boundary, and the next
 			// review finds it one over, or one under, and moves somebody again. Applied to both, the band left a map one inhabitant short for ever —
@@ -157,21 +163,17 @@ public class BotDirector {
 			if (difference.toWake().isEmpty() && difference.toSleep().size() <= DEAD_BAND)
 				continue;
 
-			for (BotRoster.Resident resident : difference.toWake()) {
-				if (woken >= budget)
-					break;
-				woken++;
-				// A move is recorded only once the bot is actually in the world. Written before the wake, as it first was, a refused wake still
-				// changed where the bot lived: it stayed asleep, but it was a villager now, so it left the countryside's pool of sleepers and the
-				// village it had been assigned to no longer needed it. A few per review, permanently set aside -- seen in the database as a village
-				// post holding twelve inhabitants of which seven were awake, while the region sat at 61 of a target of 29 and would not fall.
-				boolean movingHouse = difference.movingHouse().contains(resident.playerId());
-				BotScheduler.getInstance().enterOrLeaveWorld(() -> {
-					PlayerBotService.Change change = bots.wake(resident);
-					if (movingHouse && change == PlayerBotService.Change.DONE)
-						BotRoster.setHome(resident.name(), resident.home());
-					arrivals.merge(change, 1, Integer::sum);
-				});
+			// A region already holding more than it wants wakes nobody, whatever any one place inside it is short of. Without this the two rules
+			// could still pull against each other -- a village asking for somebody while the countryside around it is over-supplied -- and the region
+			// would be bringing people in while sending people away, which is the shape of the fault this is here to stop recurring. It sheds first;
+			// what it is short of, it is short of until it has.
+			if (difference.awake() <= wanted) {
+				for (BotRoster.Resident resident : difference.toWake()) {
+					if (woken >= budget)
+						break;
+					woken++;
+					BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(bots.wake(resident), 1, Integer::sum));
+				}
 			}
 			for (Player bot : difference.toSleep()) {
 				if (slept >= budget)
@@ -188,8 +190,13 @@ public class BotDirector {
 		departures.clear();
 
 		lastReview = List.copyOf(report);
-		if (woken > 0 || slept > 0)
+		if (woken > 0 || slept > 0) {
 			log.info("Population review asks for {} arrival(s) and {} departure(s) across {} map(s)", woken, slept, maps.size());
+			// The per map lines, which until now only an operator running //bot pool ever saw. A total cannot say which region is asking for what,
+			// and the question that matters about a population is never "how many" but "where, and why that one" -- measured against a run where the
+			// same bots went in and out of the world 2200 times in 97 reviews and the summary line read as orderly throughout.
+			report.forEach(line -> log.info("  {}", line));
+		}
 	}
 
 	/**
@@ -214,11 +221,14 @@ public class BotDirector {
 			// thirteen of them as homes, so the plan asks for hunters at grounds nobody lives at while inhabitants sleep at grounds already worked.
 			// Measured on Poeta: fourteen awake, five asleep, and a target of thirty seven that could not move. A hunting ground is interchangeable
 			// with another — the bot works the country near its own home either way — where a village is a place, and the one a player walks into.
-			if (BotPlaces.isSettlement(worldId, resident.home())) {
+			// Keyed by the centre the plan itself holds, never by the home the resident came back from the database with: the two are the same
+			// place and not the same number. See BotPlaces.SAME_PLACE.
+			Vector3f post = BotPlaces.settlementAt(worldId, resident.home());
+			if (post != null) {
 				if (bot == null)
-					asleepInVillage.computeIfAbsent(resident.home(), home -> new ArrayList<>()).add(resident);
+					asleepInVillage.computeIfAbsent(post, home -> new ArrayList<>()).add(resident);
 				else
-					awakeInVillage.computeIfAbsent(resident.home(), home -> new ArrayList<>()).add(bot);
+					awakeInVillage.computeIfAbsent(post, home -> new ArrayList<>()).add(bot);
 			} else if (bot == null) {
 				asleepInField.add(resident);
 			} else {
@@ -264,17 +274,26 @@ public class BotDirector {
 			for (int i = takenLocally.getOrDefault(home, 0); i < there.size(); i++)
 				spare.add(there.get(i));
 		});
-		Set<Integer> movingHouse = new HashSet<>();
+		// Moved house where they sleep, and not woken to do it. Waking them was the whole fault: when a countryside is over its target, nothing is
+		// drawn from it by the field rule, so `spare` holds every one of its sleepers -- which is to say exactly the bots the same review has just
+		// ordered to sleep for being surplus. The region then put them to sleep by one rule and pulled them straight back out by the other, and did
+		// it again half a minute later. Measured on Eltnen, 80 hunters awake against a target of 5 and 20 village posts nobody lived at: 111 bots
+		// went in and out of the world three times or more in twenty minutes, the worst of them eighteen times.
+		//
+		// A sleeping bot's home is a row in the database, so moving it costs a write and no world at all. Once moved, the bot is a village sleeper:
+		// it leaves the countryside's pool, the village branch above wakes it when that village is genuinely short, and the field rule stops seeing
+		// it. That also removes the old dependency on the wake succeeding -- with four refusals in five, most movers never had their home written at
+		// all, so the next review drafted the same bots over again.
+		List<BotRoster.Resident> rehoused = new ArrayList<>();
 		for (Map.Entry<Vector3f, Integer> village : stillShort.entrySet()) {
 			for (int i = 0; i < village.getValue() && !spare.isEmpty(); i++) {
 				BotRoster.Resident mover = spare.remove(spare.size() - 1);
-				movingHouse.add(mover.playerId());
-				toWake.add(new BotRoster.Resident(mover.playerId(), mover.name(), mover.worldId(), village.getKey()));
+				rehoused.add(new BotRoster.Resident(mover.playerId(), mover.name(), mover.worldId(), village.getKey()));
 			}
 		}
 		int villagersAwake = awakeInVillage.values().stream().mapToInt(List::size).sum();
 		int villagersAsleep = asleepInVillage.values().stream().mapToInt(List::size).sum();
-		return new Difference(awake, toWake, toSleep, movingHouse, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
+		return new Difference(awake, toWake, toSleep, rehoused, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
 	}
 
 	/**
@@ -285,7 +304,7 @@ public class BotDirector {
 	 * explanations and the same shape. Split in two it reads at a glance: villagers asleep while villages are short means posts nobody lives at,
 	 * hunters asleep while the field is full means the countryside is simply over-supplied.
 	 */
-	private record Difference(int awake, List<BotRoster.Resident> toWake, List<Player> toSleep, Set<Integer> movingHouse, int villagersAwake,
+	private record Difference(int awake, List<BotRoster.Resident> toWake, List<Player> toSleep, List<BotRoster.Resident> rehoused, int villagersAwake,
 		int villagersAsleep, int huntersAwake, int huntersAsleep) {
 	}
 

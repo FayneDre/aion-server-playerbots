@@ -70,6 +70,25 @@ predefined stat functions are all still null, and `PlayerService.getPlayer` is w
 character selection and enters the world through the load path. **Anything made programmatically is stored and then read back**, or the first passive
 skill applied to it dies on a null controller.
 
+## A coordinate that has been to the database is not the number you wrote
+
+`home_x/y/z` are `float` columns, and a coordinate written to one does not come back bit for bit. Measured in the live log: a village centre held in
+memory as `270.65002` read back out of the pool as `270.65`, with x and y identical. One bit, in the last place, on one of three components.
+
+`Vector3f.equals` compares with `Float.compare`, so those two are not the same place. Nothing warns you, because the two values print almost alike and
+every arithmetic use of them agrees.
+
+**What it cost.** `BotPlaces.isSettlement` asked that question by equality, so **98 of Eltnen's 102 residents were classified as living in open country
+while their homes sat exactly on a village**. From there: the villages read as empty and were permanently short; the countryside read as massively
+over-supplied; and the population director's two rules then ordered opposite things about the same bots — asleep for being surplus in the field, awake
+for being needed in a village — every thirty seconds. 2200 world entries and exits in 97 reviews, with the net population unchanged. The fix that
+moved sleepers into the short villages wrote the right value on every review and read back the other one, for ever.
+
+**The rule.** *A world coordinate that has crossed the database is never compared for equality, only for nearness.* `BotPlaces.SAME_PLACE` is that
+tolerance, at one metre — no two places the question is asked about are within a metre of each other, and no round trip moves a coordinate by anything
+like it. A caller that keys a map by place must use the centre `BotPlaces.settlementAt` returns, not the coordinate it passed in, or the two spellings
+of one village become two entries and every lookup made with the other one misses.
+
 ## The database truncates what does not fit, and says nothing
 
 `server_variables.value` is a `varchar(30)`. A comma separated list of bot names fits three of them; the fourth was cut off by MySQL, so a population

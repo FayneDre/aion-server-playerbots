@@ -378,13 +378,40 @@ public class BotPlaces {
 		return suitable.isEmpty() ? null : suitable.get(Math.floorMod(pick, suitable.size()));
 	}
 
+	/**
+	 * How far apart two coordinates may be and still mean the same place.
+	 * <p>
+	 * It exists because a home makes a round trip through the database and does not come back the same number. {@code home_z} is a {@code float}
+	 * column and the value returned differs from the one written in its last bit — measured in the live log, a village centre held in memory as
+	 * {@code 270.65002} read back out of the pool as {@code 270.65}, with x and y identical. {@link Vector3f#equals} compares with
+	 * {@code Float.compare}, so the two were not the same place, and 98 of Eltnen's 102 residents were classified as living in open country while
+	 * their homes sat exactly on a village. The director then moved each of them into that village on every review, wrote the same number, and read
+	 * back the other one — twenty-one rehousings every half minute, for ever.
+	 * <p>
+	 * A metre, because no two places this is asked about are within a metre of each other and no round trip moves a coordinate by anything like that.
+	 * The rule that follows: <b>a world coordinate that has been to the database is never compared for equality, only for nearness.</b>
+	 */
+	public static final float SAME_PLACE = 1f;
+
 	/** @return true if this spot is one of the places people gather, rather than a stretch of country somebody hunts. */
 	public static boolean isSettlement(int worldId, Vector3f place) {
+		return settlementAt(worldId, place) != null;
+	}
+
+	/**
+	 * @return The settlement centre this spot stands for, as the plan itself holds it, or null when the spot is not a settlement.
+	 *         <p>
+	 *         Callers that key a map by place must use what this returns rather than the coordinate they were given, or the two spellings of the same
+	 *         village become two entries and every lookup made with the other one misses. See {@link #SAME_PLACE}.
+	 */
+	public static Vector3f settlementAt(int worldId, Vector3f place) {
 		for (Settlement settlement : settlements(worldId)) {
-			if (settlement.centre().equals(place))
-				return true;
+			Vector3f centre = settlement.centre();
+			if (Math.abs(centre.getX() - place.getX()) <= SAME_PLACE && Math.abs(centre.getY() - place.getY()) <= SAME_PLACE
+				&& Math.abs(centre.getZ() - place.getZ()) <= SAME_PLACE)
+				return centre;
 		}
-		return false;
+		return null;
 	}
 
 	/**
