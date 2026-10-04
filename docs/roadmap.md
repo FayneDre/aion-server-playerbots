@@ -67,29 +67,30 @@ What is left:
 
 ## Flight
 
-Its own problem, and the one that gates the most.
+**Bots fly.** Four of the five milestones in [flight-plan.md](flight-plan.md) are built and were validated in game on 2026-10-04: a bot takes off and
+lands under its own power, the flying is a mode of the move controller on the engine's own movement tick, it can be sent to a terrace no walker
+reaches, it falls back to flying when the mesh *proves* there is no walking route, it follows a flying player while grouped, and every way a flight can
+be interrupted ends it with a reason in the log. What that bought at once: the civic plan keeps a place that shares a fly zone with a mainland place
+within flight range, so Eltnen's marooned village is back and Verteron's two with it.
 
-Planned in milestones, with what the engine already provides and what it leaves to the server: [flight-plan.md](flight-plan.md).
+**What is left is the fifth milestone, and it is the Abyss's problem rather than flight's**: a route through open air over a gap with no ground under
+it. Everything so far is a straight line plus one `getClosestCollision`, which answers a terrace and cannot answer a crossing. Gliding belongs with it,
+and is deliberately not built: server side it is nearly free, but it needs a new packet shape to validate and is unusable for the one case that would
+benefit, since a gliding body loses height continuously and cannot hold station.
 
-Needed for crossing between the Abyss's islands, for gliding shortcuts, for aerial PvP, for a handful of quest routes — and, less obviously, for a
-share of the ordinary countryside: every map with `GLIDE` puts npcs on terraces and ledges that no walker reaches, and the civic plan has to drop
-those places today — 12 of Eltnen's 152, 5 of Verteron's 123, and 235 townsfolk between them with nobody to keep them company. **Eleven of Eltnen's
-twelve stand inside a `ZoneType.FLY` zone**, which is the game's own data saying what they are. What it needs is a second
-navigation answer: the mesh describes **surfaces**, and flight is a volume. Plus the flight state machine — flying against gliding, flight time,
-landing, and what happens when time runs out over a gap.
-
-Note what is *not* blocked by it: moving a bot between maps. `TeleportService.teleportTo` takes any world id and bots already call it, so the claim
-that crossing maps needs teleporters and flight paths was simply wrong.
+Note what is *not* blocked by flight, and never was: moving a bot between maps. `TeleportService.teleportTo` takes any world id and bots already call
+it, so the claim that crossing maps needs teleporters and flight paths was simply wrong.
 
 ## The Abyss
 
 **A levelling region, not just endgame**, and excluding it was a mistake. Measured: Reshanta holds **834 civilians — more than Sanctum and
 Pandaemonium together** — against 4352 hostiles, median level 33 and ninth decile 50. It is one of the ways a character crosses 25 to 50.
 
-Less blocked than it looks. The mesh labels regions **per surface** rather than per column, which is exactly what stacked islands need, so civic and
-field presence on each island is ordinary work. What is missing is the crossing *between* islands — for population the director's teleport covers it,
-and for gameplay it needs flight — and, before any of that, **Reshanta's mesh, which has not been generated**. It is the largest map in the game, so
-budget the generation rather than assuming it is one more run of the tool.
+Less blocked than it looks, and less than it was. The mesh labels regions **per surface** rather than per column, which is exactly what stacked
+islands need, so civic and field presence on each island is ordinary work. For population the director's teleport already covers the crossing between
+islands, and bots now fly — what is missing for gameplay is only the part flight cannot do yet, a route through open air over a gap. Before any of it,
+**Reshanta's mesh, which has not been generated**: it is the largest map in the game, so budget the generation rather than assuming it is one more run
+of the tool.
 
 ## Wild PvP and rifts
 
@@ -104,7 +105,7 @@ makes open PvP worth anything. That is intra-zone navigation in contested ground
 
 ## RvR and sieges
 
-The far goal, and the only section that genuinely waits on flight, because Reshanta is where it happens.
+The far goal. It waits on Reshanta — its mesh, and a flight that can cross between islands — rather than on flight itself, which exists now.
 
 Its supply line is already designed: bots that reach the level cap become the elders the endgame needs, which is what turns the upward drift from a
 problem into a feature ([population.md](population.md)). Panesterra's five battlefields hold **zero civilians** — they are not places to live, so
@@ -132,8 +133,10 @@ Priority five. Bots forming and filling legions, which mostly falls out of group
   becomes serious at a settled 2000 and it is a design rule, not a tuning value.
 - **No gathering or crafting.** It would feed the broker and make the countryside look used rather than merely fought over.
 - **Gear does not keep up.** Bots are dressed at creation and wear what they loot. Crossing 1 to 65 needs buying or crafting.
-- **Zero automated tests** on roughly 10400 lines, much of it concurrent — the repo has a test layout and other modules use it, the bot module
-  simply has none. This is why the combat half of `PlayerBotAI` has not been split: a mistake there is silent rather than loud.
+- **One test suite on roughly 11000 lines**, much of it concurrent: `BotDirectorTest`, seven cases over the population review, which runs on every
+  deploy. Everything else is untested, which is why the combat half of `PlayerBotAI` has not been split — a mistake there is silent rather than loud.
+  What made that one suite possible is worth copying: `BotDirector.sort` takes its two dependencies as arguments and deals in ids and places, so its
+  conclusion is decidable without a world.
 
 ## After the population churn of 2026-10-04
 
@@ -141,47 +144,45 @@ The churn is fixed, and so is most of what it uncovered — see [population-dire
 [world-and-data-traps.md](world-and-data-traps.md). What the follow-up found, and where it stopped:
 
 **The equality audit the float trap called for is done.** Five more comparisons put a coordinate that had been to the database against one the plan
-holds, and every one of them answered no. `reachAt` was the expensive one: it returned its 12 m fallback instead of a village's real reach, so
-villagers scattered over a twelfth of the ground meant for them and stood on the obelisk. Measured on Eltnen, mean distance from home 8.3 m and
-furthest 13.5, against 16 and 37 once the question is asked by nearness. `levelAt` returned the region's middle level — the very constant it was
-written to stop `moveOutIfOutgrown` testing. One predicate now, `BotPlaces.isSamePlace`, and no exact place equality is left in the module.
+holds, and every one answered no. `reachAt` was the expensive one: it returned its 12 m fallback instead of a village's real reach, so villagers
+scattered over a twelfth of their ground and stood on the obelisk — mean distance from home 8.3 m against 16 once the question is asked by nearness.
+One predicate now, `BotPlaces.isSamePlace`, and no exact place equality is left in the module.
 
 **Places no walker can reach are dropped from the plan, by two tests that answer different halves of it.** A place is dropped when it does not carry
 the walkable stretch its fellow places vote for — a coarse-grid lookup, which names the large separate islands — *or* when the ground it stands on runs
 out inside 1000 m², which is a flood fill over the fine surfaces and names the pockets the grid's 4 m columns read wrong. Eltnen loses 12 of 152 and
 Verteron 5 of 123, every one of them named in the log with its coordinates, because a count cannot be checked and a place dropped in error is a place
 the map never populates again. The director then moves anybody left living at a place that no longer exists, because no other rule would: theirs is
-neither short nor over-full.
+neither short nor over-full. **Since bots fly, a place is put back when it shares a fly zone with a mainland place within flight range** — reached is
+not enough, a resident has to be able to leave — which takes Eltnen to 10 dropped and Verteron to 3.
 
-Asking for a *route* instead was the obvious repair and does not work — at range every failure is honestly reported as a search that gave up, so 152
-probes over Eltnen cost 73 seconds and proved nothing the grid had not. The fill costs 397 ms and proves what it claims. See
-[world-and-data-traps.md](world-and-data-traps.md), which also records why the fill's bound had to be measured. Both tests run once per map on the
-lifecycle lane at startup, ahead of the director's first review.
+Asking for a *route* instead was the obvious repair and does not work: at range every failure is honestly reported as a search that gave up, so 152
+probes over Eltnen cost 73 s and proved nothing the grid had not, against 397 ms for the fill. Why the fill's bound had to be measured is in
+[world-and-data-traps.md](world-and-data-traps.md). Both tests run once per map at startup, on the lane that may block.
 
-**This is a flight question wearing a navigation costume.** Those places are not broken ground. Eltnen, Verteron and Poeta all carry `GLIDE`, and a
-terrace a player glides onto is an island only to something that walks. So the filter is a statement about what a bot can do, not about the map, and
-the day bots glide it should loosen rather than go. Which also means flight buys more than the Abyss and aerial PvP: it buys back every terrace, ledge
-and rooftop the world put npcs on and no bot can settle at.
+**It was a flight question wearing a navigation costume, and it has its answer.** Those places are not broken ground: Eltnen, Verteron and Poeta all
+carry `GLIDE`, and a terrace a player glides onto is an island only to something that walks. The filter states what a bot can do, not what the map is
+worth — so it loosened the day bots flew, rather than going away. Eleven of Eltnen's twelve dropped places stand inside a fly zone; two of them have a
+mainland neighbour to fly to and are back in the plan. The other nine are a cluster of terraces with no neighbour in their zone: somewhere a bot could
+reach and not leave, which is the fault the filter exists to prevent.
 
-**Posts nobody could fill were the same fault, not the geography.** Every map now fills its village posts exactly: Eltnen 32/32, Verteron 25/25 where
-it had sat at 23, Ishalgen 9/9, with no departures and nothing put off. Eltnen's fortress being in the air turns out not to produce an unfillable post,
-and with the plan now dropping the places no walker reaches, nothing is posted where it cannot live by guarantee rather than by luck.
+**Posts nobody could fill were the same fault, not the geography.** Every map now fills its village posts exactly — Eltnen 32/32, Verteron 25/25 where
+it had sat at 23, Ishalgen 9/9 — and with the plan dropping the places nothing reaches, that holds by guarantee rather than by luck.
 
 **Bots still wedge, but it is no longer a pattern.** Rescues went from 30 in seven minutes, clustered eight deep on single spots, to 7 in eight minutes
-at eight different places, with no house-moving at all. What is left is the staircase and citadel geometry seen in Verteron, which is the
-reactive-steering limit below rather than anything the director does. Not separately diagnosed.
+at eight different places. What is left is the staircase and citadel geometry in Verteron, a reactive-steering limit rather than anything the director
+does. Two rules were added to that rescue when flight arrived: a bot in somebody's group is never given a lift home, and a stranding counts against a
+bot's home only when it happened *at* that home.
 
 **The population review is under test, and the suite runs on deploy.** `BotDirector.sort` takes its two dependencies as arguments and deals in
 character ids, so a review's conclusion is decidable from counts, ids and places alone. Seven cases, each a fault that actually happened; they caught
 one more on the first run, where the countryside took a region's last sleeper ahead of an empty village post. `deploy.ps1` overrides the root pom's
 skip for the one build whose output reaches a server — quoted, since PowerShell splits `-Dmaven.test.skip=false` on the dots.
 
-**The stalled-fight watchdog was blaming the loop for the schedule.** Its warnings never arrived singly: seventeen at one and the same second,
-thirty-three seconds after a start, and fifteen inside one second after the start before that, while the pool worked through a hundred wakes of some
-twenty database round trips each. No exception had been thrown in either run and `attackTick` reschedules in a `finally`, so nothing was lost — the
-swings were queued. It asks the `ScheduledFuture` now: still to run means a busy server and the fight is kept; run without scheduling a successor is
-the fault the guard was written for and is unchanged. The congestion itself is untouched, and is a startup phenomenon — the director's budget is
-deliberately unlimited while nobody is online.
+**The stalled-fight watchdog was blaming the loop for the schedule.** Its warnings never arrived singly — seventeen in one second, while the pool
+worked through a hundred wakes of twenty database round trips each — and nothing had been lost: the swings were queued. It asks the `ScheduledFuture`
+now, so a swing still to run is a busy server and the fight is kept. The congestion itself is untouched, and is a startup phenomenon: the director's
+budget is deliberately unlimited while nobody is online.
 
 **`BotDay.restingSpot`'s two searches per candidate are not worth changing.** Measured at 360 bot-thread samples: 7 in a path search, 6 of them the
 route pool, `restingSpot` in none. Changing it would be optimising against a cost nobody can find.
@@ -191,7 +192,8 @@ route pool, `restingSpot` in none. Changing it would be optimising against a cos
 1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **24 meshes exist** (`data/navmesh/*.nav`, 23 distinct
    names — Idian Depths has one per faction). `tools/navmesh.ps1 <mapId>`. This no longer paces everything, but two of the absentees are named
    throughout these docs as if they were ready: **Sanctum** (110010000) and **Reshanta** (400010000) have no mesh, so no bot plans a route on
-   either. A mesh is also not a population: only Poeta has inhabitants, and the others open lazily, on the first map that needs one.
+   either. A mesh is also not a population: a map has inhabitants only where `//bot populate` or the populate setting has put some, and the meshes
+   open lazily, on the first map that needs one.
 2. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the mesh does not answer a bot can still wedge itself.
 3. **Walkable ground comes in islands**, and a route between two of them does not exist. `NavmeshTool <mapId> components` says so.
 4. **How many characters a client tolerates in one place is unmeasured**, and it is the one ceiling this project does not control. It is also the only
