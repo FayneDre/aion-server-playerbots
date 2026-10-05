@@ -20,6 +20,7 @@ import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.item.WeaponStats;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
+import com.aionemu.gameserver.playerbot.economy.BotGearRefiner;
 import com.aionemu.gameserver.playerbot.economy.BotGearSources;
 import com.aionemu.gameserver.playerbot.economy.BotStatWeights;
 import com.aionemu.gameserver.services.item.ItemFactory;
@@ -130,12 +131,32 @@ public class BotOutfitter {
 	public static String regear(Player bot) {
 		int stripped = stripOtherFactionGear(bot);
 		int worn = dress(bot);
-		if (stripped == 0 && worn == 0)
+		// After the dressing, so the pieces it just put on are counted once rather than refined twice: equipping already brings a piece up to level.
+		int refined = refineWornGear(bot);
+		if (stripped == 0 && worn == 0 && refined == 0)
 			return bot.getName() + " had nothing to change";
 		// Dressing says this for itself whenever it puts something on, so it is only needed for a bot that was stripped and found nothing to replace
 		// the piece with. Said unconditionally because the alternative is a condition that is wrong the day dressing stops announcing it.
 		BotEquipManager.showAppearance(bot);
-		return bot.getName() + " took off " + stripped + " piece(s) of the wrong faction and put on " + worn;
+		return bot.getName() + " took off " + stripped + " piece(s) of the wrong faction, put on " + worn + " and enchanted " + refined;
+	}
+
+	/**
+	 * Brings gear a bot has been wearing all along up to the enchantment its owner would have put into it.
+	 * <p>
+	 * Needed because enchanting happens when a piece goes on, and a bot settled before any of this existed has worn the same torso since the day it
+	 * was made. Stigmas are left alone, and that is not tidiness: a stigma stone stores <b>its skill level</b> in the same field, so enchanting one
+	 * would silently change what the bot knows.
+	 *
+	 * @return How many pieces ended up better than they were.
+	 */
+	private static int refineWornGear(Player bot) {
+		int refined = 0;
+		for (Item worn : bot.getEquipment().getEquippedItemsWithoutStigma()) {
+			if (BotGearRefiner.refine(bot, worn))
+				refined++;
+		}
+		return refined;
 	}
 
 	/**

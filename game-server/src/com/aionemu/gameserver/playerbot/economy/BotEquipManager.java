@@ -87,8 +87,15 @@ public class BotEquipManager {
 	 */
 	public static boolean wear(Player bot, int itemObjectId, ItemTemplate template) {
 		long slot = slotFor(bot, template);
-		if (slot == 0 || bot.getEquipment().equipItem(itemObjectId, slot) == null)
+		if (slot == 0)
+			return false; // asked before equipping and not alongside it: a mask of no slots is removed from the bag and worn nowhere
+		Item worn = bot.getEquipment().equipItem(itemObjectId, slot);
+		if (worn == null)
 			return false;
+		// The one place everything a bot puts on goes through, which is why the enchanting hangs here rather than in the dressing: a piece created
+		// for a new character and a piece looted an hour later both deserve to be in the state its owner would have got it into, and hanging it off
+		// the creation would have left every looted replacement at +0 — a visible downgrade from the gear it was replacing.
+		BotGearRefiner.refine(bot, worn);
 		showAppearance(bot);
 		return true;
 	}
