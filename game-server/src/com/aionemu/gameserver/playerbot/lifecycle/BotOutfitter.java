@@ -138,22 +138,27 @@ public class BotOutfitter {
 		// Dressing says this for itself whenever it puts something on, so it is only needed for a bot that was stripped and found nothing to replace
 		// the piece with. Said unconditionally because the alternative is a condition that is wrong the day dressing stops announcing it.
 		BotEquipManager.showAppearance(bot);
-		return bot.getName() + " took off " + stripped + " piece(s) of the wrong faction, put on " + worn + " and enchanted " + refined;
+		return bot.getName() + " took off " + stripped + " piece(s) of the wrong faction, put on " + worn + " and improved " + refined;
 	}
 
 	/**
-	 * Brings gear a bot has been wearing all along up to the enchantment its owner would have put into it.
+	 * Brings gear a bot has been wearing all along up to the enchantment and the stones its owner would have put into it.
 	 * <p>
-	 * Needed because enchanting happens when a piece goes on, and a bot settled before any of this existed has worn the same torso since the day it
-	 * was made. Stigmas are left alone, and that is not tidiness: a stigma stone stores <b>its skill level</b> in the same field, so enchanting one
-	 * would silently change what the bot knows.
+	 * Needed because both happen when a piece goes on, and a bot settled before any of this existed has worn the same torso since the day it was
+	 * made. Stigmas are left alone, and that is not tidiness: a stigma stone stores <b>its skill level</b> in the same field, so enchanting one would
+	 * silently change what the bot knows.
+	 * <p>
+	 * The socketing is rolled per piece and most pieces fail that roll below the level ceiling, so running this twice over the same bot fills a few
+	 * more slots each time. That is a fair reading of a character that keeps buying stones, and it does stop: the engine refuses once a piece is full.
 	 *
 	 * @return How many pieces ended up better than they were.
 	 */
 	private static int refineWornGear(Player bot) {
 		int refined = 0;
 		for (Item worn : bot.getEquipment().getEquippedItemsWithoutStigma()) {
-			if (BotGearRefiner.refine(bot, worn))
+			boolean better = BotGearRefiner.refine(bot, worn);
+			better |= BotGearRefiner.socket(bot, worn) > 0;
+			if (better)
 				refined++;
 		}
 		return refined;

@@ -157,6 +157,18 @@ public class BotStatWeights {
 	}
 
 	/**
+	 * @return Whether more physical crit would be wasted on this character.
+	 *         <p>
+	 *         Asked by the socketing, which stacks one stat across a piece's slots the way a player does and has to know when to stop and stack
+	 *         something else. The cap lives here rather than there because it is the same number the ranking already stops at.
+	 * @param alreadyPromised
+	 *          Crit from stones chosen in this pass but not yet applied to the character.
+	 */
+	public static boolean physicalCritIsSaturated(Player bot, int alreadyPromised) {
+		return bot.getGameStats().getMainHandPCritical().getCurrent() + alreadyPromised >= PHYSICAL_CRIT_SOFT_CAP;
+	}
+
+	/**
 	 * The two rules that depend on the character rather than on the piece.
 	 *
 	 * @return What to multiply a stat's weight by for this bot, normally 1.

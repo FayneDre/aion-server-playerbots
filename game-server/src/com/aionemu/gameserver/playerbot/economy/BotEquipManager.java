@@ -96,6 +96,7 @@ public class BotEquipManager {
 		// for a new character and a piece looted an hour later both deserve to be in the state its owner would have got it into, and hanging it off
 		// the creation would have left every looted replacement at +0 — a visible downgrade from the gear it was replacing.
 		BotGearRefiner.refine(bot, worn);
+		BotGearRefiner.socket(bot, worn);
 		showAppearance(bot);
 		return true;
 	}

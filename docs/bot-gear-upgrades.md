@@ -40,16 +40,41 @@ shards, which have no ceiling to clamp to.
 
 ## Manastones
 
-Also free: `ItemSocketService.addManaStone(item, stoneId, false)` before equipping, and the stats are applied
-when it goes on. Slot counts come from `getManastoneSlots()` and `getSpecialSlots()`; candidates from
-`DataManager.ITEM_DATA.getManastones(level)`; each stone carries one modifier, so the weights of section 3
-choose them with no second table to maintain.
+`ItemSocketService.addManaStone(item, stoneId, false)`, and the stats are applied when the piece goes on. A
+piece already worn — which is every piece here, since this runs after equipping — needs
+`ItemEquipmentListener.addStoneStats` said over each stone, exactly as the player-facing socketing does. The
+stones persist through the ordinary save: `PlayerService.storePlayer` reaches `ItemStoneListDAO.save`.
 
-The engine's own rule, which must be respected: a stone's level may not exceed
-`10 × ceil((item level + 10) / 10)` (`EnchantService.socketManastone`).
+**One stat stacked across a piece's slots**, not a different stone in each. That is how the game is played —
+six crit stones in a weapon — and the only thing that interrupts it is the crit cap, at which point the
+stacking moves to whatever the class wants next. Stones carry their stats as ordinary modifiers, so the weights
+of `bot-gear.md` choose them with no second table to maintain.
 
-How often a piece is socketed at all, by bot level: 10% below 20, 50% from 20 to 40, 75% from 41 to 64, 100% at
-65.
+**Which stone level.** Two ceilings, lower wins. The engine's own is `10 × ceil((item level + 10) / 10)`
+(`EnchantService.socketManastone`) and is generous — it would allow a level 50 stone in a level 36 torso. The
+real limit is that a character has the stones its own levels gave it, so the level is also capped at the
+owner's rounded down to a ten, which is the only granularity stones come in: 10, 20, 30, 40, 50, 60, 70.
+
+**How much room there is** comes from `Item.getSockets(false)` rather than the template, because a tuned piece
+carries sockets its template never declared — and the loop simply runs until the engine refuses, since special
+slots are reserved at the front for ancient stones and `addManaStone` does that accounting itself. As with the
+enchant ceiling, accessories answer themselves: **no accessory in the table declares a slot**, so in this build
+they take no stones either.
+
+How often a piece is socketed at all, by owner's level: 10% below 20, 50% from 20 to 40, 75% from 41 to 64,
+100% at 65. Rolled per piece, so a second re-gear pass fills a few more — a fair reading of a character that
+keeps buying stones, and it stops when the pieces are full.
+
+Scored against the stone table, each class picks a stone carrying its own first stat, and falls through
+sensibly once crit is capped:
+
+| Class | Level 40 pick | Once crit is capped |
+| --- | --- | --- |
+| Templar | Crit Strike +13 / Block +11 | HP +75 / Block +11 |
+| Gladiator | Crit Strike +13 / Parry +11 | Parry +23 / HP +37 |
+| Ranger | Crit Strike +13 / HP +37 | HP +75 / Accuracy +11 |
+| Cleric | HP +75 / MP +37 | unchanged |
+| Sorcerer | Magic Boost +23 / HP +37 | unchanged |
 
 ## Out of scope, deliberately
 
