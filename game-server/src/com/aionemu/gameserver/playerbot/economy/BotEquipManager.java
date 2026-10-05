@@ -89,11 +89,20 @@ public class BotEquipManager {
 		long slot = slotFor(bot, template);
 		if (slot == 0 || bot.getEquipment().equipItem(itemObjectId, slot) == null)
 			return false;
-		// what CM_EQUIP_ITEM does after a successful equip. Without it the piece is worn as far as the server is concerned and invisible to every
-		// client in range, which is how a village of bots came to be seen in the gear they were created with
+		showAppearance(bot);
+		return true;
+	}
+
+	/**
+	 * Tells every client in range what the bot now looks like.
+	 * <p>
+	 * This is what {@code CM_EQUIP_ITEM} does after a successful equip, and leaving it out is how a village of bots came to be seen in the gear they
+	 * were created with: the piece is worn as far as the server is concerned and invisible to everyone watching. Taking a piece <b>off</b> needs the
+	 * same word said, which is less obvious — a bot stripped of the wrong faction's armour otherwise goes on wearing it in every onlooker's client.
+	 */
+	public static void showAppearance(Player bot) {
 		PacketSendUtility.broadcastPacket(bot, new SM_UPDATE_PLAYER_APPEARANCE(bot.getObjectId(), bot.getEquipment().getEquippedForAppearance()),
 			true);
-		return true;
 	}
 
 	/**

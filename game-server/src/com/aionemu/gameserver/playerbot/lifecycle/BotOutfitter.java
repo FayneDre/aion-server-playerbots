@@ -33,8 +33,7 @@ import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
 public class BotOutfitter {
 
 	/**
-	 * The places worth filling, main hand first. Rings and earrings come in pairs and are left out: jewellery is not what makes a character look
-	 * equipped.
+	 * The places worth filling, main hand first.
 	 * <p>
 	 * The off hand is filled last and only after the main hand, because what may go in it is decided by what is already held: a shield for a class
 	 * with shield mastery, a second weapon for one trained to wield two, and nothing at all for the rest. Leaving it out entirely is what sent
@@ -42,6 +41,24 @@ public class BotOutfitter {
 	 */
 	private static final ItemSlot[] DRESSED_SLOTS = { ItemSlot.MAIN_HAND, ItemSlot.TORSO, ItemSlot.PANTS, ItemSlot.GLOVES, ItemSlot.BOOTS,
 		ItemSlot.SHOULDER, ItemSlot.SUB_HAND };
+	/**
+	 * The seven accessory places, which used to be dismissed here as "not what makes a character look equipped" — true of how it looks and wrong
+	 * about everything else. <b>Accessories are the game's main source of magic resistance</b>, so a character with all seven empty takes magical
+	 * damage like nothing else in the world does, and they carry crit, accuracy and HP besides.
+	 * <p>
+	 * Nothing filled them before because nothing could: every accessory group needs no mastery, and the test that told player gear from npc costume
+	 * demanded one. See {@code BotGearSources}.
+	 * <p>
+	 * The pairs are listed left before right and fill correctly in that order, because {@code BotEquipManager.slotFor} hands back the first free
+	 * finger or ear rather than the one named — so the second ring finds the second finger by itself.
+	 */
+	private static final ItemSlot[] ACCESSORY_SLOTS = { ItemSlot.NECKLACE, ItemSlot.EARRINGS_LEFT, ItemSlot.EARRINGS_RIGHT, ItemSlot.RING_LEFT,
+		ItemSlot.RING_RIGHT, ItemSlot.WAIST, ItemSlot.HELMET };
+	/**
+	 * Below this a character is not expected to be wearing jewellery, and the game barely offers any: the earliest rings and earrings in the table
+	 * are level 21. A bot still puts on an accessory it loots before then — this governs only what it is handed at creation.
+	 */
+	private static final int ACCESSORIES_FROM_LEVEL = 20;
 	/** Nothing fancier than this: a village of people in heroic armour reads as a costume party, not a village. */
 	private static final ItemQuality BEST_QUALITY = ItemQuality.RARE;
 
@@ -66,6 +83,12 @@ public class BotOutfitter {
 			if (fill(bot, slot))
 				worn++;
 		}
+		if (bot.getLevel() >= ACCESSORIES_FROM_LEVEL) {
+			for (ItemSlot slot : ACCESSORY_SLOTS) {
+				if (fill(bot, slot))
+					worn++;
+			}
+		}
 		// Not a warning, and it took a screenshot of a console full of red to notice. Below level four there is barely any gear made for players at
 		// all, so this fires for perfectly ordinary characters — who are then wearing the training kit every character is created in, exactly like a
 		// real beginner. Nothing is wrong and nothing needs doing. It is worth a word only because an empty wardrobe at level twenty would not be.
@@ -73,6 +96,50 @@ public class BotOutfitter {
 			LoggerFactory.getLogger(BotOutfitter.class).debug("Nothing made for players fits a {} of level {}, so it keeps its starting kit",
 				bot.getPlayerClass(), bot.getLevel());
 		return worn;
+	}
+
+	/**
+	 * Brings a bot that already exists up to what it would be given if it were created today.
+	 * <p>
+	 * Dressing happens once, at creation, so every change here reaches new inhabitants only. A world settled before accessories existed would wear
+	 * none for the rest of its life, and the pieces of the other faction that two faction bugs let through would stay on just as long — equipping
+	 * only ever adds, and nothing in the engine takes a worn item off a character that is content with it.
+	 * <p>
+	 * The stripping comes first and the dressing after, in that order, because a place has to be empty before anything can be put in it.
+	 *
+	 * @return What was done, in words, for whoever typed the command.
+	 */
+	public static String regear(Player bot) {
+		int stripped = stripOtherFactionGear(bot);
+		int worn = dress(bot);
+		if (stripped == 0 && worn == 0)
+			return bot.getName() + " had nothing to change";
+		// Dressing says this for itself whenever it puts something on, so it is only needed for a bot that was stripped and found nothing to replace
+		// the piece with. Said unconditionally because the alternative is a condition that is wrong the day dressing stops announcing it.
+		BotEquipManager.showAppearance(bot);
+		return bot.getName() + " took off " + stripped + " piece(s) of the wrong faction and put on " + worn;
+	}
+
+	/**
+	 * Takes off, and throws away, anything worn that belongs to the other side.
+	 * <p>
+	 * Thrown away rather than kept, because a bot that keeps it carries it for the rest of its life and {@code BotEquipManager} offers it back on
+	 * every pass. It is worth nothing to this character and nothing to any other: a bot only ever meets bots of its own faction.
+	 */
+	private static int stripOtherFactionGear(Player bot) {
+		int stripped = 0;
+		// Copied before walking it, because unequipping writes to the same map that lists it.
+		for (Item worn : new ArrayList<>(bot.getEquipment().getEquippedItemsWithoutStigma())) {
+			if (!BotGearSources.isOtherFaction(bot, worn.getItemTemplate()))
+				continue;
+			// false, not the default: the inventory is routinely full on a bot that has been farming, and refusing to take off a piece because there
+			// is no room for it is exactly backwards when the piece is about to be destroyed anyway.
+			if (bot.getEquipment().unEquipItem(worn.getObjectId(), false) == null)
+				continue;
+			BotEquipManager.discard(bot, worn);
+			stripped++;
+		}
+		return stripped;
 	}
 
 	/**
@@ -164,7 +231,7 @@ public class BotOutfitter {
 			// No floor on how old a piece may be, only a ceiling on how new. Once npc costume is excluded there is little enough left at the lowest
 			// levels that insisting on a close match left whole classes with nothing at all, and something slightly behind is what a real character
 			// wears anyway. The sort below still prefers the closest to its level.
-			int required = requiredLevelOf(bot, template);
+			int required = template.getRequiredLevel(bot.getPlayerClass());
 			if (required < 1 || required > bot.getLevel())
 				continue;
 			// A quest reward is out of reach until the quest can be taken, whatever the piece itself asks for.
@@ -228,20 +295,6 @@ public class BotOutfitter {
 	 *         A preference and not a filter: it sorts ahead of the ranking, below what the character is actually trained for, so a class too low to
 	 *         have earned its own weapon still gets something rather than nothing.
 	 */
-	/**
-	 * @return The level this piece asks of the bot's class, or the piece's own level when it asks for nothing.
-	 *         <p>
-	 *         The fallback is what lets the coin vendor gear be worn at all. A piece of it — the level 36 fabled armour bought with silver coins —
-	 *         declares no restrictions whatsoever, so {@code getRequiredLevel} answers -1 for every class and the piece was dropped before anything
-	 *         else could judge it. Its own level is the honest answer in that case, and it is safe to trust here only because
-	 *         {@code BotGearSources} has already established that a player can reach the piece: npc costume declares nothing either, and its level is
-	 *         a lie.
-	 */
-	private static int requiredLevelOf(Player bot, ItemTemplate template) {
-		int required = template.getRequiredLevel(bot.getPlayerClass());
-		return required < 1 && !template.hasLevelRestrictions() ? template.getLevel() : required;
-	}
-
 	private static Set<ItemGroup> weaponsOfTrade(Player bot) {
 		return switch (bot.getPlayerClass()) {
 			case GLADIATOR -> Set.of(ItemGroup.POLEARM); // everything else is a heavy loss of damage, dual wielding included

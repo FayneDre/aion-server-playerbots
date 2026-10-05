@@ -78,6 +78,7 @@ public class Bot extends AdminCommand {
 			case "land" -> withName(admin, params, name -> PlayerBotService.getInstance().land(name));
 			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
 			case "sell" -> withName(admin, params, name -> PlayerBotService.getInstance().sell(name));
+			case "regear" -> withName(admin, params, name -> PlayerBotService.getInstance().regear(name));
 			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
 			case "clear" -> sendInfo(admin, PlayerBotService.getInstance().clear(admin));
 			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));

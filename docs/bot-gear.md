@@ -23,8 +23,9 @@ this", and both are wrong in the same direction — they reject real gear:
   `ArmorType.ACCESSORY`, so `ItemGroup.requiresMastery()` is false and `SkillData.getMasterySkills` returns an
   empty set. No ring, earring, necklace, belt or head piece could ever be worn by a bot.
 - **The coin-vendor tier fails the second one.** `Eltnen Sun Legionary Boots` (level 36, `UNIQUE`, the
-  silver-coin armour) carries no `restrict` attribute at all, so `hasLevelRestrictions()` is false and
-  `getRequiredLevel` answers -1 for every class.
+  silver-coin armour) carries no `restrict` attribute at all, so `hasLevelRestrictions()` is false. That test
+  alone is what hid it; the level filters beside it were never the problem, because the default restriction is
+  an array of 1s, so `getRequiredLevel` answers 1 and `isClassSpecific` answers true for every class.
 
 So the gear worth having was the gear most reliably excluded. The replacement asks where an item comes from,
 reading the same data a player would reach it through:
@@ -39,6 +40,15 @@ reading the same data a player would reach it through:
 An item in the index is gear a player can get, and usually arrives with its faction already settled — which is
 better than any guess from its name. Items in no source fall back on the old mastery-and-restrictions test, so
 ordinary levelling drops keep working.
+
+**Being listed is not enough on its own.** A vendor really does stock "Asmodian NPC Common Chain Head", a level
+1 piece that asks nothing of any class, so opening the gate let npc costume back in by another door — harmless
+while no bot wore a helmet, and the village in guard uniform again the moment one did. The model name is what
+rules it out, and only the model name: of the 29350 pieces of gear these four tables list, 874 carry an `npc`
+segment and 53 a `test` one, and both are excluded. Two other markers looked like candidates and were counted
+before being trusted — `cash` (132) and `event` (155) mostly declare proper level restrictions, because
+`world_cash_*` is the level 65 gear sold for real money and it has real stats. Excluding by marker without
+counting first would have thrown it away.
 
 Quest rewards were going to be restricted to `QuestCategory.MISSION` — the yellow campaign quests, a few
 hundred against several thousand ordinary ones. Counted, that keeps 899 pieces of gear out of 4348, and it

@@ -859,6 +859,43 @@ public class PlayerBotService {
 	}
 
 	/**
+	 * Brings one spawned bot, or every one of them, up to what it would be given if it were created today.
+	 * <p>
+	 * Dressing happens once, at creation, so a world settled before a change to the wardrobe never sees it. This is the way to apply one without
+	 * deleting the population and building it again — which would throw away every level, every home and every name it has.
+	 * <p>
+	 * Saved afterwards, one bot at a time rather than at the end, because a pass over a thousand inhabitants that is interrupted halfway should leave
+	 * the half it finished written rather than nothing at all.
+	 *
+	 * @param characterName
+	 *          One bot's name, or "all" for every spawned bot.
+	 */
+	public String regear(String characterName) {
+		if (!characterName.equalsIgnoreCase("all")) {
+			Player bot = findSpawnedBot(characterName);
+			if (bot == null)
+				return "No bot spawned with name " + characterName;
+			String done = BotOutfitter.regear(bot);
+			save(bot);
+			return done;
+		}
+		int changed = 0;
+		for (Player bot : spawnedBots.values()) {
+			try {
+				String done = BotOutfitter.regear(bot);
+				if (!done.endsWith("had nothing to change")) {
+					log.info(done);
+					changed++;
+				}
+				save(bot);
+			} catch (RuntimeException e) {
+				log.error("Could not regear bot " + bot.getName(), e);
+			}
+		}
+		return "Regeared " + changed + " of " + spawnedBots.size() + " spawned bot(s)";
+	}
+
+	/**
 	 * Lists what a spawned bot carries. Reads live memory, not the database, which only ever sees a bot when it despawns.
 	 */
 	public String describeInventory(String characterName) {
