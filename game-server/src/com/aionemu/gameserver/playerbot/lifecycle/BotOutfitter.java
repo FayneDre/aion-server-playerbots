@@ -60,8 +60,25 @@ public class BotOutfitter {
 	 * are level 21. A bot still puts on an accessory it loots before then — this governs only what it is handed at creation.
 	 */
 	private static final int ACCESSORIES_FROM_LEVEL = 20;
-	/** Nothing fancier than this: a village of people in heroic armour reads as a costume party, not a village. */
-	private static final ItemQuality BEST_QUALITY = ItemQuality.RARE;
+	/**
+	 * @return The best quality a character of this level is allowed to be handed.
+	 *         <p>
+	 *         This was {@code RARE} in a constant, on the grounds that a village of people in heroic armour reads as a costume party. True of a
+	 *         village of beginners and false of everybody else: <b>a character past the middle twenties that is still in green is undergeared</b>,
+	 *         not modest. Heroic armour becomes ordinary at 26, when the bronze coin gear — "Elite Rank 7" — comes within reach of anyone who does
+	 *         the content, and fabled does the same at 36 with the silver coin gear. Those are the two steps the game itself is built around, and
+	 *         they are where the stats a bot badly needs first appear: movement speed on boots, flight speed on a torso, attack speed on a weapon.
+	 *         <p>
+	 *         Still a ceiling and not a floor. What a bot actually ends up in is whatever the ranking finds, which below these levels is mostly green
+	 *         anyway because little else exists.
+	 */
+	private static ItemQuality bestQualityFor(int level) {
+		if (level >= 36)
+			return ItemQuality.UNIQUE;
+		if (level >= 26)
+			return ItemQuality.LEGEND;
+		return ItemQuality.RARE;
+	}
 
 	/** Candidates per class, level and slot are the same for every bot of that kind, and the item list is long enough to be worth remembering. */
 	private static final Map<String, List<ItemTemplate>> candidates = new ConcurrentHashMap<>();
@@ -238,7 +255,7 @@ public class BotOutfitter {
 		for (ItemTemplate template : DataManager.ITEM_DATA.getItemTemplates()) {
 			if ((template.getItemSlot() & slotMask) == 0 || !(template.isWeapon() || template.isArmor()))
 				continue;
-			if (template.getItemQuality().getQualityId() > BEST_QUALITY.getQualityId())
+			if (template.getItemQuality().getQualityId() > bestQualityFor(bot.getLevel()).getQualityId())
 				continue;
 			if (!template.isClassSpecific(bot.getPlayerClass()))
 				continue;

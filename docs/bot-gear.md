@@ -7,11 +7,8 @@ enchantment and no manastones — legal, and roughly half the character a real p
 This is the plan for the rest of it, and the reasoning behind each number. It comes from a player's write-up of
 how these classes are actually geared; the engine facts beside it were measured here.
 
-## The three questions about a piece
-
-1. **Can this bot reach it?** — the obtainability index, below. Replaces the old guess.
-2. **Is it this bot's faction?** — the name marker, below. The index answers first where it can.
-3. **Is it better than what it wears?** — stat weights per class, below. Replaces ranking by item level.
+Three questions decide a piece: can this bot reach it (section 1), is it this bot's faction (section 2), and
+is it better than what it wears (sections 3 and 4).
 
 ## 1. Obtainability: where gear comes from
 
@@ -76,17 +73,11 @@ Elyos and whose `cName` says `d`. A data quirk, left alone rather than special-c
 Where the obtainability index knows the faction, it wins; the name marker only decides for items the index
 does not cover.
 
-**Shields were the quiet casualty of the positional rule.** `ItemSubType.SHIELD` carries `ArmorType.GENERAL`, so
-`isArmor()` is true and the old code counted to the third segment — but a shield names itself in one word,
-`shield_d_n_c_03a`, so it read `n` where the marker is `d`. Every Asmodian shield passed as Elyos.
-
-**The other half was never checked at all.** `BotOutfitter` asked the question when it dressed a new bot;
-`BotEquipManager.equipUpgrades` did not, so anything looted went on regardless of side. Counted over the live
-population: of 1411 pieces worn by bots, 14 are the other faction's — 11 shields from the first fault and the
-rest looted armour from the second. Both paths now ask.
-
-Those 14 stay on until something takes them off: equipping only ever adds. Stripping them is a job for the
-re-gear pass that M2 needs anyway.
+Two faults followed from the old positional rule. **Shields** carry `ArmorType.GENERAL`, so `isArmor()` is true
+and the code counted to the third segment, but a shield names itself in one word — `shield_d_n_c_03a` read as
+`n` where the marker is `d`, and every Asmodian shield passed as Elyos. **Looted gear was never checked at
+all**: only the dressing path asked. Counted live, of 1411 pieces worn by bots 14 were the other faction's, 11
+of them shields. Both paths now ask, and `//bot regear` takes off what is already on.
 
 ## 3. Stat weights per class
 
@@ -130,9 +121,17 @@ evasion 80, magical boost 26, magical accuracy 28, block 61, parry 33, magical c
 whitelist: a stat not in it scores nothing, which keeps the resistances and the pvp ratios out of a judgement
 with no business weighing them.
 
-Percentage modifiers are left out, because dividing a percent by an amount is meaningless. Measured across the
-table they are hostility, attack and casting speed, movement and flight speed, and damage reduction — all owned
-by section 4 — and exactly six pieces put a percentage on a stat this does weigh.
+Percentages go through the same mill, divided by their own measured median — movement speed 22, attack speed
+17, hostility 18, damage reduction 40, flight speed 8, casting speed 9. They are kept *out* of the per-class
+order, though, and given fixed weights instead: attack speed is not what makes a gladiator a gladiator, it is
+good for everything that swings in the same measure, so threading it into an ordered list would push the stats
+that do define a class down a rank for nothing. See section 4 for what they are worth.
+
+**Read the sign the client shows, not the sign in the file.** Attack speed is stored as a reduction of the
+delay between swings, so a weapon advertised as "+19% attack speed" carries the value `-19`, while every other
+stat here is stored the way it reads. Taken at face value a bot would have hunted for the *slowest* weapon it
+could find, and most deliberately for the classes that care most. `StatEnum.getSign()` states the direction,
+and `modifier.getValue() * stat.getSign()` is the same expression the item tooltip is built from.
 
 **Where the score sits in the ranking decides everything.** It goes *below* the item level, not above: a
 piece's level is what says how much of everything it carries, so a level 25 ring with crit really is worse than
@@ -153,31 +152,43 @@ was named for:
 
 ## 4. Quality, by level
 
-`BotOutfitter.BEST_QUALITY` was `RARE` in a constant, so nothing above green was ever reachable:
+`BotOutfitter.BEST_QUALITY` was `RARE` in a constant, on the grounds that a village of people in heroic armour
+reads as a costume party. That is true of a village of beginners and false of everybody else — **a character
+past the middle twenties still in green is undergeared, not modest** — so the ceiling now moves with the level:
 
 | Level | Ceiling | What that opens |
 | --- | --- | --- |
-| below 26 | `RARE` (green) | as today |
+| below 26 | `RARE` (green) | as before |
 | 26 and up | `LEGEND` (blue) | bronze-coin armour, "Elite Rank 7"; movement speed on boots, flight speed on torso |
 | 36 and up | `UNIQUE` (yellow) | silver-coin armour, "Sun Legionary"; attack speed |
 
-Movement and flight speed are not cosmetic here: a bot that cannot keep up with its group is a bot that is not
-in the fight. They pay for themselves against the work already done on following and flying.
+It stays a ceiling and not a floor: below those levels a bot still comes out mostly in green, because little
+else exists down there.
 
-Shields improve on their own with this change — damage reduction rises with quality, 30/35/40/45% for
-common/superior/heroic/fabled — so no shield-specific code is needed.
+**What the percentages are worth.** They are not class identity, so they sit outside the per-class order with
+fixed weights, varying on only two questions — does the character hit or cast, and does it want to be hit:
 
-**Hostility** comes with the same tier and matters for group play: plate carries a positive aggro bonus, cloth
-a negative one. Mapped onto the roles `BotRole` already knows:
-
-| Classes | Armour | Hostility |
+| Stat | Weight | Why |
 | --- | --- | --- |
-| Templar, Gladiator | plate | + |
-| Aethertech | chain | + |
-| Cleric, Chanter | chain | − |
-| Ranger, Assassin | leather | − (and evasion) |
-| Gunner | leather | − (and magical boost) |
-| Sorcerer, Spiritmaster, Bard | cloth | − |
+| Attack speed | 0.9 hitting, 0.2 casting | the stat the yellow tier adds, and the reason to reach it |
+| Casting speed | 0.9 casting, 0.2 hitting | the same thing for the other half of the roster |
+| Movement speed | 0.6 everyone | a bot that cannot keep up with its group is a bot not in the fight |
+| Flight speed | 0.4 everyone | the same, in the air |
+| Damage reduction | 0.8 tank, 0.4 otherwise | shields only, and it rises with quality by itself: 30/35/40/45% |
+| Hostility | ±0.5 | sign depends on the class, below |
+
+**Hostility is the one stat whose sign is a matter of taste.** Plate carries a positive aggro bonus and cloth a
+negative one, which is the game handing each class the help it wants. Templar, gladiator and aethertech want to
+be hit; everything else would rather the monster looked elsewhere, so the weight is negated for them and a
+robe's −30% is worth as much to a sorcerer as a breastplate's +30% is to a templar.
+
+That list is *not* `BotRole`, and the gladiator is the difference. It is filed under damage there, correctly —
+putting two classes on the taunts means two bots pulling the same monster in opposite directions — but it still
+wears plate and still picks things up when the templar loses them.
+
+The armour type itself needs no rule here: `armourWeight` already picks the heaviest a class is trained for,
+which lands on plate for templar and gladiator, chain for cleric and chanter, leather for the scouts and cloth
+for the casters, exactly as the source's table asks.
 
 **Uniformity is the risk this creates.** Choosing the single best piece for a stat puts a whole region in the
 same boots. The existing trick holds: sort so the right answers come first, then pick at random *among the

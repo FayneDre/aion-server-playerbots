@@ -13,6 +13,7 @@ import com.aionemu.gameserver.model.stats.calc.functions.StatFunction;
 import com.aionemu.gameserver.model.stats.calc.functions.StatRateFunction;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
+import com.aionemu.gameserver.playerbot.social.BotRole;
 
 /**
  * How much a piece of gear is worth to a particular class, read from what it actually grants.
@@ -53,7 +54,50 @@ public class BotStatWeights {
 		Map.entry(StatEnum.MAGICAL_CRITICAL, 9), Map.entry(StatEnum.MAGICAL_ATTACK, 14), Map.entry(StatEnum.MAGICAL_ACCURACY, 28),
 		Map.entry(StatEnum.BOOST_MAGICAL_SKILL, 26), Map.entry(StatEnum.MAGICAL_RESIST, 59), Map.entry(StatEnum.MAXHP, 117),
 		Map.entry(StatEnum.MAXMP, 181), Map.entry(StatEnum.EVASION, 80), Map.entry(StatEnum.PARRY, 33), Map.entry(StatEnum.BLOCK, 61),
-		Map.entry(StatEnum.HEAL_BOOST, 11), Map.entry(StatEnum.CONCENTRATION, 7), Map.entry(StatEnum.FLY_TIME, 13));
+		Map.entry(StatEnum.HEAL_BOOST, 11), Map.entry(StatEnum.CONCENTRATION, 7), Map.entry(StatEnum.FLY_TIME, 13),
+		// The percentages. Their typical size is measured the same way and means the same thing, so they weigh against the amounts without any
+		// special pleading — the median piece that carries movement speed carries 22% of it, and one that carries 28% is worth proportionally more.
+		Map.entry(StatEnum.SPEED, 22), Map.entry(StatEnum.FLY_SPEED, 8), Map.entry(StatEnum.ATTACK_SPEED, 17),
+		Map.entry(StatEnum.BOOST_CASTING_TIME, 9), Map.entry(StatEnum.DAMAGE_REDUCE, 40), Map.entry(StatEnum.BOOST_HATE, 18));
+
+	/**
+	 * What the percentages are worth, which is not a matter of class identity the way the amounts are.
+	 * <p>
+	 * They are kept out of the per-class order on purpose. Attack speed is not what makes a gladiator a gladiator — it is good for everything that
+	 * swings, in the same measure — so threading it into an ordered list would push the stats that <b>do</b> define a class down a rank for no reason.
+	 * They are universally good, in degrees that depend on only two things: whether the character hits or casts, and whether it wants to be hit.
+	 */
+	private static float rateWeight(Player bot, StatEnum stat) {
+		boolean hits = bot.getPlayerClass().isPhysicalClass();
+		return switch (stat) {
+			case ATTACK_SPEED -> hits ? 0.9f : 0.2f;
+			case BOOST_CASTING_TIME -> hits ? 0.2f : 0.9f;
+			// Not cosmetic and not a luxury: a bot that cannot keep up with its group is a bot that is not in the fight, which is most of what the
+			// movement and flight work was for. Worth about as much as a class's second stat.
+			case SPEED -> 0.6f;
+			case FLY_SPEED -> 0.4f;
+			case DAMAGE_REDUCE -> BotRole.of(bot) == BotRole.TANK ? 0.8f : 0.4f;
+			// The one stat whose sign is a matter of taste. A tank wants to be hit and everything else wants not to be, so the weight is negated for
+			// the classes that would rather the monster looked elsewhere — a robe's -30% hostility is then worth as much to a sorcerer as a
+			// breastplate's +30% is to a templar.
+			case BOOST_HATE -> wantsHostility(bot) ? 0.5f : -0.5f;
+			default -> UNRANKED;
+		};
+	}
+
+	/**
+	 * @return Whether this class would rather the monster hit it.
+	 *         <p>
+	 *         Not {@code BotRole}, and the difference is the gladiator. It is filed under damage there, correctly — putting two classes on the taunts
+	 *         means two bots pulling the same monster in opposite directions — but it still wears plate and still picks things up when the templar
+	 *         loses them, so hostility on its armour is wanted rather than tolerated. The aethertech is the same shape in chain.
+	 */
+	private static boolean wantsHostility(Player bot) {
+		return switch (bot.getPlayerClass()) {
+			case TEMPLAR, GLADIATOR, RIDER -> true;
+			default -> false;
+		};
+	}
 
 	/**
 	 * What each place in a class's order is worth. Steep at the top and shallow after, because the first two stats are what the class is built around
@@ -89,22 +133,27 @@ public class BotStatWeights {
 		List<StatEnum> order = orderFor(bot.getPlayerClass());
 		float score = 0;
 		for (StatFunction modifier : modifiers) {
-			// Percentages, not amounts, so dividing them by a typical amount is meaningless. Measured over every piece of gear in the table, they are
-			// hostility, attack and casting speed, movement and flight speed, and damage reduction — stats whose worth is a matter of role and tier
-			// rather than of arithmetic, and all six are owned elsewhere. Six pieces in the whole table put a rate on a stat this does weigh, which is
-			// not worth a special case.
-			if (modifier instanceof StatRateFunction)
-				continue;
-			Integer typical = TYPICAL_AMOUNT.get(modifier.getName());
+			StatEnum stat = modifier.getName();
+			Integer typical = TYPICAL_AMOUNT.get(stat);
 			if (typical == null)
 				continue;
-			int rank = order.indexOf(modifier.getName());
-			float weight = rank < 0 ? UNRANKED : BY_RANK[Math.min(rank, BY_RANK.length - 1)];
-			weight *= scaleForLevel(bot, modifier.getName());
+			// A percentage is judged on its own terms, because it is good for reasons that have nothing to do with what a class is: see rateWeight.
+			float weight = modifier instanceof StatRateFunction ? rateWeight(bot, stat) : rankWeight(order, stat);
+			weight *= scaleForLevel(bot, stat);
+			// <b>The sign the player sees, not the sign in the file.</b> Attack speed is stored as a reduction of the delay between swings, so a
+			// weapon the client advertises as "+19% attack speed" carries the value -19, and every other stat here is stored the way it reads. Taken
+			// at face value a bot would have gone looking for the slowest weapon it could find, and done it most deliberately for the classes that
+			// care most. The engine states the direction itself and this is the same expression the item tooltip is built from.
+			int asTheClientShowsIt = modifier.getValue() * stat.getSign();
 			// A negative modifier is a real cost and counts as one: some gear buys attack with accuracy.
-			score += weight * modifier.getValue() / (float) typical;
+			score += weight * asTheClientShowsIt / (float) typical;
 		}
 		return score;
+	}
+
+	private static float rankWeight(List<StatEnum> order, StatEnum stat) {
+		int rank = order.indexOf(stat);
+		return rank < 0 ? UNRANKED : BY_RANK[Math.min(rank, BY_RANK.length - 1)];
 	}
 
 	/**
