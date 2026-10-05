@@ -254,7 +254,8 @@ public class BotEquipManager {
 			// a shield and a two handed weapon claim the same hand, so a shield that merely scored higher would strip the weapon and the weapon
 			// would not win it back. Anything finer than that — insisting on the same kind of armour, say — would block the ordinary case, since
 			// levelling gear crosses from leather to cloth and back with whatever drops.
-			if (worn != null && (worn.getItemTemplate().isWeapon() != candidate.getItemTemplate().isWeapon() || score(worn) >= score(candidate)))
+			if (worn != null
+				&& (worn.getItemTemplate().isWeapon() != candidate.getItemTemplate().isWeapon() || score(bot, worn) >= score(bot, candidate)))
 				continue;
 			found.add(candidate);
 		}
@@ -287,14 +288,19 @@ public class BotEquipManager {
 	}
 
 	/**
-	 * How good a piece is, as a levelling character would judge it: its level first, its quality to separate two of the same level.
+	 * How good a piece is, as a levelling character would judge it: its level first, then its quality, then what it actually grants.
 	 * <p>
-	 * This is a proxy and says so. Comparing what items actually grant would mean weighing attack against defence against a resistance, which has no
-	 * answer that holds for every class. Over the levelling range the item level carries nearly all of the difference, and being wrong between a
-	 * heroic and a superior of the same level costs a bot very little.
+	 * The first two used to be the whole of it, and the comment here said why: weighing attack against defence against a resistance has no answer
+	 * that holds for every class. It has one per class, which is what {@code BotStatWeights} is, so the third term is now asked — but kept strictly
+	 * below the other two, because a piece's level is what says how much of everything it carries and no amount of the right stat makes a level 25
+	 * ring beat a level 40 one.
+	 * <p>
+	 * The stat term is clamped below 10 so it can never reach into the quality digit. Scores above that would mean a piece granting ten typical
+	 * pieces' worth of a class's first stat, which does not exist in the levelling range and would be a data error rather than a windfall.
 	 */
-	private static int score(Item item) {
+	private static double score(Player bot, Item item) {
 		ItemTemplate template = item.getItemTemplate();
-		return template.getLevel() * 10 + template.getItemQuality().getQualityId();
+		double stats = Math.clamp(BotStatWeights.score(bot, template), 0, 9.99);
+		return template.getLevel() * 1000 + template.getItemQuality().getQualityId() * 10 + stats;
 	}
 }

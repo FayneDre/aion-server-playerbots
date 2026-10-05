@@ -118,8 +118,38 @@ Two rules bend those orders with level:
 Accessories are the main source of magic resistance, which is the whole reason for filling those seven slots
 from level 20 rather than leaving them empty.
 
-Gunner and Aethertech have no authored order — the source says so plainly. They take the generic magical and
-physical orders respectively until somebody who plays them says otherwise.
+Gunner and Aethertech have no authored order — the source says so plainly. Both cast as far as the engine is
+concerned, so both take the generic magical order until somebody who plays them says otherwise.
+
+**A weighted sum needs the stats on one scale**, or it is the item-level proxy in disguise: the game hands them
+out in wildly different sizes, so summing them raw makes any piece with HP beat any piece with attack whatever
+the class wants. Each stat is therefore divided by the median amount a piece of level 20 to 50 grants of it,
+measured over about 100k modifiers — physical crit 31, attack 16, accuracy 60, magic resist 59, HP 117, MP 181,
+evasion 80, magical boost 26, magical accuracy 28, block 61, parry 33, magical crit 9. A score of 1 means
+"about as much of this class's first stat as a piece of that level usually carries". That map is also the
+whitelist: a stat not in it scores nothing, which keeps the resistances and the pvp ratios out of a judgement
+with no business weighing them.
+
+Percentage modifiers are left out, because dividing a percent by an amount is meaningless. Measured across the
+table they are hostility, attack and casting speed, movement and flight speed, and damage reduction — all owned
+by section 4 — and exactly six pieces put a percentage on a stat this does weigh.
+
+**Where the score sits in the ranking decides everything.** It goes *below* the item level, not above: a
+piece's level is what says how much of everything it carries, so a level 25 ring with crit really is worse than
+a level 40 ring without, and ranking on stats alone picks the 25. Below the level it still decides nearly every
+choice there is, because gear arrives in level steps and a shortlist is mostly pieces of one level that differ
+only in what they give.
+
+The Haramel accessories are the clean test, since each comes as a "Jewel" and a "Crystal" of the same level
+differing in one stat, and they are the four pieces the source names. Scored, every one lands on the class it
+was named for:
+
+| Pair (level 20–21) | Jewel grants | Crystal grants | Jewel wins for | Crystal wins for |
+| --- | --- | --- | --- | --- |
+| Ring | +8 physical crit | +10 magical boost | all physical | cleric, sorcerer, gunner |
+| Necklace | +18 accuracy, +42 HP | +10 magical boost, +42 HP | all physical | cleric, sorcerer |
+| Earrings | +28 accuracy | +11 magical accuracy | all physical | sorcerer |
+| Belt | +19 accuracy | +7 magical accuracy | all physical | sorcerer |
 
 ## 4. Quality, by level
 
@@ -153,36 +183,9 @@ a negative one. Mapped onto the roles `BotRole` already knows:
 same boots. The existing trick holds: sort so the right answers come first, then pick at random *among the
 answers that tie*.
 
-## 5. Enchantment
-
-Free, as far as the engine is concerned: `Item.setEnchantLevel` before equipping, and `ItemEquipmentListener`
-calls `EnchantService.applyEnchantEffect` when the piece goes on. Nothing has to be simulated.
-
-The level a bot's gear carries: `bot level − item level`, give or take 2, clamped to
-`ItemTemplate.getMaxEnchantLevel()` and skipped where `isNoEnchant()`. A level 40 templar in a level 36 torso
-wears it at about +4. Enchantment applies to torso, pants, boots, gloves, shoulders, weapon and shield.
-
-## 6. Manastones
-
-Also free: `ItemSocketService.addManaStone(item, stoneId, false)` before equipping, and the stats are applied
-when it goes on. Slot counts come from `getManastoneSlots()` and `getSpecialSlots()`; candidates from
-`DataManager.ITEM_DATA.getManastones(level)`; each stone carries one modifier, so the weights of section 3
-choose them with no second table to maintain.
-
-The engine's own rule, which must be respected: a stone's level may not exceed
-`10 × ceil((item level + 10) / 10)` (`EnchantService.socketManastone`).
-
-How often a piece is socketed at all, by bot level: 10% below 20, 50% from 20 to 40, 75% from 41 to 64, 100% at
-65.
-
-## Out of scope, deliberately
-
-Two-handed weapon fusion, Idian stones, +15 evolution, re-evaluation and conditioning. The source document
-leaves them out and says why: fusion in particular has no simple rule to state, and it matters only at a level
-bots are not yet reaching.
-
 ## See also
 
+- [bot-gear-upgrades.md](bot-gear-upgrades.md) — enchanting and socketing a piece once it is chosen.
 - [combat-skills.md](combat-skills.md) — what a bot does with the weapon this gives it.
 - [group-roles.md](group-roles.md) — where the hostility split comes from.
 - [stigmas.md](stigmas.md) — the other half of a character's build.

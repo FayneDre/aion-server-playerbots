@@ -21,6 +21,7 @@ import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.item.WeaponStats;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.playerbot.economy.BotGearSources;
+import com.aionemu.gameserver.playerbot.economy.BotStatWeights;
 import com.aionemu.gameserver.services.item.ItemFactory;
 import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
 
@@ -170,8 +171,16 @@ public class BotOutfitter {
 		// weapon its own skill book asks for next, and entering it anywhere threw that away -- a ranger had seven chances in eight of starting past
 		// the bows and going out with two swords, which is exactly what came back from in game. Variety belongs among equally good pieces, not
 		// between a bow and the wrong weapon entirely.
+		//
+		// "Right answer" used to mean no more than "something the class may hold", which no accessory ever fails -- they need no mastery and are not
+		// weapons -- so all eight candidates qualified and the pick among them was flat random. That was harmless while the eight differed only in
+		// their model and ruinous the moment they differed in what they grant: the ranking would have been computed and then thrown away, and a
+		// gladiator would have had one chance in eight of the ring it wants. The window is now the pieces that are genuinely equivalent, which is
+		// where variety belonged all along -- and there are plenty of them, since the table carries each ring in an "a" and a "b" that differ in
+		// nothing else.
 		int rightAnswers = 0;
-		while (rightAnswers < wearable.size() && isWhatItShouldHold(bot, wearable.get(rightAnswers)))
+		while (rightAnswers < wearable.size() && isWhatItShouldHold(bot, wearable.get(rightAnswers))
+			&& isAsGoodAs(bot, wearable.get(0), wearable.get(rightAnswers)))
 			rightAnswers++;
 		int start = Rnd.get(0, Math.max(1, rightAnswers) - 1);
 		for (int attempt = 0; attempt < wearable.size(); attempt++) {
@@ -193,6 +202,15 @@ public class BotOutfitter {
 			BotEquipManager.discard(bot, item);
 		}
 		return false;
+	}
+
+	/**
+	 * @return Whether two pieces are worth the same to this character, and so may be chosen between for looks alone. Level and what it grants, which
+	 *         are the two things the ranking ends on; the armour type and the weapon kind are already settled by the caller's other question.
+	 */
+	private static boolean isAsGoodAs(Player bot, ItemTemplate best, ItemTemplate candidate) {
+		return candidate.getLevel() == best.getLevel()
+			&& Math.abs(BotStatWeights.score(bot, candidate) - BotStatWeights.score(bot, best)) < 0.01f;
 	}
 
 	/**
@@ -262,9 +280,16 @@ public class BotOutfitter {
 		// Heaviest armour first, then newest. A class may legally wear anything lighter than its own — a scout is taught cloth proficiency alongside
 		// leather, so the engine accepts a robe on it and says nothing — and sorting on level alone therefore dressed a scout in a robe whenever the
 		// robe happened to be a level newer. Nobody plays that way: you wear the heaviest your class allows, and only fall back when nothing fits.
+		//
+		// What the piece actually grants comes last, below the level and not above it, and that ordering is the whole of the judgement. A piece's
+		// level is what says how much of everything it carries, so a level 25 ring with crit on it really is worse than a level 40 ring without —
+		// ranking on the stats alone would pick the 25. Below the level, though, it decides nearly every choice there is: gear arrives in level steps,
+		// so a shortlist is mostly pieces of one level that differ only in what they give, and that is exactly the question "which ring does a
+		// gladiator want" asks.
 		Comparator<ItemTemplate> bestFirst = Comparator.comparingInt(BotOutfitter::armourWeight)
 			.thenComparingInt(template -> weaponWorth(bot, template))
 			.thenComparingInt(ItemTemplate::getLevel)
+			.thenComparingDouble(template -> BotStatWeights.score(bot, template))
 			.reversed();
 		// Ahead of all of it, what the character can actually hold today. Weapons are not filtered on mastery above, and deliberately so — a caster
 		// is taught its own weapon only on becoming an advanced class, and refusing the rest left every mage unarmed — but "not filtered out" was
