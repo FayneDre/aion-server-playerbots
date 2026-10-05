@@ -146,12 +146,18 @@ public class BotEquipManager {
 	 * they sit in generic groups that name no armour type, so no mastery is required either. A bot dressed by score put them on in preference to
 	 * everything else.
 	 * <p>
-	 * What separates them is that the game does not know what mastery they would need. Every piece a player is meant to wear does: robe, leather,
-	 * chain, plate, or a weapon's own kind.
+	 * What separates them is where they come from, and {@code BotGearSources} answers that by reading the four tables a player reaches gear through.
+	 * Anything in none of them falls back on the older pair of questions below, which still serves for the ordinary levelling drops that are listed
+	 * nowhere.
+	 * <p>
+	 * The fallback is kept rather than trusted, because on its own it rejects <b>every accessory</b> and <b>the whole coin vendor tier</b> — see
+	 * {@code BotGearSources} for why. It is a last resort, not the rule.
 	 *
 	 * @return true if this is gear a player could be handed.
 	 */
 	public static boolean isPlayerGear(ItemTemplate template) {
+		if (BotGearSources.isReachable(template))
+			return true;
 		// Two things, and each lets something different through. A piece whose group names no mastery is a generic slot only npc and test gear sits
 		// in. A piece that declares no level restriction takes the default of "level one for every class", which is how a level two warrior came to
 		// be standing in full white plate: the pieces were level one, so every level filter passed them, and they were npc costume all the same.
@@ -229,6 +235,10 @@ public class BotEquipManager {
 			// neither the engine nor the score would ever turn it down. Judged on what it is rather than on what it asks for.
 			ItemTemplate template = candidate.getItemTemplate();
 			if (!isPlayerGear(template) || template.getLevel() > bot.getLevel())
+				continue;
+			// Looted gear gets the same faction check as gear a bot is created in. The engine will happily equip the other side's piece and the
+			// client then draws nothing where it should be, so a bot that looted an upgrade would go about with a hole in it.
+			if (BotGearSources.isOtherFaction(bot, template))
 				continue;
 			Item worn = wornInPlaceOf(bot, candidate);
 			// A weapon is only ever weighed against a weapon, and armour against armour. Slots overlap in ways that make a free-for-all dangerous:

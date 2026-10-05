@@ -59,6 +59,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
 - [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.
 - [docs/combat-skills.md](docs/combat-skills.md) — how a bot chooses a skill: the in-fight order, upkeep versus abilities kept in hand, class openers.
+- [docs/bot-gear.md](docs/bot-gear.md) — what a bot wears: where gear can be reached from, whose faction it is, and the stats that rank it.
 - [docs/stigmas.md](docs/stigmas.md) — how a bot gets its stigma stones, and what the engine demands before one can be socketed.
 - [docs/group-roles.md](docs/group-roles.md) — what tank, healer, support and damage change about how a bot fights in a group.
 - [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.

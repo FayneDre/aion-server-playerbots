@@ -20,6 +20,7 @@ import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.item.WeaponStats;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
+import com.aionemu.gameserver.playerbot.economy.BotGearSources;
 import com.aionemu.gameserver.services.item.ItemFactory;
 import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
 
@@ -158,13 +159,16 @@ public class BotOutfitter {
 				continue;
 			if (template.getRace() != Race.PC_ALL && template.getRace() != bot.getRace())
 				continue;
-			if (wearsTheOtherSidesModel(bot, template))
+			if (BotGearSources.isOtherFaction(bot, template))
 				continue;
-			int required = template.getRequiredLevel(bot.getPlayerClass());
 			// No floor on how old a piece may be, only a ceiling on how new. Once npc costume is excluded there is little enough left at the lowest
 			// levels that insisting on a close match left whole classes with nothing at all, and something slightly behind is what a real character
 			// wears anyway. The sort below still prefers the closest to its level.
+			int required = requiredLevelOf(bot, template);
 			if (required < 1 || required > bot.getLevel())
+				continue;
+			// A quest reward is out of reach until the quest can be taken, whatever the piece itself asks for.
+			if (BotGearSources.reachableFrom(template) > bot.getLevel())
 				continue;
 			// Gear a player could be handed. Guard equipment and test pieces ask level one of every class and name no armour type, so neither the
 			// level filter nor the engine itself turns them down — which is how a village of level four characters came to be wearing "NPC Veteran
@@ -225,35 +229,17 @@ public class BotOutfitter {
 	 *         have earned its own weapon still gets something rather than nothing.
 	 */
 	/**
-	 * Keeps a bot out of the other faction's armour, which the client cannot draw on it.
-	 * <p>
-	 * Reported from in game as a cleric of thirty with only its head and arms visible, wearing a "Defeated Guardian's Hauberk", greaves and boots. The
-	 * piece is not Asmodian as far as this server is concerned — <b>no armour template in the whole table declares a race</b>, so the race filter
-	 * above, which does its job for weapons and accessories, has nothing to read. The faction lives only in the model name the client is told to
-	 * draw, and an Elyos body has no Asmodian model to put on, so the part simply vanishes.
-	 * <p>
-	 * <b>And weapons are the same, which this said they were not.</b> It claimed the race filter did its job for them; it does not, because
-	 * <b>every one of the 12995 weapon templates in the table declares {@code PC_ALL}</b> — the filter has nothing to read there either. Reported from
-	 * in game as a songweaver of ten holding something that was not a harp: it was a harp, a "Rank 9 Asmodian Harp", on an Elyos character.
-	 * <p>
-	 * The marker is in the same place for both, counting from the end of the prefix, and the prefix is what differs: armour names its slot in two
-	 * words and a weapon names itself in one, so the faction is the third segment of {@code ch_torso_d_n_c1_light_30a} and the second of
-	 * {@code harp_d_n_r1_16n}. Measured over the whole table rather than assumed: of the weapons whose name says Asmodian, 541 of 541 carry
-	 * {@code d}; of those that say Elyos, 397 of 423 carry {@code n} or {@code g}, and the 26 others carry {@code u} or {@code e}, which belong to
-	 * neither side and so are left alone. Markers outside the three are left alone for the same reason: abyss and npc models are their own thing and there is no
-	 * evidence they are one faction's, so excluding them would strip gear to fix nothing.
+	 * @return The level this piece asks of the bot's class, or the piece's own level when it asks for nothing.
+	 *         <p>
+	 *         The fallback is what lets the coin vendor gear be worn at all. A piece of it — the level 36 fabled armour bought with silver coins —
+	 *         declares no restrictions whatsoever, so {@code getRequiredLevel} answers -1 for every class and the piece was dropped before anything
+	 *         else could judge it. Its own level is the honest answer in that case, and it is safe to trust here only because
+	 *         {@code BotGearSources} has already established that a player can reach the piece: npc costume declares nothing either, and its level is
+	 *         a lie.
 	 */
-	private static boolean wearsTheOtherSidesModel(Player bot, ItemTemplate template) {
-		if (template.getCName() == null)
-			return false;
-		// Where the marker sits depends on how long the prefix is, and the two shapes are fixed: a piece of armour names its slot in two words
-		// (ch_torso_d_n_c1_light_30a) and a weapon names itself in one (harp_d_n_r1_16n).
-		int marker = template.isArmor() ? 2 : template.isWeapon() ? 1 : -1;
-		String[] parts = template.getCName().split("_");
-		if (marker < 0 || parts.length <= marker)
-			return false;
-		String faction = parts[marker];
-		return bot.getRace() == Race.ELYOS ? faction.equals("d") : faction.equals("n") || faction.equals("g");
+	private static int requiredLevelOf(Player bot, ItemTemplate template) {
+		int required = template.getRequiredLevel(bot.getPlayerClass());
+		return required < 1 && !template.hasLevelRestrictions() ? template.getLevel() : required;
 	}
 
 	private static Set<ItemGroup> weaponsOfTrade(Player bot) {
