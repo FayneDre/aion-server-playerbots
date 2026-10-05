@@ -80,7 +80,7 @@ public class Bot extends AdminCommand {
 			case "sell" -> withName(admin, params, name -> PlayerBotService.getInstance().sell(name));
 			case "regear" -> withName(admin, params, name -> PlayerBotService.getInstance().regear(name));
 			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
-			case "clear" -> sendInfo(admin, PlayerBotService.getInstance().clear(admin));
+			case "clear" -> sendInfo(admin, PlayerBotService.getInstance().clear(admin, mapArgument(admin, params)));
 			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));
 			case "nav" -> sendInfo(admin, PlayerBotService.getInstance().describeNavmeshes());
 			case "kind" -> kind(admin, params);
@@ -166,6 +166,16 @@ public class Bot extends AdminCommand {
 		// map has no single answer, each fort answers for itself — Teminon Elyos, Primum Asmodian — so one command populates both sides correctly.
 		// A race given here still overrides the lot, which is what you want when seeding an invasion.
 		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin.getWorldId(), params.length > 2 ? params[2] : null));
+	}
+
+	/**
+	 * @return The map named after the command, or null for "everywhere". "here" is the map the commander is standing on, which is the same thing the
+	 *         service does with a null region — so it is translated rather than passed on, and nobody has to remember that a blank means two things.
+	 */
+	private String mapArgument(Player admin, String[] params) {
+		if (params.length < 2)
+			return null;
+		return params[1].equalsIgnoreCase("here") ? String.valueOf(admin.getWorldId()) : params[1];
 	}
 
 	private void withName(Player admin, String[] params, Function<String, String> action) {

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,6 +24,7 @@ import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
@@ -162,7 +164,7 @@ public class PlayerBotService {
 	 */
 	private void runStandingOrders() {
 		if (BotRoster.takeOrder(BotRoster.CLEAR_ORDER) != null)
-			log.info("Standing order: {}", clear(null));
+			log.info("Standing order: {}", clear(null, null));
 		populateConfiguredMaps();
 	}
 
@@ -935,13 +937,37 @@ public class PlayerBotService {
 	 *
 	 * @param requester Whoever asked. Null for the server carrying out a standing order.
 	 */
-	public String clear(Player requester) {
-		if (requester == null || requester.isStaff())
+	/**
+	 * Deletes bot characters, either everywhere or on one map.
+	 * <p>
+	 * The map is why this takes an argument at all. Clearing is global and populating is not — it fills the map the commander is standing on — so a
+	 * clear followed by a populate emptied a whole world and refilled one region of it. That asymmetry is easy to miss until three maps are gone and
+	 * one has come back.
+	 * <p>
+	 * It also matters that most of a world is rarely the part anybody wants rebuilt. Wiping two hundred characters to look at the dozens that are
+	 * high enough to show the thing being tested is a lot of levels, homes and names spent on nothing.
+	 *
+	 * @param region A map id, part of a map's name, or null for everywhere. "here" is resolved by the caller.
+	 */
+	public String clear(Player requester, String region) {
+		Integer onlyHere = null;
+		if (region != null && !region.isBlank()) {
+			onlyHere = resolveMap(region, requester);
+			if (onlyHere == null)
+				return "No map matches " + region;
+		}
+		// Only when the whole world is going, because this empties every map of bots and the per-name despawn below covers the scoped case anyway.
+		if (onlyHere == null && (requester == null || requester.isStaff()))
 			despawnEverything();
-		int deleted = 0, kept = 0;
+		int deleted = 0, kept = 0, elsewhere = 0;
 		for (String name : PlayerBotCreationService.botCharacterNames()) {
 			if (!mayCommand(name, requester)) {
 				kept++;
+				continue;
+			}
+			// Asked before the despawn, because despawning is what takes the character out of the world and with it the cheap answer.
+			if (onlyHere != null && !Objects.equals(onlyHere, mapOf(name))) {
+				elsewhere++;
 				continue;
 			}
 			despawn(name); // its own bot may well be in the world, and deleting refuses a spawned character
@@ -950,7 +976,22 @@ public class PlayerBotService {
 			else
 				kept++;
 		}
-		return "Deleted " + deleted + " bot character(s)" + (kept > 0 ? ", " + kept + " left alone" : "");
+		return "Deleted " + deleted + " bot character(s)" + (kept > 0 ? ", " + kept + " left alone" : "")
+			+ (elsewhere > 0 ? ", " + elsewhere + " on other maps untouched" : "");
+	}
+
+	/**
+	 * @return Which map a bot character is on, or null if it cannot be found.
+	 *         <p>
+	 *         Memory first and the database second, and that order is not only about speed: a spawned bot may have walked to another map since it was
+	 *         last written, and the saved position lags by up to a save sweep. What is in the world is the truth about where it is.
+	 */
+	private Integer mapOf(String characterName) {
+		Player spawned = findSpawnedBot(characterName);
+		if (spawned != null)
+			return spawned.getWorldId();
+		PlayerCommonData stored = PlayerDAO.loadPlayerCommonDataByName(characterName);
+		return stored == null ? null : stored.getMapId();
 	}
 
 	/**
