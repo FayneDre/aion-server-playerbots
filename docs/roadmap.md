@@ -133,9 +133,11 @@ Priority five. Bots forming and filling legions, which mostly falls out of group
   becomes serious at a settled 2000 and it is a design rule, not a tuning value.
 - **No gathering or crafting.** It would feed the broker and make the countryside look used rather than merely fought over.
 - **Gear does not keep up.** Bots are dressed at creation and wear what they loot. Crossing 1 to 65 needs buying or crafting.
-- **Gear is half a character.** Accessories, blue and yellow tiers, enchantment and manastones are all still missing, and the first two were being
-  filtered out by the npc-costume test rather than left out on purpose. The index and the faction rule are done; the rest is planned in
-  [bot-gear.md](bot-gear.md).
+- **Gear was half a character, and is now whole.** Accessories, the heroic and fabled tiers, enchantment and manastones were all missing, and the
+  first two had been filtered out by the npc-costume test rather than left out on purpose. All six steps are written and deployed — see
+  [bot-gear.md](bot-gear.md) and [bot-gear-upgrades.md](bot-gear-upgrades.md). What is **not** done is seeing it in game: every path runs through
+  `//bot regear` or `//bot populate`, so none of it has been watched on a live character. Left deliberately out of scope, as the source document
+  asks: two-handed weapon fusion, Idian stones, +15 evolution, re-evaluation and conditioning.
 - **One test suite on roughly 11000 lines**, much of it concurrent: `BotDirectorTest`, seven cases over the population review, which runs on every
   deploy. Everything else is untested, which is why the combat half of `PlayerBotAI` has not been split — a mistake there is silent rather than loud.
   What made that one suite possible is worth copying: `BotDirector.sort` takes its two dependencies as arguments and deals in ids and places, so its
