@@ -7,79 +7,15 @@ enchantment and no manastones — legal, and roughly half the character a real p
 This is the plan for the rest of it, and the reasoning behind each number. It comes from a player's write-up of
 how these classes are actually geared; the engine facts beside it were measured here.
 
-Three questions decide a piece: can this bot reach it (section 1), is it this bot's faction (section 2), and
-is it better than what it wears (sections 3 and 4).
+Three questions decide a piece: can this bot reach it, is it this bot's faction — both in section 1 — and is
+it better than what it wears, which is the rest of this file.
 
-## 1. Obtainability: where gear comes from
+## 1. Obtainability and faction
 
-`BotEquipManager.isPlayerGear` used to ask two questions of the template itself: does it require an armour or
-weapon mastery, and does it declare its own level restrictions. Both were proxies for "a player could be handed
-this", and both are wrong in the same direction — they reject real gear:
+Both live in [bot-gear-obtainability.md](bot-gear-obtainability.md): the four tables a player reaches gear
+through, the four kinds of item that are vetoed outright, and how the faction is read off a model name.
 
-- **Every accessory fails the first one.** `RING`, `EARRING`, `NECKLACE`, `BELT` and `HEAD` are
-  `ArmorType.ACCESSORY`, so `ItemGroup.requiresMastery()` is false and `SkillData.getMasterySkills` returns an
-  empty set. No ring, earring, necklace, belt or head piece could ever be worn by a bot.
-- **The coin-vendor tier fails the second one.** `Eltnen Sun Legionary Boots` (level 36, `UNIQUE`, the
-  silver-coin armour) carries no `restrict` attribute at all, so `hasLevelRestrictions()` is false. That test
-  alone is what hid it; the level filters beside it were never the problem, because the default restriction is
-  an array of 1s, so `getRequiredLevel` answers 1 and `isClassSpecific` answers true for every class.
-
-So the gear worth having was the gear most reliably excluded. The replacement asks where an item comes from,
-reading the same data a player would reach it through:
-
-| Source | Read from | Gives faction? | Gives level? |
-| --- | --- | --- | --- |
-| Quest rewards | `QuestsData.getQuestTemplates()`, then `getRewards()` and `getSelectableRewardByClass()` | `getRacePermitted()` | `getMinlevelPermitted()` |
-| Vendors | `TradeListData`, then `GoodsListData`, then the seller's `NpcTemplate.getRace()` | yes, when the seller is Elyos or Asmodian | no |
-| Named drops | `GlobalDropData.getAllRules()`, then `getDropItems()` | `getRestrictionRace()`, else the `ASMODAE` / `ELYSEA` world type | no |
-| Chest drops | `DataManager.CUSTOM_NPC_DROP`, then `DropGroup.getRace()` | yes, when it names a player race | no |
-
-An item in the index is gear a player can get, and usually arrives with its faction already settled — which is
-better than any guess from its name. Items in no source fall back on the old mastery-and-restrictions test, so
-ordinary levelling drops keep working.
-
-**Being listed is not enough on its own.** A vendor really does stock "Asmodian NPC Common Chain Head", a level
-1 piece that asks nothing of any class, so opening the gate let npc costume back in by another door — harmless
-while no bot wore a helmet, and the village in guard uniform again the moment one did. The model name is what
-rules it out, and only the model name: of the 29350 pieces of gear these four tables list, 874 carry an `npc`
-segment and 53 a `test` one, and both are excluded. Two other markers looked like candidates and were counted
-before being trusted — `cash` (132) and `event` (155) mostly declare proper level restrictions, because
-`world_cash_*` is the level 65 gear sold for real money and it has real stats. Excluding by marker without
-counting first would have thrown it away.
-
-Quest rewards were going to be restricted to `QuestCategory.MISSION` — the yellow campaign quests, a few
-hundred against several thousand ordinary ones. Counted, that keeps 899 pieces of gear out of 4348, and it
-drops the tier this was written for: the level 36 fabled armour is the reward of "Mamaki Patrol", category
-`IMPORTANT`. A map of four thousand entries needs no narrowing, so every category is read except `EVENT` —
-otherwise a bot wears the reward of a quest that only runs for two weeks in December.
-
-## 2. Faction: reading the model name
-
-No armour template in the table declares a race, and all 12995 weapon templates declare `PC_ALL`, so
-`ItemTemplate.getRace()` cannot answer this. The faction lives only in the client model name, and a body has no
-model for the other side's gear: the piece simply does not draw. Reported in game as a cleric with only its
-head and arms visible.
-
-The marker is a single-letter segment of `cName`: `d` is Asmodian, `n` and `g` are Elyos, `u` and `e` belong to
-neither. It is **not at a fixed position** — `ch_torso_d_n_c1_light_30a` has it third, `harp_d_n_r1_16n` and
-`ring_n_c_21a` second, `ac_hat_d_n_c1_10a` third while `mask_n_c_11a` has it second. Scanning the segments in
-order and taking the first marker found handles all four shapes, because no prefix word in the table is a
-single letter.
-
-Measured against the items whose English name says "Elyos" or "Asmodian", skipping names with an `npc` or
-`test` segment: **3432 right, 4 wrong** — the four being `Elyos Daevanion` level 60 pieces whose name says
-Elyos and whose `cName` says `d`. A data quirk, left alone rather than special-cased.
-
-Where the obtainability index knows the faction, it wins; the name marker only decides for items the index
-does not cover.
-
-Two faults followed from the old positional rule. **Shields** carry `ArmorType.GENERAL`, so `isArmor()` is true
-and the code counted to the third segment, but a shield names itself in one word — `shield_d_n_c_03a` read as
-`n` where the marker is `d`, and every Asmodian shield passed as Elyos. **Looted gear was never checked at
-all**: only the dressing path asked. Counted live, of 1411 pieces worn by bots 14 were the other faction's, 11
-of them shields. Both paths now ask, and `//bot regear` takes off what is already on.
-
-## 3. Stat weights per class
+## 2. Stat weights per class
 
 Ranking by item level put a dagger one level newer in a gladiator's hands. Ranking by what a piece actually
 grants means reading `ItemTemplate.getModifiers()` — a list of `StatFunction`, each a `StatEnum` and a value —
@@ -125,7 +61,7 @@ Percentages go through the same mill, divided by their own measured median — m
 17, hostility 18, damage reduction 40, flight speed 8, casting speed 9. They are kept *out* of the per-class
 order, though, and given fixed weights instead: attack speed is not what makes a gladiator a gladiator, it is
 good for everything that swings in the same measure, so threading it into an ordered list would push the stats
-that do define a class down a rank for nothing. See section 4 for what they are worth.
+that do define a class down a rank for nothing. See section 3 for what they are worth.
 
 **Read the sign the client shows, not the sign in the file.** Attack speed is stored as a reduction of the
 delay between swings, so a weapon advertised as "+19% attack speed" carries the value `-19`, while every other
@@ -150,7 +86,7 @@ was named for:
 | Earrings | +28 accuracy | +11 magical accuracy | all physical | sorcerer |
 | Belt | +19 accuracy | +7 magical accuracy | all physical | sorcerer |
 
-## 4. Quality, by level
+## 3. Quality, by level
 
 `BotOutfitter.BEST_QUALITY` was `RARE` in a constant, on the grounds that a village of people in heroic armour
 reads as a costume party. That is true of a village of beginners and false of everybody else — **a character
@@ -186,9 +122,20 @@ That list is *not* `BotRole`, and the gladiator is the difference. It is filed u
 putting two classes on the taunts means two bots pulling the same monster in opposite directions — but it still
 wears plate and still picks things up when the templar loses them.
 
-The armour type itself needs no rule here: `armourWeight` already picks the heaviest a class is trained for,
-which lands on plate for templar and gladiator, chain for cleric and chanter, leather for the scouts and cloth
-for the casters, exactly as the source's table asks.
+**The right kind of piece is a filter, not a preference.** Sorting the right answers first was taken to settle
+the armour type and the weapon, and it settles neither: only the first eight candidates survive, a wrong piece
+that sorts second is still handed out when the first is refused, and the loot path ranked purely on score. A
+cleric of 13 fought with a staff, a templar of 37 wore leather gloves, and the comparison window counted cloth
+of the same level as an equal. `BotGearFit` now answers both questions on both paths:
+
+- **Armour**: the heaviest type the class is *trained for today* and nothing lighter — plate for templar and
+  gladiator, chain for cleric and chanter, leather for the scouts, robe for the casters, and one step down for
+  a character too low to have been taught its own type yet. A class may legally wear everything below its own,
+  which is exactly the freedom no player uses. The generic `ALL_ARMOR` groups declare no type and so never
+  match; that is intended, since almost nothing a player reaches is in one.
+- **Weapons**: `weaponsOfTrade` only. Dressing keeps a fallback — a class too low to have earned its own weapon
+  goes out with something rather than empty-handed, because no weapon means no weapon skills — but looting has
+  none, so nothing a bot picks up can displace the weapon of its trade.
 
 **Uniformity is the risk this creates.** Choosing the single best piece for a stat puts a whole region in the
 same boots. The existing trick holds: sort so the right answers come first, then pick at random *among the

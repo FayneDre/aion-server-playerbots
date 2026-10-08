@@ -173,6 +173,11 @@ public class BotEquipManager {
 	 * @return true if this is gear a player could be handed.
 	 */
 	public static boolean isPlayerGear(ItemTemplate template) {
+		// Asked first and as a veto, not left to the index: an event sword and a three day mace are both listed by a vendor and both declare proper
+		// level restrictions, so the index would hold them and the fallback below would pass them. Reported as a level six character with a snow
+		// crystal event sword and a level 43 one with a "Warhammer of Inconstancy (3 days)".
+		if (!BotGearFit.isObtainable(template))
+			return false;
 		if (BotGearSources.isReachable(template))
 			return true;
 		// Two things, and each lets something different through. A piece whose group names no mastery is a generic slot only npc and test gear sits
@@ -257,11 +262,17 @@ public class BotEquipManager {
 			// client then draws nothing where it should be, so a bot that looted an upgrade would go about with a hole in it.
 			if (BotGearSources.isOtherFaction(bot, template))
 				continue;
+			// The same two rules the dressing applies, which this used to leave entirely to the score — and the score only ever asks how good a piece
+			// is, never whether it is the right kind of piece. A cleric that looted a staff one level newer than its mace put the staff on and threw
+			// its own weapon away, and a templar did the same with leather gloves. Every class is allowed everything lighter and almost every weapon,
+			// so sooner or later one drops that scores higher, and then the character fights for the rest of its life in gear it should never wear.
+			if (!BotGearFit.isRightWeapon(bot, template) || !BotGearFit.isRightArmour(bot, template))
+				continue;
 			Item worn = wornInPlaceOf(bot, candidate);
 			// A weapon is only ever weighed against a weapon, and armour against armour. Slots overlap in ways that make a free-for-all dangerous:
 			// a shield and a two handed weapon claim the same hand, so a shield that merely scored higher would strip the weapon and the weapon
-			// would not win it back. Anything finer than that — insisting on the same kind of armour, say — would block the ordinary case, since
-			// levelling gear crosses from leather to cloth and back with whatever drops.
+			// would not win it back. The kind of piece is settled above rather than here, so what is left to compare is genuinely comparable: two
+			// pieces of the class's own armour type, or two weapons it is meant to fight with.
 			if (worn != null
 				&& (worn.getItemTemplate().isWeapon() != candidate.getItemTemplate().isWeapon() || score(bot, worn) >= score(bot, candidate)))
 				continue;

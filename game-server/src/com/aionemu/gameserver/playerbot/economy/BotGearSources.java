@@ -281,33 +281,17 @@ public class BotGearSources {
 		return race != null && race.isAsmoOrEly() ? race : Race.PC_ALL;
 	}
 
-	/** Gear only. Every one of these tables is mostly consumables, quest tokens and crafting materials, and none of that is ever worn. */
+	/**
+	 * Gear only. Every one of these tables is mostly consumables, quest tokens and crafting materials, and none of that is ever worn.
+	 * <p>
+	 * Being listed in one of them does not make a thing wearable by a bot: a vendor really does stock "Asmodian NPC Common Chain Head", a level 1
+	 * piece that asks nothing of anybody, and with the head slot being dressed a bot would put it on in preference to nothing. What a bot may end up
+	 * in is {@code BotGearFit}'s question, asked here so that the costume, the event gear and the pieces that expire never enter the index at all.
+	 */
 	private static void add(Map<Integer, Source> found, int itemId, Source source) {
 		ItemTemplate template = DataManager.ITEM_DATA.getItemTemplate(itemId);
-		if (template == null || !(template.isWeapon() || template.isArmor()) || wearsAnNpcModel(template))
+		if (template == null || !(template.isWeapon() || template.isArmor()) || !BotGearFit.isObtainable(template))
 			return;
 		found.merge(template.getTemplateId(), source, Source::mergedWith);
-	}
-
-	/**
-	 * Keeps npc costume and development leftovers out, which being listed somewhere does not.
-	 * <p>
-	 * This is the part the old mastery-and-restrictions test was right about, and dropping it wholesale let the costume back in by another door: a
-	 * vendor really does stock "Asmodian NPC Common Chain Head", a level 1 piece that asks nothing of anybody, and with the head slot now being
-	 * dressed a bot would put it on in preference to nothing. That is the village in guard uniform all over again.
-	 * <p>
-	 * The model name says it outright, and <b>only the model name</b>. Counted over the 29350 pieces of gear these four tables list: 874 carry an
-	 * {@code npc} segment and 53 a {@code test} one. Two other markers looked like candidates and are deliberately left in — of the 132 pieces
-	 * carrying {@code cash} and the 155 carrying {@code event}, most declare proper level restrictions, because {@code world_cash_*} is the level 65
-	 * gear sold for real money and it is real gear with real stats. Excluding by marker without counting first would have thrown it away.
-	 */
-	private static boolean wearsAnNpcModel(ItemTemplate template) {
-		if (template.getCName() == null)
-			return false;
-		for (String segment : template.getCName().split("_")) {
-			if (segment.equalsIgnoreCase("npc") || segment.equalsIgnoreCase("test"))
-				return true;
-		}
-		return false;
 	}
 }

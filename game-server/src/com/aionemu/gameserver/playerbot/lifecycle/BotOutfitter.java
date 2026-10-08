@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.LoggerFactory;
@@ -17,9 +16,9 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
-import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 import com.aionemu.gameserver.model.templates.item.WeaponStats;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
+import com.aionemu.gameserver.playerbot.economy.BotGearFit;
 import com.aionemu.gameserver.playerbot.economy.BotGearRefiner;
 import com.aionemu.gameserver.playerbot.economy.BotGearSources;
 import com.aionemu.gameserver.playerbot.economy.BotStatWeights;
@@ -129,7 +128,7 @@ public class BotOutfitter {
 	 * @return What was done, in words, for whoever typed the command.
 	 */
 	public static String regear(Player bot) {
-		int stripped = stripOtherFactionGear(bot);
+		int stripped = stripUnfitGear(bot);
 		int worn = dress(bot);
 		// After the dressing, so the pieces it just put on are counted once rather than refined twice: equipping already brings a piece up to level.
 		int refined = refineWornGear(bot);
@@ -138,7 +137,7 @@ public class BotOutfitter {
 		// Dressing says this for itself whenever it puts something on, so it is only needed for a bot that was stripped and found nothing to replace
 		// the piece with. Said unconditionally because the alternative is a condition that is wrong the day dressing stops announcing it.
 		BotEquipManager.showAppearance(bot);
-		return bot.getName() + " took off " + stripped + " piece(s) of the wrong faction, put on " + worn + " and improved " + refined;
+		return bot.getName() + " took off " + stripped + " piece(s) it should not wear, put on " + worn + " and improved " + refined;
 	}
 
 	/**
@@ -165,16 +164,21 @@ public class BotOutfitter {
 	}
 
 	/**
-	 * Takes off, and throws away, anything worn that belongs to the other side.
+	 * Takes off, and throws away, anything worn that this bot should never have been given: the other side's gear, an event piece, something that
+	 * expires, npc costume, armour of the wrong type, a weapon its class does not fight with.
+	 * <p>
+	 * It is the only way a change to the rules reaches a world that is already settled. Every one of those pieces was put on by a filter that has
+	 * since been corrected, and nothing in the engine ever takes a worn item off a character that is content with it.
 	 * <p>
 	 * Thrown away rather than kept, because a bot that keeps it carries it for the rest of its life and {@code BotEquipManager} offers it back on
 	 * every pass. It is worth nothing to this character and nothing to any other: a bot only ever meets bots of its own faction.
 	 */
-	private static int stripOtherFactionGear(Player bot) {
+	private static int stripUnfitGear(Player bot) {
 		int stripped = 0;
 		// Copied before walking it, because unequipping writes to the same map that lists it.
 		for (Item worn : new ArrayList<>(bot.getEquipment().getEquippedItemsWithoutStigma())) {
-			if (!BotGearSources.isOtherFaction(bot, worn.getItemTemplate()))
+			ItemTemplate template = worn.getItemTemplate();
+			if (!shouldComeOff(bot, worn, template))
 				continue;
 			// false, not the default: the inventory is routinely full on a bot that has been farming, and refusing to take off a piece because there
 			// is no room for it is exactly backwards when the piece is about to be destroyed anyway.
@@ -184,6 +188,35 @@ public class BotOutfitter {
 			stripped++;
 		}
 		return stripped;
+	}
+
+	/**
+	 * @return true if this piece has to go.
+	 *         <p>
+	 *         Two kinds of answer, and they are not equally urgent. <b>The other side's gear, npc costume, event pieces, anything that expires and
+	 *         abyss gear come off whatever happens</b>: they should never have been reachable, and the first of them is not even drawn by a client.
+	 *         <b>The wrong armour type and the wrong weapon come off only when something right can take their place</b>, because dressing falls back
+	 *         to whatever fits when nothing better exists — and below level four barely anything made for players exists at all. Stripped
+	 *         unconditionally, a beginner would have lost the training kit it is created in and stood there with nothing.
+	 */
+	private static boolean shouldComeOff(Player bot, Item worn, ItemTemplate template) {
+		if (BotGearSources.isOtherFaction(bot, template) || !BotEquipManager.isPlayerGear(template))
+			return true;
+		if (BotGearFit.isRightWeapon(bot, template) && BotGearFit.isRightArmour(bot, template))
+			return false;
+		return hasSomethingBetter(bot, worn);
+	}
+
+	/** @return true if the shortlist for this place holds a piece that is the right kind, which is what makes taking the wrong one off safe. */
+	private static boolean hasSomethingBetter(Player bot, Item worn) {
+		ItemSlot[] slots = ItemSlot.getSlotsFor(worn.getEquipmentSlot());
+		if (slots.length == 0)
+			return false;
+		for (ItemTemplate template : candidates.computeIfAbsent(key(bot, slots[0]), _ -> gatherFor(bot, slots[0]))) {
+			if (isWhatItShouldHold(bot, template))
+				return true;
+		}
+		return false;
 	}
 
 	/**
@@ -248,11 +281,15 @@ public class BotOutfitter {
 	}
 
 	/**
-	 * @return Whether two pieces are worth the same to this character, and so may be chosen between for looks alone. Level and what it grants, which
-	 *         are the two things the ranking ends on; the armour type and the weapon kind are already settled by the caller's other question.
+	 * @return Whether two pieces are worth the same to this character, and so may be chosen between for looks alone. Level, armour type and what it
+	 *         grants, which are the three things the ranking ends on.
+	 *         <p>
+	 *         The armour type was left out of it on the grounds that the caller's other question settled it, and it did not: that question only asked
+	 *         whether a piece was trained for, and a class is trained for everything lighter than its own. Cloth gloves of the same level as the
+	 *         chain ones above them therefore counted as an equal, and a templar had an even chance of going out in them.
 	 */
 	private static boolean isAsGoodAs(Player bot, ItemTemplate best, ItemTemplate candidate) {
-		return candidate.getLevel() == best.getLevel()
+		return candidate.getLevel() == best.getLevel() && BotGearFit.armourWeight(candidate) == BotGearFit.armourWeight(best)
 			&& Math.abs(BotStatWeights.score(bot, candidate) - BotStatWeights.score(bot, best)) < 0.01f;
 	}
 
@@ -262,7 +299,7 @@ public class BotOutfitter {
 	 *         can be confined to the answers that tie.
 	 */
 	private static boolean isWhatItShouldHold(Player bot, ItemTemplate template) {
-		return isTrainedFor(bot, template) && (!template.isWeapon() || weaponsOfTrade(bot).contains(template.getItemGroup()));
+		return BotGearFit.isTrainedFor(bot, template) && BotGearFit.isRightWeapon(bot, template) && BotGearFit.isRightArmour(bot, template);
 	}
 
 	private static String key(Player bot, ItemSlot slot) {
@@ -311,7 +348,7 @@ public class BotOutfitter {
 			// Armour the class is already trained for. Without this the sort below would put leather at the top of a mage's list, the engine would
 			// refuse every piece of it, and the mage would end up with nothing. Weapons are deliberately not filtered this way: a caster is taught
 			// its own weapon only on becoming an advanced class, and asking here left every mage unarmed.
-			if (template.isArmor() && !isTrainedFor(bot, template))
+			if (template.isArmor() && !BotGearFit.isTrainedFor(bot, template))
 				continue;
 			// The off hand holds one of two things and which one is settled by the class, not by what happens to score highest. There are far more
 			// weapons in the game than shields, so a shortlist of eight for this slot came out all weapons, every one of them was then dropped
@@ -329,7 +366,7 @@ public class BotOutfitter {
 		// ranking on the stats alone would pick the 25. Below the level, though, it decides nearly every choice there is: gear arrives in level steps,
 		// so a shortlist is mostly pieces of one level that differ only in what they give, and that is exactly the question "which ring does a
 		// gladiator want" asks.
-		Comparator<ItemTemplate> bestFirst = Comparator.comparingInt(BotOutfitter::armourWeight)
+		Comparator<ItemTemplate> bestFirst = Comparator.comparingInt(BotGearFit::armourWeight)
 			.thenComparingInt(template -> weaponWorth(bot, template))
 			.thenComparingInt(ItemTemplate::getLevel)
 			.thenComparingDouble(template -> BotStatWeights.score(bot, template))
@@ -341,67 +378,33 @@ public class BotOutfitter {
 		// Then the weapon the class's own skill book asks for, ahead of raw numbers. A ranger that takes two swords because they out-damage a bow
 		// cannot use a single one of its 210 bow skills — it is the "no weapon, no skills" failure again, wearing a weapon. Reported as "I thought
 		// there were no rangers, but they have two swords instead of a bow".
-		Set<ItemGroup> trade = weaponsOfTrade(bot);
-		found.sort(Comparator.comparing((ItemTemplate template) -> !isTrainedFor(bot, template))
-			.thenComparing(template -> !(template.isWeapon() && trade.contains(template.getItemGroup())))
+		found.sort(Comparator.comparing((ItemTemplate template) -> !BotGearFit.isTrainedFor(bot, template))
+			.thenComparing(template -> !BotGearFit.isRightWeapon(bot, template))
 			.thenComparing(bestFirst));
-		return found.subList(0, Math.min(8, found.size()));
+		List<ItemTemplate> fitting = narrowedToWhatItShouldHold(bot, found);
+		return fitting.subList(0, Math.min(8, fitting.size()));
 	}
 
 	/**
-	 * @return The weapon a class is meant to fight with.
-	 *         <p>
-	 *         Authored, and this is the second place in the module where that is the right answer — {@code BotRole} is the first, for the same
-	 *         reason. The data says what a class <b>may</b> hold and never what it <b>should</b>: a gladiator is allowed a dagger, a chanter a mace,
-	 *         a cleric a staff, and the engine accepts all three without a word. Which of them is the real one is knowledge about playing the game,
-	 *         and it exists nowhere in any file.
-	 *         <p>
-	 *         It was derived first, by weighing how narrowly each skill names a weapon, and the derivation was wrong where it mattered: it gave the
-	 *         chanter a mace, could not separate a gladiator's polearm from a greatsword, and had no way at all to know that a gunner's second pistol
-	 *         is unreachable here. This list comes from somebody who plays these classes.
-	 *         <p>
-	 *         A preference and not a filter: it sorts ahead of the ranking, below what the character is actually trained for, so a class too low to
-	 *         have earned its own weapon still gets something rather than nothing.
+	 * Drops everything that is not the right kind of piece, as long as something right is left.
+	 * <p>
+	 * The sort above already puts the right kind first, and that was taken to be enough. It is not, because only the first eight survive and because
+	 * a wrong piece that sorts second is still handed out whenever the first is refused: a cleric of 13 was seen fighting with a staff, which its
+	 * class may hold, the engine accepts and nobody plays with. Sorting says which is better; this says which are allowed at all.
+	 * <p>
+	 * Still a preference rather than a rule, and the fallback is the whole reason it is written this way round. A class too low to have been taught
+	 * its own weapon would otherwise go out bare handed, and a bot with an empty hand cannot use the skills that need a weapon either — which is a
+	 * far worse failure than a chanter of six holding a mace for a few levels.
 	 */
-	private static Set<ItemGroup> weaponsOfTrade(Player bot) {
-		return switch (bot.getPlayerClass()) {
-			case GLADIATOR -> Set.of(ItemGroup.POLEARM); // everything else is a heavy loss of damage, dual wielding included
-			case TEMPLAR -> Set.of(ItemGroup.SWORD); // one hand, because the shield is the other half of the class
-			case RANGER -> Set.of(ItemGroup.BOW);
-			case ASSASSIN -> Set.of(ItemGroup.DAGGER, ItemGroup.SWORD); // the one class here that can truly hold two
-			case SORCERER, SPIRIT_MASTER, MAGE -> Set.of(ItemGroup.ORB, ItemGroup.SPELLBOOK);
-			case CLERIC, PRIEST -> Set.of(ItemGroup.MACE); // mace and shield outlives a staff, and surviving is the job
-			case CHANTER -> Set.of(ItemGroup.STAFF);
-			case BARD, ARTIST -> Set.of(ItemGroup.HARP); // no choice at all
-			// Two pistols is how this class is played and it cannot be done here: only the assassin carries the dual wield effect in this build, so
-			// the engine quietly moves a second gun back to the main hand. The cannon is the other thing it is meant to hold, and it works.
-			case GUNNER -> Set.of(ItemGroup.CANNON);
-			case RIDER -> Set.of(ItemGroup.KEYBLADE); // the key is what the class climbs into its machine with
-			case ENGINEER -> Set.of(ItemGroup.GUN);
-			case WARRIOR -> Set.of(ItemGroup.SWORD, ItemGroup.MACE);
-			case SCOUT -> Set.of(ItemGroup.DAGGER, ItemGroup.SWORD);
-		};
-	}
-
-	/**
-	 * @return true if the bot already holds a mastery that lets it wear this piece, which is the same question
-	 *         {@code Equipment.checkAvailableEquipSkills} asks when it refuses one. A group that needs no mastery is open to everyone.
-	 */
-	private static boolean isTrainedFor(Player bot, ItemTemplate template) {
-		Set<Integer> mastery = DataManager.SKILL_DATA.getMasterySkills(template.getItemGroup());
-		if (mastery.isEmpty())
-			return true;
-		for (int skillId : mastery) {
-			if (bot.getSkillList().isSkillPresent(skillId))
-				return true;
+	private static List<ItemTemplate> narrowedToWhatItShouldHold(Player bot, List<ItemTemplate> found) {
+		List<ItemTemplate> fitting = new ArrayList<>();
+		for (ItemTemplate template : found) {
+			if (BotGearFit.isTrainedFor(bot, template) && BotGearFit.isRightWeapon(bot, template) && BotGearFit.isRightArmour(bot, template))
+				fitting.add(template);
 		}
-		return false;
+		return fitting.isEmpty() ? found : fitting;
 	}
 
-	/**
-	 * @return How protective a piece's armour type is, so that the heaviest a class can wear is the one it gets. Weapons and anything without a type
-	 *         all score the same, which leaves them sorted by level as before.
-	 */
 	/**
 	 * @return What a weapon is worth to this character, or 0 for anything that is not one — which leaves armour sorted as it was.
 	 *         <p>
@@ -422,13 +425,4 @@ public class BotOutfitter {
 		return Math.round(stats.getMeanDamage() * Math.max(1, stats.getHitCount()) * 1000f / speed);
 	}
 
-	private static int armourWeight(ItemTemplate template) {
-		return switch (template.getItemGroup().getItemSubType()) {
-			case PLATE -> 4;
-			case CHAIN -> 3;
-			case LEATHER -> 2;
-			case ROBE -> 1;
-			default -> 0;
-		};
-	}
 }

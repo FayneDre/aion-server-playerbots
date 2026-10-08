@@ -59,7 +59,8 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
 - [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.
 - [docs/combat-skills.md](docs/combat-skills.md) — how a bot chooses a skill: the in-fight order, upkeep versus abilities kept in hand, class openers.
-- [docs/bot-gear.md](docs/bot-gear.md) — what a bot wears: where gear can be reached from, whose faction it is, and the stats that rank it.
+- [docs/bot-gear.md](docs/bot-gear.md) — what a bot wears: the stats that rank a piece, the quality ceiling, and the right kind of piece for a class.
+- [docs/bot-gear-obtainability.md](docs/bot-gear-obtainability.md) — where gear can be reached from, what is vetoed outright, and whose faction a piece is.
 - [docs/bot-gear-upgrades.md](docs/bot-gear-upgrades.md) — making a chosen piece better than it is: enchantment and manastones.
 - [docs/stigmas.md](docs/stigmas.md) — how a bot gets its stigma stones, and what the engine demands before one can be socketed.
 - [docs/group-roles.md](docs/group-roles.md) — what tank, healer, support and damage change about how a bot fights in a group.

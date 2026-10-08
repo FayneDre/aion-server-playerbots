@@ -23,7 +23,7 @@ import com.aionemu.gameserver.playerbot.social.BotRole;
  * filled, almost every choice is between pieces of the same level. The data states what a piece grants: {@code ItemTemplate.getModifiers()} is a list
  * of stats and amounts, and the only thing missing is which of them this class wants.
  * <p>
- * Which it wants is knowledge about playing the game and exists in no file, exactly like {@code BotOutfitter.weaponsOfTrade} and {@code BotRole}.
+ * Which it wants is knowledge about playing the game and exists in no file, exactly like {@code BotGearFit.weaponsOfTrade} and {@code BotRole}.
  * The orders below come from somebody who plays these classes.
  */
 public class BotStatWeights {
