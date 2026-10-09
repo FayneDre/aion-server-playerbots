@@ -1,7 +1,7 @@
 # Bots stuck in scenery, then teleported home
 
 Status: analysed 2026-10-09. Milestones 2 and 3 built and unit tested, not yet watched in game (`BotLanding`, the levelled rough route, binding to a reachable
-obelisk); milestone 4 (the audit) not started.
+obelisk); milestone 4 (the obelisk audit) built and run once.
 The cause is **not** the quality of the mesh in the camps; milestones below.
 Reported from in game: a bot inside a wall at the Verteron fortress, a bot sunk into the floor of the Eltnen fortress, both followed by a teleport.
 
@@ -68,8 +68,21 @@ stacked islands of the Abyss, which is why it must be fixed before Reshanta.
    never reached, which callers may want to cap. Unit test `theRoughRouteStaysOnThePlatform...`, which fails against the old search.
    Also built: bots are bound to **the nearest obelisk they can walk back from** (`BotPlaces.nearestReachableObelisk`: shared ground, then one route
    search, a search that gave up does not rule one out), so a fortress obelisk with no way out is simply not chosen.
-4. **Audit every obelisk of every mesh** and keep it as a step of `tools/navmesh.ps1`: obelisk on a floor joined to the rest of the map, and a route
-   out of it to a point 150 m away. A mesh that fails it does not ship.
+4. **Audit every obelisk of every mesh** (built). `tools/navmesh.ps1 -Obelisks [-MapId n]`, or `NavmeshTool obelisks [map]` with the server libraries on the
+   classpath, reads the obelisks from the spawn files and the bind point list, and checks each: a floor under it, being on the map's largest ground, and a
+   route to the three nearest other obelisks of its map. It fails an obelisk with no floor, or with every route proved not to exist (a search that ran out
+   of budget fails nothing), and exits 1 so a script can refuse a mesh. Run it after generating any map. First run, 3 minutes over all 24 meshes:
+   **88 obelisks, 78 ok, 10 fail**. The Eltnen fortress obelisks pass now (they failed before the levelled route). The failures:
+
+   | Map | Obelisks failing | Remark |
+   |---|---|---|
+   | 210030000 Verteron | 1 of 5 | the fortress floor, 2319 1802 z 195, the case that started this |
+   | 210040000, 210050000, 210070000 | 1 each | not yet looked at; none of these maps is populated today |
+   | 220080000 | 2 of 7 | one is inside geometry (1575 136 z 187) |
+   | 600090000, 600100000 | both of 2 | two obelisks that cannot reach each other: probably separate islands, which would be right and not a fault |
+
+   The three first rows matter when those maps are populated; bots there are protected by the landing check and by binding to a reachable obelisk, but a
+   map whose own obelisk is a trap says something about the mesh or the data. Look at each with `seams` before settling.
 5. **Then** Reshanta and the other new meshes, with the fixed generator.
 
 ## The Verteron pocket is not a rule that is too strict

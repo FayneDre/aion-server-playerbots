@@ -18,8 +18,9 @@
     .\tools\navmesh.ps1 all
 #>
 param(
-    [Parameter(Mandatory = $true)][string]$MapId,
-    [string]$ServerRoot = $env:AION_SERVER_HOME
+    [string]$MapId,
+    [string]$ServerRoot = $env:AION_SERVER_HOME,
+    [switch]$Obelisks
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,6 +43,13 @@ if (-not $jar) { throw "No built jar found. Run: mvn -pl game-server -am package
 # the generator only needs the game-server classes and the JDK, so no other libraries are on the classpath
 Push-Location $gameServer
 try {
+    if ($Obelisks) {
+        # the audit asks the same service the bots do, which logs through slf4j: the server's libraries are needed, the generator's bare jar is not enough
+        $arguments = @('obelisks'); if ($MapId) { $arguments += $MapId }
+        & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool @arguments
+        exit $LASTEXITCODE
+    }
+    if (-not $MapId) { throw 'Give a map id, or -Obelisks.' }
     & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $MapId
     if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed (exit code $LASTEXITCODE)" }
 } finally {

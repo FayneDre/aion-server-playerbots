@@ -170,7 +170,7 @@ Done, and moved to [population-churn-followup.md](population-churn-followup.md):
 
 0. **Bots resurrect into pockets the mesh does not join** — fortress obelisks mostly — and are teleported home when they cannot walk off. Built and unit tested, not yet
    watched in game: a landing check, a rough route that keeps to its level, binding to a reachable obelisk ([navigation-stuck-plan.md](navigation-stuck-plan.md)); the
-   obelisk audit of every mesh is next, before Reshanta.
+   obelisk audit exists (`tools/navmesh.ps1 -Obelisks`: 10 of 88 fail, listed in the plan) and is to be run on every new mesh, Reshanta first.
 
 1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **24 meshes exist** (`data/navmesh/*.nav`, 23 distinct
    names — Idian Depths has one per faction). `tools/navmesh.ps1 <mapId>`. This no longer paces everything, but two of the absentees are named
