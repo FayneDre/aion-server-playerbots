@@ -217,4 +217,13 @@ class CombatSpotsTest {
 		assertNotNull(spot);
 		assertTrue(CombatSpots.isTankPlaced(tankAt(spot)), "arriving must end the walk");
 	}
+
+	@Test
+	void aBigEnemyPushesTheContactRingOutByItsOwnRadius() {
+		Situation big = new Situation(ENEMY, 1, 0, at(-12, 0), List.of(), at(-3, 8), 40, List.of(), 3f);
+
+		Vector3f spot = CombatSpots.spotFor(BotPosition.BEHIND, big, 2f);
+
+		assertEquals(4.5, distanceToEnemy(spot), 0.01, "its body, then three quarters of a 2 m weapon: the bot is not standing inside it");
+	}
 }

@@ -65,7 +65,7 @@ next attack tick. When the marked one dies the tank marks the next; with nobody 
 
 Only the skull counts, and a skull on a live enemy is never moved, whoever put it there: a leader who marks by hand is obeyed. A mark on something that
 is not fighting the group is followed all the same: the guide has a player mark an enemy even out of combat to make it the main target, which is how a
-group is told to start. A mark the bot cannot see is left alone rather than taken down. A healer does not follow it, as it does not join the attack at all.
+group is told to start. A mark the bot cannot see is left alone rather than taken down. A healer does not follow it, as it does not join the attack at all. A target a bot has given up on, an unreachable one for instance, is passed over for the length of the pause, the skull included: the bot then takes the weakest of the rest rather than going back to the same mark for ever.
 
 **Without a mark, the target is the same for every class** (the guide's "Classe 101"): the enemy fighting the group, meaning hitting a member or the bot itself,
 that has the least health in absolute terms. This replaced the earlier order of the tank's target, then the leader's, then anything fighting the group, so a

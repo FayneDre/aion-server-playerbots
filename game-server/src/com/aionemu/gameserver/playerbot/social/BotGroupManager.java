@@ -9,6 +9,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -152,16 +153,24 @@ public class BotGroupManager {
 	 * @return The target to assist, or null if the team is not fighting anything reachable.
 	 */
 	public static Creature targetToAssist(Player bot) {
+		return targetToAssist(bot, creature -> false);
+	}
+
+	/**
+	 * @param excluded Targets the bot has given up on for now, which are skipped rather than returned again: a mark on something unreachable would
+	 *          otherwise be chosen, abandoned and chosen again for as long as it stood, and the rest of the fight never got a look in.
+	 */
+	public static Creature targetToAssist(Player bot, Predicate<Creature> excluded) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		if (team == null)
 			return null;
 		// The mark before anyone's selection: it is what the tank chose for the whole group, and a group in which each member follows its own target is
 		// the thing it exists to stop.
 		Creature marked = BotMarks.skulled(bot);
-		if (marked != null)
+		if (marked != null && !excluded.test(marked))
 			return marked;
 		// Otherwise the enemy that is fighting the group with the least health, which is the whole of the second rule and is the same for every class.
-		return BotMarks.weakestEngaged(bot);
+		return BotMarks.weakestEngaged(bot, excluded);
 	}
 
 	/**

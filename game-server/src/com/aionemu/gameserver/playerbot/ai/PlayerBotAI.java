@@ -374,7 +374,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (BotRole.of(getOwner()) == BotRole.TANK)
 			BotMarks.markWeakestIfNone(getOwner());
 		boolean healer = BotRole.of(getOwner()) == BotRole.HEALER;
-		Creature assisted = healer ? null : BotGroupManager.targetToAssist(getOwner());
+		Creature assisted = healer ? null : BotGroupManager.targetToAssist(getOwner(), this::isIgnored);
 		if (assisted == null) {
 			if (healer && tendTheFight())
 				return;
@@ -883,7 +883,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
-		// The class gets first refusal, and what it declines falls through to the order below. Nothing is claimed yet: see docs/templar-plan.md.
+		// The class gets first refusal, and what it declines falls through to the order below. See docs/templar-plan.md for the templar's.
 		if (BotPlaybooks.of(bot).act(bot, target))
 			return true;
 		boolean healer = BotRole.of(bot) == BotRole.HEALER;

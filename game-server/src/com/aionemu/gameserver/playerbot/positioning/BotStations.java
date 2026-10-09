@@ -60,7 +60,10 @@ public final class BotStations {
 	/** @return true if this bot's place in a fight is one this class handles, so that the old way of walking to the target is not the answer. */
 	public static boolean handles(Player bot) {
 		BotPosition role = BotPosition.of(bot);
-		return bot.getCurrentTeam() != null && (role == BotPosition.BEHIND || role == BotPosition.RANGED);
+		if (bot.getCurrentTeam() == null)
+			return false;
+		// a ranged class that reaches no further than a spear has nowhere to stand back to: the old way of closing in on the enemy is the only one that works
+		return role == BotPosition.BEHIND || role == BotPosition.RANGED && BotSkillManager.reach(bot) >= CombatSpots.MIN_STANDOFF + CombatSpots.REACH_MARGIN;
 	}
 
 	/** @return true if this is a tank in a group, whose side of the enemy is chosen as it closes in on it and never afterwards. */
@@ -81,8 +84,8 @@ public final class BotStations {
 				double distance = PositionUtil.getDistance(bot, enemy, true);
 				yield PositionUtil.isBehind(bot, enemy, BACK_HALF_DEGREES) && distance >= CombatSpots.MIN_STANDOFF && distance <= BotSkillManager.reach(bot);
 			}
-			case FRONT -> CombatSpots.isTankPlaced(situationOf(bot, enemy, List.of()));
-			case HEALER -> CombatSpots.isHealerPlaced(situationOf(bot, enemy, otherMembers(bot)), BotSkillManager.healReach(bot));
+			case FRONT -> CombatSpots.isTankPlaced(situationOf(bot, enemy, List.of(), false));
+			case HEALER -> CombatSpots.isHealerPlaced(situationOf(bot, enemy, otherMembers(bot), false), BotSkillManager.healReach(bot));
 			default -> true;
 		};
 	}
@@ -101,7 +104,7 @@ public final class BotStations {
 			case HEALER -> BotSkillManager.healReach(bot);
 			default -> BotSkillManager.reach(bot);
 		};
-		CombatSpots.Situation situation = situationOf(bot, enemy, role == BotPosition.HEALER ? otherMembers(bot) : List.of());
+		CombatSpots.Situation situation = situationOf(bot, enemy, role == BotPosition.HEALER ? otherMembers(bot) : List.of(), true);
 		Vector3f spot = CombatSpots.spotFor(role, situation, reach);
 		if (spot == null)
 			return null;
@@ -144,10 +147,16 @@ public final class BotStations {
 		}
 	}
 
-	private static CombatSpots.Situation situationOf(Player bot, Creature enemy, List<Vector3f> members) {
+	/**
+	 * @param withZones Whether to read what the other monsters notice. Only choosing a spot needs it; asking whether a bot is already placed does not, and
+	 *          reading it is a pass over everything the bot can see, every tick.
+	 */
+	private static CombatSpots.Situation situationOf(Player bot, Creature enemy, List<Vector3f> members, boolean withZones) {
 		double facing = Math.toRadians(PositionUtil.convertHeadingToAngle(enemy.getHeading()));
+		float enemyRadius = enemy.getObjectTemplate().getBoundRadius().getMaxOfFrontAndSide();
 		return new CombatSpots.Situation(new Vector3f(enemy.getX(), enemy.getY(), enemy.getZ()), (float) Math.cos(facing), (float) Math.sin(facing),
-			groupCentre(bot, bot.getCurrentTeam()), members, new Vector3f(bot.getX(), bot.getY(), bot.getZ()), bot.getLevel(), zonesAround(bot, enemy));
+			groupCentre(bot, bot.getCurrentTeam()), members, new Vector3f(bot.getX(), bot.getY(), bot.getZ()), bot.getLevel(),
+			withZones ? zonesAround(bot, enemy) : List.of(), enemyRadius);
 	}
 
 	/** @return Where the other living members of the group stand, on the bot's map. */
@@ -185,16 +194,18 @@ public final class BotStations {
 				return;
 			if (PositionUtil.getDistance(npc, enemy) > ZONE_LOOKUP_RADIUS)
 				return;
-			zones.add(zoneOf(npc));
+			zones.add(zoneOf(npc, bot));
 		});
 		return zones;
 	}
 
-	private static AggroZone zoneOf(Npc npc) {
+	private static AggroZone zoneOf(Npc npc, Player bot) {
 		double facing = Math.toRadians(PositionUtil.convertHeadingToAngle(npc.getHeading()));
 		NpcTemplateType type = npc.getObjectTemplate().getNpcTemplateType();
 		boolean guard = type == NpcTemplateType.GUARD || type == NpcTemplateType.ABYSS_GUARD;
+		// the engine measures the notice from edge to edge, so both bodies count
+		float padding = npc.getObjectTemplate().getBoundRadius().getMaxOfFrontAndSide() + bot.getObjectTemplate().getBoundRadius().getMaxOfFrontAndSide();
 		return new AggroZone(npc.getX(), npc.getY(), (float) Math.cos(facing), (float) Math.sin(facing), npc.getAggroRange(), npc.getAggroAngle(), npc.getLevel(),
-			guard);
+			guard, padding);
 	}
 }

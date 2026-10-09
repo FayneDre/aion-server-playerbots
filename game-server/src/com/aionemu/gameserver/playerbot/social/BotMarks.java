@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.social;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
@@ -78,10 +79,15 @@ public final class BotMarks {
 	 *         group's target, and the one the tank marks with the skull so that the first rule then carries it.
 	 */
 	public static Creature weakestEngaged(Player bot) {
+		return weakestEngaged(bot, npc -> false);
+	}
+
+	/** @param excluded Enemies to pass over, which the bot has given up on for the moment. */
+	public static Creature weakestEngaged(Player bot, Predicate<Creature> excluded) {
 		Map<Integer, Npc> byId = new HashMap<>();
 		Map<Integer, Long> healthById = new HashMap<>();
 		bot.getKnownList().forEachNpc(npc -> {
-			if (BotGroupManager.isEngagedWithTheGroup(bot, npc)) {
+			if (!excluded.test(npc) && BotGroupManager.isEngagedWithTheGroup(bot, npc)) {
 				byId.put(npc.getObjectId(), npc);
 				healthById.put(npc.getObjectId(), npc.getLifeStats().getCurrentHp() * 1L);
 			}

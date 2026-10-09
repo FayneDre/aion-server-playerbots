@@ -60,4 +60,21 @@ class AggroZoneTest {
 		AggroZone guard = new AggroZone(0, 0, 1, 0, 10, 240, 40, true);
 		assertTrue(guard.notices(5, 0, 80));
 	}
+
+	@Test
+	void theRangeIsMeasuredFromEdgeToEdgeSoBodiesWidenIt() {
+		// two bodies of 1.5 m between them: 12 m between centres is 10.5 between edges, 11.5 is still outside, 13 is inside
+		AggroZone big = new AggroZone(0, 0, 1, 0, 10, 360, 40, false, 3f);
+
+		assertTrue(big.notices(12.9f, 0, 40), "9.9 m between edges");
+		assertFalse(big.notices(13.1f, 0, 40), "10.1 m between edges");
+	}
+
+	@Test
+	void theShortRadiusIsMeasuredTheSameWay() {
+		AggroZone big = new AggroZone(0, 0, 1, 0, 10, 240, 40, false, 3f);
+
+		assertTrue(big.notices(-6.9f, 0, 40), "behind it, 3.9 m between edges, inside the short radius of 4");
+		assertFalse(big.notices(-7.5f, 0, 40), "4.5 m between edges");
+	}
 }

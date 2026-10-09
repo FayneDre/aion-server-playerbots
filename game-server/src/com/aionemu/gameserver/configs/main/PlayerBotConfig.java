@@ -27,5 +27,5 @@ public class PlayerBotConfig {
 	 * always did, which is what the positioning figures logged every few minutes are compared against.
 	 */
 	@Property(key = "gameserver.playerbot.positioning", defaultValue = "true")
-	public static boolean POSITIONING;
+	public static volatile boolean POSITIONING;
 }

@@ -62,9 +62,17 @@ public final class CombatSpots {
 	 * @param from Where the bot stands now, which is the tie-break: the nearest acceptable spot wins, so a bot does not walk further than it must.
 	 * @param botLevel The bot's level, for the ten level rule in {@link AggroZone}.
 	 * @param zones What the other monsters notice, which no spot may fall inside.
+	 * @param enemyRadius The enemy's body radius. Reach is measured from its edge, so the ring a melee bot stands on is that much further out; a large monster
+	 *          would otherwise have its attackers standing inside it.
 	 */
 	public record Situation(Vector3f enemy, float facingX, float facingY, Vector3f groupCentre, List<Vector3f> members, Vector3f from, int botLevel,
-		List<AggroZone> zones) {
+		List<AggroZone> zones, float enemyRadius) {
+
+		/** A situation with an enemy that has no body to speak of, which is how the figures in the tests are made up. */
+		public Situation(Vector3f enemy, float facingX, float facingY, Vector3f groupCentre, List<Vector3f> members, Vector3f from, int botLevel,
+			List<AggroZone> zones) {
+			this(enemy, facingX, facingY, groupCentre, members, from, botLevel, zones, 0f);
+		}
 	}
 
 	/**
@@ -76,7 +84,7 @@ public final class CombatSpots {
 			return null;
 		Vector3f best = null;
 		double bestDistance = Double.MAX_VALUE;
-		for (float radius : radii(role, reach)) {
+		for (float radius : radii(role, reach, situation.enemyRadius())) {
 			for (int i = 0; i < SAMPLES; i++) {
 				double angle = 2 * Math.PI * i / SAMPLES;
 				double dx = Math.cos(angle), dy = Math.sin(angle);
@@ -129,10 +137,10 @@ public final class CombatSpots {
 	}
 
 	/** @return The rings to try, in the order to try them. */
-	static List<Float> radii(BotPosition role, float reach) {
+	static List<Float> radii(BotPosition role, float reach, float enemyRadius) {
 		List<Float> radii = new ArrayList<>();
 		switch (role) {
-			case FRONT, BEHIND -> radii.add(Math.max(MIN_CONTACT, reach * CONTACT_SHARE));
+			case FRONT, BEHIND -> radii.add(enemyRadius + Math.max(MIN_CONTACT, reach * CONTACT_SHARE));
 			case RANGED -> addStandoffRadii(radii, reach, MIN_STANDOFF);
 			case HEALER -> addStandoffRadii(radii, reach, MIN_HEALER_STANDOFF);
 			case NONE -> {

@@ -107,6 +107,11 @@ A cast roots a bot, so casters reposition between casts.
 5. **Routes that respect aggro zones.** *Built: `navmesh/Avoidance`, a cost per point that the A* multiplies a step by (15 times its length for ground inside another pack's notice); path smoothing never cuts a corner across such ground; the move controller takes it for one journey (`avoid`), and the three station walks (melee and ranged, healer, tank closing in) ask for it. It is a cost and not a wall, so a bot with no other way still goes. Known gaps: the coarse pass for journeys over 150 m does not know of it, a route planned before a pack moved is kept, and the zones are those of monsters in the bot's own known list.* Until now only the destination is checked; the walk there may still cut through a pack's cone. The path search has no
    cost for ground, so this needs one, and it is the likeliest piece to be larger than it looks. Decided after 2 to 4 have been seen.
 
+Two refinements came out of a review of the code afterwards. The range an enemy notices people at is measured **between edges**, not between centres, so each
+aggro zone carries both bodies' radii as padding; and the ring a melee bot stands on is the enemy's own body radius further out, so that a large monster does
+not have its attackers standing inside it. A ranged class whose reach is under 10 m (nothing that reaches further than a spear) is not given a rule at all, since
+there is nowhere for it to stand back to.
+
 ## What step 2 does in the AI
 
 `PlayerBotAI.fight` asks `takeStation` first: for a grouped melee or ranged bot that is not placed, it walks to `BotStations.spotFor` instead of to the
