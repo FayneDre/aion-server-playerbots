@@ -66,6 +66,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/stigmas.md](docs/stigmas.md) — how a bot gets its stigma stones, and what the engine demands before one can be socketed.
 - [docs/group-roles.md](docs/group-roles.md) — what tank, healer, support and damage change about how a bot fights in a group.
 - [docs/templar-plan.md](docs/templar-plan.md) — plan for playing the templar as the guide describes it: his skills mapped to the data, what disagrees with today's code, the marking system, milestones.
+- [docs/group-positioning-plan.md](docs/group-positioning-plan.md) — plan for where each class stands in a group fight: in front, behind, back or in heal range, and out of the aggro of every other pack.
 - [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
 - [docs/navmesh-plan.md](docs/navmesh-plan.md) — design for real path planning, to replace reactive steering.
 - [docs/moving-a-body.md](docs/moving-a-body.md) — driving a body from the server: what a movement packet carries, how often, and the task manager that stops ticking a body that says it arrived.
