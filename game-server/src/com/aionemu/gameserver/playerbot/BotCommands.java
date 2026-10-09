@@ -291,13 +291,19 @@ public final class BotCommands {
 	public static String regear(String characterName) {
 		if (!characterName.equalsIgnoreCase("all")) {
 			return withBot(characterName, bot -> {
+				if (belongsToAPlayer(bot))
+					return characterName + " belongs to a player, and its gear is left exactly as they made it";
 				String done = BotOutfitter.regear(bot);
 				bots().save(bot);
 				return done;
 			});
 		}
-		int changed = 0;
+		int changed = 0, left = 0;
 		for (Player bot : bots().spawnedBots()) {
+			if (belongsToAPlayer(bot)) {
+				left++;
+				continue;
+			}
 			try {
 				String done = BotOutfitter.regear(bot);
 				if (!done.endsWith("had nothing to change")) {
@@ -309,7 +315,16 @@ public final class BotCommands {
 				log.error("Could not regear bot " + bot.getName(), e);
 			}
 		}
-		return "Regeared " + changed + " of " + bots().spawnedBots().size() + " spawned bot(s)";
+		return "Regeared " + changed + " of " + (bots().spawnedBots().size() - left) + " spawned bot(s)" + (left > 0 ? ", " + left + " belonging to players left alone" : "");
+	}
+
+	/**
+	 * @return true if this character is somebody's own: a companion made with {@code //bot create}, or a character a player made in game and spawned as a bot.
+	 *         Its gear is its owner's business. Nothing the module does on its own initiative may add a piece, enchant one or socket a stone on it, and
+	 *         that includes this command: the world's inhabitants are brought up to date, a player's characters are not.
+	 */
+	private static boolean belongsToAPlayer(Player bot) {
+		return bot.getAi() instanceof PlayerBotAI ai ? ai.isOwned() : BotRoster.isSomebodysOwn(bot.getName());
 	}
 
 	/**

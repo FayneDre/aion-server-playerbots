@@ -73,7 +73,9 @@ public class PlayerBotEnterWorldService {
 		learnMissingSkills(bot);
 		// Done here as well as at creation, and for the same reason the skills are: a bot made before this existed has empty sockets, and a bot that
 		// has levelled since has earned one it cannot fill on its own. It does nothing once the sockets are full, which is every spawn but the first.
-		BotStigmaFitter.fit(bot);
+		// not for a player's own character, whose sockets are its owner's to fill: StigmaService.onPlayerLogin below still grants what the stones already there give
+		if (!BotRoster.isSomebodysOwn(bot.getName()))
+			BotStigmaFitter.fit(bot);
 		// What the sockets grant, which is not stored with the character: the stones are equipment and persist, the skills they give do not, and
 		// PlayerEnterWorldService hands them back on every login. Missing here, a bot would be fitted with stigmas once at creation and lose every
 		// one of their skills at the first restart, silently and for ever, while still visibly wearing the stones.

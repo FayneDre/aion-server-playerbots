@@ -148,3 +148,10 @@ answers that tie*.
 - [group-roles.md](group-roles.md) — where the hostility split comes from.
 - [stigmas.md](stigmas.md) — the other half of a character's build.
 - [world-and-data-traps.md](world-and-data-traps.md) — the filter that hid accessories, and the `cName` shapes.
+
+## Characters that belong to a player
+
+Nothing here ever touches the gear of a bot somebody owns, meaning a companion made with `//bot create` or a character made in game and spawned as a bot
+(`PlayerBotAI.isOwned`). Not `//bot regear`, which skips them by name or under `all`; not the dressing a bot does by itself when it finds a better piece in its
+bag (`BotErrands.dressUp`, which is also what enchants and sockets the piece); and not the stigma fitting on entering the world, whose sockets are the owner's to
+fill. Looting and selling are unchanged. The world's own inhabitants are the only characters whose gear the module maintains.
