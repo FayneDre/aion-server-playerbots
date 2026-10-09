@@ -172,11 +172,13 @@ Done, and moved to [population-churn-followup.md](population-churn-followup.md):
    watched in game: a landing check, a rough route that keeps to its level, binding to a reachable obelisk ([navigation-stuck-plan.md](navigation-stuck-plan.md)); the
    obelisk audit exists (`tools/navmesh.ps1 -Obelisks`: 10 of 88 fail, listed in the plan) and is to be run on every new mesh, Reshanta first.
 
-1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **24 meshes exist** (`data/navmesh/*.nav`, 23 distinct
-   names — Idian Depths has one per faction). `tools/navmesh.ps1 <mapId>`. This no longer paces everything, but two of the absentees are named
-   throughout these docs as if they were ready: **Sanctum** (110010000) and **Reshanta** (400010000) have no mesh, so no bot plans a route on
-   either. A mesh is also not a population: a map has inhabitants only where `//bot populate` or the populate setting has put some, and the meshes
-   open lazily, on the first map that needs one.
+1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **25 meshes exist** (`data/navmesh/*.nav`). `tools/navmesh.ps1
+   <mapId>`, then `-Obelisks` ([navigation-stuck-plan.md](navigation-stuck-plan.md)). **Sanctum** (110010000) has one since 2026-10-09, built from placed meshes
+   alone because the data ships no heightmap for it (the generator now accepts that, sizing the grid from `world_maps.xml`): 308 of its 352 npc spots stand on
+   ground. **The Cloister of Kaisinel** (110020000) cannot have one: its geometry is 10 KB and its ground is a heightmap the data does not hold, so the
+   mesh came out with 304 routable cells and was thrown away (a nearly empty mesh is worse than none: every route it answers is a refusal). Reshanta and the
+   four Panesterra fields lack a heightmap too and can be tried the same way; Reshanta needs a 8192 by 8192 grid, so budget the memory. A mesh is not a
+   population: a map has inhabitants only where `//bot populate` or the populate setting has put some, and the meshes open lazily.
 2. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the mesh does not answer a bot can still wedge itself.
 3. **Walkable ground comes in islands**, and a route between two of them does not exist. `NavmeshTool <mapId> components` says so.
 4. **How many characters a client tolerates in one place is unmeasured**, and it is the one ceiling this project does not control. It is also the only

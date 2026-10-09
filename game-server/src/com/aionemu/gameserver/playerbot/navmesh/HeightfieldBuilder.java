@@ -50,9 +50,11 @@ public class HeightfieldBuilder {
 	}
 
 	public static Heightfield build(int mapId) throws IOException {
+		// null for the maps that ship without a heightmap, whose ground is placed meshes only: their grid comes from the world map list instead
 		TerrainData terrain = TerrainData.load(mapId);
-		if (terrain == null)
-			throw new IOException("Map " + mapId + " has no terrain heightmap");
+		int mapSize = terrain == null ? MapSize.of(mapId) : 0;
+		if (terrain == null && mapSize == 0)
+			throw new IOException("Map " + mapId + " has no terrain heightmap and no size in the world map list");
 
 		Map<String, List<GeoModel>> models = GeoDataReader.readModels();
 		List<PlacedMesh> solids = new ArrayList<>(), noWalkVolumes = new ArrayList<>();
@@ -70,7 +72,7 @@ public class HeightfieldBuilder {
 			}
 		}
 
-		List<Integer> worldSize = terrain.worldSize();
+		List<Integer> worldSize = terrain != null ? terrain.worldSize() : List.of(mapSize, mapSize);
 		int width = (int) (worldSize.get(0) / Heightfield.CELL_SIZE);
 		int height = (int) (worldSize.get(1) / Heightfield.CELL_SIZE);
 		return new HeightfieldBuilder(terrain, solids, noWalkVolumes, width, height).rasterize();
@@ -226,7 +228,7 @@ public class HeightfieldBuilder {
 
 	private void sample(SurfaceSink sink) {
 		float half = Heightfield.SLOPE_WINDOW / 2;
-		for (int cellY = 0; cellY < height; cellY++) {
+		for (int cellY = 0; terrain != null && cellY < height; cellY++) {
 			for (int cellX = 0; cellX < width; cellX++) {
 				float x = centre(cellX), y = centre(cellY);
 				float z = terrain.heightAt(x, y);
