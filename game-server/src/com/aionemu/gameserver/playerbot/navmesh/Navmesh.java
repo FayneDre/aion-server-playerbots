@@ -110,7 +110,6 @@ public class Navmesh {
 	private final FileChannel channel;
 	private final long dataStart;
 
-	/** One square of the map. */
 	/**
 	 * One square of the grid. {@code rowOffsets} is int rather than char because a tile of 64x64 columns can hold up to a million surfaces, and a
 	 * 16 bit offset wraps silently at 65535: every column of an overflowed tile then read somebody else's surfaces, which came back as heights

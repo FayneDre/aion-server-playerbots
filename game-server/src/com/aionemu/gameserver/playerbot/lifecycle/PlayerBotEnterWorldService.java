@@ -90,14 +90,6 @@ public class PlayerBotEnterWorldService {
 	}
 
 	/**
-	 * Moves the bot onto ground a body fits on, if it is not already.
-	 * <p>
-	 * A saved position can be inside the geometry — walked into by the reactive layer, scattered there before the mesh was consulted, or saved while
-	 * the map said something else. Such a bot is not merely misplaced, it is unroutable: nothing walkable is within reach, so every journey it ever
-	 * attempts is refused and it spends its life asking. Done on entering the world so that a bot stuck once is freed the next time it spawns, rather
-	 * than needing to be found and moved by hand.
-	 */
-	/**
 	 * Binds the bot at the obelisk nearest its home, the way a player binds where they work.
 	 * <p>
 	 * Without it a bot has no bind point at all, and dying sends it to its race's starting location — the far end of the region from the ground it
@@ -157,6 +149,14 @@ public class PlayerBotEnterWorldService {
 			bot.getInstanceId()));
 	}
 
+	/**
+	 * Moves the bot onto ground a body fits on, if it is not already.
+	 * <p>
+	 * A saved position can be inside the geometry — walked into by the reactive layer, scattered there before the mesh was consulted, or saved while
+	 * the map said something else. Such a bot is not merely misplaced, it is unroutable: nothing walkable is within reach, so every journey it ever
+	 * attempts is refused and it spends its life asking. Done on entering the world so that a bot stuck once is freed the next time it spawns, rather
+	 * than needing to be found and moved by hand.
+	 */
 	private static void standOnGround(Player bot) {
 		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
 		if (ground == null || PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), ground.getX(), ground.getY(), ground.getZ()) < Heightfield.CELL_SIZE)

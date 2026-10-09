@@ -39,7 +39,6 @@ class BotErrands {
 	private static final long EMPTY_SHOP_MILLIS = 600000;
 
 	private final PlayerBotAI ai;
-	/** A corpse the bot means to walk back to, set when a fight ends over something it may loot. */
 	/** How long a bot waits before walking to a shop for flasks again, after one that sold it none. */
 	private static final long FLASK_TRIP_COOLDOWN_MILLIS = 600000;
 	/**
@@ -48,6 +47,7 @@ class BotErrands {
 	 */
 	private static final long UNREACHABLE_SHOP_COOLDOWN_MILLIS = 120000;
 
+	/** A corpse the bot means to walk back to, set when a fight ends over something it may loot. */
 	private volatile int pendingCorpse;
 	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
 	private volatile long dressingIdleUntil;
@@ -164,16 +164,16 @@ class BotErrands {
 		return true;
 	}
 
-	/**
-	 * Walks a full bag to the nearest shop and sells what the bot has no use for, then lets it drift back to its anchor on its own.
-	 *
-	 * @return true while a trip is starting or under way, so nothing else is decided this tick.
-	 */
 	/** @return true if the bot wants flasks and is not serving out a wait from a shop that had none for it. */
 	private boolean wantsFlasks(Player bot) {
 		return System.currentTimeMillis() >= noFlasksUntil && BotVendorManager.needsPotions(bot);
 	}
 
+	/**
+	 * Walks a full bag to the nearest shop and sells what the bot has no use for, then lets it drift back to its anchor on its own.
+	 *
+	 * @return true while a trip is starting or under way, so nothing else is decided this tick.
+	 */
 	boolean runVendorTrip() {
 		Player bot = ai.getOwner();
 		if (vendorDestination == null) {

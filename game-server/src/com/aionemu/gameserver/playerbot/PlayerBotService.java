@@ -235,9 +235,6 @@ public class PlayerBotService {
 		}
 	}
 
-
-
-	/** Writes every spawned bot to the database, in place, without taking it out of the world. */
 	/**
 	 * Saves every bot that is due, a slice at a time.
 	 * <p>
@@ -763,9 +760,6 @@ public class PlayerBotService {
 	}
 
 	/**
-	 * Toggles whether the bot acts on its own (engaging hostiles in reach, fighting back) or only follows commands.
-	 */
-	/**
 	 * Reads or sets what a bot is for: a resident of the place it stands in, or an adventurer.
 	 * <p>
 	 * A resident gains no experience, so the region it inhabits keeps inhabitants of its own level. Takes effect on the next spawn, since the flag is
@@ -781,6 +775,9 @@ public class PlayerBotService {
 		return characterName + " is now " + (resident ? "a resident, and will not level any further" : "an adventurer, and levels normally");
 	}
 
+	/**
+	 * Toggles whether the bot acts on its own (engaging hostiles in reach, fighting back) or only follows commands.
+	 */
 	public String toggleAutonomy(String characterName) {
 		Player bot = findSpawnedBot(characterName);
 		if (bot == null)
@@ -792,9 +789,6 @@ public class PlayerBotService {
 		return characterName + " autonomy " + (botAi.isAutonomous() ? "on" : "off");
 	}
 
-	/**
-	 * Makes the bot walk to the given player's position.
-	 */
 	/**
 	 * Takes a bot off the ground and brings it back down, for watching flight work before anything decides to use it.
 	 *
@@ -832,6 +826,9 @@ public class PlayerBotService {
 		return bot == null ? "No bot spawned with name " + characterName : BotFlight.land(bot);
 	}
 
+	/**
+	 * Makes the bot walk to the given player's position.
+	 */
 	public String come(String characterName, Player commander) {
 		Player bot = findSpawnedBot(characterName);
 		if (bot == null)
@@ -934,11 +931,6 @@ public class PlayerBotService {
 	 * <p>
 	 * For an ordinary player this means their own bots and nothing else — the refused count says how many were left alone. Staff and the server clear
 	 * everything, which is what the command is for.
-	 *
-	 * @param requester Whoever asked. Null for the server carrying out a standing order.
-	 */
-	/**
-	 * Deletes bot characters, either everywhere or on one map.
 	 * <p>
 	 * The map is why this takes an argument at all. Clearing is global and populating is not — it fills the map the commander is standing on — so a
 	 * clear followed by a populate emptied a whole world and refilled one region of it. That asymmetry is easy to miss until three maps are gone and
@@ -947,6 +939,7 @@ public class PlayerBotService {
 	 * It also matters that most of a world is rarely the part anybody wants rebuilt. Wiping two hundred characters to look at the dozens that are
 	 * high enough to show the thing being tested is a lot of levels, homes and names spent on nothing.
 	 *
+	 * @param requester Whoever asked. Null for the server carrying out a standing order.
 	 * @param region A map id, part of a map's name, or null for everywhere. "here" is resolved by the caller.
 	 */
 	public String clear(Player requester, String region) {

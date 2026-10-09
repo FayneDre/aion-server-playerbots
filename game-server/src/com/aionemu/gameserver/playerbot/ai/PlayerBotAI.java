@@ -116,11 +116,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * allowed to stand up at or below it, it would rise from its rest already unable to cast and sit straight back down.
 	 */
 	private static final int MIN_ENGAGE_MP_PERCENT = 35;
-	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	/** The penalty skill a player carries after dying, under which a bot will not start a fight. */
 	private static final int SOUL_SICKNESS_SKILL = 8291;
 	/** How little life a target needs for the bot to stop looking after itself and simply end the fight. */
 	private static final int FINISH_IT_PERCENT = 20;
+	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	private static final float ANCHOR_TOLERANCE = 5f;
 	/**
 	 * How far from the place it shares a bot stands.
@@ -210,7 +210,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final int STUCK_REFUSALS = 12;
 	/** Refusals in a row, reset by any movement that starts. */
 	private int refusedMoves;
-	/** An operator asked for a sale, so the full bag test is waived until one actually happens. */
 	/**
 	 * Whether this fight's opening has been tried. One attempt per fight and no more: an opening burst that will not go off now is on cooldown, which
 	 * is itself the answer, and retrying it every tick would spend it halfway through the fight where most of it is wasted.
@@ -707,15 +706,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
-	 * Picks the one thing the bot does with this moment of the fight, most urgent first.
-	 * <p>
-	 * The order is the whole of the bot's combat judgement, so it lives in one place rather than being restated wherever a skill might be cast. It
-	 * reads as a set of priorities: survive, then keep the advantage the class was given, then deal damage. A cast costs a swing either way, which is
-	 * why staying alive comes first and why nothing here is tried twice in the same tick.
-	 *
-	 * @return true if a skill went off, in which case the bot is busy and should not also swing.
-	 */
-	/**
 	 * @return true while the bot is still carrying the penalty it got for dying.
 	 *         <p>
 	 *         It takes a large bite out of every stat, and picking a fight under it is how you die a second time — so that one thing waits, and
@@ -733,6 +723,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return target.getLifeStats() != null && target.getLifeStats().getHpPercentage() <= FINISH_IT_PERCENT;
 	}
 
+	/**
+	 * Picks the one thing the bot does with this moment of the fight, most urgent first.
+	 * <p>
+	 * The order is the whole of the bot's combat judgement, so it lives in one place rather than being restated wherever a skill might be cast. It
+	 * reads as a set of priorities: survive, then keep the advantage the class was given, then deal damage. A cast costs a swing either way, which is
+	 * why staying alive comes first and why nothing here is tried twice in the same tick.
+	 *
+	 * @return true if a skill went off, in which case the bot is busy and should not also swing.
+	 */
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
 		boolean closing = !BotAttackManager.isInAttackRange(bot, target);
@@ -846,7 +845,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 		tryMoveTo(moveController, target.getX(), target.getY(), target.getZ());
 	}
 
-	/** Brings the bot back where it belongs once it has nothing to fight, so a chase does not slowly displace it. */
 	/**
 	 * Walks to the leader, re-aimed on every tick.
 	 * <p>
@@ -873,6 +871,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		stopMoving();
 	}
 
+	/** Brings the bot back where it belongs once it has nothing to fight, so a chase does not slowly displace it. */
 	boolean returnToAnchor() {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
 			return true;
@@ -951,14 +950,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
-	 * Puts a bot that cannot move at all back where it lives.
-	 * <p>
-	 * However carefully a place is chosen, a bot walks on its own afterwards, and the reactive layer that steps round obstacles can walk it into one
-	 * — behind a rock, under a root, onto a shelf. From inside, every destination is refused, including spots a pace away: three separate bots have
-	 * now spent minutes asking for routes that do not exist from where they stand. There is no diagnosis to make at that point and nothing to walk
-	 * out along, which is exactly why players are given an unstick command rather than advice.
-	 */
-	/**
 	 * How near its leader a grouped bot has to be for being unable to walk to count as waiting rather than being stuck.
 	 * <p>
 	 * Generous on purpose: a player who has flown off to a ledge is exactly the case this protects, and the distance to them says nothing about
@@ -973,6 +964,14 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private static final float STRANDED_AT_HOME = 40;
 
+	/**
+	 * Puts a bot that cannot move at all back where it lives.
+	 * <p>
+	 * However carefully a place is chosen, a bot walks on its own afterwards, and the reactive layer that steps round obstacles can walk it into one
+	 * — behind a rock, under a root, onto a shelf. From inside, every destination is refused, including spots a pace away: three separate bots have
+	 * now spent minutes asking for routes that do not exist from where they stand. There is no diagnosis to make at that point and nothing to walk
+	 * out along, which is exactly why players are given an unstick command rather than advice.
+	 */
 	private void freeItself() {
 		Player bot = getOwner();
 		Vector3f home = day.home();
@@ -1025,21 +1024,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
-	 * Keeps the bot from starting a fight it is in no shape for — in particular right after resurrecting at 25% hp, next to whatever killed it.
-	 * Only picking a fight is gated: it always defends itself, whatever its health.
-	 */
-	/**
-	 * Sits down to heal where the bot stands, because resting recovers eight times faster than standing around. It recovers on the spot rather than
-	 * walking home first: the fight is over, and a player sits down where it ended.
-	 */
-	/**
-	 * Gets the bot up and remembers when, because moving it while the client is still playing the stand up animation makes it slide across the
-	 * ground.
-	 *
-	 * @return true if it was resting and has just stood up, in which case the caller should not act yet.
-	 */
-	/** Puts the weapon away once the bot has really stopped fighting, rather than at the end of every single kill. */
-	/**
 	 * Puts the weapon away once there is nothing to point it at.
 	 * <p>
 	 * Asked of the state and not only of the last fight. It used to run solely in the seconds after combat ended, so a bot holding its weapon for any
@@ -1059,6 +1043,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		posture.sheathe();
 	}
 
+	/**
+	 * Sits down to heal where the bot stands, because resting recovers eight times faster than standing around. It recovers on the spot rather than
+	 * walking home first: the fight is over, and a player sits down where it ended.
+	 */
 	private void recover() {
 		if (getOwner().getMoveController().isInMove())
 			return;
@@ -1113,15 +1101,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return following && BotRole.of(getOwner()) == BotRole.TANK && BotGroupManager.targetToAssist(getOwner()) != null;
 	}
 
+	/**
+	 * Keeps the bot from starting a fight it is in no shape for — in particular right after resurrecting at 25% hp, next to whatever killed it.
+	 * Only picking a fight is gated: it always defends itself, whatever its health.
+	 */
 	private boolean isHealthyEnoughToFight() {
 		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT
 			&& getOwner().getLifeStats().getMpPercentage() >= MIN_ENGAGE_MP_PERCENT;
 	}
 
-	/**
-	 * @return An npc currently attacking the bot, or null. Being hit overrides every other consideration, including the health threshold that
-	 *         normally sends the bot resting: sitting down under fire is both suicidal and absurd to watch.
-	 */
 	/**
 	 * Calls the servant up, but only while the bot is standing still.
 	 * <p>
@@ -1209,6 +1197,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return attackers;
 	}
 
+	/**
+	 * @return An npc currently attacking the bot, or null. Being hit overrides every other consideration, including the health threshold that
+	 *         normally sends the bot resting: sitting down under fire is both suicidal and absurd to watch.
+	 */
 	private Creature findAttacker() {
 		Player bot = getOwner();
 		Creature[] attacker = { null };

@@ -187,13 +187,6 @@ public class BotGroupManager {
 	}
 
 	/**
-	 * Anything in sight that has picked a fight with the group, the leader's attacker first.
-	 * <p>
-	 * Reading the leader's selection was not enough, and standing by while its leader was being eaten is exactly how that showed. A player whose
-	 * selection is on something else, or who never clicked the mob that jumped them, is being attacked all the same. The mob's own aggro list is the
-	 * honest source: it remembers who it is fighting, whatever anyone has selected.
-	 */
-	/**
 	 * Finds a monster that has got loose and is hitting somebody else in the group.
 	 * <p>
 	 * A tank's job is not one monster, it is all of them, and holding only the one it is swinging at is what a group feels as "the templar cannot
@@ -223,6 +216,13 @@ public class BotGroupManager {
 		return found[0];
 	}
 
+	/**
+	 * Anything in sight that has picked a fight with the group, the leader's attacker first.
+	 * <p>
+	 * Reading the leader's selection was not enough, and standing by while its leader was being eaten is exactly how that showed. A player whose
+	 * selection is on something else, or who never clicked the mob that jumped them, is being attacked all the same. The mob's own aggro list is the
+	 * honest source: it remembers who it is fighting, whatever anyone has selected.
+	 */
 	private static Creature npcFightingTheTeam(Player bot, TemporaryPlayerTeam<?> team) {
 		Player leader = team.getLeaderObject();
 		// getMembers, not getOnlineMembers: the latter filters on isOnline, which is the very question bots make ambiguous

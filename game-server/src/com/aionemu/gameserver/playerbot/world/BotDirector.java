@@ -108,21 +108,20 @@ public class BotDirector {
 		return INSTANCE;
 	}
 
+	/** Whether the reviews are running, which is false for the whole of startup. See {@link #reviewNow()}. */
+	private volatile boolean started;
+
 	/**
 	 * The timer is on the tick lane because that is the only lane that can keep one, but all it does is hand the review over: reading the pool is a
 	 * query, and a tick thread blocked on the database is bots standing still. Running on the same lane as the arrivals it orders also means a review
 	 * never overlaps the changes the last one asked for, so nothing is decided twice from a stale picture.
 	 */
-	/** Whether the reviews are running, which is false for the whole of startup. See {@link #reviewNow()}. */
-	private volatile boolean started;
-
 	public void start() {
 		started = true;
 		BotScheduler scheduler = BotScheduler.getInstance();
 		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(this::review), REVIEW_INTERVAL_MILLIS, REVIEW_INTERVAL_MILLIS);
 	}
 
-	/** Works out what each region should hold, and acts on the difference. */
 	/**
 	 * Asks for a review now rather than at the next turn of the clock.
 	 * <p>
@@ -139,6 +138,7 @@ public class BotDirector {
 		BotScheduler.getInstance().enterOrLeaveWorld(this::review);
 	}
 
+	/** Works out what each region should hold, and acts on the difference. */
 	private void review() {
 		List<BotRoster.Resident> pool = BotRoster.pool();
 		Map<Integer, List<Player>> playersByMap = realPlayersByMap();
@@ -362,9 +362,10 @@ public class BotDirector {
 	 * home is that very village can take its post — while the countryside is interchangeable, so "70 awake of 84, wants 84" has two quite different
 	 * explanations and the same shape. Split in two it reads at a glance: villagers asleep while villages are short means posts nobody lives at,
 	 * hunters asleep while the field is full means the countryside is simply over-supplied.
+	 * <p>
+	 * What one review concluded about one region. Package private, and holding character ids rather than {@link Player}s, so the decision can be
+	 * tested without a world: everything here is a count, an id or a place.
 	 */
-	/** What one review concluded about one region. Package private, and holding character ids rather than {@link Player}s, so the decision can be
-	 * tested without a world: everything here is a count, an id or a place. */
 	record Difference(int awake, List<BotRoster.Resident> toWake, List<Integer> toSleep, List<BotRoster.Resident> rehoused, int villagersAwake,
 		int villagersAsleep, int huntersAwake, int huntersAsleep) {
 	}

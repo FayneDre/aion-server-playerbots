@@ -74,8 +74,9 @@ public class BotSkillManager {
 	/**
 	 * How far short of the full charge a held skill is let go. Just enough that the engine's own cancellation, scheduled for the same instant,
 	 * never wins the race.
+	 * <p>
+	 * How far inside the top stage the bot lets go, so rounding and thread scheduling cannot drop the release back into the stage below.
 	 */
-	/** How far inside the top stage the bot lets go, so rounding and thread scheduling cannot drop the release back into the stage below. */
 	private static final long CHARGE_RELEASE_MARGIN_MILLIS = 200;
 	/** Auras a bot keeps running. The engine ends the oldest past this many (see {@code EffectController}), so going further would only cycle them. */
 	private static final int MAX_MANTRAS = 3;
@@ -264,11 +265,6 @@ public class BotSkillManager {
 	}
 
 	/**
-	 * Casts the best offensive skill the bot can currently use on the target.
-	 *
-	 * @return true if a skill was cast.
-	 */
-	/**
 	 * Heals a group mate.
 	 * <p>
 	 * The same skills the bot heals itself with, minus the ones that cannot leave their caster. Which of those is which was left to the engine at
@@ -314,6 +310,11 @@ public class BotSkillManager {
 			&& !coversAnApproach(template) && !isAlreadyUp(ally, template)));
 	}
 
+	/**
+	 * Casts the best offensive skill the bot can currently use on the target.
+	 *
+	 * @return true if a skill was cast.
+	 */
 	public static boolean tryCastSkill(Player bot, Creature target) {
 		if (isSavingMana(bot))
 			return false; // the auto attack costs nothing, and no fight is lost by finishing it with the weapon

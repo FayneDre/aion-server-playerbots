@@ -49,7 +49,6 @@ public class BotPlaces {
 	 * population is spread over fewer places, a village counted once per three townsfolk takes a fifth of everybody and becomes the crowd again.
 	 */
 	private static final int TOWNSFOLK_PER_SHARE = 8;
-	/** How far a resident will go for a change of scene. Past that it is not an outing, it is moving house — and it crosses everything in between. */
 	/**
 	 * How far above a place's own floor counts as standing on top of something rather than in it. A step is less; a plinth is more.
 	 */
@@ -91,12 +90,12 @@ public class BotPlaces {
 		return null;
 	}
 
+	/** How far a resident will go for a change of scene. Past that it is not an outing, it is moving house — and it crosses everything in between. */
 	public static final float WANDERING_RANGE = 250f;
 	/** How many spots of a place to try before settling for one that merely has footing. Each try costs a path search, and a place has many spots. */
 	private static final int ANCHOR_ATTEMPTS = 10;
 	/** How far around a settlement to read the countryside for the level it is worth. */
 	private static final float COUNTRYSIDE_RADIUS = 150f;
-	/** How far a character may be from a region's own level and still belong in it. */
 	/**
 	 * How far a single place's level may be from a character's before that place is no use to it. A local question — this ground, this character — and
 	 * not the region's band, which is measured rather than assumed.
@@ -495,18 +494,11 @@ public class BotPlaces {
 		return others.get(Math.floorMod(pick, others.size()));
 	}
 
-	/**
-	 * Picks somewhere for a resident to go and spend a while.
-	 * <p>
-	 * Within reach and within its depth, and it was leaving out both that showed. A wanderer sent to any settlement on the map walked the length of
-	 * the region to get there: forty five residents averaged a hundred and forty metres from home and one was six hundred away, which is not a stroll
-	 * but emigration. Worse, the walk crosses everything in between, so a character of two was to be found in a forest of eights — not because it was
-	 * settled there, but because its errand led through it.
-	 *
-	 * @param level The visitor's level, which decides where it has any business being.
-	 * @param pick Whatever makes this bot's choice its own.
-	 * @return Somewhere to go, or null when nowhere nearby suits it — in which case it is better off staying where it is.
-	 */
+	/** @return Whether a character of this level has any business on ground of that one. Generous below, strict above — see {@link #LEVEL_TOLERANCE_ABOVE}. */
+	private static boolean isFitFor(int placeLevel, int characterLevel) {
+		return placeLevel - characterLevel <= LEVEL_TOLERANCE_ABOVE && characterLevel - placeLevel <= LEVEL_TOLERANCE;
+	}
+
 	/**
 	 * @return A stretch of country near home and fit for this level, or null if there is none.
 	 *         <p>
@@ -516,11 +508,6 @@ public class BotPlaces {
 	 *         the well. Its own hunting ground, drawn near where it lives, is the whole of the instruction — everything downstream already works off
 	 *         the anchor.
 	 */
-	/** @return Whether a character of this level has any business on ground of that one. Generous below, strict above — see {@link #LEVEL_TOLERANCE_ABOVE}. */
-	private static boolean isFitFor(int placeLevel, int characterLevel) {
-		return placeLevel - characterLevel <= LEVEL_TOLERANCE_ABOVE && characterLevel - placeLevel <= LEVEL_TOLERANCE;
-	}
-
 	public static Vector3f groundToWork(int worldId, Vector3f from, int level, int pick) {
 		List<Vector3f> within = new ArrayList<>();
 		for (Settlement ground : huntingGrounds(worldId)) {
@@ -533,6 +520,18 @@ public class BotPlaces {
 		return within.isEmpty() ? null : within.get(Math.floorMod(pick, within.size()));
 	}
 
+	/**
+	 * Picks somewhere for a resident to go and spend a while.
+	 * <p>
+	 * Within reach and within its depth, and it was leaving out both that showed. A wanderer sent to any settlement on the map walked the length of
+	 * the region to get there: forty five residents averaged a hundred and forty metres from home and one was six hundred away, which is not a stroll
+	 * but emigration. Worse, the walk crosses everything in between, so a character of two was to be found in a forest of eights — not because it was
+	 * settled there, but because its errand led through it.
+	 *
+	 * @param level The visitor's level, which decides where it has any business being.
+	 * @param pick Whatever makes this bot's choice its own.
+	 * @return Somewhere to go, or null when nowhere nearby suits it — in which case it is better off staying where it is.
+	 */
 	public static Vector3f placeToVisit(int worldId, Vector3f from, int level, int pick) {
 		List<Vector3f> within = new ArrayList<>();
 		for (Settlement place : homes(worldId)) {
@@ -547,12 +546,6 @@ public class BotPlaces {
 		return within.isEmpty() ? null : within.get(Math.floorMod(pick, within.size()));
 	}
 
-	/**
-	 * Groups the peaceful spawns of a map into the places they stand in.
-	 * <p>
-	 * Greedy and good enough: townsfolk are few, and two clusters that should have been one merely give a wanderer two destinations a few paces
-	 * apart. Lone npcs are dropped — a road keeper is not a village.
-	 */
 	/** A map's places once the ones nothing can walk out of have been dropped. Both lists at once, because the mainland is decided by both together. */
 	private record Places(List<Settlement> settlements, List<Settlement> huntingGrounds) {
 	}
@@ -724,6 +717,12 @@ public class BotPlaces {
 		return joined;
 	}
 
+	/**
+	 * Groups the peaceful spawns of a map into the places they stand in.
+	 * <p>
+	 * Greedy and good enough: townsfolk are few, and two clusters that should have been one merely give a wanderer two destinations a few paces
+	 * apart. Lone npcs are dropped — a road keeper is not a village.
+	 */
 	private static List<Settlement> locateSettlements(int worldId) {
 		// Clustered per faction rather than all together, which is what lets a place say whose it is. On a faction's own ground there is only ever one
 		// of these lists and the result is what it always was; in Reshanta there are two, and Teminon does not absorb Primum because they are a few
@@ -824,15 +823,13 @@ public class BotPlaces {
 	}
 
 	/**
+	 * @param settlements Handed in rather than fetched, because this is called while a map's places are still being worked out: asking for them
+	 *          through the cache re-entered the very entry being computed, which {@code ConcurrentHashMap} answers with "Recursive update".
 	 * @return Whose country a spot is in, taken from the settlement nearest it, or null where the map holds no settlement at all.
 	 *         <p>
 	 *         A hunting ground is a cluster of monsters, and a monster belongs to nobody — so the ground has to inherit its side from the people who
 	 *         work it. Nearest rather than within a radius: in a contested region the two factions' grounds meet somewhere in the middle, and a
 	 *         distance threshold would leave exactly that middle unclaimed and unpopulated, which is the one part of the map worth populating.
-	 */
-	/**
-	 * @param settlements Handed in rather than fetched, because this is called while a map's places are still being worked out: asking for them
-	 *          through the cache re-entered the very entry being computed, which {@code ConcurrentHashMap} answers with "Recursive update".
 	 */
 	private static Race factionNearest(List<Settlement> settlements, Vector3f spot) {
 		Race race = null;

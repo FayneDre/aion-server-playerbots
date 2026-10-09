@@ -55,11 +55,6 @@ public class BotTargetSelector {
 	}
 
 	/**
-	 * Leaves alone what someone else is already fighting, so several bots in the same spot spread over the mobs around them instead of piling onto
-	 * the nearest one. Team mates are excluded: helping them is the whole point of being grouped. This also stops bots from stealing kills from real
-	 * players.
-	 */
-	/**
 	 * @return true if this is part of the furniture rather than something to fight: the little animals that wander through a village, the young of
 	 *         real creatures, the training dummy standing in the square.
 	 *         <p>
@@ -86,6 +81,11 @@ public class BotTargetSelector {
 		return rating == NpcRating.ELITE || rating == NpcRating.HERO || rating == NpcRating.LEGENDARY;
 	}
 
+	/**
+	 * Leaves alone what someone else is already fighting, so several bots in the same spot spread over the mobs around them instead of piling onto
+	 * the nearest one. Team mates are excluded: helping them is the whole point of being grouped. This also stops bots from stealing kills from real
+	 * players.
+	 */
 	private static boolean isTakenByAnotherPlayer(Player bot, Npc npc) {
 		return isFighting(bot, npc.getTarget()) || isFighting(bot, BotTargetRegistry.getOwner(npc));
 	}

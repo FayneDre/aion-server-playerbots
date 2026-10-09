@@ -179,12 +179,6 @@ public class Heightfield {
 	}
 
 	/**
-	 * Sums the grid up into 4 m cells, which is what makes long routes searchable.
-	 * <p>
-	 * A\* over half metre cells explores a hopeless area once a goal is a few hundred metres away. Planning roughly first and refining afterwards
-	 * costs one bit per 4 m of map, so the whole of Poeta guides in 72 KB, small enough to keep loaded while the detailed tiles stay on disk.
-	 */
-	/**
 	 * Labels every walkable surface with the region of ground it belongs to, joining neighbours the same way the path finder steps between them.
 	 * <p>
 	 * Per surface, not per column, and that distinction is the whole point. A column can hold walkable ground at more than one height — a valley

@@ -198,27 +198,6 @@ public class BotFlight {
 	}
 
 	/**
-	 * Flies a bot to a spot it may well have no way of walking to, which is the whole point of the capability.
-	 * <p>
-	 * <b>Only when the air is clear in a straight line</b>, which is what flying to a terrace actually looks like: one slanted leg to just above the
-	 * spot, then a short drop onto it. The geometry is asked first — {@code GeoService.getClosestCollision} along the line the body would fly, with
-	 * the ground ignored, since a flight is not walking — and a blocked line is a refusal rather than a detour. There was a detour, over the top of
-	 * whatever stood in the way, and it is gone: the engine casts a ray from the body's own position and from nowhere else, so the air along the legs
-	 * of a detour cannot be tested before setting off. It was flown on faith, and bots flew into the citadel.
-	 * <p>
-	 * What it lands on is the mesh's answer rather than the coordinates asked for, so a target a metre above the floor or a hand's breadth inside a
-	 * wall still puts the bot somewhere it can stand.
-	 */
-	/**
-	 * Flies a bot somewhere walking has been <b>proved</b> not to reach, and says whether it is going.
-	 * <p>
-	 * For the journeys nobody typed: a resident of a terrace going to a shop, or coming home to one. Every refusal {@link #flyTo} can produce is a
-	 * quiet no here — not a daeva, no fly zone, not enough flight points, too far, the path would leave the zone — because this is a fallback and
-	 * there is always the ordinary answer of giving the errand up.
-	 *
-	 * @return true if the bot has taken off and the caller should let go of the body.
-	 */
-	/**
 	 * Takes a bot up after somebody who is flying, and keeps it with them until they land or it runs out of flight.
 	 * <p>
 	 * The one piece of flight that was asked for from in game before any of it existed: a bot in your group stays on the ground while you fly, because
@@ -260,6 +239,15 @@ public class BotFlight {
 			leader.getZ());
 	}
 
+	/**
+	 * Flies a bot somewhere walking has been <b>proved</b> not to reach, and says whether it is going.
+	 * <p>
+	 * For the journeys nobody typed: a resident of a terrace going to a shop, or coming home to one. Every refusal {@link #flyTo} can produce is a
+	 * quiet no here — not a daeva, no fly zone, not enough flight points, too far, the path would leave the zone — because this is a fallback and
+	 * there is always the ordinary answer of giving the errand up.
+	 *
+	 * @return true if the bot has taken off and the caller should let go of the body.
+	 */
 	public static boolean tryFlyTo(Player bot, Vector3f target) {
 		if (!refuelled(bot))
 			return false;
@@ -270,6 +258,18 @@ public class BotFlight {
 		return flying;
 	}
 
+	/**
+	 * Flies a bot to a spot it may well have no way of walking to, which is the whole point of the capability.
+	 * <p>
+	 * <b>Only when the air is clear in a straight line</b>, which is what flying to a terrace actually looks like: one slanted leg to just above the
+	 * spot, then a short drop onto it. The geometry is asked first — {@code GeoService.getClosestCollision} along the line the body would fly, with
+	 * the ground ignored, since a flight is not walking — and a blocked line is a refusal rather than a detour. There was a detour, over the top of
+	 * whatever stood in the way, and it is gone: the engine casts a ray from the body's own position and from nowhere else, so the air along the legs
+	 * of a detour cannot be tested before setting off. It was flown on faith, and bots flew into the citadel.
+	 * <p>
+	 * What it lands on is the mesh's answer rather than the coordinates asked for, so a target a metre above the floor or a hand's breadth inside a
+	 * wall still puts the bot somewhere it can stand.
+	 */
 	public static String flyTo(Player bot, Vector3f target) {
 		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), target.getX(), target.getY(), target.getZ());
 		if (ground == null)
@@ -537,12 +537,6 @@ public class BotFlight {
 	}
 
 	/**
-	 * Watches the one thing the flight can see for itself: that the body is still being flown.
-	 * <p>
-	 * A leg the engine dropped — a stun, a teleport, anything that calls {@code abortMove}, or the movement tick deciding this body had arrived — is
-	 * simply handed over again, from wherever the body now is. Nothing ever reports a removal, which is why this asks rather than trusts.
-	 */
-	/**
 	 * Keeps the bot with the player it is following, and decides when to stop.
 	 *
 	 * @return false once the escort is over, in which case the flight is already coming down and this tick is done.
@@ -574,6 +568,12 @@ public class BotFlight {
 		return true;
 	}
 
+	/**
+	 * Watches the one thing the flight can see for itself: that the body is still being flown.
+	 * <p>
+	 * A leg the engine dropped — a stun, a teleport, anything that calls {@code abortMove}, or the movement tick deciding this body had arrived — is
+	 * simply handed over again, from wherever the body now is. Nothing ever reports a removal, which is why this asks rather than trusts.
+	 */
 	private void keepTheLegGoing(BotMoveController mover, long now) {
 		if (mover.isFlightLegDone())
 			return;

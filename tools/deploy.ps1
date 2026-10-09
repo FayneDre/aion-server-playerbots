@@ -63,6 +63,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "docs/bot-commands.md does not document these //bot command(s): $($undocumented -join ', ')"
 }
 
+# Two doc comments in a row mean one of them describes nothing -- see the script for what that cost.
+$orphans = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-orphan-javadoc.ps1')
+if ($LASTEXITCODE -ne 0) {
+    throw "Orphaned javadoc (a doc comment directly followed by another): $($orphans -join ', ')"
+}
+
 if (-not $SkipBuild) {
     Write-Host 'Building...' -ForegroundColor Cyan
     Push-Location $repoRoot

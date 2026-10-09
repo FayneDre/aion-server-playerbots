@@ -63,8 +63,7 @@ public class BotAttackManager {
 
 	/**
 	 * Performs a single auto attack if the target is reachable. Closing the distance is the caller's job.
-	 */
-	/**
+	 *
 	 * @return true if a swing was sent. The caller needs the answer rather than the act: line of sight is checked here, and a target in reach but
 	 *         behind something is attacked by a loop that never lands, which from outside is a bot standing still while it is killed.
 	 */
