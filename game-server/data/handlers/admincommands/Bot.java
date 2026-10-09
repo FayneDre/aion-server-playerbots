@@ -39,6 +39,7 @@ public class Bot extends AdminCommand {
 			number [region] - Counts the bots on a map, by faction. Takes a map id or part of its name; yours by default.
 			pool [mapId|here] - What the last population review found: awake, total and wanted, split between villages and countryside.
 			  A line per map, or just the one asked for.
+			positioning [on|off] - Reads or switches whether grouped bots stand where their class belongs in a fight. Takes effect at once, until the next restart.
 			fly <name> [height] - Flies the bot straight up, holds it there and lands it again. Default 25 m, capped at 60 and at its fly zone's ceiling.
 			flyto <name> - Flies the bot to where you stand, over whatever is in the way. Within 300 m and inside its own fly zone.
 			land <name> - Brings a flying bot down now.
@@ -87,6 +88,7 @@ public class Bot extends AdminCommand {
 			case "number" -> sendInfo(admin, BotCommands.count(argument(params, 1), admin));
 			case "list" -> sendInfo(admin, BotCommands.listSpawnedBots());
 			case "pool" -> sendInfo(admin, BotCommands.describePool(argument(params, 1), admin));
+			case "positioning" -> sendInfo(admin, BotCommands.positioning(argument(params, 1)));
 			default -> sendInfo(admin);
 		}
 	}

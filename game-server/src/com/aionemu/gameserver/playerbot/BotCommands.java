@@ -8,6 +8,7 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.dao.PlayerDAO;
 import com.aionemu.gameserver.model.PlayerClass;
@@ -475,6 +476,24 @@ public final class BotCommands {
 		if (only.isEmpty())
 			return "Nothing was reviewed for map " + worldId + ". It may hold no inhabitants, or the name may be a map id this world does not have.";
 		return String.join(System.lineSeparator(), only);
+	}
+
+	/**
+	 * Reads or switches positioning for grouped bots, which is the one way to compare a fight with it and one without in the same session.
+	 * Not saved: the setting in {@code playerbot.properties} is what a restart goes back to.
+	 *
+	 * @param setting "on", "off", or null to read it.
+	 */
+	public static String positioning(String setting) {
+		if (setting != null) {
+			if (setting.equalsIgnoreCase("on"))
+				PlayerBotConfig.POSITIONING = true;
+			else if (setting.equalsIgnoreCase("off"))
+				PlayerBotConfig.POSITIONING = false;
+			else
+				return "Usage: //bot positioning [on|off]";
+		}
+		return "Positioning is " + (PlayerBotConfig.POSITIONING ? "on" : "off") + ". Fights are still sampled in the log either way.";
 	}
 
 	public static String despawnAll() {
