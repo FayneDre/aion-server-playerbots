@@ -47,9 +47,9 @@ Neither will **`DIED`, `SPAWNED` and `DESPAWNED`**: they are fired from `NpcCont
 
 ```text
 com.aionemu.gameserver.playerbot/
-  PlayerBotService            Singleton facade: spawn/despawn/despawnAll/onShutdown — the only public entry point
-  PlayerBot                   Per-bot handle: Player ref + PlayerBotAI + metadata (NOT a Player subclass)
-  PlayerBotRegistry           ConcurrentHashMap<Integer, PlayerBot>, lookup by objId/name, iteration on shutdown
+  PlayerBotService            Singleton: who is in the world (the registry of spawned bots), waking and sleeping them, startup restore, the save sweep and shutdown
+  BotPopulator                Static: fills a map with its inhabitants and carries out the standing populate orders of a first start
+  BotCommands                 Static: one method per `//bot` subcommand, each answering with the line the commander reads; the map-argument rule lives here
 
   lifecycle/
     PlayerBotCreationService    Headless CM_CREATE_CHARACTER: new characters on reserved bot accounts

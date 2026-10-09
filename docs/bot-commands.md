@@ -74,7 +74,7 @@ than fallen, because falling is client side and a bot out of flight points would
 |---|---|
 | `//bot nav` | Which maps' navigation meshes are loaded in memory. A map missing here is one where bots will not travel; see [navmesh-plan.md](navmesh-plan.md). |
 | `//bot number [region]` | How many inhabitants a map holds, by faction, and what it asks for. A map id or the start of a map's name; yours by default. |
-| `//bot pool [mapId\|here]` | What the last population review concluded: how many inhabitants are awake, how many exist, and how many the region wants right now — split between the villages and the countryside, because the two are filled differently and only the split says which half is short. A line per map, or just the one asked for; `here` means the map you are standing on. |
+| `//bot pool [map|here]`\|here]` | What the last population review concluded: how many inhabitants are awake, how many exist, and how many the region wants right now — split between the villages and the countryside, because the two are filled differently and only the split says which half is short. A line per map, or just the one asked for, by id or by part of its name; `here` means the map you are standing on. |
 
 `//bot number` counts three things apart, and the distinction is the point of it. **Inhabitants** are the world's own, by faction. **Companions** are
 characters somebody owns, which belong to no region and must not be counted as its population. **Players** are real people, whose presence is what

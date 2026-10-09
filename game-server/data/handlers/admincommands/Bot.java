@@ -1,13 +1,13 @@
 package admincommands;
 
-import java.util.List;
+import java.util.Arrays;
 import java.util.function.Function;
 
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
-import com.aionemu.gameserver.playerbot.PlayerBotService;
-import com.aionemu.gameserver.playerbot.world.BotDirector;
+import com.aionemu.gameserver.playerbot.BotCommands;
+import com.aionemu.gameserver.playerbot.BotPopulator;
 import com.aionemu.gameserver.utils.chathandlers.AdminCommand;
 
 /**
@@ -64,51 +64,31 @@ public class Bot extends AdminCommand {
 		switch (params[0].toLowerCase()) {
 			case "create" -> create(admin, params);
 			case "populate" -> populate(admin, params);
-			case "delete" -> withName(admin, params, name -> PlayerBotService.getInstance().delete(name, admin));
-			case "load" -> withName(admin, params, name -> PlayerBotService.getInstance().describeLoadedBot(name));
-			case "spawn" -> withName(admin, params, name -> PlayerBotService.getInstance().spawn(name, admin));
-			case "despawn" -> withName(admin, params, name -> PlayerBotService.getInstance().despawn(name));
+			case "delete" -> withName(admin, params, name -> BotCommands.delete(name, admin));
+			case "load" -> withName(admin, params, name -> BotCommands.describeLoadedBot(name));
+			case "spawn" -> withName(admin, params, name -> BotCommands.spawn(name, admin));
+			case "despawn" -> withName(admin, params, name -> BotCommands.despawn(name));
 			case "duel" -> withName(admin, params,
-				name -> PlayerBotService.getInstance().acceptRequest(name, SM_QUESTION_WINDOW.STR_DUEL_DO_YOU_ACCEPT_REQUEST));
-			case "attack" -> withName(admin, params, name -> PlayerBotService.getInstance().attack(name, admin));
-			case "stop" -> withName(admin, params, name -> PlayerBotService.getInstance().stopAttacking(name));
-			case "come" -> withName(admin, params, name -> PlayerBotService.getInstance().come(name, admin));
-			case "fly" -> withName(admin, params, name -> PlayerBotService.getInstance().fly(name, params.length > 2 ? params[2] : null));
-			case "flyto" -> withName(admin, params, name -> PlayerBotService.getInstance().flyTo(name, admin));
-			case "land" -> withName(admin, params, name -> PlayerBotService.getInstance().land(name));
-			case "auto" -> withName(admin, params, name -> PlayerBotService.getInstance().toggleAutonomy(name));
-			case "sell" -> withName(admin, params, name -> PlayerBotService.getInstance().sell(name));
-			case "regear" -> withName(admin, params, name -> PlayerBotService.getInstance().regear(name));
-			case "despawnall" -> sendInfo(admin, PlayerBotService.getInstance().despawnAll());
-			case "clear" -> sendInfo(admin, PlayerBotService.getInstance().clear(admin, mapArgument(admin, params)));
-			case "bag" -> withName(admin, params, name -> PlayerBotService.getInstance().describeInventory(name));
-			case "nav" -> sendInfo(admin, PlayerBotService.getInstance().describeNavmeshes());
+				name -> BotCommands.acceptRequest(name, SM_QUESTION_WINDOW.STR_DUEL_DO_YOU_ACCEPT_REQUEST));
+			case "attack" -> withName(admin, params, name -> BotCommands.attack(name, admin));
+			case "stop" -> withName(admin, params, name -> BotCommands.stopAttacking(name));
+			case "come" -> withName(admin, params, name -> BotCommands.come(name, admin));
+			case "fly" -> withName(admin, params, name -> BotCommands.fly(name, params.length > 2 ? params[2] : null));
+			case "flyto" -> withName(admin, params, name -> BotCommands.flyTo(name, admin));
+			case "land" -> withName(admin, params, name -> BotCommands.land(name));
+			case "auto" -> withName(admin, params, name -> BotCommands.toggleAutonomy(name));
+			case "sell" -> withName(admin, params, name -> BotCommands.sell(name));
+			case "regear" -> withName(admin, params, name -> BotCommands.regear(name));
+			case "despawnall" -> sendInfo(admin, BotCommands.despawnAll());
+			case "clear" -> sendInfo(admin, BotCommands.clear(admin, argument(params, 1)));
+			case "bag" -> withName(admin, params, name -> BotCommands.describeInventory(name));
+			case "nav" -> sendInfo(admin, BotCommands.describeNavmeshes());
 			case "kind" -> kind(admin, params);
-			case "number" -> sendInfo(admin, PlayerBotService.getInstance().count(params.length > 1 ? String.join(" ", java.util.Arrays.copyOfRange(params, 1, params.length)) : null, admin));
-			case "list" -> sendInfo(admin, PlayerBotService.getInstance().listSpawnedBots());
-			case "pool" -> sendInfo(admin, describePool(admin, params));
+			case "number" -> sendInfo(admin, BotCommands.count(argument(params, 1), admin));
+			case "list" -> sendInfo(admin, BotCommands.listSpawnedBots());
+			case "pool" -> sendInfo(admin, BotCommands.describePool(argument(params, 1), admin));
 			default -> sendInfo(admin);
 		}
-	}
-
-	/**
-	 * @return What the director concluded last time it looked, which is the one window onto a population that is mostly asleep: //bot number counts
-	 *         what is in the world, and says nothing about what should be.
-	 */
-	private static String describePool(Player admin, String[] params) {
-		List<String> review = BotDirector.getInstance().lastReview();
-		if (review.isEmpty())
-			return "No population review has run yet. The first one is half a minute after startup.";
-		// A world of eighteen populated maps answers in eighteen lines, which is a wall in a chat window when seventeen of them are not the one being
-		// looked at. "here" rather than a map id, because somebody standing in a region knows where they are and not what it is numbered.
-		if (params.length > 1) {
-			String wanted = params[1].equalsIgnoreCase("here") ? String.valueOf(admin.getWorldId()) : params[1];
-			List<String> only = review.stream().filter(line -> line.startsWith("map " + wanted + ":")).toList();
-			if (only.isEmpty())
-				return "Nothing was reviewed for map " + wanted + ". It may hold no inhabitants, or the name may be a map id this world does not have.";
-			return String.join(System.lineSeparator(), only);
-		}
-		return String.join(System.lineSeparator(), review);
 	}
 
 	private void kind(Player admin, String[] params) {
@@ -127,7 +107,7 @@ public class Bot extends AdminCommand {
 				return;
 			}
 		}
-		sendInfo(admin, PlayerBotService.getInstance().setKind(params[1], resident));
+		sendInfo(admin, BotCommands.setKind(params[1], resident));
 	}
 
 	private void create(Player admin, String[] params) {
@@ -142,7 +122,7 @@ public class Bot extends AdminCommand {
 			sendInfo(admin, "Level must be a number");
 			return;
 		}
-		sendInfo(admin, PlayerBotService.getInstance().create(params[1], params[2], level, params[4], admin));
+		sendInfo(admin, BotCommands.create(params[1], params[2], level, params[4], admin));
 	}
 
 	private void populate(Player admin, String[] params) {
@@ -165,17 +145,15 @@ public class Bot extends AdminCommand {
 		// the race off the commander put a village of Elyos in Morheim, where every guard in sight is hostile to them. On contested ground, where the
 		// map has no single answer, each fort answers for itself — Teminon Elyos, Primum Asmodian — so one command populates both sides correctly.
 		// A race given here still overrides the lot, which is what you want when seeding an invasion.
-		sendInfo(admin, PlayerBotService.getInstance().populate(count, admin.getWorldId(), params.length > 2 ? params[2] : null));
+		sendInfo(admin, BotPopulator.populate(count, admin.getWorldId(), params.length > 2 ? params[2] : null));
 	}
 
 	/**
-	 * @return The map named after the command, or null for "everywhere". "here" is the map the commander is standing on, which is the same thing the
-	 *         service does with a null region — so it is translated rather than passed on, and nobody has to remember that a blank means two things.
+	 * @return Everything typed from that word on, joined, or null when nothing was typed. Map names have spaces in them, so "number Altgard" and
+	 *         "number Gelkmaros Plateau" both mean what they say. A bare "here" is for the service to resolve, once, for every command that takes a map.
 	 */
-	private String mapArgument(Player admin, String[] params) {
-		if (params.length < 2)
-			return null;
-		return params[1].equalsIgnoreCase("here") ? String.valueOf(admin.getWorldId()) : params[1];
+	private static String argument(String[] params, int from) {
+		return params.length > from ? String.join(" ", Arrays.copyOfRange(params, from, params.length)) : null;
 	}
 
 	private void withName(Player admin, String[] params, Function<String, String> action) {
