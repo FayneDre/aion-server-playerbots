@@ -287,7 +287,7 @@ public class BotGroupManager {
 	}
 
 	/** @return true if the monster is fighting this group: hitting or hating the bot or any member, close enough to matter and in sight. */
-	static boolean isEngagedWithTheGroup(Player bot, Npc npc) {
+	public static boolean isEngagedWithTheGroup(Player bot, Npc npc) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		return team != null && isWorthAssistingOn(bot, npc) && (npc.getAggroList().isHating(bot) || hatesAnyMember(npc, team.getMembers(), bot));
 	}

@@ -99,13 +99,22 @@ A cast roots a bot, so casters reposition between casts.
 
 0. **Measured**, apart from the "before" figures; see above.
 1. **The table and the geometry, no behaviour change.** *Built: `positioning/BotPosition`, `AggroZone`, `CombatSpots`, 20 tests; nothing calls them yet.* `BotPosition`, the spot function, the safety function, unit tests for each role on made up coordinates.
-2. **Melee behind, ranged back.** `chase` aims at the spot instead of the target for `BEHIND` and `RANGED`. In game: the share of melee swings from behind, the
+2. **Melee behind, ranged back.** *Built, behind `gameserver.playerbot.positioning` (default on). The "before" is the same server with it off: every 200 looks at a grouped melee or ranged bot in a fight, the log says how many were placed, per role (`Positioning BEHIND: 71 of 200 samples well placed`). A bot is placed when it is within 60 degrees of straight behind and in weapon reach (melee), or in the half behind the enemy and between 8 m and its reach (ranged).* `chase` aims at the spot instead of the target for `BEHIND` and `RANGED`. In game: the share of melee swings from behind, the
    distance of the ranged, both against the "before" figures taken first.
 3. **The healer.** The heal range band. In game: no member out of its reach, and no healer walking into the fight.
 4. **The tank.** The side it engages from is the one opposite the group, chosen as it closes in and kept. In game: the enemy's back to the group in a
    stabilised fight, as in his diagram.
 5. **Routes that respect aggro zones.** Until now only the destination is checked; the walk there may still cut through a pack's cone. The path search has no
    cost for ground, so this needs one, and it is the likeliest piece to be larger than it looks. Decided after 2 to 4 have been seen.
+
+## What step 2 does in the AI
+
+`PlayerBotAI.fight` asks `takeStation` first: for a grouped melee or ranged bot that is not placed, it walks to `BotStations.spotFor` instead of to the
+enemy, and a route under way is left alone for 1.5 s. A ranged bot that is placed and has nothing to cast now waits, where it used to walk up to the
+enemy (`holdsStation`). Where there is no spot, or none reachable, the old chase decides. The tank, the healer and every solo bot are untouched.
+
+One consequence to watch: a ranged class whose weapon reaches only 2.5 m (a spirit master's orb) now never auto attacks from 15 m, so it lives on its skills
+and on its mana. Before, it walked into melee to swing.
 
 ## Risks
 

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.ai.AIState;
 import com.aionemu.gameserver.ai.AITemplate;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -30,6 +31,8 @@ import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
+import com.aionemu.gameserver.playerbot.positioning.BotPosition;
+import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
@@ -59,6 +62,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * every attack tick turns a run into a stutter.
 	 */
 	private static final long CHASE_REROUTE_INTERVAL = 600;
+	/** How long a walk to a fight position is left alone before the place is worked out again. Longer than a chase: the place moves only when the enemy does. */
+	private static final long STATION_REROUTE_MILLIS = 1500;
 	/**
 	 * How long the bot waits after getting up before it swings, so the two do not arrive as one frame of the client's work. How long each posture
 	 * itself takes to draw is {@link BotPosture}'s business; this is the fight's own sequencing, which is why it stays here.
@@ -193,6 +198,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile float spotForX, spotForY;
 	private volatile long chaseStartTime;
 	private volatile long lastChaseRoute;
+	/** When the bot last set out for its place in a fight, so that a route under way is not replaced on every tick. */
+	private volatile long lastStationRoute;
 	/**
 	 * Whether this character is somebody's own rather than one the world made to fill a region. Read once: it is a fact about the character and does
 	 * not change while it is in the world.
@@ -661,6 +668,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 		if (followTheMark(bot, target))
 			return;
+		BotStations.sample(bot, target);
 
 		// idempotent, and deferred to here so it never overlaps the stand up animation. Drawing is an animation in its own right, and the tick below
 		// used to walk the bot off in the same instant it was sent: the slide the bot showed between getting up and setting off was those two frames
@@ -668,6 +676,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		posture.drawWeapon(target);
 		if (bot.getCastingSkill() != null) {
 			// casting roots a real player, so the bot neither moves nor starts another action until the cast is over
+		} else if (takeStation(target)) {
+			// walking to the place its class fights from, which is behind the enemy for melee and back from it for the rest; nothing is swung on the way
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
 			chaseStartTime = 0;
 			stopMoving();
@@ -676,6 +686,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		} else if (castFromAfar(target)) {
 			lastBlow = System.currentTimeMillis();
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
+		} else if (holdsStation(target)) {
+			// a ranged class in its place with nothing in reach to cast. Walking up to the enemy would be the chase this whole rule exists to replace, and
+			// the next tick would walk it straight back.
 		} else if (BotRole.of(bot) == BotRole.HEALER && bot.getCurrentTeam() != null) {
 			// Out of reach of anything it knows, and a healer does not walk closer: holding position beside the group is the whole of the job, and
 			// the surplus damage it was spending is not worth leaving it for. It waits instead; the group's own fight brings the target into range,
@@ -687,6 +700,38 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 
+	}
+
+	/**
+	 * Walks the bot to the place its class fights from, when it is not already there.
+	 * <p>
+	 * Only inside a group and only for the classes that stand behind or back: the tank and the healer have their own rules to come, and a bot alone
+	 * walks to what it is fighting as it always did. A route already under way is left to finish for a moment, because the enemy takes a step every
+	 * second and a bot re-aimed every time it does never gets anywhere.
+	 *
+	 * @return true while the bot is on its way, in which case this tick is spent. false when it is placed, has no spot to go to, or cannot get there:
+	 *         the old way then decides.
+	 */
+	private boolean takeStation(Creature target) {
+		Player bot = getOwner();
+		if (!PlayerBotConfig.POSITIONING || !BotStations.handles(bot) || BotStations.isWellPlaced(bot, target))
+			return false;
+		if (!(bot.getMoveController() instanceof BotMoveController moveController))
+			return false;
+		long now = System.currentTimeMillis();
+		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
+			return true;
+		Vector3f spot = BotStations.spotFor(bot, target);
+		if (spot == null)
+			return false;
+		lastStationRoute = now;
+		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
+	}
+
+	/** @return true if this is a ranged class standing where it should against the target, which then waits for something to cast rather than close in. */
+	private boolean holdsStation(Creature target) {
+		Player bot = getOwner();
+		return PlayerBotConfig.POSITIONING && BotStations.handles(bot) && BotPosition.of(bot) == BotPosition.RANGED && BotStations.isWellPlaced(bot, target);
 	}
 
 	/**

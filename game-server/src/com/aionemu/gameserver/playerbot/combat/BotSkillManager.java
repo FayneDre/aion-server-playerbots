@@ -31,6 +31,8 @@ import com.aionemu.gameserver.skillengine.model.SkillSubType;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.combat.playbook.ClassPlaybook;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
+import com.aionemu.gameserver.skillengine.properties.FirstTargetAttribute;
+import com.aionemu.gameserver.skillengine.properties.Properties;
 import com.aionemu.gameserver.skillengine.properties.TargetRelationAttribute;
 
 /**
@@ -666,6 +668,25 @@ public class BotSkillManager {
 			if (bot.getCastingSkill() == skill)
 				bot.getController().useChargeSkill(skill, System.currentTimeMillis() - skill.getCastStartTime());
 		}, Math.max(0, delay));
+	}
+
+	/**
+	 * @return How far the bot can reach an enemy from, in metres: the longest of its weapon and of the skills it could aim at one. A skill that adds the
+	 *         weapon's range to its own counts both, as the engine does. For where a ranged class stands: a sorcerer's orb reaches 2.5 m and its spells 25.
+	 */
+	public static float reach(Player bot) {
+		float weapon = bot.getGameStats().getAttackRange().getCurrent() / 1000f;
+		float reach = weapon;
+		for (var entry : bot.getSkillList().getAllSkills()) {
+			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
+			if (template == null || template.isPassive() || template.getProperties() == null || !isOffensive(bot, template))
+				continue;
+			Properties properties = template.getProperties();
+			if (properties.getFirstTarget() != FirstTargetAttribute.TARGET)
+				continue;
+			reach = Math.max(reach, properties.getFirstTargetRange() + (properties.isAddWeaponRange() ? weapon : 0));
+		}
+		return reach;
 	}
 
 	/**

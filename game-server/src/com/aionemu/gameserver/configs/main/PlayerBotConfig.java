@@ -21,4 +21,11 @@ public class PlayerBotConfig {
 	 */
 	@Property(key = "gameserver.playerbot.populate", defaultValue = "")
 	public static String POPULATE;
+
+	/**
+	 * Whether bots in a group stand where their class belongs in a fight: melee behind the enemy, ranged back from it. Off, they walk to the enemy as they
+	 * always did, which is what the positioning figures logged every few minutes are compared against.
+	 */
+	@Property(key = "gameserver.playerbot.positioning", defaultValue = "true")
+	public static boolean POSITIONING;
 }
