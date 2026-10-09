@@ -8,7 +8,7 @@
     a jar under a running JVM breaks it, because classes are loaded lazily.
 
 .PARAMETER MapId
-    The map to work on, or "all" to report totals across every map.
+    The map to work on, or "all" to report totals across every map. Several maps can be given, separated by commas, and are generated one after the other.
 
 .PARAMETER ServerRoot
     Root of the server installation. Defaults to the AION_SERVER_HOME environment variable.
@@ -16,6 +16,7 @@
 .EXAMPLE
     .\tools\navmesh.ps1 210010000
     .\tools\navmesh.ps1 all
+    .\tools\navmesh.ps1 110010000,400010000   # Sanctum and Reshanta, one after the other
 #>
 param(
     [string]$MapId,
@@ -50,8 +51,13 @@ try {
         exit $LASTEXITCODE
     }
     if (-not $MapId) { throw 'Give a map id, or -Obelisks.' }
-    & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $MapId
-    if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed (exit code $LASTEXITCODE)" }
+    # several maps at once, one after the other: 110010000,400010000
+    foreach ($id in $MapId -split ',') {
+        Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
+        & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim()
+        if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
+    }
+    Write-Host 'Done. Restart the game server to load the new meshes: .\tools\stop-server.ps1 then .\tools\start-server.ps1' -ForegroundColor Green
 } finally {
     Pop-Location
 }

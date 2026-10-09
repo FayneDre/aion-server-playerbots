@@ -178,3 +178,18 @@ Two rules follow, both now in the code:
 5. **Walkable ground comes in islands.** `NavmeshTool <mapId> components` colours them and says which one a spot is on. Poeta's playable valley is one island of 1071 by 1313 m; the rest of the map is other valleys, genuinely cut off by ground steeper than the 45° the engine itself refuses. A route between two islands does not exist, and no amount of searching will find one — checking this first saves hours, as it did here: a supposed pathfinding failure turned out to be a destination with no walkable ground at all.
 6. **A rough way through is not a promise.** The coarse grid calls a 4 m cell routable on a quarter of its ground, so it crosses places the detailed grid does not: a stream, a ledge, a gap erosion closed. Refinement therefore skips guide points it cannot reach, and the whole plan is bounded by a 250 ms deadline, because it runs on a movement thread and a hopeless route must fail fast rather than eventually. Beyond roughly 300 m that fragmentation wins, and the answer is fixed waypoints between regions rather than more search.
 7. **Flight.** Aion is three dimensional and a ground navmesh ignores it. Out of scope here; flying bots are a separate design.
+
+## Generating meshes (what to run)
+
+Meshes are not in the repository: each server installation generates its own into `<server>/game-server/data/navmesh`, from its own `data/geo`.
+
+```powershell
+mvn -q -pl game-server -am package -Dmaven.test.skip=true     # the tool runs from the built jar
+$env:AION_SERVER_HOME = 'D:\path\to\server'                   # once, if it is not set
+.\tools\navmesh.ps1 110010000,400010000                        # Sanctum and Reshanta, one after the other
+.\tools\navmesh.ps1 -Obelisks -MapId 110010000                 # can a bot resurrected there walk away?
+```
+
+Sanctum takes about 30 s and Reshanta under a minute, with a 4 GB heap (Reshanta uses under 3 GB; close what else you can). Both ship without a heightmap in
+the data, so they are built from placed meshes alone. Restart the game server afterwards: a mesh is opened when the first bot is on its map. The Cloister
+of Kaisinel (110020000) cannot be built, its ground is not in the data. Reshanta's obelisk check fails by design: its two obelisks are on separate islands.
