@@ -265,13 +265,22 @@ public class BotFlight {
 	 * @return true if the bot has taken off and the caller should let go of the body.
 	 */
 	public static boolean tryFlyTo(Player bot, Vector3f target) {
+		return ambientFlight(bot, target) == null;
+	}
+
+	/**
+	 * Flies a bot to a place it could have walked to, and says why not when it does not.
+	 *
+	 * @return Null when the bot has taken off, or the reason it stayed on the ground, for the caller to log.
+	 */
+	public static String ambientFlight(Player bot, Vector3f target) {
 		if (!refuelled(bot))
-			return false;
+			return bot.getName() + " has " + bot.getLifeStats().getCurrentFp() + " fp, under the half it keeps for choosing to fly";
 		String answer = flyTo(bot, target);
 		boolean flying = isInTheAir(bot);
 		if (!flying)
 			log.debug("Bot {} is not flying to {} {}: {}", bot.getName(), target.getX(), target.getY(), answer);
-		return flying;
+		return flying ? null : answer;
 	}
 
 	/**
@@ -302,7 +311,9 @@ public class BotFlight {
 		// Straight there or not at all. Flying over something was the other half of this and it is gone: the air along that path cannot be tested
 		// from here -- the engine's ray casts from the body's own position and nowhere else -- so it was flown on faith, and in a citadel full of
 		// towers the faith was misplaced. Reported from in game as bots that took off after a populate and flew into the buildings.
-		Vector3f approach = new Vector3f(ground.getX(), ground.getY(), ground.getZ() + LANDING_CLEARANCE);
+		// Above the landing, and never below where the body starts: a trip down to a lower place used to be refused for "no room above it", since the
+		// point above the landing was beneath the bot. It flies level and drops, which is what coming down onto a place from a height looks like.
+		Vector3f approach = new Vector3f(ground.getX(), ground.getY(), Math.max(ground.getZ(), bot.getZ()) + LANDING_CLEARANCE);
 		if (!airIsClear(bot, approach))
 			return bot.getName() + " has something in the way of " + Math.round(approach.getX()) + " " + Math.round(approach.getY()) + " "
 				+ Math.round(approach.getZ()) + ", and a flight it cannot see the whole of is one it does not take";

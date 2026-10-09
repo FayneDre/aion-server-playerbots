@@ -290,10 +290,14 @@ class BotDay {
 			// a trip long enough to be worth it, in about half the cases, and only where the air and the flight points allow: every refusal BotFlight
 			// can give is a quiet no, and the bot walks as it always did
 			float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), occupationDestination.getX(), occupationDestination.getY());
-			if (PlayerBotConfig.AMBIENT_FLIGHT && BotFlight.worthFlyingTo(distance, bot.getObjectId() + (int) occupationUntil)
-				&& BotFlight.tryFlyTo(bot, occupationDestination)) {
-				log.info("Bot {} flies {} m to its destination instead of walking", bot.getName(), Math.round(distance));
-				return true;
+			if (PlayerBotConfig.AMBIENT_FLIGHT && BotFlight.worthFlyingTo(distance, bot.getObjectId() + (int) occupationUntil)) {
+				String refusal = BotFlight.ambientFlight(bot, occupationDestination);
+				if (refusal == null) {
+					log.info("Bot {} flies {} m to its destination instead of walking", bot.getName(), Math.round(distance));
+					return true;
+				}
+				// said at info level because this is the line that says why nobody is flying; a trip is weighed once, so it is a few lines a minute
+				log.info("Bot {} walks its {} m trip: {}", bot.getName(), Math.round(distance), refusal);
 			}
 		}
 		if (!ai.returnToAnchor())
