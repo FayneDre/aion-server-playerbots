@@ -131,9 +131,6 @@ class BotErrands {
 	 */
 	boolean dressUp() {
 		Player bot = ai.getOwner();
-		// A player's own character keeps the gear its owner gave it: a piece found in a bag is not put on, and nothing is enchanted or socketed on the way
-		if (ai.isOwned())
-			return false;
 		if (BotEquipManager.isBusyDressing(bot))
 			return true;
 		// A piece can score higher and still be unwearable for good — a mace a priest has no mastery for, a piece for the other race — and nothing

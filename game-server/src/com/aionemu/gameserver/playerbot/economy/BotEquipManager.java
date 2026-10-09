@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.TaskId;
 import com.aionemu.gameserver.model.gameobjects.Item;
@@ -95,8 +96,12 @@ public class BotEquipManager {
 		// The one place everything a bot puts on goes through, which is why the enchanting hangs here rather than in the dressing: a piece created
 		// for a new character and a piece looted an hour later both deserve to be in the state its owner would have got it into, and hanging it off
 		// the creation would have left every looted replacement at +0 — a visible downgrade from the gear it was replacing.
-		BotGearRefiner.refine(bot, worn);
-		BotGearRefiner.socket(bot, worn);
+		// Not for a player's own character. It may put on a piece it found when that piece is better than what it wears, which is the dressing, but it is
+		// never enchanted or socketed: that is the owner's to do. A bot being created has no ai yet, so it is not taken for owned here.
+		if (!(bot.getAi() instanceof PlayerBotAI ai && ai.isOwned())) {
+			BotGearRefiner.refine(bot, worn);
+			BotGearRefiner.socket(bot, worn);
+		}
 		showAppearance(bot);
 		return true;
 	}
