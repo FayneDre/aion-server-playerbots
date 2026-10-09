@@ -83,7 +83,8 @@ stacked islands of the Abyss, which is why it must be fixed before Reshanta.
 
    The three first rows matter when those maps are populated; bots there are protected by the landing check and by binding to a reachable obelisk, but a
    map whose own obelisk is a trap says something about the mesh or the data. Look at each with `seams` before settling.
-5. **Then** Reshanta and the other new meshes, with the fixed generator.
+5. **Then** the other new meshes. Reshanta is built (98 MB); its audit lists two failing obelisks, one per faction, on separate islands: a false alarm for
+   a map whose obelisks are meant to be apart, to be settled when flight can cross.
 
 ## The Verteron pocket is not a rule that is too strict
 

@@ -104,9 +104,10 @@ Pandaemonium together** — against 4352 hostiles, median level 33 and ninth dec
 
 Less blocked than it looks, and less than it was. The mesh labels regions **per surface** rather than per column, which is exactly what stacked
 islands need, so civic and field presence on each island is ordinary work. For population the director's teleport already covers the crossing between
-islands, and bots now fly — what is missing for gameplay is only the part flight cannot do yet, a route through open air over a gap. Before any of it,
-**Reshanta's mesh, which has not been generated**: it is the largest map in the game, so budget the generation rather than assuming it is one more run
-of the tool.
+islands, and bots now fly — what is missing for gameplay is only the part flight cannot do yet, a route through open air over a gap. **Reshanta's mesh now exists**
+(2026-10-09, from placed meshes alone, no heightmap in the data): 98 MB, 8192 by 8192 columns, 67 million surfaces, generated in under a minute with 3 GB of
+heap. 96% of the map's npc spots (3176 of 3293) stand on ground, and the coarse map shows the central ring and the islands as in game. The obelisk audit
+fails both of its obelisks, which stand on separate islands (one per faction, nothing between them but air): expected until flight can cross.
 
 ## Wild PvP and rifts
 
@@ -121,7 +122,7 @@ makes open PvP worth anything. That is intra-zone navigation in contested ground
 
 ## RvR and sieges
 
-The far goal. It waits on Reshanta — its mesh, and a flight that can cross between islands — rather than on flight itself, which exists now.
+The far goal. It waits on a flight that can cross between Reshanta's islands (its mesh exists now) rather than on flight itself, which exists now.
 
 Its supply line is already designed: bots that reach the level cap become the elders the endgame needs, which is what turns the upward drift from a
 problem into a feature ([population.md](population.md)). Panesterra's five battlefields hold **zero civilians** — they are not places to live, so
@@ -172,12 +173,12 @@ Done, and moved to [population-churn-followup.md](population-churn-followup.md):
    watched in game: a landing check, a rough route that keeps to its level, binding to a reachable obelisk ([navigation-stuck-plan.md](navigation-stuck-plan.md)); the
    obelisk audit exists (`tools/navmesh.ps1 -Obelisks`: 10 of 88 fail, listed in the plan) and is to be run on every new mesh, Reshanta first.
 
-1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **25 meshes exist** (`data/navmesh/*.nav`). `tools/navmesh.ps1
+1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **26 meshes exist** (`data/navmesh/*.nav`). `tools/navmesh.ps1
    <mapId>`, then `-Obelisks` ([navigation-stuck-plan.md](navigation-stuck-plan.md)). **Sanctum** (110010000) has one since 2026-10-09, built from placed meshes
    alone because the data ships no heightmap for it (the generator now accepts that, sizing the grid from `world_maps.xml`): 308 of its 352 npc spots stand on
    ground. **The Cloister of Kaisinel** (110020000) cannot have one: its geometry is 10 KB and its ground is a heightmap the data does not hold, so the
-   mesh came out with 304 routable cells and was thrown away (a nearly empty mesh is worse than none: every route it answers is a refusal). Reshanta and the
-   four Panesterra fields lack a heightmap too and can be tried the same way; Reshanta needs a 8192 by 8192 grid, so budget the memory. A mesh is not a
+   mesh came out with 304 routable cells and was thrown away (a nearly empty mesh is worse than none: every route it answers is a refusal). Reshanta was built the
+   same way (see the Abyss section); the four Panesterra fields lack a heightmap too and can be tried next. A mesh is not a
    population: a map has inhabitants only where `//bot populate` or the populate setting has put some, and the meshes open lazily.
 2. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the mesh does not answer a bot can still wedge itself.
 3. **Walkable ground comes in islands**, and a route between two of them does not exist. `NavmeshTool <mapId> components` says so.

@@ -153,7 +153,7 @@ model.
 `GENERAL_DARK` of `PC_DARK` — so each settlement carries its own faction and a hunting ground takes it from the nearest one. A faction's region answers
 the same everywhere and is unchanged; contested ground (Reshanta, Silentera, the Idian Depths, Kaldor, Levinshor, Panesterra) has no single answer, so
 one `//bot populate` fills Teminon with Elyos and Primum with Asmodians. Balaurea is **not** contested, and the startup pass still covers the faction
-regions only — Reshanta has no mesh and is the largest map in the game.
+regions only — Reshanta has had a mesh since 2026-10-09 and is the largest map in the game.
 
 Giving the countryside its own share is also what took the weight off the capitals. Hunting country is on another scale from settlement —
 Brusthonin's grounds cover 3.3 million m² against its villages' 76 thousand — so a share for the field moved people into the regions without making
