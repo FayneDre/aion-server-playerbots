@@ -168,6 +168,9 @@ Done, and moved to [population-churn-followup.md](population-churn-followup.md):
 
 ## Known limits, in order of how much they will bite
 
+0. **Bots resurrect into pockets the mesh does not join** — fortress obelisks mostly — and are teleported home when they cannot walk off. Analysed, not
+   fixed: [navigation-stuck-plan.md](navigation-stuck-plan.md). Fix before generating Reshanta.
+
 1. **Only maps with a generated mesh are planned on.** 28 maps are worth populating and **24 meshes exist** (`data/navmesh/*.nav`, 23 distinct
    names — Idian Depths has one per faction). `tools/navmesh.ps1 <mapId>`. This no longer paces everything, but two of the absentees are named
    throughout these docs as if they were ready: **Sanctum** (110010000) and **Reshanta** (400010000) have no mesh, so no bot plans a route on

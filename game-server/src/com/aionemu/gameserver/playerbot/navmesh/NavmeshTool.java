@@ -52,6 +52,10 @@ public class NavmeshTool {
 			reportComponents(Integer.parseInt(args[0]), probes);
 			return;
 		}
+		if (args.length == 3 && args[1].equals("stuck")) {
+			reportStuck(Integer.parseInt(args[0]), Path.of(args[2]));
+			return;
+		}
 		if (args.length == 2 && args[1].equals("audit")) {
 			audit(Integer.parseInt(args[0]));
 			return;
@@ -71,6 +75,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> <text>    inspect the props whose model name contains that text");
 			System.out.println("       NavmeshTool <mapId> path <x1> <y1> [z1] <x2> <y2> [z2]   plan a route and draw it");
 			System.out.println("       NavmeshTool <mapId> components   find what is reachable from what");
+			System.out.println("       NavmeshTool <mapId> stuck <file>   where bots reported being unable to move: on footing or inside geometry");
 			System.out.println("       NavmeshTool <mapId> audit        walk sample routes and report how far they wander");
 			return;
 		}
@@ -476,6 +481,42 @@ public class NavmeshTool {
 		}
 		System.out.printf("Map %d at %.1f %.1f:%n", mapId, x, y);
 		describe(field, x, y);
+	}
+
+	/**
+	 * Takes the places where bots reported being unable to move at all, one "x y" pair per line, and says what the map thinks of each.
+	 * <p>
+	 * The question it answers is which half of the fault each report belongs to. A bot stuck <b>on ground the map calls walkable</b> was let in by
+	 * the mesh, or by the reactive layer stepping round something the mesh does not know. A bot stuck <b>where the map has no footing at all</b> is
+	 * inside geometry, and a map cannot be blamed for a body that is not on it: it was put there, or it slipped in off the mesh.
+	 * Reports are grouped by 10 m so a recurring spot reads as one line.
+	 */
+	private static void reportStuck(int mapId, Path file) throws IOException {
+		Heightfield field = HeightfieldBuilder.build(mapId);
+		Map<String, int[]> spots = new TreeMap<>(); // per 10 m square: reports, reports on footing, reports with no footing at all
+		int onFooting = 0, inside = 0, outside = 0;
+		for (String line : Files.readAllLines(file)) {
+			String[] parts = line.trim().split("\s+");
+			if (parts.length < 2)
+				continue;
+			float x = Float.parseFloat(parts[0]), y = Float.parseFloat(parts[1]);
+			int cellX = (int) (x / Heightfield.CELL_SIZE), cellY = (int) (y / Heightfield.CELL_SIZE);
+			if (cellX < 0 || cellY < 0 || cellX >= field.width() || cellY >= field.height()) {
+				outside++;
+				continue;
+			}
+			boolean footing = field.hasFooting(cellX, cellY);
+			int[] spot = spots.computeIfAbsent((int) (x / 10) * 10 + " " + (int) (y / 10) * 10, k -> new int[3]);
+			spot[0]++;
+			spot[footing ? 1 : 2]++;
+			if (footing)
+				onFooting++;
+			else
+				inside++;
+		}
+		System.out.printf("Map %d: %d reports on walkable ground, %d where the map has no footing, %d outside the map%n", mapId, onFooting, inside, outside);
+		spots.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue()[0], a.getValue()[0])).limit(15)
+			.forEach(e -> System.out.printf("  %-10s %3d reports, %3d on footing, %3d with none%n", e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2]));
 	}
 
 	/** Prints the column at that spot, and how much of the ground around it a bot may walk on. */
