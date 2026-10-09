@@ -60,6 +60,11 @@ public final class BotStations {
 		return bot.getCurrentTeam() != null && (role == BotPosition.BEHIND || role == BotPosition.RANGED);
 	}
 
+	/** @return true if this is a healer in a group, whose place is worked out outside the fight loop since it does not join the attack. */
+	public static boolean handlesHealer(Player bot) {
+		return bot.getCurrentTeam() != null && BotPosition.of(bot) == BotPosition.HEALER;
+	}
+
 	/** @return true if the bot stands where its class does against this enemy. */
 	public static boolean isWellPlaced(Player bot, Creature enemy) {
 		return switch (BotPosition.of(bot)) {
@@ -68,6 +73,7 @@ public final class BotStations {
 				double distance = PositionUtil.getDistance(bot, enemy, true);
 				yield PositionUtil.isBehind(bot, enemy, BACK_HALF_DEGREES) && distance >= CombatSpots.MIN_STANDOFF && distance <= BotSkillManager.reach(bot);
 			}
+			case HEALER -> CombatSpots.isHealerPlaced(situationOf(bot, enemy, otherMembers(bot)), BotSkillManager.healReach(bot));
 			default -> true;
 		};
 	}
@@ -81,10 +87,12 @@ public final class BotStations {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		if (team == null)
 			return null;
-		float reach = role == BotPosition.BEHIND ? bot.getGameStats().getAttackRange().getCurrent() / 1000f : BotSkillManager.reach(bot);
-		double facing = Math.toRadians(PositionUtil.convertHeadingToAngle(enemy.getHeading()));
-		CombatSpots.Situation situation = new CombatSpots.Situation(new Vector3f(enemy.getX(), enemy.getY(), enemy.getZ()), (float) Math.cos(facing),
-			(float) Math.sin(facing), groupCentre(bot, team), List.of(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), bot.getLevel(), zonesAround(bot, enemy));
+		float reach = switch (role) {
+			case BEHIND -> bot.getGameStats().getAttackRange().getCurrent() / 1000f;
+			case HEALER -> BotSkillManager.healReach(bot);
+			default -> BotSkillManager.reach(bot);
+		};
+		CombatSpots.Situation situation = situationOf(bot, enemy, role == BotPosition.HEALER ? otherMembers(bot) : List.of());
 		Vector3f spot = CombatSpots.spotFor(role, situation, reach);
 		if (spot == null)
 			return null;
@@ -97,7 +105,7 @@ public final class BotStations {
 	 * off: the figures with it off are what the figures with it on are judged against.
 	 */
 	public static void sample(Player bot, Creature enemy) {
-		if (!handles(bot))
+		if (!handles(bot) && !handlesHealer(bot))
 			return;
 		BotPosition role = BotPosition.of(bot);
 		AtomicInteger[] counts = samples.get(role);
@@ -107,6 +115,22 @@ public final class BotStations {
 		if (total >= REPORT_EVERY && counts[0].compareAndSet(total, 0)) {
 			log.info("Positioning {}: {} of {} samples well placed", role, counts[1].getAndSet(0), total);
 		}
+	}
+
+	private static CombatSpots.Situation situationOf(Player bot, Creature enemy, List<Vector3f> members) {
+		double facing = Math.toRadians(PositionUtil.convertHeadingToAngle(enemy.getHeading()));
+		return new CombatSpots.Situation(new Vector3f(enemy.getX(), enemy.getY(), enemy.getZ()), (float) Math.cos(facing), (float) Math.sin(facing),
+			groupCentre(bot, bot.getCurrentTeam()), members, new Vector3f(bot.getX(), bot.getY(), bot.getZ()), bot.getLevel(), zonesAround(bot, enemy));
+	}
+
+	/** @return Where the other living members of the group stand, on the bot's map. */
+	private static List<Vector3f> otherMembers(Player bot) {
+		List<Vector3f> others = new ArrayList<>();
+		for (Player member : bot.getCurrentTeam().getMembers()) {
+			if (!member.equals(bot) && !member.isDead() && member.getWorldId() == bot.getWorldId())
+				others.add(new Vector3f(member.getX(), member.getY(), member.getZ()));
+		}
+		return others;
 	}
 
 	private static Vector3f groupCentre(Player bot, TemporaryPlayerTeam<?> team) {

@@ -671,6 +671,20 @@ public class BotSkillManager {
 	}
 
 	/**
+	 * @return How far the bot's heals reach a group mate, in metres, or 0 when it has none that can be aimed at somebody else. The healer's whole place in a
+	 *         fight is within this of everyone.
+	 */
+	public static float healReach(Player bot) {
+		float reach = 0;
+		for (var entry : bot.getSkillList().getAllSkills()) {
+			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
+			if (template != null && !template.isPassive() && template.getProperties() != null && isHeal(bot, template) && reachesOthers(template))
+				reach = Math.max(reach, template.getProperties().getFirstTargetRange());
+		}
+		return reach;
+	}
+
+	/**
 	 * @return How far the bot can reach an enemy from, in metres: the longest of its weapon and of the skills it could aim at one. A skill that adds the
 	 *         weapon's range to its own counts both, as the engine does. For where a ranged class stands: a sorcerer's orb reaches 2.5 m and its spells 25.
 	 */

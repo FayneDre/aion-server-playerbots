@@ -373,8 +373,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// The tank chooses what the group fights, so it marks before it looks for something to assist: with the mark up it assists its own choice
 		if (BotRole.of(getOwner()) == BotRole.TANK)
 			BotMarks.markWeakestIfNone(getOwner());
-		Creature assisted = BotRole.of(getOwner()) == BotRole.HEALER ? null : BotGroupManager.targetToAssist(getOwner());
+		boolean healer = BotRole.of(getOwner()) == BotRole.HEALER;
+		Creature assisted = healer ? null : BotGroupManager.targetToAssist(getOwner());
 		if (assisted == null) {
+			if (healer && takeHealerStation())
+				return;
 			// Deliberately no exception for a tank. "Engages first" means first into the fight the group has chosen, not free to choose one: a bot
 			// that pulls brings a second mob into a fight nobody asked for, and a tank pulling is the worst version of it because the rest of the
 			// group then assists it. Starting a fight stays the player's.
@@ -722,6 +725,36 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
 			return true;
 		Vector3f spot = BotStations.spotFor(bot, target);
+		if (spot == null)
+			return false;
+		lastStationRoute = now;
+		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
+	}
+
+	/**
+	 * Puts a healer where it can reach everybody and nothing can reach it, while the group is fighting.
+	 * <p>
+	 * A healer does not take part in the fight loop, so this runs on the decision tick instead, in place of walking back to its slot beside the leader.
+	 * Standing where it should is the answer too: it holds, and does not drift to the formation and back.
+	 *
+	 * @return true if the bot is placed or on its way, in which case the tick is spent. false when there is no fight or no spot: the formation decides.
+	 */
+	private boolean takeHealerStation() {
+		Player bot = getOwner();
+		if (!PlayerBotConfig.POSITIONING || !BotStations.handlesHealer(bot))
+			return false;
+		Creature fight = BotGroupManager.targetToAssist(bot);
+		if (fight == null)
+			return false;
+		BotStations.sample(bot, fight);
+		if (BotStations.isWellPlaced(bot, fight))
+			return true;
+		if (!(bot.getMoveController() instanceof BotMoveController moveController))
+			return false;
+		long now = System.currentTimeMillis();
+		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
+			return true;
+		Vector3f spot = BotStations.spotFor(bot, fight);
 		if (spot == null)
 			return false;
 		lastStationRoute = now;

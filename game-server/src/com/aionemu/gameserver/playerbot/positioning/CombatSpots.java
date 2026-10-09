@@ -34,6 +34,10 @@ public final class CombatSpots {
 	static final float MIN_STANDOFF = 8;
 	/** Nearest a healer comes: it prefers to be out of the area attacks, but not at the price of a member out of reach. */
 	static final float MIN_HEALER_STANDOFF = 4;
+	/** Nearest to the enemy a healer may be and still count as placed. */
+	static final float HEALER_PLACED_STANDOFF = 6;
+	/** How much of its heal's reach a healer may use up before it counts as too far from somebody: less than {@link #REACH_MARGIN} keeps in hand. */
+	static final float HEALER_PLACED_MARGIN = 1;
 	/** How much nearer each further ring is. */
 	static final float RING_STEP = 3;
 	/** A melee bot stands at this share of its weapon's range, so that a small step by the enemy does not take it out of reach. */
@@ -89,6 +93,24 @@ public final class CombatSpots {
 				return best; // the first ring that has anything is the one wanted: a nearer one is only a fallback
 		}
 		return null;
+	}
+
+	/**
+	 * @return true if a healer standing where the situation says it does is where a healer belongs: in the half behind the enemy, out of melee, and within
+	 *         reach of every member. Looser than the spot it would be sent to, so that a healer that has arrived is always placed and one that has drifted
+	 *         a little is not walked back for it.
+	 */
+	public static boolean isHealerPlaced(Situation s, float reach) {
+		if (reach <= 0 || s.members().isEmpty())
+			return true; // nothing it could heal, or nobody to heal: there is no place to be wrong about
+		double dx = s.from().getX() - s.enemy().getX(), dy = s.from().getY() - s.enemy().getY();
+		if (Math.hypot(dx, dy) < HEALER_PLACED_STANDOFF || dx * s.facingX() + dy * s.facingY() > 0)
+			return false;
+		for (Vector3f member : s.members()) {
+			if (Math.hypot(s.from().getX() - member.getX(), s.from().getY() - member.getY()) > reach - HEALER_PLACED_MARGIN)
+				return false;
+		}
+		return true;
 	}
 
 	/** @return The rings to try, in the order to try them. */

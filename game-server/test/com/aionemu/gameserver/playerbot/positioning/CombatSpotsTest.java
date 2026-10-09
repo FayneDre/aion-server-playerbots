@@ -146,4 +146,44 @@ class CombatSpotsTest {
 
 		assertNull(CombatSpots.spotFor(BotPosition.BEHIND, noFacing, 2f));
 	}
+
+	private static Situation healerAt(Vector3f from, List<Vector3f> members) {
+		return new Situation(ENEMY, 1, 0, at(-12, 0), members, from, 40, List.of());
+	}
+
+	@Test
+	void aHealerBehindTheEnemyAndInReachOfEveryoneIsPlaced() {
+		assertTrue(CombatSpots.isHealerPlaced(healerAt(at(-14, 0), List.of(at(-10, 5), at(3, 0))), 25f));
+	}
+
+	@Test
+	void aHealerInFrontOfTheEnemyIsNotPlaced() {
+		assertFalse(CombatSpots.isHealerPlaced(healerAt(at(10, 0), List.of(at(-10, 5))), 25f));
+	}
+
+	@Test
+	void aHealerInMeleeRangeIsNotPlaced() {
+		assertFalse(CombatSpots.isHealerPlaced(healerAt(at(-3, 0), List.of(at(-10, 5))), 25f));
+	}
+
+	@Test
+	void aHealerOutOfReachOfOneMemberIsNotPlaced() {
+		assertFalse(CombatSpots.isHealerPlaced(healerAt(at(-14, 0), List.of(at(-10, 5), at(-14, 30))), 25f));
+	}
+
+	@Test
+	void aHealerWithNothingToHealOrNobodyToHealHasNoPlaceToBeWrongAbout() {
+		assertTrue(CombatSpots.isHealerPlaced(healerAt(at(10, 0), List.of()), 25f), "nobody to heal");
+		assertTrue(CombatSpots.isHealerPlaced(healerAt(at(10, 0), List.of(at(-10, 5))), 0f), "no heal that reaches anybody");
+	}
+
+	@Test
+	void theSpotAHealerIsSentToIsAlwaysPlaced() {
+		List<Vector3f> members = List.of(at(-10, 8), at(-12, -6), at(3, 0));
+		Situation situation = healerAt(at(-14, 0), members);
+		Vector3f spot = CombatSpots.spotFor(BotPosition.HEALER, situation, 25f);
+
+		assertNotNull(spot);
+		assertTrue(CombatSpots.isHealerPlaced(new Situation(ENEMY, 1, 0, at(-12, 0), members, spot, 40, List.of()), 25f), "arriving must end the walk");
+	}
 }
