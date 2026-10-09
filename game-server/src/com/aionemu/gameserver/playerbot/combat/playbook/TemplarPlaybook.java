@@ -130,12 +130,20 @@ final class TemplarPlaybook implements ClassPlaybook {
 			if (move.group.equals(template.getGroup()))
 				return !move.groupOnly || bot.getCurrentTeam() != null;
 		}
-		if (FORBIDDEN_GROUPS.contains(template.getGroup()))
+		if (isForbidden(template.getGroup()))
 			return true;
 		// Area attacks in a group: the templar's own roar is the one that is wanted and is a move above. The rest hit things nobody asked to be hit, and pull
 		// them onto a group that is holding one target.
 		Properties properties = template.getProperties();
 		return bot.getCurrentTeam() != null && properties != null && isAreaAttack(properties.getTargetRelation(), properties.getTargetType());
+	}
+
+	/**
+	 * @return true if the skill's group is one the guide says never to cast. Null-safe, because most skill templates have no group at all and an immutable
+	 *         {@code Set.of} refuses to be asked about null: asking it through the claim check threw on every decision tick of every templar.
+	 */
+	static boolean isForbidden(String group) {
+		return group != null && FORBIDDEN_GROUPS.contains(group);
 	}
 
 	/** @return true if the skill is aimed at an area of enemies, which is what the guide advises against in a group. */

@@ -184,4 +184,11 @@ class TemplarPlaybookTest {
 		assertEquals(java.util.List.of("KN_RECOVER", "KN_SENTINEL", "KN_DESTRUCTSHIELD"), new TemplarPlaybook().preferredStigmas(true));
 		assertTrue(ClassPlaybook.NONE.preferredStigmas(false).isEmpty(), "a class with no opinion leaves the fitter to rank by role and power");
 	}
+
+	@Test
+	void aSkillWithNoGroupIsNotForbiddenAndDoesNotThrow() {
+		assertFalse(TemplarPlaybook.isForbidden(null), "most templates state no group");
+		assertTrue(TemplarPlaybook.isForbidden("KN_GRANDPROTECTION"));
+		assertFalse(TemplarPlaybook.isForbidden("KN_STONEBODY"));
+	}
 }
