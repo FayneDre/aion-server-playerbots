@@ -188,6 +188,14 @@ public class Navmesh {
 			header.capacity() + coarseBytes + directory.capacity());
 	}
 
+	/**
+	 * Lets go of the file. In the server a map lives as long as the process does and nothing calls this; it exists so that a mesh written for a test
+	 * can be deleted again, which Windows refuses while the file is open.
+	 */
+	public void close() throws IOException {
+		channel.close();
+	}
+
 	public int mapId() {
 		return mapId;
 	}
