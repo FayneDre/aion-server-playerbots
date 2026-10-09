@@ -1,7 +1,7 @@
 # Templar: implementation plan
 
 Plan, not built. Source: The guide's document "Templier 101 — Rôle du templier dans un groupe" (four pages, in French). It describes how a templar
-should play **in a group**; solo play is not covered by it. What the module does for a tank today is in [group-roles.md](group-roles.md) and
+should play in a group; the guide confirmed its defensive rules hold solo as well. What the module does for a tank today is in [group-roles.md](group-roles.md) and
 [combat-skills.md](combat-skills.md); this file is only the distance between the two.
 
 ## What the guide asks for, mapped to the data
@@ -12,13 +12,13 @@ code should match on. Names below are the English client names found in `skill_t
 | The guide | Client name | `group` | From | Cooldown | Notes from the data |
 |---|---|---|---|---|---|
 | Provoquer | Taunt | `WA_PROVOKE` | 10 | 10 s | `hostileup` on one target, range 15 |
-| Capture | Aether Leash | `KN_STUNNINGSNACHER` | 16 | 30 s | **No `hostileup`.** Damage + snare + sub effect 8441 `pulled`. Not a taunt as far as the engine is concerned |
+| Capture | Aether Leash | `KN_STUNNINGSNACHER` | 16 | 30 s | A taunt per the guide (tooltip: "increasing its wrath toward you"). In the data: damage, snare and sub effect 8441 `pulled`, **no `hostileup`**, so the BOOSTHATE test cannot see it |
 | Rugissement narquois | Provoking Roar | `KN_MASSIVEPROVOKE` | 25 | 12 s | Centred on the caster, up to 6 enemies, 8 m, `hostileup` 1151 |
 | Saint Châtiment | Empyrean Chastisement | `KN_ABYSALJUDGEMENT` | 10 | 6 s | Damage, **costs 2000 DP** |
 | Armure empyréenne | Empyrean Armor | `KN_STONEBODY` | 13 | 300 s | Heals 25 %, then +HP buff for 180 s |
 | Dévotion inébranlable | Unwavering Devotion | `WA_STEADINESS` | 28 | 180 s | +800 stun/stumble resistance for 90 s |
 | Main de la guérison | Hand of Healing | `KN_DIVINEHAND` | 31 | 1800 s | Heals 100 %, **costs 2000 DP** |
-| Peau de fer ("peu de pierre") | Iron Skin | `KN_IRONBODY` | 40 | 180 s | Shield; needs a weapon in hand |
+| Peau de fer | Iron Skin | `KN_IRONBODY` | 40 | 180 s | Shield; needs a weapon in hand |
 | Dissipation de choc | Remove Shock I | `ALL_SHOCKREFLECT` | 40 | 60 s | Chain skill: only castable while stunned, staggered, stumbling, spinning or airborne |
 | Rafraîchir l'esprit | Refresh Spirit | `KN_PROTECTPROUD` | 48 | 60 s | Chain skill, 1.5 s after Remove Shock; heals 25 % |
 | Effet de l'esprit têtu (not to use) | Stubborn Spirit | `KN_MOVINGSTANCE` | 10 | — | Toggle stance |
@@ -30,9 +30,10 @@ an Asmodian templar before anything depends on it.
 
 ## What exists, and where it disagrees with the document
 
-**Group only.** The document is about group play, so everything below applies to a templar *in a group* and nothing changes for a solo one: the
-generic rules stay as they are there (the same line [group-roles.md](group-roles.md) already draws). The playbook is not consulted without a team.
-The disagreements that follow are therefore disagreements in a group.
+**Which rules need a group.** The guide confirmed the defensive rules hold when the templar is alone too, so the playbook splits in two. *Defensives*
+(health thresholds, DP, crowd control) are consulted solo and in a group, and replace the generic defensive and heal rules for a templar either way.
+*Aggro* (taunts, peeling, Roar, marking) is group play by nature and is consulted only with a team; a solo templar taunting the monster already
+hitting it would be a wasted cast, which is what the existing rule says.
 
 - `PlayerBotAI.useBestSkill` already prefers a taunt in a group (`isTaunt`, `BOOSTHATE`) and pulls back a monster hitting a mate
   (`BotGroupManager.enemyLooseOnAMate`).
@@ -53,8 +54,7 @@ The engine has it: `TemporaryPlayerTeam.updateBrand(brandId, targetObjectId)` st
 Needs one small core change: `targetIdsByBrandId` is `protected` with no reader, so the tank cannot ask whether a mark exists. A
 `getBrandedTarget(int brandId)` on `TemporaryPlayerTeam` is the whole patch, and goes in `playerbot-architecture.md` with the other two.
 
-Rules, as written: one mark at a time; an existing mark is never moved (so a human leader's mark wins); the tank marks the enemy with the **least
-HP** at engagement; when the marked one dies, it marks the next lowest. The group side is the cheap half: `targetToAssist` looks at the mark first,
+Rules, as confirmed: one skull at a time, other kinds of mark being ignored; an existing skull is never moved or replaced (so a human leader's wins); the tank marks the enemy with the **least absolute HP** at engagement; when the marked one dies, it marks the next lowest. The group side is the cheap half: `targetToAssist` looks at the mark first,
 so every bot in the group follows it, and so does any real player who looks at the skull.
 
 ## Design: a playbook per class
@@ -70,14 +70,14 @@ that can be checked without a world can have its thresholds argued about in a te
 
 ## Milestones, in verifiable order
 
-1. **Playbook seam, no behaviour change.** Consulted only when the bot is in a team. Interface, `Situation`, the templar playbook returning "nothing to say". Done when the existing tests
+1. **Playbook seam, no behaviour change.** Interface, `Situation`, the templar playbook returning "nothing to say". Done when the existing tests
    pass and a templar plays as before.
 2. **Defensives by the document.** Hand of Healing at < 20 % health with 2000 DP; Empyrean Armor under 75 %; Iron Skin under 50 % while Armor is
    not up; and the generic defensive and heal rules told to leave these three alone. Chastisement used on cooldown from 10 to 30 while DP is
    2000 or more, and not from 31 so the points are kept for Hand of Healing. Unit tests for every threshold. In game: a log line per use with
    health and DP, over a dozen fights.
 3. **Aggro as the guide describes it.** Roar on cooldown whenever an enemy is on the group; Taunt/Capture only to peel (an enemy whose victim is
-   not the tank), preferring whichever is ready; Capture recognised by its `pulled` effect rather than `BOOSTHATE`. Measure before and after:
+   not the tank), preferring whichever is ready; Capture recognised by its `pulled` effect rather than `BOOSTHATE` (confirmed a taunt by the guide's author). Measure before and after:
    times a monster's most hated target is not the tank during a three monster pull.
 4. **Marking.** The core getter, the tank's marking, `targetToAssist` reading the mark, clearing it on death. In game: a group of three with a
    cleric and a gladiator, watching all three follow the skull.
@@ -88,10 +88,12 @@ that can be checked without a world can have its thresholds argued about in a te
 6. **Exclusions and mana.** No Stubborn Spirit, no Bodyguard, no area skill other than Roar for a tank in a group. Then watch mana across a long
    instance before deciding whether the rest rule may be skipped for a tank.
 
-## Questions for the guide's author
+## Answered by the guide's author
 
-1. **Capture** is a pull with damage in the data and gives no extra hate by itself. Is it meant as a taunt because the pull puts the monster on the
-   tank, or does he expect more from it?
-2. "Peu de pierre" and "peau de fer" read as the same skill (Iron Skin, 3 min, level 40). Confirm.
-3. ~~Do the defensive rules apply when alone?~~ Settled: no. The document is about groups, and solo play keeps the generic rules.
-5. At engagement, "least HP" means current HP, not percentage. The plan assumes current, since a low absolute number dies first.
+1. **Capture is a taunt** (tooltip: "increasing its wrath toward you"), although the data carries no `hostileup` for it. Open on our side: whether the
+   pull alone puts the monster on the tank in the engine. Milestone 3 measures it before relying on it.
+2. **"Peu de pierre" was a slip for "peau de fer"** (Iron Skin).
+3. **The defensive rules hold solo too.** Aggro stays group only.
+4. **Only the skull counts as a mark.** Another kind of mark present does not stop the tank placing the skull; an existing skull is never moved or
+   replaced, a human leader's included. So the core getter is `getBrandedTarget(14)`.
+5. **"Least HP" is absolute**, not a percentage.
