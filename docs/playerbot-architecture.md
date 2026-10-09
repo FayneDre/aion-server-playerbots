@@ -67,6 +67,11 @@ com.aionemu.gameserver.playerbot/
     BotSkillManager             Cooldown/MP/range-aware skill selection and casting
     playbook/                   ClassPlaybook + BotPlaybooks: what one class does beyond the generic order, consulted first (templar only so far)
 
+  positioning/
+    BotPosition                 Where each class stands in a group fight: FRONT, BEHIND, RANGED, HEALER, NONE
+    AggroZone                   What one monster notices, by the engine's own range, cone, short radius and ten level rule
+    CombatSpots                 Pure geometry: the spot a role should stand on, from numbers alone (not wired into the AI yet)
+
   movement/
     BotMoveController           extends PlayerMoveController — legs, detours, stuck detection
     BotGeoHelper                Corridor probing and sidestep search over GeoService

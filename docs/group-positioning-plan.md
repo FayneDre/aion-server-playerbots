@@ -98,7 +98,7 @@ A cast roots a bot, so casters reposition between casts.
 ## Milestones, in verifiable order
 
 0. **Measured**, apart from the "before" figures; see above.
-1. **The table and the geometry, no behaviour change.** `BotPosition`, the spot function, the safety function, unit tests for each role on made up coordinates.
+1. **The table and the geometry, no behaviour change.** *Built: `positioning/BotPosition`, `AggroZone`, `CombatSpots`, 20 tests; nothing calls them yet.* `BotPosition`, the spot function, the safety function, unit tests for each role on made up coordinates.
 2. **Melee behind, ranged back.** `chase` aims at the spot instead of the target for `BEHIND` and `RANGED`. In game: the share of melee swings from behind, the
    distance of the ranged, both against the "before" figures taken first.
 3. **The healer.** The heal range band. In game: no member out of its reach, and no healer walking into the fight.
