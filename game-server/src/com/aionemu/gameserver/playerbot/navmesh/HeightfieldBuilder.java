@@ -52,6 +52,9 @@ public class HeightfieldBuilder {
 	public static Heightfield build(int mapId) throws IOException {
 		// null for the maps that ship without a heightmap, whose ground is placed meshes only: their grid comes from the world map list instead
 		TerrainData terrain = TerrainData.load(mapId);
+		// only a map with no image at all: one whose image is there and is not a heightmap has terrain this cannot read, and meshes alone would be wrong
+		if (terrain == null && TerrainData.hasFile(mapId))
+			throw new IOException("Map " + mapId + " ships an image that is not a heightmap, so its terrain cannot be read");
 		int mapSize = terrain == null ? MapSize.of(mapId) : 0;
 		if (terrain == null && mapSize == 0)
 			throw new IOException("Map " + mapId + " has no terrain heightmap and no size in the world map list");

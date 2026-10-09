@@ -43,6 +43,11 @@ public class TerrainData {
 		return new TerrainData(heightmap.getData(), image.getWidth(), image.getHeight());
 	}
 
+	/** @return true if the map ships an image at all, heightmap or not, which tells a map without terrain from one whose terrain could not be read. */
+	public static boolean hasFile(int mapId) throws IOException {
+		return findFile(mapId) != null;
+	}
+
 	private static Path findFile(int mapId) throws IOException {
 		try (var files = Files.list(GeoDataReader.GEO_DIR)) {
 			return files.filter(path -> {
