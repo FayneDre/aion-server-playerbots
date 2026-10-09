@@ -376,7 +376,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		boolean healer = BotRole.of(getOwner()) == BotRole.HEALER;
 		Creature assisted = healer ? null : BotGroupManager.targetToAssist(getOwner());
 		if (assisted == null) {
-			if (healer && takeHealerStation())
+			if (healer && tendTheFight())
 				return;
 			// Deliberately no exception for a tank. "Engages first" means first into the fight the group has chosen, not free to choose one: a bot
 			// that pulls brings a second mob into a fight nobody asked for, and a tank pulling is the worst version of it because the rest of the
@@ -671,6 +671,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 		if (followTheMark(bot, target))
 			return;
+		if (healerHasNoSurplus(bot, target)) {
+			stopAttacking(); // back to the decision tick, which heals, buffs and keeps its place
+			return;
+		}
 		BotStations.sample(bot, target);
 
 		// idempotent, and deferred to here so it never overlaps the stand up animation. Drawing is an animation in its own right, and the tick below
@@ -733,23 +737,38 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
-	 * Puts a healer where it can reach everybody and nothing can reach it, while the group is fighting.
+	 * What a healer does on the decision tick while the group is fighting, once there is nobody to heal: get into place, then spend a surplus of mana on the
+	 * enemy, then stand where it is.
 	 * <p>
-	 * A healer does not take part in the fight loop, so this runs on the decision tick instead, in place of walking back to its slot beside the leader.
-	 * Standing where it should is the answer too: it holds, and does not drift to the formation and back.
+	 * A healer takes no part in the fight loop unless it joins, so its place is worked out here, in place of walking back to its slot beside the leader.
+	 * Standing where it should is the answer too: it holds, and does not drift to the formation and back. Placed, and with more than
+	 * {@value BotSkillManager#HEALER_SPARE_MANA_PERCENT} % of its mana, it attacks what the group is attacking: the surplus is the damage a healer is
+	 * allowed, and the fight loop stops it again the moment the mana is below that.
 	 *
-	 * @return true if the bot is placed or on its way, in which case the tick is spent. false when there is no fight or no spot: the formation decides.
+	 * @return true if the tick is spent. false when there is no fight, or nothing to do about one: the formation decides.
 	 */
-	private boolean takeHealerStation() {
+	private boolean tendTheFight() {
 		Player bot = getOwner();
-		if (!PlayerBotConfig.POSITIONING || !BotStations.handlesHealer(bot))
-			return false;
 		Creature fight = BotGroupManager.targetToAssist(bot);
 		if (fight == null)
 			return false;
-		BotStations.sample(bot, fight);
-		if (BotStations.isWellPlaced(bot, fight))
+		boolean positioned = PlayerBotConfig.POSITIONING && BotStations.handlesHealer(bot);
+		if (positioned) {
+			BotStations.sample(bot, fight);
+			if (!BotStations.isWellPlaced(bot, fight) && walkToHealerStation(fight))
+				return true;
+		}
+		if (BotSkillManager.hasManaToSpare(bot)) {
+			BotTargetRegistry.forceClaim(fight, bot);
+			startAttacking(fight);
 			return true;
+		}
+		return positioned && BotStations.isWellPlaced(bot, fight);
+	}
+
+	/** @return true while the healer is on its way to its place, or has just set out; false when there is no place to go or no way there. */
+	private boolean walkToHealerStation(Creature fight) {
+		Player bot = getOwner();
 		if (!(bot.getMoveController() instanceof BotMoveController moveController))
 			return false;
 		long now = System.currentTimeMillis();
@@ -767,6 +786,14 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private boolean holdsStation(Creature target) {
 		Player bot = getOwner();
 		return PlayerBotConfig.POSITIONING && BotStations.handles(bot) && BotPosition.of(bot) == BotPosition.RANGED && BotStations.isWellPlaced(bot, target);
+	}
+
+	/**
+	 * @return true if this is a healer in a group, fighting something that is not after it, with no mana to spare. Mana is what a healer is for: below the
+	 *         surplus it goes back to healing. A monster that is hitting the healer itself is another matter, and is fought whatever the mana.
+	 */
+	private static boolean healerHasNoSurplus(Player bot, Creature target) {
+		return BotRole.of(bot) == BotRole.HEALER && bot.getCurrentTeam() != null && !BotSkillManager.hasManaToSpare(bot) && !bot.equals(target.getTarget());
 	}
 
 	/**
@@ -884,10 +911,14 @@ public class PlayerBotAI extends AITemplate<Player> {
 			if (BotPotionManager.tryHealingPotion(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
 				|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT))
 				return true;
-			// a group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody
-			if (BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT)))
-				return true;
 		}
+		// A group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody. Outside the finishing rule above for a healer, because
+		// that rule is about the bot's own survival and says nothing about the tank: a monster with a sliver of health left is no reason to let the tank
+		// die under it, which is what a healer did every time the group's target got low.
+		boolean healer = BotRole.of(bot) == BotRole.HEALER;
+		if ((healer || !isAlmostDead(target))
+			&& BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT, healer)))
+			return true;
 		// a leap covers ground the bot would otherwise walk, and those last metres on foot are where bots get stuck
 		if (closing && BotSkillManager.tryGapCloser(bot, target))
 			return true;

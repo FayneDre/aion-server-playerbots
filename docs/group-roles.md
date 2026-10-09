@@ -28,6 +28,14 @@ A cleric in a group used to heal and nothing else, for a whole instance, whateve
 "néant". The rule it obeyed is right at low mana and was stated too strongly: a healer's mana belongs to the people it keeps alive, and only the
 surplus belongs to the monster. Above 60% it joins the attack; below, it goes back to its own job.
 
+It is wired in `PlayerBotAI.tendTheFight` on the decision tick: with nobody to heal and the bot in its place, it attacks what the group attacks while it has
+the surplus, and `fight` stops it again when the mana is under 60 %, unless the monster is hitting the healer itself. Written down for a long time before it was
+actually connected: `hasManaToSpare` existed and nothing called it.
+
+One bug went with it: the rule that ends a fight with a monster nearly dead (20 % health) by skipping every heal skipped the heal of the **tank** too, so a
+healer stopped healing exactly when the group's target was about to die. The finishing rule is about the bot's own survival; a healer now heals a hurt
+member whatever the target's health.
+
 What has not changed is that it keeps its distance. A healer never chases: out of reach of anything it knows, it holds position beside the group rather
 than walking into weapon range, where a cleric is a cleric being hit and silent for the rest of the fight.
 
