@@ -17,6 +17,7 @@ import com.aionemu.gameserver.model.templates.npc.NpcTemplateType;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
+import com.aionemu.gameserver.playerbot.navmesh.Avoidance;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.services.TribeRelationService;
@@ -41,6 +42,8 @@ public final class BotStations {
 	static final float BACK_HALF_DEGREES = 90;
 	/** Monsters further than this from the enemy are not looked at: their notice cannot reach where the fight is. */
 	private static final float ZONE_LOOKUP_RADIUS = 60;
+	/** What a metre of ground inside another pack's notice costs, in extra metres: a fifteen times longer walk is preferred to crossing it. */
+	static final float AVOIDANCE_COST = 15;
 	/** Samples between two lines in the log. */
 	private static final int REPORT_EVERY = 200;
 
@@ -104,6 +107,24 @@ public final class BotStations {
 			return null;
 		// the geometry works on a plane; the ground is the navmesh's to say, and a spot with none under it is no spot
 		return NavmeshService.getInstance().groundNear(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ());
+	}
+
+	/**
+	 * @return The ground a walk to a fighting position should keep out of: whatever the monsters near the fight, and not in it, would notice the bot on.
+	 *         Costly rather than forbidden, so a bot with no other way still gets there.
+	 */
+	public static Avoidance avoidanceFor(Player bot, Creature enemy) {
+		List<AggroZone> zones = zonesAround(bot, enemy);
+		if (zones.isEmpty())
+			return Avoidance.NONE;
+		int level = bot.getLevel();
+		return (x, y) -> {
+			for (AggroZone zone : zones) {
+				if (zone.notices(x, y, level))
+					return AVOIDANCE_COST;
+			}
+			return 0f;
+		};
 	}
 
 	/**

@@ -81,16 +81,24 @@ public class BotPathFinder {
 	 * @return The route, whose waypoints start at the given position. Check {@link Route#gaveUp()} before treating an empty one as impossible.
 	 */
 	public static Route findPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
+		return findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, Avoidance.NONE);
+	}
+
+	/**
+	 * As above, keeping out of the ground {@code avoid} names where there is another way: it costs extra to cross, and is crossed all the same when it is the
+	 * only way. The rough pass over the coarse grid does not know about it; only the fine stretches do.
+	 */
+	public static Route findPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid) {
 		float distance = (float) Math.hypot(goalX - startX, goalY - startY);
 		if (distance > LONG_DISTANCE)
-			return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
-		Route direct = findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
+			return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
+		Route direct = findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
 		if (!direct.isEmpty() || !direct.gaveUp())
 			return direct;
 		// The fine search ran out of room, which distance alone does not predict: thirty metres out of a thicket costs more of it than three hundred
 		// across open grass, because what it must explore grows with the clutter rather than with the journey. Bots walked into a wood in Poeta and
 		// could not plan their way out of it, at any range. The rough grid knows the way through, so it is worth asking even for a short hop.
-		return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
+		return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
 	}
 
 	/**
@@ -99,7 +107,8 @@ public class BotPathFinder {
 	 * Fine A\* alone gives up past a few hundred metres, because at half metre cells the area it must consider grows faster than the distance. The
 	 * coarse grid narrows that to a corridor, and each stretch of it is then a short search of the kind that already works.
 	 */
-	private static Route findLongPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
+	private static Route findLongPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ,
+		Avoidance avoid) {
 		List<Vector3f> guide = coarseRoute(mesh, startX, startY, goalX, goalY);
 		if (guide.isEmpty())
 			return new Route(List.of(), shareGround(mesh, startX, startY, goalX, goalY));
@@ -119,7 +128,7 @@ public class BotPathFinder {
 				boolean last = target == guide.size() - 1;
 				float toX = last ? goalX : guide.get(target).getX(), toY = last ? goalY : guide.get(target).getY();
 				// the coarse grid carries no height, so an intermediate guide point accepts whatever ground is there
-				stretch = findDirectPath(mesh, fromX, fromY, fromZ, toX, toY, last ? goalZ : fromZ, last ? SNAP_RANGE : ANY_HEIGHT);
+				stretch = findDirectPath(mesh, fromX, fromY, fromZ, toX, toY, last ? goalZ : fromZ, last ? SNAP_RANGE : ANY_HEIGHT, avoid);
 				if (!stretch.isEmpty())
 					break;
 			}
@@ -134,7 +143,7 @@ public class BotPathFinder {
 			fromZ = reached.getZ();
 			next = target + 1;
 		}
-		return new Route(smooth(mesh, full), false);
+		return new Route(smooth(mesh, full, avoid), false);
 	}
 
 	/**
@@ -305,12 +314,12 @@ public class BotPathFinder {
 		return true;
 	}
 
-	private static Route findDirectPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
-		return findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, SNAP_RANGE);
+	private static Route findDirectPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid) {
+		return findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, SNAP_RANGE, avoid);
 	}
 
 	private static Route findDirectPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ,
-		float goalSnapRange) {
+		float goalSnapRange, Avoidance avoid) {
 		long start = nodeAt(mesh, startX, startY, startZ, SNAP_RANGE), goal = nodeAt(mesh, goalX, goalY, goalZ, goalSnapRange);
 		if (start == -1 || goal == -1)
 			return new Route(List.of(), false);
@@ -325,7 +334,7 @@ public class BotPathFinder {
 		while (!open.isEmpty() && expanded++ < MAX_NODES) {
 			long current = open.poll().key();
 			if (current == goal)
-				return new Route(smooth(mesh, rebuild(mesh, cameFrom, current, start)), false);
+				return new Route(smooth(mesh, rebuild(mesh, cameFrom, current, start), avoid), false);
 
 			float cost = costSoFar.get(current);
 			int cellX = keyX(mesh, current), cellY = keyY(mesh, current);
@@ -341,7 +350,9 @@ public class BotPathFinder {
 					if (Math.abs(nextZ - z) > maxClimb(mesh, NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0))
 						continue;
 					long next = key(mesh, nextX, nextY, surface);
-					float stepCost = cost + (NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0 ? 1.41421f : 1) * mesh.cellSize();
+					// ground the caller wants to keep out of costs more to cross, by the multiple it names, so the search goes round it when there is a round
+					float nearness = avoid.extra((nextX + 0.5f) * mesh.cellSize(), (nextY + 0.5f) * mesh.cellSize());
+					float stepCost = cost + (NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0 ? 1.41421f : 1) * mesh.cellSize() * (1 + nearness);
 					Float known = costSoFar.get(next);
 					if (known != null && known <= stepCost)
 						continue;
@@ -389,14 +400,14 @@ public class BotPathFinder {
 	/**
 	 * Drops every waypoint that can be skipped without leaving walkable ground. A grid path turns at every cell; a bot only needs the corners.
 	 */
-	private static List<Vector3f> smooth(Navmesh mesh, List<Vector3f> path) {
+	private static List<Vector3f> smooth(Navmesh mesh, List<Vector3f> path, Avoidance avoid) {
 		List<Vector3f> pulled = new ArrayList<>();
 		pulled.add(path.get(0));
 		int anchor = 0;
 		while (anchor < path.size() - 1) {
 			int furthest = anchor + 1;
 			for (int candidate = path.size() - 1; candidate > anchor + 1; candidate--) {
-				if (hasClearLine(mesh, path.get(anchor), path.get(candidate))) {
+				if (hasClearLine(mesh, path.get(anchor), path.get(candidate), avoid)) {
 					furthest = candidate;
 					break;
 				}
@@ -414,13 +425,16 @@ public class BotPathFinder {
 	 *         in. Checking parallel lines either side of it on top of that asks for two bodies' width, which found far fewer corners worth cutting
 	 *         and left routes stepping half a metre at a time through gaps a player strolls through.
 	 */
-	private static boolean hasClearLine(Navmesh mesh, Vector3f from, Vector3f to) {
+	private static boolean hasClearLine(Navmesh mesh, Vector3f from, Vector3f to, Avoidance avoid) {
 		float distance = (float) Math.sqrt((to.x - from.x) * (to.x - from.x) + (to.y - from.y) * (to.y - from.y));
 		int steps = Math.max(1, (int) (distance / (mesh.cellSize() / 2)));
 		float previousZ = from.z;
 		for (int step = 1; step <= steps; step++) {
 			float ratio = (float) step / steps;
 			float x = from.x + (to.x - from.x) * ratio, y = from.y + (to.y - from.y) * ratio;
+			// a corner is only cut across ground that does not matter: the path round it is the one that was searched for
+			if (avoid.extra(x, y) > 0)
+				return false;
 			int cellX = mesh.cellX(x), cellY = mesh.cellY(y);
 			if (!mesh.contains(cellX, cellY))
 				return false;

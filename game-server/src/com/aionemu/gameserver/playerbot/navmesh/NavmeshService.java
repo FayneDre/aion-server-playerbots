@@ -45,11 +45,16 @@ public class NavmeshService {
 	 * @return The route. A map with no mesh reads as a search that gave up, since the absence of a mesh proves nothing either.
 	 */
 	public BotPathFinder.Route findRoute(Player bot, float goalX, float goalY, float goalZ) {
+		return findRoute(bot, goalX, goalY, goalZ, Avoidance.NONE);
+	}
+
+	/** @see #findRoute(Player, float, float, float) */
+	public BotPathFinder.Route findRoute(Player bot, float goalX, float goalY, float goalZ, Avoidance avoid) {
 		Navmesh mesh = get(bot.getWorldId());
 		if (mesh == null)
 			return new BotPathFinder.Route(List.of(), true);
 
-		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ);
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid);
 		if (route.isEmpty() && route.gaveUp())
 			log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		return route;
@@ -113,15 +118,20 @@ public class NavmeshService {
 	 * so it is planned on a pool thread while the bot walks straight at its goal. It picks the route up at the end of its current leg.
 	 */
 	public void planRoute(Player bot, float goalX, float goalY, float goalZ, Consumer<BotPathFinder.Route> whenReady) {
+		planRoute(bot, goalX, goalY, goalZ, Avoidance.NONE, whenReady);
+	}
+
+	/** @param avoid Ground to keep out of where there is another way; see {@link Avoidance}. */
+	public void planRoute(Player bot, float goalX, float goalY, float goalZ, Avoidance avoid, Consumer<BotPathFinder.Route> whenReady) {
 		if (get(bot.getWorldId()) == null)
 			return;
 		if (PositionUtil.getDistance(bot.getX(), bot.getY(), goalX, goalY) <= BotPathFinder.LONG_DISTANCE) {
-			whenReady.accept(findRoute(bot, goalX, goalY, goalZ));
+			whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid));
 			return;
 		}
 		// answered even when the search found nothing: "no way through" is an answer the caller waits for, and swallowing it left bots standing
 		// still for ever waiting for a plan that was never coming
-		BotScheduler.getInstance().planRoute(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ)));
+		BotScheduler.getInstance().planRoute(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid)));
 	}
 
 	/** @return The map, opening it on first use, or null when it has no generated file. */

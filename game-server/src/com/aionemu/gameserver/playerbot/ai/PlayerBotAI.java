@@ -728,6 +728,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (spot == null)
 			return false;
 		lastStationRoute = now;
+		moveController.avoid(BotStations.avoidanceFor(bot, target));
 		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
 	}
 
@@ -758,6 +759,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (spot == null)
 			return false;
 		lastStationRoute = now;
+		moveController.avoid(BotStations.avoidanceFor(bot, fight));
 		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
 	}
 
@@ -933,6 +935,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (moveController.isInMove() && moveController.isHeadingTo(goal.getX(), goal.getY(), RETARGET_STEP))
 			return true; // already on its way, and the goal has not moved enough to be worth a new route
 		lastChaseRoute = now;
+		if (PlayerBotConfig.POSITIONING && BotStations.handlesTank(getOwner()))
+			moveController.avoid(BotStations.avoidanceFor(getOwner(), target));
 		return tryMoveTo(moveController, goal.getX(), goal.getY(), goal.getZ());
 	}
 

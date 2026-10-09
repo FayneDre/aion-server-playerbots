@@ -126,4 +126,51 @@ class BotPathFinderTest {
 		assertNull(BotPathFinder.nearestGround(walled, 500, 500, HEIGHT));
 		assertNotNull(BotPathFinder.nearestGround(walled, 10, 10, HEIGHT));
 	}
+
+	/** Ground within radius metres of a point, as an avoidance. */
+	private static Avoidance around(float cx, float cy, float radius) {
+		return (x, y) -> Math.hypot(x - cx, y - cy) < radius ? 15f : 0f;
+	}
+
+	@Test
+	void goesRoundGroundItIsToldToAvoidWhenThereIsAWayRound() throws IOException {
+		Navmesh open = meshOf((x, y) -> OPEN);
+		Avoidance zone = around(32, 32, 8);
+
+		BotPathFinder.Route route = BotPathFinder.findPath(open, 10, 32, HEIGHT, 54, 32, HEIGHT, zone);
+
+		assertFalse(route.isEmpty());
+		List<Vector3f> points = route.waypoints();
+		for (int i = 1; i < points.size(); i++) {
+			// the segments as well as the corners: a shortcut across the zone would pass between two corners that are both outside it
+			for (int step = 0; step <= 20; step++) {
+				float x = points.get(i - 1).getX() + (points.get(i).getX() - points.get(i - 1).getX()) * step / 20;
+				float y = points.get(i - 1).getY() + (points.get(i).getY() - points.get(i - 1).getY()) * step / 20;
+				assertEquals(0f, zone.extra(x, y), "the route crosses the zone at " + x + " " + y);
+			}
+		}
+	}
+
+	@Test
+	void theSameJourneyWithNothingToAvoidGoesStraightThrough() throws IOException {
+		Navmesh open = meshOf((x, y) -> OPEN);
+
+		BotPathFinder.Route route = BotPathFinder.findPath(open, 10, 32, HEIGHT, 54, 32, HEIGHT, around(32, 32, 8));
+		BotPathFinder.Route straight = BotPathFinder.findPath(open, 10, 32, HEIGHT, 54, 32, HEIGHT);
+
+		assertTrue(straight.waypoints().size() <= 4, "no avoidance, no detour");
+		assertTrue(route.waypoints().size() > straight.waypoints().size() || route.waypoints().stream().anyMatch(p -> Math.abs(p.getY() - 32) > 1),
+			"the avoiding route is the one that bends");
+	}
+
+	@Test
+	void crossesTheGroundItWasToldToAvoidWhenItIsTheOnlyWay() throws IOException {
+		// the wall's only gap is inside the zone, so the choice is between crossing it and having no route at all
+		Navmesh walled = meshOf((x, y) -> wall(x, y) && y < 100 ? SOLID : OPEN);
+
+		BotPathFinder.Route route = BotPathFinder.findPath(walled, 20, 10, HEIGHT, 44, 10, HEIGHT, around(31, 58, 10));
+
+		assertFalse(route.isEmpty(), "costly is not forbidden");
+		assertTrue(route.waypoints().stream().anyMatch(p -> Math.hypot(p.getX() - 31, p.getY() - 58) < 10), "it goes through the zone");
+	}
 }

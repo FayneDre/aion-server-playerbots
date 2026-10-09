@@ -17,6 +17,7 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
 import com.aionemu.gameserver.playerbot.BotScheduler;
+import com.aionemu.gameserver.playerbot.navmesh.Avoidance;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.taskmanager.tasks.MoveTaskManager;
@@ -142,9 +143,19 @@ public class BotMoveController extends PlayerMoveController {
 	private double closestToGoal;
 	private long lastProgressTime;
 	private volatile boolean blocked;
+	/** Ground the next journey keeps out of where it can. One shot: {@link #moveToPoint} takes it and puts {@link Avoidance#NONE} back. */
+	private volatile Avoidance nextAvoidance = Avoidance.NONE;
 
 	public BotMoveController(Player owner) {
 		super(owner);
+	}
+
+	/**
+	 * Asks that the next {@link #moveToPoint} plan its route round this ground where there is a way round, which is what a bot taking its place in a
+	 * fight does so as not to walk through a pack that has not noticed it yet. Applies to that one call and no other.
+	 */
+	public void avoid(Avoidance avoidance) {
+		nextAvoidance = avoidance;
 	}
 
 	/**
@@ -153,6 +164,9 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return false if the bot is walled in, in which case it does not move at all.
 	 */
 	public boolean moveToPoint(float x, float y, float z) {
+		// taken and cleared first, whatever happens below: it belongs to this call alone, and a leftover would keep the next journey out of ground it has no reason to
+		Avoidance avoid = nextAvoidance;
+		nextAvoidance = Avoidance.NONE;
 		// Answering "no" to a destination already found to have no route, before doing anything else.
 		// A long route is planned on another thread, so by the time the answer comes back this method has long since returned "on its way". The
 		// caller therefore never hears the refusal, asks again on the next tick, and gets "on its way" again: two bots stood in a pocket of the map
@@ -203,7 +217,7 @@ public class BotMoveController extends PlayerMoveController {
 			awaitingPlan = true; // before asking, so a plan that resolves synchronously clears it again inside the call below
 			// a long journey is planned on another thread, so the bot waits where it stands rather than setting off blind; a short one plans on this
 			// very call, in which case the result must be adopted right here or the first leg walks for nothing
-			NavmeshService.getInstance().planRoute(owner, x, y, z, planned -> offerRoute(planned, x, y));
+			NavmeshService.getInstance().planRoute(owner, x, y, z, avoid, planned -> offerRoute(planned, x, y));
 			if (pendingRoute != null) {
 				route = pendingRoute;
 				pendingRoute = null;
