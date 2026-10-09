@@ -155,6 +155,11 @@ public class BotGroupManager {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		if (team == null)
 			return null;
+		// The mark before anyone's selection: it is what the tank chose for the whole group, and a group in which each member follows its own target is
+		// the thing it exists to stop.
+		Creature marked = BotMarks.skulled(bot);
+		if (marked != null)
+			return marked;
 		// The tank's target before the leader's, and that order is the whole of what makes a group fight as one. A leader is whoever formed the
 		// party; the tank is whoever is holding the mob. Assisting the leader spreads a group of five over as many mobs as the leader happens to
 		// click, while the one bot that is actually being hit fights alone.
@@ -331,6 +336,12 @@ public class BotGroupManager {
 
 	private static boolean isNearEnoughToHelp(Player bot, Player member) {
 		return member.getWorldId() == bot.getWorldId() && PositionUtil.getDistance(bot, member) <= ASSIST_RADIUS;
+	}
+
+	/** @return true if the monster is fighting this group: hitting or hating the bot or any member, close enough to matter and in sight. */
+	static boolean isEngagedWithTheGroup(Player bot, Npc npc) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		return team != null && isWorthAssistingOn(bot, npc) && (npc.getAggroList().isHating(bot) || hatesAnyMember(npc, team.getMembers(), bot));
 	}
 
 	private static boolean hatesAnyMember(Npc npc, List<Player> members, Player bot) {

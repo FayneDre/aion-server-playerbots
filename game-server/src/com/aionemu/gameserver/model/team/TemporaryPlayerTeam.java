@@ -42,6 +42,11 @@ public abstract class TemporaryPlayerTeam<TM extends TeamMember<Player>> extends
 		sendPackets(new SM_SHOW_BRAND(brandId, targetObjectId));
 	}
 
+	/** @return The object id carrying that brand, or 0 when it is on nobody. Read by bots, which have no client to look at the icon with. */
+	public int getBrandedTarget(int brandId) {
+		return targetIdsByBrandId.getOrDefault(brandId, 0);
+	}
+
 	public void sendBrands(Player member) {
 		PacketSendUtility.sendPacket(member, new SM_SHOW_BRAND(targetIdsByBrandId));
 	}

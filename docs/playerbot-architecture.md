@@ -82,6 +82,7 @@ Future subsystems plug in as: auction house / shops → `economy/` plus new beha
 |---|---|---|
 | `model/gameobjects/Creature.java` | `final` → `volatile` + `setAi()` | Minimal — these lines never change upstream |
 | `model/gameobjects/Creature.java` | `moveController` → `volatile` + `setMoveController()` | Minimal — same reasoning as `setAi()` |
+| `model/team/TemporaryPlayerTeam.java` | `getBrandedTarget(int)`, a four line reader of the brand map | Minimal — the map was `protected` with no reader, and only bots need to look at a brand without a client |
 | `skillengine/effect/EffectTemplate.java` | One accessor: `getHitType()` | Minimal — a getter over an existing protected field, no behaviour |
 | `model/gameobjects/player/Player.java` | `isOnline()` means "is present"; adds `setBot()`/`isBot()` | Low per line, wide in effect — see [built.md](built.md) |
 | `PacketSendUtility`, `World`, `MultiClientingService`, `PunishmentService`, `PvpService`, `ChangeLeaderEvent` | One null check each, on the connection instead of on `isOnline()` | Minimal — and three of them were already missing a guard |

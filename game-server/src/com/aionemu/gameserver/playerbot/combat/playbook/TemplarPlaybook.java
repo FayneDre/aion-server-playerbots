@@ -10,6 +10,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
+import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 
 /**
@@ -96,6 +97,7 @@ final class TemplarPlaybook implements ClassPlaybook {
 
 	@Override
 	public boolean act(Player bot, Creature target) {
+		BotMarks.markWeakestIfNone(bot);
 		Creature loose = BotGroupManager.enemyLooseOnAMate(bot);
 		Situation situation = situationOf(bot, loose != null);
 		Move move = decide(situation);

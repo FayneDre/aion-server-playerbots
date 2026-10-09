@@ -79,7 +79,7 @@ that can be checked without a world can have its thresholds argued about in a te
 3. **Aggro as the guide describes it.** *Built, without the retargeting: The guide also has the tank keep attacking the loose monster until it has its attention, and doing that now would drag the whole group onto it, since they follow the tank's target. That half waits for the mark in milestone 4. Capture is named by its skill group, not by an effect.* Roar on cooldown whenever an enemy is on the group; Taunt/Capture only to peel (an enemy whose victim is
    not the tank), preferring whichever is ready; Capture counted as a taunt, as the guide confirms. Measure before and after:
    times a monster's most hated target is not the tank during a three monster pull.
-4. **Marking.** The core getter, the tank's marking, `targetToAssist` reading the mark, clearing it on death. In game: a group of three with a
+4. **Marking.** *Built (core getter `getBrandedTarget`, `BotMarks`, the group following the skull, the tank marking before it assists and as it fights). Not built: keeping the tank on a monster that has got loose until it has its attention, because that is a state the bot has to remember from tick to tick, and the AI keeps such state in milestone 5's place.* The core getter, the tank's marking, `targetToAssist` reading the mark, clearing it on death. In game: a group of three with a
    cleric and a gladiator, watching all three follow the skull.
 5. **Crowd control.** Remember the last time the bot was stunned, knocked down, spun or drained of ether; Unwavering Devotion when it comes
    free, once per cooldown. Remove Shock then Refresh Spirit (the latter only under 75 % health). **Unverified:** whether the engine lets a

@@ -30,6 +30,7 @@ import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
+import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
@@ -357,6 +358,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// cleric that walks into the mob is a cleric being hit, out of position and silent for the rest of the fight. Standing with the group and
 		// keeping it alive is the whole of the job. It still defends itself: {@link #findAttacker} is checked ahead of all of this, so something that
 		// comes for the healer is still answered.
+		// The tank chooses what the group fights, so it marks before it looks for something to assist: with the mark up it assists its own choice
+		if (BotRole.of(getOwner()) == BotRole.TANK)
+			BotMarks.markWeakestIfNone(getOwner());
 		Creature assisted = BotRole.of(getOwner()) == BotRole.HEALER ? null : BotGroupManager.targetToAssist(getOwner());
 		if (assisted == null) {
 			// Deliberately no exception for a tank. "Engages first" means first into the fight the group has chosen, not free to choose one: a bot
@@ -643,6 +647,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			stopAttacking();
 			return;
 		}
+		if (followTheMark(bot, target))
+			return;
 
 		// idempotent, and deferred to here so it never overlaps the stand up animation. Drawing is an animation in its own right, and the tick below
 		// used to walk the bot off in the same instant it was sent: the slide the bot showed between getting up and setting off was those two frames
@@ -669,6 +675,25 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 
+	}
+
+	/**
+	 * Moves the bot onto the group's mark when it is fighting something else, so that a group fights one thing at a time.
+	 * <p>
+	 * The decision tick only picks a target for a bot that is not already fighting, so without this a mark placed after the pull reached nobody who had
+	 * already started. A healer is left out: it does not join the attack at all. A mark the bot has already given up on is left alone for as long as
+	 * that lasts, or it would turn back to it every tick.
+	 *
+	 * @return true if the bot has switched, in which case this tick is spent.
+	 */
+	private boolean followTheMark(Player bot, Creature target) {
+		if (BotRole.of(bot) == BotRole.HEALER)
+			return false;
+		Creature marked = BotMarks.skulled(bot);
+		if (marked == null || marked.equals(target) || isIgnored(marked))
+			return false;
+		startAttacking(marked);
+		return true;
 	}
 
 	private void scheduleAttackTick(int delayMillis) {

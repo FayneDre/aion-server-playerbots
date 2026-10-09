@@ -41,3 +41,13 @@ and pulls it back.
 Whoever it is on, not the worst case: the aggro list says who is most hated, not who can least afford it. And the one it is actually hitting, not one
 it merely holds a grudge against — a monster hates everything that has touched it, and answering every grudge would mean taunting things already
 looking at the tank.
+
+## The mark
+
+A group fights one thing at a time, and it is the tank that chooses it. When monsters are on the group, the tank puts the skull (brand 14, the engine's own
+`/Brand`) on the one with the **least health in absolute terms** — the one that dies first, whatever fraction of its bar that is — and every member
+that fights follows it: `targetToAssist` reads the mark before anybody's selection, and a bot already swinging at something else moves onto it at its
+next attack tick. When the marked one dies the tank marks the next; with nobody left, the skull is taken down, because real players in the group see it.
+
+Only the skull counts, and a skull on a live enemy is never moved, whoever put it there: a leader who marks by hand is obeyed. A mark on something that
+is not fighting the group is ignored, or the whole group would walk off to pull it. A healer does not follow it, as it does not join the attack at all.
