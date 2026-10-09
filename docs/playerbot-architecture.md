@@ -65,6 +65,7 @@ com.aionemu.gameserver.playerbot/
     BotTargetSelector           Target picking via Player.getAggroList() / known list
     BotAttackManager            Player-typed re-implementation of SimpleAttackManager
     BotSkillManager             Cooldown/MP/range-aware skill selection and casting
+    playbook/                   ClassPlaybook + BotPlaybooks: what one class does beyond the generic order, consulted first (templar only so far)
 
   movement/
     BotMoveController           extends PlayerMoveController — legs, detours, stuck detection

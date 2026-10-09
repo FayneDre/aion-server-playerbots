@@ -24,6 +24,7 @@ import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
+import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
@@ -734,6 +735,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
+		// The class gets first refusal, and what it declines falls through to the order below. Nothing is claimed yet: see docs/templar-plan.md.
+		if (BotPlaybooks.of(bot).act(bot, target))
+			return true;
 		boolean closing = !BotAttackManager.isInAttackRange(bot, target);
 		if (closing && !approachSpent) {
 			approachSpent = true;
