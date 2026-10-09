@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 class BotFlightTest {
 
 	@Test
-	void aTripUnderFiftyMetresIsWalked() {
-		assertFalse(BotFlight.worthFlyingTo(49f, 0), "a hop of a few paces is a bot jumping up and coming down, not travel");
-		assertTrue(BotFlight.worthFlyingTo(50f, 0), "fifty is the first that counts");
+	void aTripUnderTwentyFiveMetresIsWalked() {
+		assertFalse(BotFlight.worthFlyingTo(24f, 0), "a hop of a few paces is a bot jumping up and coming down, not travel");
+		assertTrue(BotFlight.worthFlyingTo(25f, 0), "twenty five is the first that counts");
 	}
 
 	@Test

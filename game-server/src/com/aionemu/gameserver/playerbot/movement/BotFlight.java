@@ -61,7 +61,7 @@ public class BotFlight {
 	 * How short a trip may be and still be worth leaving the ground for, when nothing forces it. A hop of a few paces is a bot that jumps into the air
 	 * and comes down again, which is not travel.
 	 */
-	public static final float MIN_AMBIENT_JOURNEY = 50;
+	public static final float MIN_AMBIENT_JOURNEY = 25;
 	/** Share of the trips that qualify which are flown, so that a map of residents does not take off together. */
 	private static final int AMBIENT_PERCENT = 50;
 	/** How far above the landing spot a journey aims, so the last of it is a short drop onto the ground rather than a dive at it. */

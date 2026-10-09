@@ -146,7 +146,7 @@ only case the straight line plus ray cannot answer, and it also needs Reshanta's
 
 Until now a bot flew only when walking had been proved impossible, to follow a flying player, or to get home when stuck: 167 take-offs in five days, almost all
 to the same fortress terraces, and nothing in the open air. A bot that goes to another place of its own accord (the `WANDERING` occupation, `BotDay.wander`) now
-**flies when the trip is 50 to 300 m, in about half of the cases**, and walks otherwise. Everything else is `BotFlight.tryFlyTo` as it was: a daeva, standing in a
+**flies when the trip is 25 to 300 m, in about half of the cases**, and walks otherwise. Everything else is `BotFlight.tryFlyTo` as it was: a daeva, standing in a
 fly zone, flight points above half, the destination and the landing inside a fly zone, the air clear in a straight line, ten seconds since the last take-off, and
 never in a fight. Every refusal is a quiet walk, logged as "walks its N m trip: reason".
 
