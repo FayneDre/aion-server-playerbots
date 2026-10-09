@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.combat.playbook;
 
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 
 /**
  * What one class does in a fight beyond what every class does.
@@ -27,4 +28,13 @@ public interface ClassPlaybook {
 	 *         not": a playbook that returns false must have left the bot exactly as it found it.
 	 */
 	boolean act(Player bot, Creature target);
+
+	/**
+	 * @return true if this class decides alone when to cast the skill, so the generic order never offers it. Without this the two would both act on
+	 *         the same skill by different rules: the generic heal fires at half health on any heal a class has, which for a templar is the half hour
+	 *         Hand of Healing that is meant to be kept for a fifth.
+	 */
+	default boolean claims(SkillTemplate template) {
+		return false;
+	}
 }

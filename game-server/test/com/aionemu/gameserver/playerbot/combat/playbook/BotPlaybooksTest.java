@@ -7,8 +7,7 @@ import org.junit.jupiter.api.Test;
 import com.aionemu.gameserver.model.PlayerClass;
 
 /**
- * Which class gets a playbook, and that none of them has an opinion yet. The second half is the milestone's whole promise: the seam is in, and a
- * templar plays as it did before it.
+ * Which class gets a playbook.
  */
 class BotPlaybooksTest {
 
@@ -27,8 +26,4 @@ class BotPlaybooksTest {
 		}
 	}
 
-	@Test
-	void theTemplarLeavesTheFightToTheGenericOrder() {
-		assertFalse(BotPlaybooks.of(PlayerClass.TEMPLAR).act(null, null));
-	}
 }

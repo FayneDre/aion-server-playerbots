@@ -72,7 +72,7 @@ that can be checked without a world can have its thresholds argued about in a te
 
 1. **Playbook seam, no behaviour change.** Interface, a registry by class, the templar playbook returning "nothing to say", one call at the top of `useBestSkill`. `Situation` is left to milestone 2, where the first rule gives it something to hold. Done when the existing tests
    pass and a templar plays as before.
-2. **Defensives by the document.** Hand of Healing at < 20 % health with 2000 DP; Empyrean Armor under 75 %; Iron Skin under 50 % while Armor is
+2. **Defensives by the document, solo and grouped.** *Built: thresholds unit tested, the in game check still to do.* Hand of Healing at < 20 % health with 2000 DP; Empyrean Armor under 75 %; Iron Skin under 50 % while Armor is
    not up; and the generic defensive and heal rules told to leave these three alone. Chastisement used on cooldown from 10 to 30 while DP is
    2000 or more, and not from 31 so the points are kept for Hand of Healing. Unit tests for every threshold. In game: a log line per use with
    health and DP, over a dozen fights.

@@ -27,6 +27,8 @@ import com.aionemu.gameserver.skillengine.model.ChargedSkill;
 import com.aionemu.gameserver.skillengine.model.HitType;
 import com.aionemu.gameserver.skillengine.model.Skill;
 import com.aionemu.gameserver.skillengine.model.SkillSubType;
+import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
+import com.aionemu.gameserver.playerbot.combat.playbook.ClassPlaybook;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.skillengine.properties.TargetRelationAttribute;
 
@@ -678,10 +680,36 @@ public class BotSkillManager {
 		}, Math.max(0, delay));
 	}
 
+	/**
+	 * @return true if the bot knows a skill of that group and it is off cooldown. For a {@link ClassPlaybook}, which claims skills the generic order never
+	 *         offers and so has to ask for them by name. The group, not the id: every level of a skill has its own id and the group is what they share.
+	 */
+	public static boolean isReady(Player bot, String group) {
+		return !readyOfGroup(bot, group).isEmpty();
+	}
+
+	/** Casts the bot's skill of that group on the target, which is the bot itself for a skill that is not aimed. @return true if it went off. */
+	public static boolean tryCastGroup(Player bot, Creature target, String group) {
+		return cast(bot, target, readyOfGroup(bot, group));
+	}
+
+	/** @return true if an effect of that stack group is on the bot, which for a buff is the same name as its skill group. */
+	public static boolean isUp(Player bot, String group) {
+		return bot.getEffectController().getAbnormalEffect(group) != null;
+	}
+
+	private static List<SkillTemplate> readyOfGroup(Player bot, String group) {
+		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId()))
+			.filter(template -> template != null && group.equals(template.getGroup()) && !bot.isSkillDisabled(template)).toList();
+	}
+
 	/** @return The bot's usable skills of one kind, in the order it should try them. */
 	private static List<SkillTemplate> skills(Player bot, SkillFilter filter) {
 		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId())).filter(template -> {
 			if (template == null || template.isPassive() || template.getProperties() == null)
+				return false;
+			// what the class decides on alone is not the generic order's to cast, whatever else it would have made of it
+			if (BotPlaybooks.of(bot).claims(template))
 				return false;
 			// a toggle cast a second time turns itself off, so the only rules allowed near one are those that check first that it is off: the mantra
 			// rule, and the one that puts an aethertech in its robot
