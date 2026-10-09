@@ -173,4 +173,51 @@ class BotPathFinderTest {
 		assertFalse(route.isEmpty(), "costly is not forbidden");
 		assertTrue(route.waypoints().stream().anyMatch(p -> Math.hypot(p.getX() - 31, p.getY() - 58) < 10), "it goes through the zone");
 	}
+
+	/**
+	 * Ground with two levels in the same columns: a flat floor everywhere, and above it from cell 30 eastward a platform 8 m up, which the floor passes
+	 * under. The only way between them is a ramp on the west side, rising half a metre per cell.
+	 */
+	private Navmesh platformMesh() throws IOException {
+		int[] offsets = new int[SIZE * SIZE + 1];
+		List<Float> surfaces = new java.util.ArrayList<>();
+		BitSet walkable = new BitSet();
+		for (int y = 0; y < SIZE; y++) {
+			for (int x = 0; x < SIZE; x++) {
+				offsets[y * SIZE + x] = surfaces.size();
+				List<Float> column = new java.util.ArrayList<>();
+				column.add(0f);
+				if (x >= 15 && x < 30 && y >= 60 && y < 70)
+					column.add((x - 14) * 0.5f);
+				if (x >= 30)
+					column.add(8f);
+				for (float z : column) {
+					walkable.set(surfaces.size());
+					surfaces.add(z);
+				}
+			}
+		}
+		offsets[SIZE * SIZE] = surfaces.size();
+		float[] heights = new float[surfaces.size()];
+		for (int i = 0; i < heights.length; i++)
+			heights[i] = surfaces.get(i);
+		NavmeshWriter.write(TEST_MAP_ID, new Heightfield(SIZE, SIZE, offsets, heights, walkable));
+		mesh = Navmesh.open(TEST_MAP_ID);
+		return mesh;
+	}
+
+	@Test
+	void theRoughRouteStaysOnThePlatformUntilTheRampAndOnlyThenComesDown() throws IOException {
+		Navmesh platform = platformMesh();
+
+		// from the east end of the platform to the floor directly beneath it: the straight line is through the platform, the way is round by the ramp
+		List<Vector3f> guide = BotPathFinder.coarseRoute(platform, 60, 32, 8, 60, 5, 0);
+
+		assertTrue(guide.size() >= 3, "a journey this long has guide points: " + guide.size());
+		assertTrue(guide.getFirst().getZ() > 4, "it starts on the platform and must still be on it at the first guide point: " + guide.getFirst());
+		Vector3f lastReal = guide.get(guide.size() - 2);
+		assertTrue(lastReal.getZ() < 4, "and it ends on the floor: " + lastReal);
+		for (int i = 1; i < guide.size() - 1; i++)
+			assertTrue(Math.abs(guide.get(i).getZ() - guide.get(i - 1).getZ()) <= 9, "no guide point jumps a level it cannot climb");
+	}
 }

@@ -53,6 +53,13 @@ public class BotPathFinder {
 	private static final float ANY_HEIGHT = Float.MAX_VALUE;
 	/** How many awkward guide points in a row may be skipped before the journey is declared hopeless. */
 	private static final int MAX_GUIDE_SKIPS = 3;
+	/**
+	 * Vertical gap, in metres, that still joins two heights in one coarse cell into one level of ground. A slope at the steepest walkable angle rises half a
+	 * metre per fine cell, so continuous ground never leaves a bigger gap than this; a floor above a floor always does.
+	 */
+	private static final float LEVEL_GAP = 1.5f;
+	/** Most levels of ground kept per coarse cell. A tower holds more, and the highest ones are merged, which only coarsens a guide. */
+	private static final int MAX_LEVELS = 8;
 
 	private static final int[] NEIGHBOUR_X = { 1, 1, 0, -1, -1, -1, 0, 1 };
 	private static final int[] NEIGHBOUR_Y = { 0, 1, 1, 1, 0, -1, -1, -1 };
@@ -109,7 +116,7 @@ public class BotPathFinder {
 	 */
 	private static Route findLongPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ,
 		Avoidance avoid) {
-		List<Vector3f> guide = coarseRoute(mesh, startX, startY, goalX, goalY);
+		List<Vector3f> guide = coarseRoute(mesh, startX, startY, startZ, goalX, goalY, goalZ);
 		if (guide.isEmpty())
 			return new Route(List.of(), shareGround(mesh, startX, startY, goalX, goalY));
 
@@ -127,8 +134,11 @@ public class BotPathFinder {
 			for (int skipped = 0; target < guide.size() && skipped <= MAX_GUIDE_SKIPS; skipped++, target++) {
 				boolean last = target == guide.size() - 1;
 				float toX = last ? goalX : guide.get(target).getX(), toY = last ? goalY : guide.get(target).getY();
-				// the coarse grid carries no height, so an intermediate guide point accepts whatever ground is there
-				stretch = findDirectPath(mesh, fromX, fromY, fromZ, toX, toY, last ? goalZ : fromZ, last ? SNAP_RANGE : ANY_HEIGHT, avoid);
+				// an intermediate guide point accepts whatever ground is there, but prefers the level the rough route was on: the nearest floor to where
+				// the bot stands is the platform it is on, and a guide that runs beneath it is not reached from there. A guide without a height is the
+				// older kind, which only ever knew where, so it is read as "near the bot".
+				float guideZ = last ? goalZ : Float.isNaN(guide.get(target).getZ()) ? fromZ : guide.get(target).getZ();
+				stretch = findDirectPath(mesh, fromX, fromY, fromZ, toX, toY, guideZ, last ? SNAP_RANGE : ANY_HEIGHT, avoid);
 				if (!stretch.isEmpty())
 					break;
 			}
@@ -144,6 +154,155 @@ public class BotPathFinder {
 			next = target + 1;
 		}
 		return new Route(smooth(mesh, full, avoid), false);
+	}
+
+	/**
+	 * The rough route that keeps to the level of ground the bot is on.
+	 * <p>
+	 * The coarse grid says which stretches of ground pass under a 4 m cell, not at what height, and a column holding a fortress platform and the ground
+	 * below it carries the same stretch twice. The older search therefore went straight down through the platform, the refinement could not follow, and
+	 * the planner gave up on a journey that exists: from the Eltnen fortress obelisk it found some destinations and not others, for no reason a bot
+	 * could see. Here a node is a cell <b>and a level of ground in it</b>, and a step is allowed only between levels that meet.
+	 * <p>
+	 * The levels are read from the fine grid when a cell is first reached, so nothing is stored in the mesh file and no map needs generating again.
+	 * When no levelled route exists the older search still runs: a mesh where the levels are too strict for the ground should plan as it always did.
+	 *
+	 * @return One point per {@link #GUIDE_SPACING} cells with the height of the level it is on, then a stand-in for the goal; empty when there is none.
+	 */
+	public static List<Vector3f> coarseRoute(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
+		int factor = mesh.coarseFactor();
+		int startCell = coarseCellNear(mesh, mesh.cellX(startX) / factor, mesh.cellY(startY) / factor);
+		int goalCell = coarseCellNear(mesh, mesh.cellX(goalX) / factor, mesh.cellY(goalY) / factor);
+		if (startCell == -1 || goalCell == -1)
+			return List.of();
+		for (int region : sharedRegions(mesh, startCell, goalCell)) {
+			List<Vector3f> guide = levelledRoute(mesh, startCell, startZ, goalCell, goalZ, region);
+			if (!guide.isEmpty())
+				return guide;
+		}
+		return coarseRoute(mesh, startX, startY, goalX, goalY);
+	}
+
+	private static List<Vector3f> levelledRoute(Navmesh mesh, int startCell, float startZ, int goalCell, float goalZ, int region) {
+		Map<Integer, float[]> levels = new HashMap<>();
+		int startLevel = nearestLevel(levelsOf(mesh, levels, startCell), startZ), goalLevel = nearestLevel(levelsOf(mesh, levels, goalCell), goalZ);
+		if (startLevel == -1 || goalLevel == -1)
+			return List.of();
+		int start = startCell * MAX_LEVELS + startLevel, goal = goalCell * MAX_LEVELS + goalLevel;
+		int width = mesh.coarseWidth(), goalX = goalCell % width, goalY = goalCell / width;
+
+		Map<Integer, Float> costSoFar = new HashMap<>();
+		Map<Integer, Integer> cameFrom = new HashMap<>();
+		PriorityQueue<int[]> open = new PriorityQueue<>((a, b) -> Integer.compare(a[1], b[1]));
+		costSoFar.put(start, 0f);
+		open.add(new int[] { start, 0 });
+
+		int expanded = 0;
+		while (!open.isEmpty() && expanded++ < MAX_COARSE_NODES) {
+			int current = open.poll()[0];
+			if (current == goal)
+				return sampleLevelledGuide(mesh, levels, cameFrom, current, start);
+
+			float cost = costSoFar.get(current);
+			int cell = current / MAX_LEVELS, level = current % MAX_LEVELS;
+			int cellX = cell % width, cellY = cell / width;
+			float[] here = levelsOf(mesh, levels, cell);
+			for (int direction = 0; direction < NEIGHBOUR_X.length; direction++) {
+				int nextX = cellX + NEIGHBOUR_X[direction], nextY = cellY + NEIGHBOUR_Y[direction];
+				if (!mesh.coarseHasRegion(nextX, nextY, region))
+					continue;
+				int nextCell = coarseKey(mesh, nextX, nextY);
+				float[] there = levelsOf(mesh, levels, nextCell);
+				float step = cost + (NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0 ? 1.41421f : 1);
+				float remaining = (float) Math.hypot(nextX - goalX, nextY - goalY);
+				for (int next = 0; next < there.length / 2; next++) {
+					if (levelGap(here[level * 2], here[level * 2 + 1], there[next * 2], there[next * 2 + 1]) > LEVEL_GAP)
+						continue; // a floor above or below this one, not ground that continues it
+					int node = nextCell * MAX_LEVELS + next;
+					Float known = costSoFar.get(node);
+					if (known != null && known <= step)
+						continue;
+					costSoFar.put(node, step);
+					cameFrom.put(node, current);
+					open.add(new int[] { node, Math.round(step + remaining) });
+				}
+			}
+		}
+		return List.of();
+	}
+
+	/**
+	 * @return The levels of walkable ground in a coarse cell as flattened {@code lowest, highest} pairs, lowest level first. Heights within
+	 *         {@link #LEVEL_GAP} of each other are one level. Computed once per search and kept in {@code cache}.
+	 */
+	private static float[] levelsOf(Navmesh mesh, Map<Integer, float[]> cache, int cell) {
+		float[] known = cache.get(cell);
+		if (known != null)
+			return known;
+		int factor = mesh.coarseFactor(), width = mesh.coarseWidth();
+		List<Float> heights = new ArrayList<>();
+		for (int y = cell / width * factor; y < (cell / width + 1) * factor; y++) {
+			for (int x = cell % width * factor; x < (cell % width + 1) * factor; x++) {
+				if (!mesh.contains(x, y))
+					continue;
+				for (int surface = 0; surface < mesh.surfaceCount(x, y); surface++) {
+					if (mesh.isWalkable(x, y, surface))
+						heights.add(mesh.surfaceZ(x, y, surface));
+				}
+			}
+		}
+		Collections.sort(heights);
+		List<Float> bounds = new ArrayList<>();
+		for (float height : heights) {
+			if (bounds.isEmpty() || (height - bounds.get(bounds.size() - 1) > LEVEL_GAP && bounds.size() < MAX_LEVELS * 2)) {
+				bounds.add(height);
+				bounds.add(height);
+			} else {
+				bounds.set(bounds.size() - 1, height);
+			}
+		}
+		float[] levels = new float[bounds.size()];
+		for (int i = 0; i < levels.length; i++)
+			levels[i] = bounds.get(i);
+		cache.put(cell, levels);
+		return levels;
+	}
+
+	/** @return The index of the level whose range is nearest a height, or -1 when the cell has none. */
+	private static int nearestLevel(float[] levels, float z) {
+		int best = -1;
+		float closest = Float.MAX_VALUE;
+		for (int level = 0; level < levels.length / 2; level++) {
+			float gap = levelGap(levels[level * 2], levels[level * 2 + 1], z, z);
+			if (gap < closest) {
+				closest = gap;
+				best = level;
+			}
+		}
+		return best;
+	}
+
+	/** @return How far apart two height ranges are: zero when they overlap. */
+	private static float levelGap(float lowA, float highA, float lowB, float highB) {
+		return Math.max(0, Math.max(lowA, lowB) - Math.min(highA, highB));
+	}
+
+	private static List<Vector3f> sampleLevelledGuide(Navmesh mesh, Map<Integer, float[]> levels, Map<Integer, Integer> cameFrom, int current, int start) {
+		List<Integer> nodes = new ArrayList<>();
+		for (int node = current; node != start; node = cameFrom.get(node))
+			nodes.add(node);
+		Collections.reverse(nodes);
+
+		float size = mesh.coarseFactor() * mesh.cellSize();
+		List<Vector3f> guide = new ArrayList<>();
+		for (int i = GUIDE_SPACING - 1; i < nodes.size(); i += GUIDE_SPACING) {
+			int cell = nodes.get(i) / MAX_LEVELS, level = nodes.get(i) % MAX_LEVELS;
+			float[] range = levels.get(cell);
+			guide.add(new Vector3f((cell % mesh.coarseWidth() + 0.5f) * size, (cell / mesh.coarseWidth() + 0.5f) * size,
+				(range[level * 2] + range[level * 2 + 1]) / 2));
+		}
+		guide.add(new Vector3f()); // stands for the goal itself, whose real coordinates the caller substitutes
+		return guide;
 	}
 
 	/**
@@ -239,7 +398,7 @@ public class BotPathFinder {
 		List<Vector3f> guide = new ArrayList<>();
 		for (int i = GUIDE_SPACING - 1; i < cells.size(); i += GUIDE_SPACING) {
 			int cell = cells.get(i);
-			guide.add(new Vector3f((cell % mesh.coarseWidth() + 0.5f) * size, (cell / mesh.coarseWidth() + 0.5f) * size, 0));
+			guide.add(new Vector3f((cell % mesh.coarseWidth() + 0.5f) * size, (cell / mesh.coarseWidth() + 0.5f) * size, Float.NaN));
 		}
 		guide.add(new Vector3f()); // stands for the goal itself, whose real coordinates the caller substitutes
 		return guide;

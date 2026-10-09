@@ -52,6 +52,10 @@ public class NavmeshTool {
 			reportComponents(Integer.parseInt(args[0]), probes);
 			return;
 		}
+		if (args.length == 5 && args[1].equals("seams")) {
+			reportSeams(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]));
+			return;
+		}
 		if (args.length == 3 && args[1].equals("stuck")) {
 			reportStuck(Integer.parseInt(args[0]), Path.of(args[2]));
 			return;
@@ -75,6 +79,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> <text>    inspect the props whose model name contains that text");
 			System.out.println("       NavmeshTool <mapId> path <x1> <y1> [z1] <x2> <y2> [z2]   plan a route and draw it");
 			System.out.println("       NavmeshTool <mapId> components   find what is reachable from what");
+			System.out.println("       NavmeshTool <mapId> seams <x> <y> <z>   where the ground under that spot nearly joins its neighbours, and by how much it misses");
 			System.out.println("       NavmeshTool <mapId> stuck <file>   where bots reported being unable to move: on footing or inside geometry");
 			System.out.println("       NavmeshTool <mapId> audit        walk sample routes and report how far they wander");
 			return;
@@ -313,7 +318,7 @@ public class NavmeshTool {
 		long elapsed = System.currentTimeMillis() - start;
 		if (result.isEmpty()) {
 			System.out.println((result.gaveUp() ? "Gave up searching after " : "No route exists, established in ") + elapsed + " ms");
-			List<Vector3f> guide = BotPathFinder.coarseRoute(mesh, startX, startY, goalX, goalY);
+			List<Vector3f> guide = BotPathFinder.coarseRoute(mesh, startX, startY, startZ, goalX, goalY, goalZ);
 			System.out.println(guide.isEmpty() ? "  the rough pass found nothing either"
 				: "  the rough pass did find a way, in " + guide.size() + " guide points, so a stretch of it failed to refine");
 			return;
@@ -481,6 +486,70 @@ public class NavmeshTool {
 		}
 		System.out.printf("Map %d at %.1f %.1f:%n", mapId, x, y);
 		describe(field, x, y);
+	}
+
+	/**
+	 * Lists where the stretch of ground under a spot comes within reach of ground that is not joined to it, and by how much the step misses.
+	 * <p>
+	 * A pocket is either really closed or closed by a rule that is slightly too strict, and a route search cannot say which: it only says no. A seam
+	 * can. A column of stairs the rules refuse by a few centimetres shows as a line of seams with the same small excess, while a wall shows none.
+	 * The excess is how much higher the step is than the largest one the generator accepts, in metres.
+	 */
+	private static void reportSeams(int mapId, float x, float y, float z) throws IOException {
+		Heightfield field = HeightfieldBuilder.build(mapId);
+		int[] region = field.regions(BotPathFinder.STEP_TOLERANCE);
+		int cellX = (int) (x / Heightfield.CELL_SIZE), cellY = (int) (y / Heightfield.CELL_SIZE);
+		int origin = -1;
+		for (int i = field.columnStart(cellX, cellY); i < field.columnEnd(cellX, cellY); i++) {
+			if (region[i] != 0 && (origin == -1 || Math.abs(field.surfaceAt(i) - z) < Math.abs(field.surfaceAt(origin) - z)))
+				origin = i;
+		}
+		if (origin == -1) {
+			System.out.println("No walkable ground under " + x + " " + y);
+			return;
+		}
+		int mine = region[origin];
+		System.out.printf("Spot is on region %d at z %.2f%n", mine, field.surfaceAt(origin));
+		List<float[]> seams = new ArrayList<>(); // excess, x, y, z, z across
+		int cells = 0;
+		for (int column = 0; column < field.width() * field.height(); column++) {
+			int cx = column % field.width(), cy = column / field.width();
+			for (int surface = field.columnStart(cx, cy); surface < field.columnEnd(cx, cy); surface++) {
+				if (region[surface] != mine)
+					continue;
+				cells++;
+				for (int direction = 0; direction < 8; direction++) {
+					int nx = cx + new int[] { 1, 1, 0, -1, -1, -1, 0, 1 }[direction], ny = cy + new int[] { 0, 1, 1, 1, 0, -1, -1, -1 }[direction];
+					if (nx < 0 || ny < 0 || nx >= field.width() || ny >= field.height())
+						continue;
+					boolean diagonal = direction % 2 == 1;
+					float reach = Heightfield.CELL_SIZE * (diagonal ? 1.41421f : 1) + BotPathFinder.STEP_TOLERANCE;
+					for (int other = field.columnStart(nx, ny); other < field.columnEnd(nx, ny); other++) {
+						if (region[other] == 0 || region[other] == mine)
+							continue;
+						float step = Math.abs(field.surfaceAt(other) - field.surfaceAt(surface));
+						if (step > reach && step <= reach + 1.5f)
+							seams.add(new float[] { step - reach, cx * Heightfield.CELL_SIZE, cy * Heightfield.CELL_SIZE, field.surfaceAt(surface), field.surfaceAt(other) });
+					}
+				}
+			}
+			if (cells > 400_000)
+				break; // a region this large is not a pocket, and the list would be the whole coastline
+		}
+		System.out.printf("Region %d: %d cells examined, %d near misses against other regions (step within 1.5 m over the limit)%n", mine, cells, seams.size());
+		// what a more forgiving step rule would do to this ground: the cheapest way to tell a rule slightly too strict from a place really closed
+		for (float tolerance : new float[] { 0.4f, 0.7f, 1.0f, 1.5f }) {
+			int[] looser = field.regions(tolerance);
+			int id = looser[origin], size = 0;
+			for (int surface = 0; surface < looser.length; surface++) {
+				if (looser[surface] == id)
+					size++;
+			}
+			System.out.printf("  with a step tolerance of %.2f m the ground under the spot is %d cells%n", tolerance, size);
+		}
+		seams.sort((a, b) -> Float.compare(a[0], b[0]));
+		for (float[] seam : seams.subList(0, Math.min(15, seams.size())))
+			System.out.printf("  misses by %.2f m at %.1f %.1f: z %.2f to %.2f%n", seam[0], seam[1], seam[2], seam[3], seam[4]);
 	}
 
 	/**

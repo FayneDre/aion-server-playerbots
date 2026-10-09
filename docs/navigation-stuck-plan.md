@@ -1,6 +1,7 @@
 # Bots stuck in scenery, then teleported home
 
-Status: analysed 2026-10-09. Milestone 2 built (`BotLanding`, every map with a mesh), not yet watched in game; milestones 3 and 4 (the generator) not started.
+Status: analysed 2026-10-09. Milestones 2 and 3 built and unit tested, not yet watched in game (`BotLanding`, the levelled rough route, binding to a reachable
+obelisk); milestone 4 (the audit) not started.
 The cause is **not** the quality of the mesh in the camps; milestones below.
 Reported from in game: a bot inside a wall at the Verteron fortress, a bot sunk into the floor of the Eltnen fortress, both followed by a teleport.
 
@@ -59,15 +60,25 @@ stacked islands of the Abyss, which is why it must be fixed before Reshanta.
    walk away from: onto another floor when its own is a pocket, onto the nearest floor when it is inside geometry. Used after every resurrection (next
    tick) and in the stuck rescue before any teleport home. No list of bad spots; it holds on every map that has a mesh, Reshanta included once generated.
    Checked on the real Verteron mesh: the fortress obelisk is moved to the courtyard (2298 1781, z 109) in 85 ms; ordinary obelisks are left alone.
-3. **Give the rough route a height** (generator and planner). Store, per coarse cell and region, the height of that region's ground there, and only let the
-   rough search step between cells whose heights are within what a body can climb. Needs a change to the `.nav` coarse section, then regeneration of
-   every mesh. Test with `path` from the Eltnen obelisk to 2380 2562 (today: gave up) and from the Verteron one.
+3. **Give the rough route a height** (planner, built). A rough-route node is now a coarse cell **and a level of ground in it**, read from the fine grid
+   when the cell is first reached, so **the `.nav` format is unchanged and no map is regenerated**. Falls back to the old search when no levelled route
+   exists. Measured on the real meshes: Eltnen fortress obelisk to a resident's home, *gave up* before, now 564 m in 153 ms; the other fortress obelisk to
+   Morilen's home, 1579 m in 598 ms. Route audit over 250 m, routes found out of 300 tries: Eltnen 120 to 133, Verteron 81 to 85, Poeta 120 to 121;
+   nothing found before is lost. Cost: the newly found routes include long detours (up to 2.5 km for 250 m), real winding descents or cliffs the old planner
+   never reached, which callers may want to cap. Unit test `theRoughRouteStaysOnThePlatform...`, which fails against the old search.
+   Also built: bots are bound to **the nearest obelisk they can walk back from** (`BotPlaces.nearestReachableObelisk`: shared ground, then one route
+   search, a search that gave up does not rule one out), so a fortress obelisk with no way out is simply not chosen.
 4. **Audit every obelisk of every mesh** and keep it as a step of `tools/navmesh.ps1`: obelisk on a floor joined to the rest of the map, and a route
    out of it to a point 150 m away. A mesh that fails it does not ship.
 5. **Then** Reshanta and the other new meshes, with the fixed generator.
 
-Open questions for milestone 3: whether the Verteron fortress stairs are authored as steps or as a ramp (the pocket there is the same family of fault:
-a level the mesh does not join to the one below), and whether the bind coordinate is where a player lands or only where the NPC stands.
+## The Verteron pocket is not a rule that is too strict
+
+Tried with `NavmeshTool 210030000 seams 2319.2 1802.3 195.3` (new: near misses between regions, and what a looser rule would do): the floor under the
+obelisk stays a pocket of about 7000 cells with a step tolerance up to 1.5 m, with a walkable slope up to 55°, and with **doors treated as open**. At 65°
+it grows to 23000 cells, still not the map. So the floor is closed by geometry, or reached by something the static data does not hold (a lift, a
+teleporter, a gate that is a dynamic object). Not a generator fault to fix by loosening a rule; bots are protected from it by milestone 2 and by the
+obelisk choice, and milestone 4 will name every obelisk that has this problem. Open: how a player gets there.
 
 ## Side finding
 

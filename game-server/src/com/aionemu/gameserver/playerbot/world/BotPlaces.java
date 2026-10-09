@@ -465,6 +465,28 @@ public class BotPlaces {
 			.min(Comparator.comparingDouble(spot -> PositionUtil.getDistance(x, y, spot.x, spot.y))).orElse(null);
 	}
 
+	/**
+	 * @return The nearest obelisk that a bot living at {@code home} can walk back from, or, when none of them can be shown to be, the nearest one.
+	 *         <p>
+	 *         The nearest obelisk is not always one worth binding to. Measured over five days of logs, the obelisks of two fortresses stand on floors the
+	 *         mesh does not join to the ground around them, and nearly every bot that died near one came back where it could not take a step. An obelisk
+	 *         is judged by the ground it stands on sharing a stretch with the home, then by one route search, so no obelisk is named in code and a new
+	 *         map is judged the same way. A search that runs out of budget does not rule an obelisk out.
+	 */
+	public static Vector3f nearestReachableObelisk(int worldId, Vector3f home) {
+		List<Vector3f> all = new ArrayList<>(obelisksByMap.computeIfAbsent(worldId, BotPlaces::locateObelisks));
+		all.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(home.getX(), home.getY(), spot.x, spot.y)));
+		NavmeshService mesh = NavmeshService.getInstance();
+		int[] homeRegions = mesh.regionsAt(worldId, home.getX(), home.getY());
+		for (Vector3f obelisk : all) {
+			if (homeRegions.length == 0 || mesh.regionsAt(worldId, obelisk.x, obelisk.y).length == 0)
+				return all.get(0); // no mesh here, or no ground to judge by: nothing can be said against the nearest
+			if (mesh.reach(worldId, obelisk.x, obelisk.y, obelisk.z, home.getX(), home.getY(), home.getZ()) != NavmeshService.Reach.NO)
+				return obelisk;
+		}
+		return all.isEmpty() ? null : all.get(0);
+	}
+
 	private static List<Vector3f> locateObelisks(int worldId) {
 		List<Vector3f> found = new ArrayList<>();
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
