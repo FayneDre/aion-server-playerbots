@@ -1550,6 +1550,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 				reviveTask = null;
 			}
 		}
+		convalescence.forget(); // a bot that leaves the world mid sickness must not keep its ground reserved
 		cancelCombat();
 		setStateIfNot(AIState.DESPAWNED);
 		log.info("Bot {} despawned", getOwner().getName());
