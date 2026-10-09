@@ -181,8 +181,9 @@ public class World {
 				if (!player.isStaff()) {
 					AuditLogger.log(player, "is outside valid regions: " + position);
 					// he will be sent to bind point in PlayerLeaveWorldService
-					if (player.getClientConnection() != null) // a bot has none, and kicking it would mean nothing anyway
-						player.getClientConnection().close(SM_SYSTEM_MESSAGE.STR_KICK_CHARACTER());
+					var connection = player.getClientConnection();
+					if (connection != null) // a bot has none, and kicking it would mean nothing anyway
+						connection.close(SM_SYSTEM_MESSAGE.STR_KICK_CHARACTER());
 				}
 			} else {
 				log.warn("Old MapRegion was null when trying to update position of {}", object, new Throwable());

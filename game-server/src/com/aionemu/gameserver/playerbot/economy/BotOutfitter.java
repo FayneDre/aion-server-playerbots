@@ -1,4 +1,4 @@
-package com.aionemu.gameserver.playerbot.lifecycle;
+package com.aionemu.gameserver.playerbot.economy;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,11 +17,6 @@ import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.WeaponStats;
-import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
-import com.aionemu.gameserver.playerbot.economy.BotGearFit;
-import com.aionemu.gameserver.playerbot.economy.BotGearRefiner;
-import com.aionemu.gameserver.playerbot.economy.BotGearSources;
-import com.aionemu.gameserver.playerbot.economy.BotStatWeights;
 import com.aionemu.gameserver.services.item.ItemFactory;
 import com.aionemu.gameserver.skillengine.effect.WeaponDualEffect;
 
