@@ -7,6 +7,15 @@ documentation warns about, [engine-traps.md](engine-traps.md) and [world-and-dat
 Each section below says what the work is *for*, what it needs, and what actually blocks it. The order is roughly by value per unit of effort, not by
 ambition.
 
+## Where things stand
+
+Last reviewed 2026-10-09. **Built and running**: the population (pool, director, civic and field presence), combat with class skills, group roles, the
+templar playbook, the marking and target rules, group positioning, the death routine, gear and stigmas, flight (four milestones of five), navmesh
+planning on 24 maps. **Built and not yet watched in game**: everything about groups — templar, marks, positioning, the cleric's heal-first order — the
+convalescence spot after a death, and `//bot create` dressing a new bot. **Not started**: dungeons, wild PvP, the broker and shops, legions, speech,
+gathering, the Abyss and RvR. The next thing worth doing is not code: play a grouped session and read the log (`//bot positioning off` then `on` gives
+the before and after).
+
 ## No blocker left
 
 **Stigmas are now socketed** — `BotStigmaFitter`. It was the last one, and it mattered because a character past level 20 without stigma stones fights
@@ -56,8 +65,15 @@ What each role now does is in [combat-skills.md](combat-skills.md). What is left
 Corrected while building it: a taunt is **not** `ProvokerEffect`, which this file and the skill notes both assumed. `ProvokerEffect` installs a proc.
 The taunts are the 24 skills carrying `BOOSTHATE`, of which the enemy-targeted ones are the real article.
 
+Built since, each with its own document and each unit tested, none yet seen in game: the **templar** as the guide plays it
+([templar-plan.md](templar-plan.md)), the **skull and weakest-enemy target rules**, **group positioning** — front, behind, back, heal range, and out of
+other packs' aggro ([group-positioning-plan.md](group-positioning-plan.md)) — and a **cleric** that heals first and spends only spare mana on damage.
+Player-owned bots are never regeared, enchanted or socketed by the server; they may only put on a piece they find that beats their own.
+
 What is left:
 
+- **Other classes' playbooks.** The templar is the first and the pattern is set (`ClassPlaybook`, rules by skill group, a test that checks every group
+  against the data). The guide has documents for the rest; each is a plan, a playbook and a data test.
 - **Damage waits for the tank to hold.** It focuses the tank's target now, but it opens at the same instant the tank does, so the first blow can still
   pull the mob off. Needs a notion of the tank having established aggro, which `AggroList.getTarget(MOST_HATED)` can answer.
 - **Composition**: the director should be able to offer a balanced group, which means the pool has to be stocked by role as well as by level. This is
@@ -132,17 +148,19 @@ Priority five. Bots forming and filling legions, which mostly falls out of group
   cannot farm because forty bots took the spawns, or whose gathering nodes are always stripped, has a worse server than one with no bots at all. This
   becomes serious at a settled 2000 and it is a design rule, not a tuning value.
 - **No gathering or crafting.** It would feed the broker and make the countryside look used rather than merely fought over.
-- **Gear does not keep up.** Bots are dressed at creation and wear what they loot. Crossing 1 to 65 needs buying or crafting.
+- **Gear does not keep up.** Bots are dressed at creation — `//bot create` as well as `//bot populate`, with enchantment, manastones and stigmas — and
+  wear what they loot. Crossing 1 to 65 needs buying or crafting.
 - **Gear was half a character, and is now whole.** Accessories, the heroic and fabled tiers, enchantment and manastones were all missing, and the
   first two had been filtered out by the npc-costume test rather than left out on purpose. All six steps are written and deployed — see
   [bot-gear.md](bot-gear.md) and [bot-gear-upgrades.md](bot-gear-upgrades.md). What is **not** done is seeing it in game: every path runs through
   `//bot regear` or `//bot populate`, so none of it has been watched on a live character. Left deliberately out of scope, as the source document
   asks: two-handed weapon fusion, Idian stones, +15 evolution, re-evaluation and conditioning.
-- **Two test suites on roughly 15000 lines**, much of it concurrent, both run on every deploy: `BotDirectorTest`, seven cases over the population
-  review, and `BotPathFinderTest`, six over route planning on a synthetic ground written through the real mesh format (a wall with and without a gap,
-  pockets, snapping). Everything else is untested, which is why the combat half of `PlayerBotAI` has not been split — a mistake there is silent rather
-  than loud. What made the first suite possible is worth copying: `BotDirector.sort` takes its two dependencies as arguments and deals in ids and
-  places, so its conclusion is decidable without a world.
+- **89 tests in 9 classes on roughly 20000 lines**, all run on every deploy: the population review (`BotDirectorTest`), route planning on a
+  synthetic ground (`BotPathFinderTest`), and the group work — the templar's rules and a sweep of every skill template in the game
+  (`TemplarPlaybookTest`, `TemplarPlaybookDataTest`), marks, stigma ranking, spots and aggro zones. The combat half of `PlayerBotAI` is still
+  untested and unsplit, which is why a mistake there is silent rather than loud. What made the suites possible is worth copying: decisions are pure
+  functions of a situation record, so a conclusion is decidable without a world — and a data test feeds the code what the server feeds it, which is
+  what the one fault that reached a live server (a null skill group) needed.
 
 ## After the population churn of 2026-10-04
 
@@ -160,4 +178,5 @@ Done, and moved to [population-churn-followup.md](population-churn-followup.md):
 4. **How many characters a client tolerates in one place is unmeasured**, and it is the one ceiling this project does not control. It is also the only
    one a player feels directly.
 5. **A crash loses at most 5 minutes** of what bots did.
-6. **Bots never flee.** They heal, drink and shield themselves, then die.
+6. **Bots flee only from a lost fight.** `retreatIfLosing` breaks off from an outmatched or outnumbered fight and walks home; otherwise they heal, drink and
+   shield themselves. After a death a bot waits out the soul sickness at a spot of its own off the obelisk ([bot-careers.md](bot-careers.md)).
