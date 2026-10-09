@@ -13,11 +13,14 @@ import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
+import com.aionemu.gameserver.skillengine.properties.Properties;
+import com.aionemu.gameserver.skillengine.properties.TargetRangeAttribute;
+import com.aionemu.gameserver.skillengine.properties.TargetRelationAttribute;
 
 /**
  * How a templar plays, after the guide's "Templier 101". The plan, milestone by milestone, is {@code docs/templar-plan.md}.
  * <p>
- * The defensives hold in a group and alone alike, which the guide confirmed. The aggro rules are a group's business: a templar alone has nobody to
+ * The exclusions are the guide's "do not use" list: Stubborn Spirit, Bodyguard, and area attacks in a group. The defensives hold in a group and alone alike, which the guide confirmed. The aggro rules are a group's business: a templar alone has nobody to
  * protect and nothing to peel, and taunting the monster already hitting it is a wasted cast.
  */
 final class TemplarPlaybook implements ClassPlaybook {
@@ -46,6 +49,12 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * a stun that has just ended; much longer and it would be raised against something that is no longer a threat.
 	 */
 	static final long RECENTLY_CONTROLLED_MILLIS = 8000;
+	/**
+	 * Skills the guide says never to use, by group. Stubborn Spirit is a stance that switches itself off the moment the templar casts anything else, and
+	 * Bodyguard takes a party member's damage on the templar, which "will cause more problems than it solves" until every class is in. Claimed without
+	 * being cast, so that the generic order, which would take either for a buff, leaves them alone.
+	 */
+	static final Set<String> FORBIDDEN_GROUPS = Set.of("KN_MOVINGSTANCE", "KN_GRANDPROTECTION");
 	/** How far Provoking Roar reaches from the templar, which is the {@code effective_range} the data gives it. */
 	static final float ROAR_RANGE = 8f;
 
@@ -109,7 +118,17 @@ final class TemplarPlaybook implements ClassPlaybook {
 			if (move.group.equals(template.getGroup()))
 				return !move.groupOnly || bot.getCurrentTeam() != null;
 		}
-		return false;
+		if (FORBIDDEN_GROUPS.contains(template.getGroup()))
+			return true;
+		// Area attacks in a group: the templar's own roar is the one that is wanted and is a move above. The rest hit things nobody asked to be hit, and pull
+		// them onto a group that is holding one target.
+		Properties properties = template.getProperties();
+		return bot.getCurrentTeam() != null && properties != null && isAreaAttack(properties.getTargetRelation(), properties.getTargetType());
+	}
+
+	/** @return true if the skill is aimed at an area of enemies, which is what the guide advises against in a group. */
+	static boolean isAreaAttack(TargetRelationAttribute relation, TargetRangeAttribute range) {
+		return relation == TargetRelationAttribute.ENEMY && range == TargetRangeAttribute.AREA;
 	}
 
 	@Override
@@ -117,6 +136,10 @@ final class TemplarPlaybook implements ClassPlaybook {
 		BotMarks.markWeakestIfNone(bot);
 		Creature loose = BotGroupManager.enemyLooseOnAMate(bot);
 		Situation situation = situationOf(bot, loose != null);
+		// The guide says a templar never needs to rest for mana. This is how that gets checked: a line whenever it is low in a fight, to be read over a long
+		// instance before anyone decides the rest rule may be skipped for a tank.
+		if (bot.getLifeStats().getMpPercentage() < BotSkillManager.MANA_RESERVE_PERCENT)
+			log.debug("Templar {} is at {}% mana in a fight", bot.getName(), bot.getLifeStats().getMpPercentage());
 		Move move = decide(situation);
 		if (move == null)
 			return false;

@@ -86,8 +86,20 @@ that can be checked without a world can have its thresholds argued about in a te
    Remove Shock has, so nothing needed patching. Refresh Spirit asks for the chain Remove Shock opens (`ChainCondition`), and any other skill cast in between
    closes it, so it is the very next thing the templar casts. Devotion's five resistances are exactly the five states Remove Shock accepts: stun, stumble,
    stagger (knockback), spin and held in the air. The memory of "was just controlled" lives in `PlayerBotAI.lastControlledAt`.
-6. **Exclusions and mana.** No Stubborn Spirit, no Bodyguard, no area skill other than Roar for a tank in a group. Then watch mana across a long
+6. **Exclusions and mana.** *Built for the exclusions; the mana half is instrumentation, by design.* No Stubborn Spirit, no Bodyguard, no area skill other than Roar for a tank in a group. Then watch mana across a long
    instance before deciding whether the rest rule may be skipped for a tank.
+   The exclusions are by skill group (Stubborn Spirit, Bodyguard: never) and by property (any area attack on enemies while in a group; Roar is a move
+   and so exempt). Six of the templar's skills are such areas: Divine Grasp, Punishing Wave, Illusion Chains, Sword Storm and the roar. On mana,
+   nothing was changed: the rest rule only applies *between* fights for a tank (`mustHoldTheLine` keeps it on its feet while the group is engaged), so it
+   costs the group nothing, and a templar whose mana did run out would lose its defensives to the engine's refusal. A debug line is written whenever a
+   templar is under 25 % mana in a fight, so a long instance settles it.
+
+## Where this stands
+
+All six milestones are built and unit tested (19 cases in `TemplarPlaybookTest`, 3 in `BotMarksTest`, 2 in `BotPlaybooksTest`). None has been watched in
+game. What to look at first, by milestone: DP actually accumulating on a bot (2), a taunt cast at a monster that is not selected landing (3), the skull
+appearing on a real client (4), whether a short stun is ever seen by a once a second check (5), the mana line staying silent (6). Left out on
+purpose: keeping the tank on a loose monster until it has its attention (3, needs per bot memory).
 
 ## Answered by the guide's author
 

@@ -42,6 +42,8 @@ Whoever it is on, not the worst case: the aggro list says who is most hated, not
 it merely holds a grudge against — a monster hates everything that has touched it, and answering every grudge would mean taunting things already
 looking at the tank.
 
+A templar also never casts Stubborn Spirit or Bodyguard, and in a group no area attack on enemies other than its own roar: see [templar-plan.md](templar-plan.md).
+
 ## The mark
 
 A group fights one thing at a time, and it is the tank that chooses it. When monsters are on the group, the tank puts the skull (brand 14, the engine's own

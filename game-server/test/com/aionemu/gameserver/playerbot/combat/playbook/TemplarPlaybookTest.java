@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 
 import com.aionemu.gameserver.playerbot.combat.playbook.TemplarPlaybook.Move;
 import com.aionemu.gameserver.playerbot.combat.playbook.TemplarPlaybook.Situation;
+import com.aionemu.gameserver.skillengine.properties.TargetRangeAttribute;
+import com.aionemu.gameserver.skillengine.properties.TargetRelationAttribute;
 
 /**
  * The guide's rules, one case each. They are a pure function of a {@link Situation}, so a number it wants changed is a number changed here first.
@@ -144,5 +146,20 @@ class TemplarPlaybookTest {
 		assertNull(TemplarPlaybook.decide(shaken(false, false, false, false, 100, EVERYTHING)), "never controlled lately, so nothing to answer");
 		assertNull(TemplarPlaybook.decide(shaken(false, true, false, true, 100, EVERYTHING)), "its resistance is already on");
 		assertNull(TemplarPlaybook.decide(shaken(false, true, false, false, 100, EnumSet.complementOf(EnumSet.of(UNWAVERING_DEVOTION)))), "on cooldown");
+	}
+
+	@Test
+	void stubbornSpiritAndBodyguardAreNeverCast() {
+		assertTrue(TemplarPlaybook.FORBIDDEN_GROUPS.contains("KN_MOVINGSTANCE"));
+		assertTrue(TemplarPlaybook.FORBIDDEN_GROUPS.contains("KN_GRANDPROTECTION"));
+		for (Move move : Move.values())
+			assertFalse(TemplarPlaybook.FORBIDDEN_GROUPS.contains(move.group), move + " is a move the playbook casts, so it cannot also be forbidden");
+	}
+
+	@Test
+	void onlyAnAreaOfEnemiesCountsAsAnAreaAttack() {
+		assertTrue(TemplarPlaybook.isAreaAttack(TargetRelationAttribute.ENEMY, TargetRangeAttribute.AREA));
+		assertFalse(TemplarPlaybook.isAreaAttack(TargetRelationAttribute.ENEMY, TargetRangeAttribute.ONLYONE), "a single target is not an area");
+		assertFalse(TemplarPlaybook.isAreaAttack(TargetRelationAttribute.MYPARTY, TargetRangeAttribute.AREA), "Prayer of Victory is a buff, not an attack");
 	}
 }
