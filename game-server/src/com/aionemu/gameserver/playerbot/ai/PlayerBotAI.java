@@ -886,6 +886,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// The class gets first refusal, and what it declines falls through to the order below. Nothing is claimed yet: see docs/templar-plan.md.
 		if (BotPlaybooks.of(bot).act(bot, target))
 			return true;
+		boolean healer = BotRole.of(bot) == BotRole.HEALER;
+		// A healer heals before anything else, and that is the whole of its priority: every other thing it does, the damage it is allowed included, is what
+		// it does when nobody needs mending. Itself first, since a dead healer heals nobody, then whoever is in the most danger.
+		if (healer && (BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
+			|| BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT, true))))
+			return true;
 		boolean closing = !BotAttackManager.isInAttackRange(bot, target);
 		if (closing && !approachSpent) {
 			approachSpent = true;
@@ -912,12 +918,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 				|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT))
 				return true;
 		}
-		// A group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody. Outside the finishing rule above for a healer, because
-		// that rule is about the bot's own survival and says nothing about the tank: a monster with a sliver of health left is no reason to let the tank
-		// die under it, which is what a healer did every time the group's target got low.
-		boolean healer = BotRole.of(bot) == BotRole.HEALER;
-		if ((healer || !isAlmostDead(target))
-			&& BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT, healer)))
+		// A group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody. A healer has done this at the top of the method, ahead
+		// of everything and outside the finishing rule: that rule is about the bot's own survival and says nothing about the tank, and a monster with a sliver
+		// of health left is no reason to let the tank die under it, which is what a healer did every time the group's target got low.
+		if (!healer && !isAlmostDead(target)
+			&& BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT)))
 			return true;
 		// a leap covers ground the bot would otherwise walk, and those last metres on foot are where bots get stuck
 		if (closing && BotSkillManager.tryGapCloser(bot, target))

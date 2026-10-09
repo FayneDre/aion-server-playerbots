@@ -28,6 +28,10 @@ A cleric in a group used to heal and nothing else, for a whole instance, whateve
 "néant". The rule it obeyed is right at low mana and was stated too strongly: a healer's mana belongs to the people it keeps alive, and only the
 surplus belongs to the monster. Above 60% it joins the attack; below, it goes back to its own job.
 
+**Healing always comes first.** The order, on both ticks, is the bot itself if it is low, then the member in most danger, and only then anything else:
+on the decision tick `tendToTheGroup` runs before `tendTheFight` is even asked, and in the fight loop the first thing `useBestSkill` does for a healer is heal,
+ahead of its opening burst, its buffs and every damage skill. The damage is what it does when nobody needs mending, and nothing more.
+
 It is wired in `PlayerBotAI.tendTheFight` on the decision tick: with nobody to heal and the bot in its place, it attacks what the group attacks while it has
 the surplus, and `fight` stops it again when the mana is under 60 %, unless the monster is hitting the healer itself. Written down for a long time before it was
 actually connected: `hasManaToSpare` existed and nothing called it.
