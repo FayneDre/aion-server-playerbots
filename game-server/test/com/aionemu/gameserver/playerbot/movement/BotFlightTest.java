@@ -1,0 +1,36 @@
+package com.aionemu.gameserver.playerbot.movement;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+
+/** When a trip that nothing forces into the air is worth flying. The rest of a flight needs a world and is checked in game. */
+class BotFlightTest {
+
+	@Test
+	void aTripUnderFiftyMetresIsWalked() {
+		assertFalse(BotFlight.worthFlyingTo(49f, 0), "a hop of a few paces is a bot jumping up and coming down, not travel");
+		assertTrue(BotFlight.worthFlyingTo(50f, 0), "fifty is the first that counts");
+	}
+
+	@Test
+	void aTripPastTheLongestFlightIsWalked() {
+		assertTrue(BotFlight.worthFlyingTo(300f, 0));
+		assertFalse(BotFlight.worthFlyingTo(301f, 0), "a flight is for the length of a district, not for crossing a region");
+	}
+
+	@Test
+	void onlyAboutHalfTheQualifyingTripsAreFlown() {
+		int flown = 0;
+		for (int roll = 0; roll < 1000; roll++) {
+			if (BotFlight.worthFlyingTo(120f, roll))
+				flown++;
+		}
+		assertEquals(500, flown, "so that a map of residents does not all take off together");
+	}
+
+	@Test
+	void aNegativeRollIsNotAnError() {
+		assertDoesNotThrow(() -> BotFlight.worthFlyingTo(120f, -17));
+	}
+}

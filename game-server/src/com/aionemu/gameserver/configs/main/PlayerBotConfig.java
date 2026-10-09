@@ -28,4 +28,11 @@ public class PlayerBotConfig {
 	 */
 	@Property(key = "gameserver.playerbot.positioning", defaultValue = "true")
 	public static volatile boolean POSITIONING;
+
+	/**
+	 * Whether a bot going to another place of its own accord flies there when the trip is long enough and the ground allows it. Off, bots fly only to
+	 * reach somewhere walking has been proved not to, to follow a flying player, and to get home when stuck.
+	 */
+	@Property(key = "gameserver.playerbot.ambient.flight", defaultValue = "true")
+	public static volatile boolean AMBIENT_FLIGHT;
 }

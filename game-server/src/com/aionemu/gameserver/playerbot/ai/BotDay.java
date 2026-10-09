@@ -8,7 +8,9 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
+import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.BotQuestGrounds;
@@ -51,6 +53,8 @@ class BotDay {
 	private volatile Vector3f home;
 	/** Places this bot has proved it cannot get to, so it stops choosing them. */
 	private final Set<Vector3f> unreachable = ConcurrentHashMap.newKeySet();
+	/** The destination whose way there has already been weighed for a flight, so a trip is decided once and not on every tick of the walk. */
+	private volatile Vector3f flightConsideredFor;
 	/** Deaths since the clock below started, which is how a home proves itself lethal without anybody working out why. */
 	private volatile int deathsAtHome;
 	private volatile long deathsSince;
@@ -280,6 +284,17 @@ class BotDay {
 		if (ai.isAtAnchor()) {
 			occupationUntil = 0; // arrived: something else next tick
 			return true;
+		}
+		if (flightConsideredFor != occupationDestination) {
+			flightConsideredFor = occupationDestination;
+			// a trip long enough to be worth it, in about half the cases, and only where the air and the flight points allow: every refusal BotFlight
+			// can give is a quiet no, and the bot walks as it always did
+			float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), occupationDestination.getX(), occupationDestination.getY());
+			if (PlayerBotConfig.AMBIENT_FLIGHT && BotFlight.worthFlyingTo(distance, bot.getObjectId() + (int) occupationUntil)
+				&& BotFlight.tryFlyTo(bot, occupationDestination)) {
+				log.info("Bot {} flies {} m to its destination instead of walking", bot.getName(), Math.round(distance));
+				return true;
+			}
 		}
 		if (!ai.returnToAnchor())
 			return giveUp();

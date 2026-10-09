@@ -53,6 +53,13 @@ public class BotFlight {
 	private static final float MAX_JOURNEY = 300;
 	/** The shortest journey worth leaving the ground for. Under it, walking is the answer and a refusal to walk was about something else. */
 	static final float MIN_JOURNEY = 10;
+	/**
+	 * How short a trip may be and still be worth leaving the ground for, when nothing forces it. A hop of a few paces is a bot that jumps into the air
+	 * and comes down again, which is not travel.
+	 */
+	public static final float MIN_AMBIENT_JOURNEY = 50;
+	/** Share of the trips that qualify which are flown, so that a map of residents does not take off together. */
+	private static final int AMBIENT_PERCENT = 50;
 	/** How far above the landing spot a journey aims, so the last of it is a short drop onto the ground rather than a dive at it. */
 	private static final float LANDING_CLEARANCE = 3;
 	/** How far the one being followed must move before the bot is pointed somewhere new, so a leg is not re-announced every tick. */
@@ -237,6 +244,15 @@ public class BotFlight {
 		double angle = Math.toRadians(PositionUtil.convertHeadingToAngle(leader.getHeading()) + 180);
 		return new Vector3f(leader.getX() + (float) Math.cos(angle) * ESCORT_SPACING, leader.getY() + (float) Math.sin(angle) * ESCORT_SPACING,
 			leader.getZ());
+	}
+
+	/**
+	 * @param distance How far the trip is, in metres.
+	 * @param roll Any number that differs from one trip to the next, which decides whether this one is among the share that are flown.
+	 * @return Whether a trip that nothing forces into the air is one to fly: long enough, short enough, and the roll came up.
+	 */
+	public static boolean worthFlyingTo(float distance, int roll) {
+		return distance >= MIN_AMBIENT_JOURNEY && distance <= MAX_JOURNEY && Math.floorMod(roll, 100) < AMBIENT_PERCENT;
 	}
 
 	/**

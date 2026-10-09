@@ -141,3 +141,15 @@ only case the straight line plus ray cannot answer, and it also needs Reshanta's
   `StatCapUtil`, which caps `FLY_SPEED` at 16000 for anybody who is not staff.
 - **A fly zone is a volume with a floor and a ceiling.** `FLYINGZONESHAPE2_210020000` runs from z 16 to 316; a bot that climbs past the ceiling leaves
   the zone, which doubles its fp drain and makes `canFly` refuse the next take-off. The zone bounds are data and must be read, not guessed.
+
+## Flying because the trip is long (2026-10-09)
+
+Until now a bot flew only when walking had been proved impossible, to follow a flying player, or to get home when stuck: 167 take-offs in five days, almost all
+to the same fortress terraces, and nothing in the open air. A bot that goes to another place of its own accord (the `WANDERING` occupation, `BotDay.wander`) now
+**flies when the trip is 50 to 300 m, in about half of the cases**, and walks otherwise. Everything else is `BotFlight.tryFlyTo` as it was: a daeva, standing in a
+fly zone, flight points above half, the destination and the landing inside a fly zone, the air clear in a straight line, ten seconds since the last take-off, and
+never in a fight. Every refusal is a quiet walk. `gameserver.playerbot.ambient.flight` turns it off.
+
+Where it can happen: Eltnen, Verteron, Heiron, Inggison, Cygnea, Morheim, Altgard, Beluslan, Gelkmaros and Enshar, which have one to four fly zones of 4 to 30
+hectares each, with 100 to 800 npc spots inside. Not Poeta, Ishalgen, Theobomos or Brusthonin, which have none. Budget: 60 fp, one a second in a zone, nine
+metres a second, so 300 m costs about 35 fp and the refill takes two minutes: a flight now and then, not a habit. Unit tested (the decision only); not yet seen in game.
