@@ -291,7 +291,7 @@ class BotDay {
 			// can give is a quiet no, and the bot walks as it always did
 			float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), occupationDestination.getX(), occupationDestination.getY());
 			if (PlayerBotConfig.AMBIENT_FLIGHT && BotFlight.worthFlyingTo(distance, bot.getObjectId() + (int) occupationUntil)) {
-				String refusal = BotFlight.ambientFlight(bot, occupationDestination);
+				String refusal = BotFlight.cruiseOrWhyNot(bot, occupationDestination);
 				if (refusal == null) {
 					log.info("Bot {} flies {} m to its destination instead of walking", bot.getName(), Math.round(distance));
 					return true;

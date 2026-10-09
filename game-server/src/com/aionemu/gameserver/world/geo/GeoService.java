@@ -128,6 +128,17 @@ public class GeoService implements GameEngine {
 		return getClosestCollision(object, x, y, z, true, CollisionIntention.DEFAULT_COLLISIONS.getId(), IgnoreProperties.ANY_RACE);
 	}
 
+	/**
+	 * The same ray from a point of the caller's choosing instead of the creature's own. The bot module plans a flight from the ground to a cruising height
+	 * and along it, and every stretch of that has to be tested from where it starts: the version above can only ask about the straight line from where the
+	 * body stands, which is why a bot could not be trusted with any flight longer than one slanted leg.
+	 */
+	public Vector3f getClosestCollision(Creature object, float fromX, float fromY, float fromZ, float toX, float toY, float toZ, boolean atNearGroundZ, byte intentions,
+		IgnoreProperties ignoreProperties) {
+		return geoMaps.get(object.getWorldId()).getClosestCollision(fromX, fromY, fromZ, toX, toY, toZ, atNearGroundZ, object.getInstanceId(), intentions,
+			ignoreProperties);
+	}
+
 	public Vector3f getClosestCollision(Creature object, float x, float y, float z, boolean atNearGroundZ, byte intentions, IgnoreProperties ignoreProperties) {
 		return geoMaps.get(object.getWorldId()).getClosestCollision(object.getX(), object.getY(), object.getZ(), x, y, z, atNearGroundZ,
 			object.getInstanceId(), intentions, ignoreProperties);

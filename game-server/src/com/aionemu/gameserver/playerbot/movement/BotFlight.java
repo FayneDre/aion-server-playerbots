@@ -45,6 +45,10 @@ public class BotFlight {
 
 	/** High enough to be unmistakable from the ground, and well under any fly zone's ceiling. */
 	private static final float DEFAULT_HEIGHT = 25;
+	/** The heights above the higher of the two ends a trip is tried at, lowest first: over the roofs, and over the trees on a hillside. */
+	private static final float[] CRUISE_ABOVE = { 25, 45 };
+	/** Least height above the ends that is worth cruising at, so a zone with a low ceiling is not flown at the height of the rooftops. */
+	private static final float MIN_CRUISE_ABOVE = 12;
 	/** As high as a climb will take a bot, whatever is asked for. */
 	private static final float MAX_HEIGHT = 60;
 	/** How long the up-and-back cycle holds its height, which is what makes one command a whole flight nobody has to finish by hand. */
@@ -265,15 +269,15 @@ public class BotFlight {
 	 * @return true if the bot has taken off and the caller should let go of the body.
 	 */
 	public static boolean tryFlyTo(Player bot, Vector3f target) {
-		return ambientFlight(bot, target) == null;
+		return flyToOrWhyNot(bot, target) == null;
 	}
 
 	/**
-	 * Flies a bot to a place it could have walked to, and says why not when it does not.
+	 * Flies a bot straight at a place it cannot walk to, and says why not when it does not. See {@link #tryFlyTo}.
 	 *
 	 * @return Null when the bot has taken off, or the reason it stayed on the ground, for the caller to log.
 	 */
-	public static String ambientFlight(Player bot, Vector3f target) {
+	public static String flyToOrWhyNot(Player bot, Vector3f target) {
 		if (!refuelled(bot))
 			return bot.getName() + " has " + bot.getLifeStats().getCurrentFp() + " fp, under the half it keeps for choosing to fly";
 		String answer = flyTo(bot, target);
@@ -281,6 +285,74 @@ public class BotFlight {
 		if (!flying)
 			log.debug("Bot {} is not flying to {} {}: {}", bot.getName(), target.getX(), target.getY(), answer);
 		return flying ? null : answer;
+	}
+
+	/**
+	 * Flies a bot to a place it could perfectly well have walked to, because the trip is long enough to be worth the wings: up to a cruising height, level
+	 * to above the place, and down onto it.
+	 * <p>
+	 * Every stretch is tested from where it starts, with {@code GeoService.getClosestCollision} given its own start point: the climb, the level run and the
+	 * descent. That is what the one slanted leg of {@link #flyTo} could not do, and why a bot on the ground asking about a place 150 m off along the
+	 * terrain was told there was something in the way nine times in ten — the ray started at its feet. Two cruising heights are tried, the second higher,
+	 * and the run is also refused when a stretch of it leaves the fly zone, which a zone with a notch in it can do between two points that are inside.
+	 *
+	 * @return Null when the bot has taken off, or the reason it stayed on the ground, for the caller to log.
+	 */
+	public static String cruiseOrWhyNot(Player bot, Vector3f target) {
+		if (!refuelled(bot))
+			return bot.getName() + " has " + bot.getLifeStats().getCurrentFp() + " fp, under the half it keeps for choosing to fly";
+		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), target.getX(), target.getY(), target.getZ());
+		if (ground == null)
+			ground = target;
+		float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), ground.getX(), ground.getY());
+		if (distance < MIN_JOURNEY)
+			return bot.getName() + " is already there, " + Math.round(distance) + " m away";
+		if (distance > MAX_JOURNEY)
+			return bot.getName() + " is " + Math.round(distance) + " m away, past the longest flight";
+		float base = Math.max(bot.getZ(), ground.getZ());
+		Vector3f start = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
+		Vector3f approach = new Vector3f(ground.getX(), ground.getY(), ground.getZ() + LANDING_CLEARANCE);
+		String why = "its fly zone leaves no room to cruise";
+		for (float above : CRUISE_ABOVE) {
+			float cruise = ceilingFor(bot, base + above);
+			if (cruise < base + MIN_CRUISE_ABOVE)
+				continue;
+			Vector3f up = new Vector3f(bot.getX(), bot.getY(), cruise), across = new Vector3f(ground.getX(), ground.getY(), cruise);
+			if (!clearBetween(bot, start, up) || !clearBetween(bot, up, across) || !clearBetween(bot, across, approach)) {
+				why = "something is in the way at " + Math.round(cruise - bot.getZ()) + " m above it";
+				continue;
+			}
+			if (!staysInAFlyZone(bot, up, across)) {
+				why = "the run to " + Math.round(ground.getX()) + " " + Math.round(ground.getY()) + " would leave its fly zone";
+				continue;
+			}
+			List<Vector3f> legs = List.of(up, across, approach, ground);
+			String answer = begin(bot, legs, -1, null,
+				"to " + Math.round(ground.getX()) + " " + Math.round(ground.getY()) + " " + Math.round(ground.getZ()) + ", " + Math.round(distance) + " m at "
+					+ Math.round(cruise - bot.getZ()) + " m up");
+			return isInTheAir(bot) ? null : answer;
+		}
+		return bot.getName() + ": " + why;
+	}
+
+	/** @return Whether nothing stands between two points of the air, asked from the first of them. See {@link #airIsClear}. */
+	private static boolean clearBetween(Player bot, Vector3f from, Vector3f to) {
+		Vector3f met = GeoService.getInstance().getClosestCollision(bot, from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ(), false,
+			CollisionIntention.DEFAULT_COLLISIONS.getId(), IgnoreProperties.ANY_RACE);
+		return met == null || PositionUtil.getDistance(met.getX(), met.getY(), met.getZ(), to.getX(), to.getY(), to.getZ()) < 1;
+	}
+
+	/** @return Whether every twenty metres of the line between two points is inside a fly zone, which the two ends being inside does not say. */
+	private static boolean staysInAFlyZone(Player bot, Vector3f from, Vector3f to) {
+		float length = (float) PositionUtil.getDistance(from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ());
+		int pieces = Math.max(1, (int) (length / 20));
+		for (int piece = 1; piece < pieces; piece++) {
+			float ratio = (float) piece / pieces;
+			Vector3f point = new Vector3f(from.getX() + (to.getX() - from.getX()) * ratio, from.getY() + (to.getY() - from.getY()) * ratio, from.getZ());
+			if (!insideAFlyZone(bot, point))
+				return false;
+		}
+		return true;
 	}
 
 	/**

@@ -148,7 +148,12 @@ Until now a bot flew only when walking had been proved impossible, to follow a f
 to the same fortress terraces, and nothing in the open air. A bot that goes to another place of its own accord (the `WANDERING` occupation, `BotDay.wander`) now
 **flies when the trip is 50 to 300 m, in about half of the cases**, and walks otherwise. Everything else is `BotFlight.tryFlyTo` as it was: a daeva, standing in a
 fly zone, flight points above half, the destination and the landing inside a fly zone, the air clear in a straight line, ten seconds since the last take-off, and
-never in a fight. Every refusal is a quiet walk. `gameserver.playerbot.ambient.flight` turns it off.
+never in a fight. Every refusal is a quiet walk, logged as "walks its N m trip: reason".
+
+First deploy, 8 trips weighed, none flown: six refused for "something in the way", two for not standing in a fly zone. The ray of `flyTo` starts at the
+bot's feet, so along the terrain it meets something nine times in ten. An ambient trip is therefore planned as a **climb to a cruising height (25 m above the
+higher end, then 45 m), a level run, and a descent**, each stretch tested from its own start with a new `GeoService.getClosestCollision` overload, and the run is
+refused if a point every 20 m is outside a fly zone (`BotFlight.cruiseOrWhyNot`). The terrace flights keep `flyTo`. `gameserver.playerbot.ambient.flight` turns it off.
 
 Where it can happen: Eltnen, Verteron, Heiron, Inggison, Cygnea, Morheim, Altgard, Beluslan, Gelkmaros and Enshar, which have one to four fly zones of 4 to 30
 hectares each, with 100 to 800 npc spots inside. Not Poeta, Ishalgen, Theobomos or Brusthonin, which have none. Budget: 60 fp, one a second in a zone, nine
