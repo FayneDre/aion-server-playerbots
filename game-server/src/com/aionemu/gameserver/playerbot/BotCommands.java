@@ -21,6 +21,7 @@ import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.economy.BotOutfitter;
+import com.aionemu.gameserver.playerbot.economy.BotStigmaFitter;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
@@ -99,13 +100,16 @@ public final class BotCommands {
 			// Dressed for its level, as a populated resident is: left alone it stood in its underwear until somebody ran //bot regear. The skills come
 			// first because the outfitter refuses armour to a character that does not hold its mastery yet.
 			PlayerBotEnterWorldService.learnMissingSkills(bot);
+			// Enchanted and socketed with manastones as each piece goes on, which is how a new character is always dressed. Stigmas after the gear and
+			// the skills: the sockets are read from the skill tree, and the engine charges kinah for each stone.
 			int worn = BotOutfitter.dress(bot);
+			int stigmas = BotStigmaFitter.fit(bot);
 			PlayerService.storePlayer(bot);
 			// A bot somebody made by hand is theirs; a bot the world made by populating a region belongs to the world. That is the whole of the
 			// distinction, and it decides both who may delete it and whether the population director is allowed to move it about.
 			if (maker != null)
 				BotRoster.setOwner(bot.getName(), maker.getObjectId());
-			return "Created " + bot.getName() + " (objId " + bot.getObjectId() + "): " + playerClass + " level " + level + ", wearing " + worn + " piece(s)";
+			return "Created " + bot.getName() + " (objId " + bot.getObjectId() + "): " + playerClass + " level " + level + ", wearing " + worn + " piece(s) and " + stigmas + " stigma(s)";
 		} catch (IllegalArgumentException | IllegalStateException e) {
 			log.warn("Could not create bot " + characterName, e);
 			return "Could not create " + characterName + ": " + e.getMessage();
