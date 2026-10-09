@@ -96,11 +96,16 @@ public final class BotCommands {
 
 		try {
 			Player bot = PlayerBotCreationService.create(characterName, playerClass, level, race);
+			// Dressed for its level, as a populated resident is: left alone it stood in its underwear until somebody ran //bot regear. The skills come
+			// first because the outfitter refuses armour to a character that does not hold its mastery yet.
+			PlayerBotEnterWorldService.learnMissingSkills(bot);
+			int worn = BotOutfitter.dress(bot);
+			PlayerService.storePlayer(bot);
 			// A bot somebody made by hand is theirs; a bot the world made by populating a region belongs to the world. That is the whole of the
 			// distinction, and it decides both who may delete it and whether the population director is allowed to move it about.
 			if (maker != null)
 				BotRoster.setOwner(bot.getName(), maker.getObjectId());
-			return "Created " + bot.getName() + " (objId " + bot.getObjectId() + "): " + playerClass + " level " + level;
+			return "Created " + bot.getName() + " (objId " + bot.getObjectId() + "): " + playerClass + " level " + level + ", wearing " + worn + " piece(s)";
 		} catch (IllegalArgumentException | IllegalStateException e) {
 			log.warn("Could not create bot " + characterName, e);
 			return "Could not create " + characterName + ": " + e.getMessage();
