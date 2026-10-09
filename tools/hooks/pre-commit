@@ -1,0 +1,33 @@
+#!/bin/sh
+# Refuses a commit whose changes name somebody who is not to be named, or leave a doc comment stranded in the bot module.
+#
+# Only the lines being added are read, so a name that an older commit already carries does not block the commit that removes it.
+# The names are in .git/name-blocklist.txt (see commit-msg). The stranded doc comment check is tools/check-orphan-javadoc.ps1, the one deploy.ps1 runs.
+
+git_dir="$(git rev-parse --git-dir)"
+blocklist="$git_dir/name-blocklist.txt"
+
+if [ -f "$blocklist" ]; then
+	added="$(git diff --cached -U0 --no-color | grep '^+' | grep -v '^+++')"
+	while IFS= read -r name; do
+		name="$(printf '%s' "$name" | tr -d '\r')"
+		[ -z "$name" ] && continue
+		if printf '%s\n' "$added" | grep -qi -- "$name"; then
+			echo "commit refused: a change names somebody who is not to be named in this repository (see .git/name-blocklist.txt):" >&2
+			printf '%s\n' "$added" | grep -i -- "$name" | head -3 | cut -c1-140 >&2
+			exit 1
+		fi
+	done < "$blocklist"
+fi
+
+if git diff --cached --name-only | grep -q 'game-server/src/com/aionemu/gameserver/playerbot/.*\.java$'; then
+	if ! powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/check-orphan-javadoc.ps1 > /tmp/orphans.$$ 2>&1; then
+		echo "commit refused: a doc comment is directly followed by another one in the bot module:" >&2
+		cat /tmp/orphans.$$ >&2
+		rm -f /tmp/orphans.$$
+		exit 1
+	fi
+	rm -f /tmp/orphans.$$
+fi
+
+exit 0

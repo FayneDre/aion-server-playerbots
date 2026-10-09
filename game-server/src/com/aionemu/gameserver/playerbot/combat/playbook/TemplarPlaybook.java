@@ -125,17 +125,25 @@ final class TemplarPlaybook implements ClassPlaybook {
 
 	@Override
 	public boolean claims(Player bot, SkillTemplate template) {
+		return claimsSkill(bot.getCurrentTeam() != null, template);
+	}
+
+	/**
+	 * @return true if the templar alone decides on this skill. Takes whether the bot is in a group rather than the bot, so that every skill template in the game
+	 *         can be put through it in a test: a template with no group, or no properties, once made it throw on every tick of every templar.
+	 */
+	static boolean claimsSkill(boolean inTeam, SkillTemplate template) {
 		for (Move move : Move.values()) {
 			// the group's moves are the generic order's own while there is no group, so a templar alone still swings Capture as the damage it is
 			if (move.group.equals(template.getGroup()))
-				return !move.groupOnly || bot.getCurrentTeam() != null;
+				return !move.groupOnly || inTeam;
 		}
 		if (isForbidden(template.getGroup()))
 			return true;
 		// Area attacks in a group: the templar's own roar is the one that is wanted and is a move above. The rest hit things nobody asked to be hit, and pull
 		// them onto a group that is holding one target.
 		Properties properties = template.getProperties();
-		return bot.getCurrentTeam() != null && properties != null && isAreaAttack(properties.getTargetRelation(), properties.getTargetType());
+		return inTeam && properties != null && isAreaAttack(properties.getTargetRelation(), properties.getTargetType());
 	}
 
 	/**

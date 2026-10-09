@@ -100,6 +100,10 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
 
 - English, short and to the point (a single summary line, or a few short bullets for larger changes).
 - No AI attribution/co-author lines.
+- Never name a colleague or the user in code, comments, tests, docs, config or commit messages: write "the guide", "the design document". Run
+  `tools/install-hooks.ps1` once per clone: its `commit-msg` and `pre-commit` hooks refuse a co-author trailer, a name from the local
+  `.git/name-blocklist.txt` (kept out of the repository on purpose) and a doc comment stranded in the bot module. They exist because the same two rules were
+  broken twice by habit.
 
 ## Documentation conventions
 
@@ -108,6 +112,18 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
 - Every `//bot` command must appear in [docs/bot-commands.md](docs/bot-commands.md). `tools/check-bot-docs.ps1` compares the handler's switch with
   the doc and names what is missing; `deploy.ps1` runs it and refuses to deploy while the two disagree, and an editor hook reports it sooner. The
   rule exists because the discipline failed: `//bot number` was added and the doc was not touched.
+
+## Plan documents and tools
+
+- A plan document opens with a **Status** line (not started, in progress with the milestone, or built and what is still unverified). A plan that has been
+  built and is not kept up to date is worse than none: two of them said "not built" for a day after they were.
+- `tools/check-server-log.ps1` reads the game server log for errors, a log that has gone silent (a console clicked into pauses the whole server) and the
+  number of bots in the world; `start-server.ps1` runs it after startup. `tools/skill-lookup.ps1` finds skills by name, group, id or class, with their group,
+  cooldown, reach and tier. Use them before reading the data by hand.
+- A class guide becomes rules by skill **group** (stable across levels), never by id, and every group a playbook names is checked against the data by a
+  test (`TemplarPlaybookDataTest`), which also puts every skill template in the game through the playbook's rules.
+- Prefer the editor tool for a single change; reserve scripted multi-line replacements for bulk work, and check the result: backslashes, `\n` and line
+  endings are easy to get wrong through a shell.
 
 ## Java code conventions
 

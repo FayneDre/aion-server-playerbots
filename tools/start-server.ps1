@@ -17,6 +17,12 @@
 .PARAMETER SkipChat
     Do not start the chat server (in-game chat channels will not work).
 
+.PARAMETER SkipCheck
+    Do not read the game server log after the stack is up (see check-server-log.ps1).
+
+.PARAMETER CheckSeconds
+    How long after startup the log check waits before reading.
+
 .PARAMETER TimeoutSeconds
     How long to wait for each server to start listening before giving up.
 
@@ -27,6 +33,8 @@
 param(
     [string]$ServerRoot = $env:AION_SERVER_HOME,
     [switch]$SkipChat,
+    [switch]$SkipCheck,
+    [int]$CheckSeconds = 45,
     [int]$TimeoutSeconds = 120
 )
 
@@ -97,3 +105,9 @@ Start-AionServer 'login-server' 9014
 Start-AionServer 'game-server' 7777
 
 Write-Host 'Server stack is up.' -ForegroundColor Green
+
+# Read what the game server wrote once the bots have begun to act, because that is when the faults showed: a tick that threw every second, and a server
+# whose console had been clicked into and stood still. It reports and does not stop anything.
+if (-not $SkipCheck) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'check-server-log.ps1') -ServerRoot $ServerRoot -WaitSeconds $CheckSeconds
+}

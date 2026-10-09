@@ -1,0 +1,30 @@
+#!/bin/sh
+# Refuses a commit message that carries a co-author trailer or names somebody who is not to be named.
+#
+# Both rules were written down and both were broken: the trailer came back each time the tool that writes commits was changed, and a colleague's name
+# reached eight messages before anybody noticed. A rule that fails that way is better kept by the machine than by habit.
+#
+# The names are in .git/name-blocklist.txt, one per line, case insensitive. That file is deliberately not in the repository: a list of names to keep out
+# of it would itself be the leak. Installed by tools/install-hooks.ps1.
+
+message_file="$1"
+git_dir="$(git rev-parse --git-dir)"
+blocklist="$git_dir/name-blocklist.txt"
+
+if grep -qi '^co-authored-by:' "$message_file"; then
+	echo "commit refused: the message has a Co-Authored-By trailer, which this project does not use." >&2
+	exit 1
+fi
+
+if [ -f "$blocklist" ]; then
+	while IFS= read -r name; do
+		name="$(printf '%s' "$name" | tr -d '\r')"
+		[ -z "$name" ] && continue
+		if grep -qi -- "$name" "$message_file"; then
+			echo "commit refused: the message names somebody who is not to be named in this repository (see .git/name-blocklist.txt)." >&2
+			exit 1
+		fi
+	done < "$blocklist"
+fi
+
+exit 0

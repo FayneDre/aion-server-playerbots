@@ -1,6 +1,6 @@
 # Templar: implementation plan
 
-Plan, not built. Source: the guide's document "Templier 101 — Rôle du templier dans un groupe" (four pages, in French). It describes how a templar
+Status: all six milestones built and unit tested, none yet watched in game (see "Where this stands" at the end). Source: the guide's document "Templier 101 — Rôle du templier dans un groupe" (four pages, in French). It describes how a templar
 should play in a group; the guide confirmed its defensive rules hold solo as well. What the module does for a tank today is in [group-roles.md](group-roles.md) and
 [combat-skills.md](combat-skills.md); this file is only the distance between the two.
 

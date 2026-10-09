@@ -62,6 +62,18 @@ if (-not $process) {
     exit 0
 }
 
+# A server whose log has gone silent while it runs is not busy, it is waiting: Windows stops a console that has been clicked into from accepting output,
+# and every thread that logs then waits with it, the shutdown included. Said now, because the timeout below would only say it after three minutes.
+if ($ServerRoot) {
+    $consoleLog = Join-Path $ServerRoot 'game-server\log\server_console.log'
+    if (Test-Path $consoleLog) {
+        $silentFor = (Get-Date) - (Get-Item $consoleLog).LastWriteTime
+        if ($silentFor.TotalSeconds -gt 120) {
+            Write-Host ("  the server has written nothing for {0:N0} minutes: its console may be paused (it freezes when clicked into). Click it and press Enter." -f $silentFor.TotalMinutes) -ForegroundColor Yellow
+        }
+    }
+}
+
 # Noted before the shutdown, because once the JVM is gone nothing links it to the shell that started it any more.
 $hostShellPid = $process.ParentProcessId
 
@@ -124,4 +136,4 @@ if ($Force) {
     Stop-Process -Id $process.ProcessId -Force
     exit 0
 }
-throw "Game server did not stop within $TimeoutSeconds seconds. Check its window, or re-run with -Force."
+throw "Game server did not stop within $TimeoutSeconds seconds. If its console is paused (clicked into), click it and press Enter; otherwise check its window, or re-run with -Force."

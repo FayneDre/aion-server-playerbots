@@ -1,6 +1,6 @@
 # Group positioning: plan
 
-Plan, not built. Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
+Status: milestones 1 to 5 built and unit tested, none yet watched in game; the before and after figures of milestone 2 are still to be taken (`//bot positioning on|off`). Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
 Where the module stands today is in [group-roles.md](group-roles.md) and [navigation-prototype.md](navigation-prototype.md); this file is the distance
 between that and what it describes. Step 0, the measuring, is done and its figures are below.
 
