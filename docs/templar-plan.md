@@ -30,6 +30,10 @@ an Asmodian templar before anything depends on it.
 
 ## What exists, and where it disagrees with the document
 
+**Group only.** The document is about group play, so everything below applies to a templar *in a group* and nothing changes for a solo one: the
+generic rules stay as they are there (the same line [group-roles.md](group-roles.md) already draws). The playbook is not consulted without a team.
+The disagreements that follow are therefore disagreements in a group.
+
 - `PlayerBotAI.useBestSkill` already prefers a taunt in a group (`isTaunt`, `BOOSTHATE`) and pulls back a monster hitting a mate
   (`BotGroupManager.enemyLooseOnAMate`).
 - **It spends taunts freely**, the guide wants Taunt and Capture saved for peeling, and Roar fired whenever it is available.
@@ -66,7 +70,7 @@ that can be checked without a world can have its thresholds argued about in a te
 
 ## Milestones, in verifiable order
 
-1. **Playbook seam, no behaviour change.** Interface, `Situation`, the templar playbook returning "nothing to say". Done when the existing tests
+1. **Playbook seam, no behaviour change.** Consulted only when the bot is in a team. Interface, `Situation`, the templar playbook returning "nothing to say". Done when the existing tests
    pass and a templar plays as before.
 2. **Defensives by the document.** Hand of Healing at < 20 % health with 2000 DP; Empyrean Armor under 75 %; Iron Skin under 50 % while Armor is
    not up; and the generic defensive and heal rules told to leave these three alone. Chastisement used on cooldown from 10 to 30 while DP is
@@ -89,6 +93,5 @@ that can be checked without a world can have its thresholds argued about in a te
 1. **Capture** is a pull with damage in the data and gives no extra hate by itself. Is it meant as a taunt because the pull puts the monster on the
    tank, or does he expect more from it?
 2. "Peu de pierre" and "peau de fer" read as the same skill (Iron Skin, 3 min, level 40). Confirm.
-3. Do the defensive rules apply when the templar is **alone**? The document only covers groups, and the health thresholds make sense either way.
-4. A mark already on a target: does *any* brand count, or only the skull? The plan assumes any live brand stops the tank from marking.
+3. ~~Do the defensive rules apply when alone?~~ Settled: no. The document is about groups, and solo play keeps the generic rules.
 5. At engagement, "least HP" means current HP, not percentage. The plan assumes current, since a low absolute number dies first.
