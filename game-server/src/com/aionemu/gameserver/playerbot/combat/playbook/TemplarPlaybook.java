@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
@@ -36,6 +37,15 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * 2000 and a templar that has just spent it cannot be saved by it.
 	 */
 	static final int LAST_CHASTISEMENT_LEVEL = 30;
+	/** The chain category Remove Shock opens, which Refresh Spirit asks for. */
+	static final String SHOCK_CHAIN = "ALL_CHAINA_1TH";
+	/** Health under which Refresh Spirit is worth following Remove Shock with. It heals a quarter, so above this it would mostly be wasted. */
+	static final int REFRESH_SPIRIT_BELOW_PERCENT = 75;
+	/**
+	 * How long after being controlled Unwavering Devotion still counts as an answer to it. It is cast once the templar is free again, and a few seconds is
+	 * a stun that has just ended; much longer and it would be raised against something that is no longer a threat.
+	 */
+	static final long RECENTLY_CONTROLLED_MILLIS = 8000;
 	/** How far Provoking Roar reaches from the templar, which is the {@code effective_range} the data gives it. */
 	static final float ROAR_RANGE = 8f;
 
@@ -52,8 +62,11 @@ final class TemplarPlaybook implements ClassPlaybook {
 	/** What the playbook may cast, and the skill group that names it; every level of a skill has its own id and the group is what they share. */
 	enum Move {
 		HAND_OF_HEALING("KN_DIVINEHAND", Aim.SELF, false),
+		REMOVE_SHOCK("ALL_SHOCKREFLECT", Aim.SELF, false),
+		REFRESH_SPIRIT("KN_PROTECTPROUD", Aim.SELF, false),
 		EMPYREAN_ARMOR("KN_STONEBODY", Aim.SELF, false),
 		IRON_SKIN("KN_IRONBODY", Aim.SELF, false),
+		UNWAVERING_DEVOTION("WA_STEADINESS", Aim.SELF, false),
 		PROVOKING_ROAR("KN_MASSIVEPROVOKE", Aim.SELF, true),
 		CAPTURE("KN_STUNNINGSNACHER", Aim.LOOSE_ENEMY, true),
 		TAUNT("WA_PROVOKE", Aim.LOOSE_ENEMY, true),
@@ -80,9 +93,13 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * @param inTeam Whether the templar is in a group, which is what the aggro rules need.
 	 * @param enemyInRoarRange Whether an enemy that is fighting the group is close enough for Provoking Roar to take hold of it.
 	 * @param enemyLoose Whether an enemy is hitting a group mate rather than the templar.
+	 * @param controlled Whether the templar is stunned, knocked about, spun or held in the air right now.
+	 * @param recentlyControlled Whether it was, a moment ago and no longer.
+	 * @param shockChainOpen Whether Remove Shock was the last skill it used, which is the only moment Refresh Spirit can follow it.
+	 * @param devotionUp Whether Unwavering Devotion's resistance is already on the templar.
 	 */
 	record Situation(int level, int hpPercent, int dp, boolean armorUp, boolean inTeam, boolean enemyInRoarRange, boolean enemyLoose,
-		Set<Move> ready) {
+		boolean controlled, boolean recentlyControlled, boolean shockChainOpen, boolean devotionUp, Set<Move> ready) {
 	}
 
 	@Override
@@ -123,8 +140,12 @@ final class TemplarPlaybook implements ClassPlaybook {
 		boolean inTeam = bot.getCurrentTeam() != null;
 		// asked only when the roar is ready: counting is a walk over everything the bot can see
 		boolean enemyInRoarRange = inTeam && ready.contains(Move.PROVOKING_ROAR) && BotGroupManager.enemiesFightingTheGroupWithin(bot, ROAR_RANGE) > 0;
+		long lastControlledAt = bot.getAi() instanceof PlayerBotAI ai ? ai.lastControlledAt() : 0;
+		boolean controlled = BotSkillManager.isCrowdControlled(bot);
+		boolean recentlyControlled = !controlled && lastControlledAt != 0 && System.currentTimeMillis() - lastControlledAt <= RECENTLY_CONTROLLED_MILLIS;
 		return new Situation(bot.getLevel(), bot.getLifeStats().getHpPercentage(), bot.getCommonData().getDp(),
-			BotSkillManager.isUp(bot, Move.EMPYREAN_ARMOR.group), inTeam, enemyInRoarRange, enemyLoose, ready);
+			BotSkillManager.isUp(bot, Move.EMPYREAN_ARMOR.group), inTeam, enemyInRoarRange, enemyLoose, controlled, recentlyControlled,
+			BotSkillManager.isChainOpen(bot, SHOCK_CHAIN), BotSkillManager.isUp(bot, Move.UNWAVERING_DEVOTION.group), ready);
 	}
 
 	/**
@@ -141,12 +162,21 @@ final class TemplarPlaybook implements ClassPlaybook {
 	static Move decide(Situation situation) {
 		Set<Move> ready = situation.ready();
 		boolean hasDp = situation.dp() >= ABILITY_DP;
+		// A templar that cannot act cannot cast: the engine refuses every skill but the few that evade, and Remove Shock is one of them. So control is
+		// answered with it or not at all, and nothing below it is worth deciding.
+		if (situation.controlled())
+			return ready.contains(Move.REMOVE_SHOCK) ? Move.REMOVE_SHOCK : null;
+		// Before anything else, because the chain is the most fragile thing here: any other skill cast in between closes it
+		if (situation.shockChainOpen() && ready.contains(Move.REFRESH_SPIRIT) && situation.hpPercent() < REFRESH_SPIRIT_BELOW_PERCENT)
+			return Move.REFRESH_SPIRIT;
 		if (ready.contains(Move.HAND_OF_HEALING) && hasDp && situation.hpPercent() < HAND_OF_HEALING_BELOW_PERCENT)
 			return Move.HAND_OF_HEALING;
 		if (ready.contains(Move.EMPYREAN_ARMOR) && situation.hpPercent() < EMPYREAN_ARMOR_BELOW_PERCENT)
 			return Move.EMPYREAN_ARMOR;
 		if (ready.contains(Move.IRON_SKIN) && situation.hpPercent() < IRON_SKIN_BELOW_PERCENT && !situation.armorUp())
 			return Move.IRON_SKIN;
+		if (situation.recentlyControlled() && !situation.devotionUp() && ready.contains(Move.UNWAVERING_DEVOTION))
+			return Move.UNWAVERING_DEVOTION;
 		if (situation.inTeam()) {
 			if (ready.contains(Move.PROVOKING_ROAR) && situation.enemyInRoarRange())
 				return Move.PROVOKING_ROAR;

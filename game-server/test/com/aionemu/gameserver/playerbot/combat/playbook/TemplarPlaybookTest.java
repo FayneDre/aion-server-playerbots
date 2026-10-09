@@ -20,12 +20,12 @@ class TemplarPlaybookTest {
 
 	/** A templar on its own: no group, so none of the aggro rules can apply. */
 	private static Situation alone(int level, int hp, int dp, boolean armorUp, Set<Move> ready) {
-		return new Situation(level, hp, dp, armorUp, false, false, false, ready);
+		return new Situation(level, hp, dp, armorUp, false, false, false, false, false, false, false, ready);
 	}
 
 	/** A templar in a group, healthy and with no divine power, so only the aggro rules have anything to say. */
 	private static Situation grouped(boolean enemyInRoarRange, boolean enemyLoose, Set<Move> ready) {
-		return new Situation(40, 100, 0, false, true, enemyInRoarRange, enemyLoose, ready);
+		return new Situation(40, 100, 0, false, true, enemyInRoarRange, enemyLoose, false, false, false, false, ready);
 	}
 
 	@Test
@@ -103,13 +103,46 @@ class TemplarPlaybookTest {
 
 	@Test
 	void stayingAliveComesBeforeTheAggro() {
-		Situation hurt = new Situation(40, 60, 0, false, true, true, true, EVERYTHING);
+		Situation hurt = new Situation(40, 60, 0, false, true, true, true, false, false, false, false, EVERYTHING);
 		assertEquals(EMPYREAN_ARMOR, TemplarPlaybook.decide(hurt));
 	}
 
 	@Test
 	void aTemplarAloneNeverTauntsOrRoars() {
-		Situation alone = new Situation(40, 100, 0, false, false, true, true, EVERYTHING);
+		Situation alone = new Situation(40, 100, 0, false, false, true, true, false, false, false, false, EVERYTHING);
 		assertNull(TemplarPlaybook.decide(alone), "a group's rules need a group, whatever the flags say");
+	}
+
+	/** A templar at full health, alone, in the given state of control. */
+	private static Situation shaken(boolean controlled, boolean recentlyControlled, boolean shockChainOpen, boolean devotionUp, int hp, Set<Move> ready) {
+		return new Situation(45, hp, 0, false, false, false, false, controlled, recentlyControlled, shockChainOpen, devotionUp, ready);
+	}
+
+	@Test
+	void whileControlledTheOnlyThingToDoIsRemoveShock() {
+		assertEquals(REMOVE_SHOCK, TemplarPlaybook.decide(shaken(true, false, false, false, 100, EVERYTHING)));
+		assertNull(TemplarPlaybook.decide(shaken(true, false, false, false, 10, EnumSet.complementOf(EnumSet.of(REMOVE_SHOCK)))),
+			"everything else the engine would refuse, so there is nothing to decide, even with a heal ready and only a tenth of the health left");
+	}
+
+	@Test
+	void refreshSpiritFollowsRemoveShockOnlyBelowThreeQuartersOfTheHealth() {
+		assertEquals(REFRESH_SPIRIT, TemplarPlaybook.decide(shaken(false, true, true, false, 74, EVERYTHING)));
+		assertNotEquals(REFRESH_SPIRIT, TemplarPlaybook.decide(shaken(false, true, true, false, 75, EVERYTHING)), "it would heal what is not hurt");
+		assertNotEquals(REFRESH_SPIRIT, TemplarPlaybook.decide(shaken(false, true, false, false, 60, EVERYTHING)), "the chain is closed: something else was cast since");
+	}
+
+	@Test
+	void theChainComesBeforeEveryOtherDefensive() {
+		assertEquals(REFRESH_SPIRIT, TemplarPlaybook.decide(shaken(false, true, true, false, 40, EVERYTHING)),
+			"Armor would close the chain on the way past, and Refresh Spirit would then be refused");
+	}
+
+	@Test
+	void devotionOnceTheTemplarIsFreeAndHasJustBeenControlled() {
+		assertEquals(UNWAVERING_DEVOTION, TemplarPlaybook.decide(shaken(false, true, false, false, 100, EVERYTHING)));
+		assertNull(TemplarPlaybook.decide(shaken(false, false, false, false, 100, EVERYTHING)), "never controlled lately, so nothing to answer");
+		assertNull(TemplarPlaybook.decide(shaken(false, true, false, true, 100, EVERYTHING)), "its resistance is already on");
+		assertNull(TemplarPlaybook.decide(shaken(false, true, false, false, 100, EnumSet.complementOf(EnumSet.of(UNWAVERING_DEVOTION)))), "on cooldown");
 	}
 }

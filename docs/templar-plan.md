@@ -81,10 +81,11 @@ that can be checked without a world can have its thresholds argued about in a te
    times a monster's most hated target is not the tank during a three monster pull.
 4. **Marking.** *Built (core getter `getBrandedTarget`, `BotMarks`, the group following the skull, the tank marking before it assists and as it fights). Not built: keeping the tank on a monster that has got loose until it has its attention, because it is a state the bot has to remember from tick to tick, which is the same per-bot memory milestone 5 needs for crowd control.* The core getter, the tank's marking, `targetToAssist` reading the mark, clearing it on death. In game: a group of three with a
    cleric and a gladiator, watching all three follow the skull.
-5. **Crowd control.** Remember the last time the bot was stunned, knocked down, spun or drained of ether; Unwavering Devotion when it comes
-   free, once per cooldown. Remove Shock then Refresh Spirit (the latter only under 75 % health). **Unverified:** whether the engine lets a
-   stunned bot cast at all, and whether the chain opens for a bot. This is the milestone most likely to turn out smaller than written, or
-   to need a core patch.
+5. **Crowd control.** *Built; what was unverified is settled in the code, not yet in play.* Remember the last time the bot was stunned, knocked down, spun or drained of ether; Unwavering Devotion when it comes
+   free, once per cooldown. Remove Shock then Refresh Spirit (the latter only under 75 % health). Settled by reading the engine: a stunned character may cast only skills with an evade effect (`Skill.canUseSkill`), which
+   Remove Shock has, so nothing needed patching. Refresh Spirit asks for the chain Remove Shock opens (`ChainCondition`), and any other skill cast in between
+   closes it, so it is the very next thing the templar casts. Devotion's five resistances are exactly the five states Remove Shock accepts: stun, stumble,
+   stagger (knockback), spin and held in the air. The memory of "was just controlled" lives in `PlayerBotAI.lastControlledAt`.
 6. **Exclusions and mana.** No Stubborn Spirit, no Bodyguard, no area skill other than Roar for a tank in a group. Then watch mana across a long
    instance before deciding whether the rest rule may be skipped for a tank.
 

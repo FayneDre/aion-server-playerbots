@@ -161,6 +161,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long lastAttackTick;
 	/** When the bot last actually did something to its target -- a swing sent or a skill cast, not a tick that decided to do neither. */
 	private volatile long lastBlow;
+	/**
+	 * When the bot was last seen stunned, knocked about, spun or held in the air. The engine says whether a bot is controlled now and never when it
+	 * last was, which is what a class that answers it afterwards needs; a playbook is shared by every bot of its class, so the memory is kept here.
+	 */
+	private volatile long lastControlledAt;
 	private ScheduledFuture<?> thinkTask;
 	/** Non null between death and resurrection, which also marks the death as already handled. */
 	private ScheduledFuture<?> reviveTask;
@@ -402,6 +407,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
+		noteCrowdControl();
 		synchronized (combatLock) {
 			if (retiring || thinkTask == null) // on its way out of the world, or already gone: nothing is decided from here on
 				return;
@@ -576,6 +582,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 	}
 
+	/** @return When the bot was last seen crowd controlled, in milliseconds, or 0 if it has not been. */
+	public long lastControlledAt() {
+		return lastControlledAt;
+	}
+
 	public boolean isAttacking() {
 		synchronized (combatLock) {
 			return attackTask != null;
@@ -639,6 +650,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	private void fight() {
 		Player bot = getOwner();
+		noteCrowdControl();
 		Creature target = bot.getTarget() instanceof Creature creature ? creature : null;
 		if (!BotAttackManager.canKeepFighting(bot, target)) {
 			if (target != null && target.isDead() && BotLootManager.hasLootFor(bot, target.getObjectId()))
@@ -694,6 +706,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return false;
 		startAttacking(marked);
 		return true;
+	}
+
+	private void noteCrowdControl() {
+		if (BotSkillManager.isCrowdControlled(getOwner()))
+			lastControlledAt = System.currentTimeMillis();
 	}
 
 	private void scheduleAttackTick(int delayMillis) {

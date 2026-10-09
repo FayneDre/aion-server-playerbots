@@ -18,6 +18,7 @@ import com.aionemu.gameserver.skillengine.effect.AbstractHealEffect;
 import com.aionemu.gameserver.skillengine.effect.DamageEffect;
 import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.effect.EffectTemplate;
+import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.skillengine.effect.EffectType;
 import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
 import com.aionemu.gameserver.skillengine.effect.RideRobotEffect;
@@ -94,6 +95,10 @@ public class BotSkillManager {
 		EffectType.SANCTUARY, EffectType.LIMITEDREDUCEDAMAGE, EffectType.MAGICCOUNTERATK, EffectType.EVADE, EffectType.ALWAYSDODGE,
 		EffectType.ALWAYSBLOCK, EffectType.ALWAYSPARRY, EffectType.ALWAYSRESIST, EffectType.INVULNERABLEWING, EffectType.HIDE, EffectType.ESCAPE,
 		EffectType.REBIRTH, EffectType.DISPELDEBUFF, EffectType.DISPELDEBUFFPHYSICAL, EffectType.DISPELDEBUFFMENTAL };
+
+	/** The states a templar has an answer to: see {@link #isCrowdControlled}. */
+	private static final AbnormalState[] CONTROL_STATES = { AbnormalState.STUN, AbnormalState.STUMBLE, AbnormalState.STAGGER, AbnormalState.SPIN,
+		AbnormalState.OPENAERIAL };
 
 	/**
 	 * Effects that put ground between a bot and what it is fighting. They come attached to ordinary attacks — a ranger's Parting Shot, a gladiator's
@@ -674,6 +679,24 @@ public class BotSkillManager {
 	/** Casts the bot's skill of that group on the target, which is the bot itself for a skill that is not aimed. @return true if it went off. */
 	public static boolean tryCastGroup(Player bot, Creature target, String group) {
 		return cast(bot, target, readyOfGroup(bot, group));
+	}
+
+	/**
+	 * @return true if the creature is stunned, knocked back or down, spun or held in the air. These five are what Remove Shock asks for as its target
+	 * status and what Unwavering Devotion raises the resistance to, so they are the ones a templar has an answer to; other ways of losing control,
+	 * sleep and fear among them, are not.
+	 */
+	public static boolean isCrowdControlled(Creature creature) {
+		for (AbnormalState state : CONTROL_STATES) {
+			if (creature.getEffectController().isAbnormalSet(state))
+				return true;
+		}
+		return false;
+	}
+
+	/** @return true if the bot has used a skill of that chain category and nothing since, which is what the next link of the chain asks for. */
+	public static boolean isChainOpen(Player bot, String category) {
+		return bot.getChainSkills().getCurrentChainCount(category) > 0;
 	}
 
 	/** @return true if an effect of that stack group is on the bot, which for a buff is the same name as its skill group. */
