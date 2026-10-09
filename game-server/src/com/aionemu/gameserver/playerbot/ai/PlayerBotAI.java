@@ -893,6 +893,20 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
+	 * @return Where a chase is aimed: the target itself, except for a tank in a group, which closes in on the side of the enemy away from the group. That is
+	 *         the one moment it chooses a side: once in reach it stays, because moving a tank round an enemy in the middle of a fight is what the guide ruled out.
+	 */
+	private Vector3f approachPoint(Creature target) {
+		Player bot = getOwner();
+		if (PlayerBotConfig.POSITIONING && BotStations.handlesTank(bot)) {
+			Vector3f spot = BotStations.spotFor(bot, target);
+			if (spot != null)
+				return spot;
+		}
+		return new Vector3f(target.getX(), target.getY(), target.getZ());
+	}
+
+	/**
 	 * Walks towards a target that is out of weapon reach.
 	 * <p>
 	 * Every bound here exists because reactive steering cannot guarantee it will ever arrive: the leash keeps a fleeing target from dragging the bot
@@ -913,11 +927,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (posture.isAnimating())
 			return true; // on its feet, or drawing its weapon; walking now is what makes it slide
 
-		if (moveController.isInMove()
-			&& (now - lastChaseRoute < CHASE_REROUTE_INTERVAL || moveController.isHeadingTo(target.getX(), target.getY(), RETARGET_STEP)))
-			return true; // already on its way, and the target has not moved enough to be worth a new route
+		if (moveController.isInMove() && now - lastChaseRoute < CHASE_REROUTE_INTERVAL)
+			return true;
+		Vector3f goal = approachPoint(target);
+		if (moveController.isInMove() && moveController.isHeadingTo(goal.getX(), goal.getY(), RETARGET_STEP))
+			return true; // already on its way, and the goal has not moved enough to be worth a new route
 		lastChaseRoute = now;
-		return tryMoveTo(moveController, target.getX(), target.getY(), target.getZ());
+		return tryMoveTo(moveController, goal.getX(), goal.getY(), goal.getZ());
 	}
 
 	/**

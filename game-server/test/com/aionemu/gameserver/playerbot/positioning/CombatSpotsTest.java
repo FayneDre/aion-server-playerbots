@@ -186,4 +186,35 @@ class CombatSpotsTest {
 		assertNotNull(spot);
 		assertTrue(CombatSpots.isHealerPlaced(new Situation(ENEMY, 1, 0, at(-12, 0), members, spot, 40, List.of()), 25f), "arriving must end the walk");
 	}
+
+	private static Situation tankAt(Vector3f from) {
+		return new Situation(ENEMY, 1, 0, at(-12, 0), List.of(), from, 40, List.of());
+	}
+
+	@Test
+	void aTankOnTheFarSideOfTheEnemyFromTheGroupIsPlaced() {
+		assertTrue(CombatSpots.isTankPlaced(tankAt(at(2, 0))));
+		assertTrue(CombatSpots.isTankPlaced(tankAt(at(1.5f, 1.5f))), "within sixty degrees of straight opposite is still placed");
+	}
+
+	@Test
+	void aTankOnTheGroupsSideOfTheEnemyIsNotPlaced() {
+		assertFalse(CombatSpots.isTankPlaced(tankAt(at(-2, 0))));
+		assertFalse(CombatSpots.isTankPlaced(tankAt(at(0, 2))), "at right angles to the group it has not put the enemy's back to them");
+	}
+
+	@Test
+	void aGroupOnTopOfTheEnemySaysNothingAboutWhichSideToStandOn() {
+		Situation onTop = new Situation(ENEMY, 1, 0, at(0.1f, 0), List.of(), at(-2, 0), 40, List.of());
+
+		assertTrue(CombatSpots.isTankPlaced(onTop));
+	}
+
+	@Test
+	void theSpotATankIsSentToIsAlwaysPlaced() {
+		Vector3f spot = CombatSpots.spotFor(BotPosition.FRONT, tankAt(at(-5, 3)), 2f);
+
+		assertNotNull(spot);
+		assertTrue(CombatSpots.isTankPlaced(tankAt(spot)), "arriving must end the walk");
+	}
 }

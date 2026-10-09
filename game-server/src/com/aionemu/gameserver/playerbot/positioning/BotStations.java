@@ -25,8 +25,8 @@ import com.aionemu.gameserver.utils.PositionUtil;
 /**
  * The world's side of positioning: reads what {@link CombatSpots} needs from the engine, asks it, and says whether a bot is where its class belongs.
  * <p>
- * Only melee behind the enemy and ranged classes back from it so far. The tank and the healer have their own milestones, and a role that is not handled
- * here is simply "not active", which sends the bot back to the old way of walking to its target.
+ * Melee behind the enemy, ranged back from it, the healer within reach of everybody, and the tank on the side of the enemy away from the group. A role that is not
+ * handled is simply "not active", which sends the bot back to the old way of walking to its target.
  */
 public final class BotStations {
 
@@ -60,6 +60,11 @@ public final class BotStations {
 		return bot.getCurrentTeam() != null && (role == BotPosition.BEHIND || role == BotPosition.RANGED);
 	}
 
+	/** @return true if this is a tank in a group, whose side of the enemy is chosen as it closes in on it and never afterwards. */
+	public static boolean handlesTank(Player bot) {
+		return bot.getCurrentTeam() != null && BotPosition.of(bot) == BotPosition.FRONT;
+	}
+
 	/** @return true if this is a healer in a group, whose place is worked out outside the fight loop since it does not join the attack. */
 	public static boolean handlesHealer(Player bot) {
 		return bot.getCurrentTeam() != null && BotPosition.of(bot) == BotPosition.HEALER;
@@ -73,6 +78,7 @@ public final class BotStations {
 				double distance = PositionUtil.getDistance(bot, enemy, true);
 				yield PositionUtil.isBehind(bot, enemy, BACK_HALF_DEGREES) && distance >= CombatSpots.MIN_STANDOFF && distance <= BotSkillManager.reach(bot);
 			}
+			case FRONT -> CombatSpots.isTankPlaced(situationOf(bot, enemy, List.of()));
 			case HEALER -> CombatSpots.isHealerPlaced(situationOf(bot, enemy, otherMembers(bot)), BotSkillManager.healReach(bot));
 			default -> true;
 		};
@@ -88,7 +94,7 @@ public final class BotStations {
 		if (team == null)
 			return null;
 		float reach = switch (role) {
-			case BEHIND -> bot.getGameStats().getAttackRange().getCurrent() / 1000f;
+			case BEHIND, FRONT -> bot.getGameStats().getAttackRange().getCurrent() / 1000f;
 			case HEALER -> BotSkillManager.healReach(bot);
 			default -> BotSkillManager.reach(bot);
 		};
@@ -105,7 +111,7 @@ public final class BotStations {
 	 * off: the figures with it off are what the figures with it on are judged against.
 	 */
 	public static void sample(Player bot, Creature enemy) {
-		if (!handles(bot) && !handlesHealer(bot))
+		if (!handles(bot) && !handlesHealer(bot) && !handlesTank(bot))
 			return;
 		BotPosition role = BotPosition.of(bot);
 		AtomicInteger[] counts = samples.get(role);

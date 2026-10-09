@@ -26,6 +26,8 @@ public final class CombatSpots {
 	static final float BEHIND_WINDOW_DEGREES = 45;
 	/** How far from directly opposite the group the tank may stand, in degrees. */
 	static final float FRONT_WINDOW_DEGREES = 45;
+	/** How far the tank may be from directly opposite the group and still count as placed, in degrees: wider than the window it is sent to. */
+	static final float FRONT_PLACED_DEGREES = 60;
 	/** How far from the enemy a ranged bot stands when it can: three quarters of the enemy area attacks that are circles are smaller than this. */
 	static final float AREA_SAFE_RADIUS = 15;
 	/** How much of a skill's reach a ranged bot keeps in hand, so that the cast does not fail on a step the enemy takes. */
@@ -111,6 +113,19 @@ public final class CombatSpots {
 				return false;
 		}
 		return true;
+	}
+
+	/**
+	 * @return true if a tank standing where the situation says it does has the enemy's back to the group: the group lies on the other side of the enemy from it,
+	 *         within {@link #FRONT_PLACED_DEGREES} of directly opposite. A group on top of the enemy says nothing, and so counts as placed.
+	 */
+	public static boolean isTankPlaced(Situation s) {
+		double gx = s.groupCentre().getX() - s.enemy().getX(), gy = s.groupCentre().getY() - s.enemy().getY();
+		double tx = s.from().getX() - s.enemy().getX(), ty = s.from().getY() - s.enemy().getY();
+		double groupLength = Math.hypot(gx, gy), tankLength = Math.hypot(tx, ty);
+		if (groupLength < NO_DIRECTION || tankLength == 0)
+			return true;
+		return (gx * tx + gy * ty) / (groupLength * tankLength) <= -Math.cos(Math.toRadians(FRONT_PLACED_DEGREES));
 	}
 
 	/** @return The rings to try, in the order to try them. */
