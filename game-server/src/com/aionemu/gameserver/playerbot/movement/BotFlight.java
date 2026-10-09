@@ -46,7 +46,9 @@ public class BotFlight {
 	/** High enough to be unmistakable from the ground, and well under any fly zone's ceiling. */
 	private static final float DEFAULT_HEIGHT = 25;
 	/** The heights above the higher of the two ends a trip is tried at, lowest first: over the roofs, and over the trees on a hillside. */
-	private static final float[] CRUISE_ABOVE = { 25, 45 };
+	private static final float[] CRUISE_ABOVE = { 15, 25, 45 };
+	/** What {@link #cruiseOrWhyNot} answers for a bot standing outside every fly zone, so a caller can tell the ordinary case from a refusal worth a line. */
+	public static final String NOT_IN_A_FLY_ZONE = "not standing in a fly zone";
 	/** Least height above the ends that is worth cruising at, so a zone with a low ceiling is not flown at the height of the rooftops. */
 	private static final float MIN_CRUISE_ABOVE = 12;
 	/** As high as a climb will take a bot, whatever is asked for. */
@@ -293,12 +295,16 @@ public class BotFlight {
 	 * <p>
 	 * Every stretch is tested from where it starts, with {@code GeoService.getClosestCollision} given its own start point: the climb, the level run and the
 	 * descent. That is what the one slanted leg of {@link #flyTo} could not do, and why a bot on the ground asking about a place 150 m off along the
-	 * terrain was told there was something in the way nine times in ten — the ray started at its feet. Two cruising heights are tried, the second higher,
+	 * terrain was told there was something in the way nine times in ten — the ray started at its feet. Three cruising heights are tried, lowest first (15, 25 and 45 m above the higher end),
 	 * and the run is also refused when a stretch of it leaves the fly zone, which a zone with a notch in it can do between two points that are inside.
 	 *
 	 * @return Null when the bot has taken off, or the reason it stayed on the ground, for the caller to log.
 	 */
 	public static String cruiseOrWhyNot(Player bot, Vector3f target) {
+		// first, and by itself: most residents are not in a fly zone at all (Poeta has none, and the zones of the other maps cover a part of them), and a
+		// refusal that says "no room to cruise" for a bot that has no zone sent the first reading of this log the wrong way
+		if (!bot.isInsideZoneType(ZoneType.FLY))
+			return NOT_IN_A_FLY_ZONE;
 		if (!refuelled(bot))
 			return bot.getName() + " has " + bot.getLifeStats().getCurrentFp() + " fp, under the half it keeps for choosing to fly";
 		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), target.getX(), target.getY(), target.getZ());

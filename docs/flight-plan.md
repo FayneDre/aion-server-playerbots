@@ -151,10 +151,15 @@ fly zone, flight points above half, the destination and the landing inside a fly
 never in a fight. Every refusal is a quiet walk, logged as "walks its N m trip: reason".
 
 First deploy, 8 trips weighed, none flown: six refused for "something in the way", two for not standing in a fly zone. The ray of `flyTo` starts at the
-bot's feet, so along the terrain it meets something nine times in ten. An ambient trip is therefore planned as a **climb to a cruising height (25 m above the
-higher end, then 45 m), a level run, and a descent**, each stretch tested from its own start with a new `GeoService.getClosestCollision` overload, and the run is
+bot's feet, so along the terrain it meets something nine times in ten. An ambient trip is therefore planned as a **climb to a cruising height (15, 25 then 45 m above the
+higher end), a level run, and a descent**, each stretch tested from its own start with a new `GeoService.getClosestCollision` overload, and the run is
 refused if a point every 20 m is outside a fly zone (`BotFlight.cruiseOrWhyNot`). The terrace flights keep `flyTo`. `gameserver.playerbot.ambient.flight` turns it off.
 
 Where it can happen: Eltnen, Verteron, Heiron, Inggison, Cygnea, Morheim, Altgard, Beluslan, Gelkmaros and Enshar, which have one to four fly zones of 4 to 30
 hectares each, with 100 to 800 npc spots inside. Not Poeta, Ishalgen, Theobomos or Brusthonin, which have none. Budget: 60 fp, one a second in a zone, nine
 metres a second, so 300 m costs about 35 fp and the refill takes two minutes: a flight now and then, not a habit. Unit tested (the decision only); not yet seen in game.
+
+Second deploy, 21 trips weighed, one flown: 17 refusals read "no room to cruise" and were in fact bots **outside every fly zone** (Poeta has none, and the
+zones of the other maps cover only part of a map), so the reason was wrong and the check now comes first and is logged at debug level. Of the bots that were in
+a zone, two were short of flight points (60 fp pays for roughly 400 m of cruise), which is why the lowest cruising height is tried first. Eligible trips are a
+minority: a bot must start inside a fly zone and end inside one.

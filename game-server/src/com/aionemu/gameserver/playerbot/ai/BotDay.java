@@ -296,8 +296,12 @@ class BotDay {
 					log.info("Bot {} flies {} m to its destination instead of walking", bot.getName(), Math.round(distance));
 					return true;
 				}
-				// said at info level because this is the line that says why nobody is flying; a trip is weighed once, so it is a few lines a minute
-				log.info("Bot {} walks its {} m trip: {}", bot.getName(), Math.round(distance), refusal);
+				// said at info level because this is the line that says why nobody is flying; a trip is weighed once, so it is a few lines a minute. A bot
+				// outside every fly zone is the ordinary case, most of the map, and is left at debug
+				if (BotFlight.NOT_IN_A_FLY_ZONE.equals(refusal))
+					log.debug("Bot {} walks its {} m trip: {}", bot.getName(), Math.round(distance), refusal);
+				else
+					log.info("Bot {} walks its {} m trip: {}", bot.getName(), Math.round(distance), refusal);
 			}
 		}
 		if (!ai.returnToAnchor())
