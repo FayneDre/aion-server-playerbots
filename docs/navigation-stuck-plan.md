@@ -1,6 +1,7 @@
 # Bots stuck in scenery, then teleported home
 
-Status: analysed 2026-10-09, nothing fixed yet. The cause of most cases is known and is **not** the quality of the mesh in the camps; milestones below.
+Status: analysed 2026-10-09. Milestone 2 built (`BotLanding`, every map with a mesh), not yet watched in game; milestones 3 and 4 (the generator) not started.
+The cause is **not** the quality of the mesh in the camps; milestones below.
 Reported from in game: a bot inside a wall at the Verteron fortress, a bot sunk into the floor of the Eltnen fortress, both followed by a teleport.
 
 ## What the logs say
@@ -41,20 +42,32 @@ Measured with `NavmeshTool <map> stuck <file>` (new): of the rescues, 607 of 690
 - Not the reactive steering, which only shows up after the bot is already in a pocket.
 - Not a reason to wait for the Abyss meshes, but it is a reason to fix the generator **before** generating Reshanta, which has fortresses and stacked floors.
 
+## Second cause, found while testing the first: the rough route has no height
+
+From the Eltnen fortress obelisk (2418 2756, z 365) the planner reaches some places (317 m walked for 146) and gives up on others, although the rough
+pass "finds a way". The rough grid labels each 4 m cell with the **regions** whose ground passes under it, but not at which height. A column that holds
+both a fortress platform and the ground below it carries the same region twice, so the rough route happily goes straight down through the platform, and
+the fine search cannot follow: the bot is on the upper level and the guide points are on the lower. Refinement fails, the planner gives up, and the bot
+**walks straight at its goal** while it plans, which is how it ends wedged in a wall. Every multi-level structure has this problem: fortresses, and the
+stacked islands of the Abyss, which is why it must be fixed before Reshanta.
+
 ## Milestones
 
-1. **Say where and why** (small). Add map, z, the island and the nearest obelisk to the rescue line, so the next report names its cause. Keep
-   `NavmeshTool stuck` to compare.
-2. **Never revive into a pocket** (bot side, independent of the mesh, fixes it for every map at once). After `bindRevive`, if there is no route from the
-   bot to its anchor, or the spot has no footing, put it on the nearest ground that does have a route to its anchor. One teleport at the moment of
-   resurrection, which is already one, instead of a stuck bot and a second one ten seconds later. Also bind bots to the nearest obelisk **that has a route**.
-3. **Join the stairs** (mesh). Find why the fortress upper floors are cut off: test the stair geometry against the step and slope rules, and doors.
-   Fix the generator, regenerate the populated maps, re-run `components` and `path` on every obelisk of every mesh as an audit (obelisk on the main island).
-4. **Audit obelisks on all 24 meshes** and keep it as a check in `tools/navmesh.ps1`, so a new map cannot ship with a bot trap.
+1. **Say where and why** (small, not built). Add map, z, the island and the nearest obelisk to the rescue line, so the next report names its cause.
+   `NavmeshTool <map> stuck <file>` exists to compare.
+2. **Never leave a bot in a trap** (bot side, built). `world/BotLanding` asks the mesh, with the bot's anchor as the goal, and moves the bot to ground it can
+   walk away from: onto another floor when its own is a pocket, onto the nearest floor when it is inside geometry. Used after every resurrection (next
+   tick) and in the stuck rescue before any teleport home. No list of bad spots; it holds on every map that has a mesh, Reshanta included once generated.
+   Checked on the real Verteron mesh: the fortress obelisk is moved to the courtyard (2298 1781, z 109) in 85 ms; ordinary obelisks are left alone.
+3. **Give the rough route a height** (generator and planner). Store, per coarse cell and region, the height of that region's ground there, and only let the
+   rough search step between cells whose heights are within what a body can climb. Needs a change to the `.nav` coarse section, then regeneration of
+   every mesh. Test with `path` from the Eltnen obelisk to 2380 2562 (today: gave up) and from the Verteron one.
+4. **Audit every obelisk of every mesh** and keep it as a step of `tools/navmesh.ps1`: obelisk on a floor joined to the rest of the map, and a route
+   out of it to a point 150 m away. A mesh that fails it does not ship.
 5. **Then** Reshanta and the other new meshes, with the fixed generator.
 
-Open questions for milestone 3: whether the obelisk coordinate is where a player lands or only where the NPC stands (the bind point may differ from the
-NPC), and whether the stairs of a fortress are authored as steps or as a ramp.
+Open questions for milestone 3: whether the Verteron fortress stairs are authored as steps or as a ramp (the pocket there is the same family of fault:
+a level the mesh does not join to the one below), and whether the bind coordinate is where a player lands or only where the NPC stands.
 
 ## Side finding
 

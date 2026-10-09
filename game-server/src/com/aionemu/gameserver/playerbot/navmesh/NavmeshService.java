@@ -71,6 +71,30 @@ public class NavmeshService {
 	}
 
 	/**
+	 * Lists every floor a body can stand on at a spot, one above another, nearest to {@code z} first.
+	 * <p>
+	 * {@link #groundNear} answers one: the floor closest in height, which inside a building is always the floor the bot is already on. A way out of a
+	 * pocket is usually on another level, which is exactly the floor that question never offers.
+	 *
+	 * @return The floors, empty where the map has no mesh or nothing can be stood on there.
+	 */
+	public java.util.List<Vector3f> floorsAt(int worldId, float x, float y, float z) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return java.util.List.of();
+		int cellX = mesh.cellX(x), cellY = mesh.cellY(y);
+		if (!mesh.contains(cellX, cellY))
+			return java.util.List.of();
+		java.util.List<Vector3f> floors = new java.util.ArrayList<>();
+		for (int surface = 0; surface < mesh.surfaceCount(cellX, cellY); surface++) {
+			if (mesh.isWalkable(cellX, cellY, surface))
+				floors.add(new Vector3f(x, y, mesh.surfaceZ(cellX, cellY, surface)));
+		}
+		floors.sort(java.util.Comparator.comparingDouble(floor -> Math.abs(floor.getZ() - z)));
+		return floors;
+	}
+
+	/**
 	 * Asks whether one spot can be walked to from another.
 	 * <p>
 	 * Standable is not the same as reachable, and scattering villagers around a village centre is where the difference bites: a ledge, the far side

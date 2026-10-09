@@ -35,6 +35,7 @@ import com.aionemu.gameserver.playerbot.positioning.BotPosition;
 import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.playerbot.social.BotRole;
+import com.aionemu.gameserver.playerbot.world.BotLanding;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -216,6 +217,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** The chores between fights: the corpse, the bag, the shop. */
 	private final BotErrands errands;
 	private final BotConvalescence convalescence;
+	/** Set when the bot has just been put down by the engine, so the next tick asks whether it can walk away from there. */
+	private volatile boolean checkLanding;
 	/** When the last fight ended, 0 once the weapon has been put away. */
 	private volatile long combatEndedAt;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
@@ -492,6 +495,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		pacing.reconcile();
 		day.moveOutIfOutgrown();
 		boolean following = followTheGroup();
+		if (checkLanding && getOwner().isSpawned() && !getOwner().isDead()) {
+			checkLanding = false;
+			stepOffTrappedGround();
+		}
 		if (getOwner().isSpawned() && getOwner().isDead())
 			handleDeath();
 		else if (posture.isAnimating()) {
@@ -1173,6 +1180,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 
+		// Ground it can walk away from, close by, before anything that takes it across the map: a bot that cannot leave its pocket does not need its
+		// home, it needs the floor beside it. Only when the mesh says the spot is cut off from its anchor or is inside geometry; one that is merely
+		// wedged against a prop on connected ground is left to the rescue below.
+		Vector3f near = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId());
+		if (near != null) {
+			log.info("Bot {} could not move at {} {} {}, which the map does not join to its anchor, and is put on walkable ground at {} {} {}", bot.getName(),
+				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(bot.getZ()), Math.round(near.getX()), Math.round(near.getY()), Math.round(near.getZ()));
+			TeleportService.teleportTo(bot, bot.getWorldId(), near.getX(), near.getY(), near.getZ());
+			return;
+		}
 		// A bot that can fly out of here is not stuck, and a lift home is the wrong answer to a problem it can solve itself. This is now the ordinary
 		// way a flight ends somewhere with no way off it: an escort breaks off over a ledge, lands on it, finds every walking route refused -- and
 		// goes home through the air it came by, once its flight points are back.
@@ -1238,6 +1255,24 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 		posture.sitDown();
+	}
+
+	/**
+	 * Moves a bot that the engine has just put down on ground it cannot walk away from onto ground it can, see {@link BotLanding}.
+	 * <p>
+	 * The goal it is measured against is the bot's anchor, which resurrection has just moved home: ground that cannot reach the place the bot lives is
+	 * ground it cannot go on living from.
+	 */
+	private void stepOffTrappedGround() {
+		Player bot = getOwner();
+		Vector3f ground = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId());
+		if (ground == null)
+			return;
+		log.info("Bot {} came back at {} {} {}, where it cannot walk away from, and is put on walkable ground at {} {} {}", bot.getName(),
+			Math.round(bot.getX()), Math.round(bot.getY()), Math.round(bot.getZ()), Math.round(ground.getX()), Math.round(ground.getY()),
+			Math.round(ground.getZ()));
+		stopMoving();
+		TeleportService.teleportTo(bot, bot.getWorldId(), ground.getX(), ground.getY(), ground.getZ());
 	}
 
 	/**
@@ -1524,6 +1559,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			if (!bot.isSpawned() || !bot.isDead())
 				return;
 			PlayerReviveService.bindRevive(bot);
+			checkLanding = true; // looked at on the next tick, once the move to the obelisk has settled
 			convalescence.forget(); // a new death, a new look at where is quiet
 			Vector3f home = day.home();
 			if (home != null)
