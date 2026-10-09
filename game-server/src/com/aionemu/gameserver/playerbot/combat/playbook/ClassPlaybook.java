@@ -30,11 +30,11 @@ public interface ClassPlaybook {
 	boolean act(Player bot, Creature target);
 
 	/**
-	 * @return true if this class decides alone when to cast the skill, so the generic order never offers it. Without this the two would both act on
+	 * @return true if this class decides alone when this bot casts the skill, so the generic order never offers it. Without this the two would both act on
 	 *         the same skill by different rules: the generic heal fires at half health on any heal a class has, which for a templar is the half hour
 	 *         Hand of Healing that is meant to be kept for a fifth.
 	 */
-	default boolean claims(SkillTemplate template) {
+	default boolean claims(Player bot, SkillTemplate template) {
 		return false;
 	}
 }

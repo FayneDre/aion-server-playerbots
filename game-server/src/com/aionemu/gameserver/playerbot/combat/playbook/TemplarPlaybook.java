@@ -1,9 +1,7 @@
 package com.aionemu.gameserver.playerbot.combat.playbook;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,13 +9,14 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
+import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 
 /**
  * How a templar plays, after the guide's "Templier 101". The plan, milestone by milestone, is {@code docs/templar-plan.md}.
  * <p>
- * So far only the defensives: when to spend Hand of Healing, Empyrean Armor and Iron Skin, and what to do with the divine power that Empyrean
- * Chastisement and Hand of Healing both draw on. They hold in a group and alone alike, which is what the guide confirmed.
+ * The defensives hold in a group and alone alike, which the guide confirmed. The aggro rules are a group's business: a templar alone has nobody to
+ * protect and nothing to peel, and taunting the monster already hitting it is a wasted cast.
  */
 final class TemplarPlaybook implements ClassPlaybook {
 
@@ -36,20 +35,38 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * 2000 and a templar that has just spent it cannot be saved by it.
 	 */
 	static final int LAST_CHASTISEMENT_LEVEL = 30;
+	/** How far Provoking Roar reaches from the templar, which is the {@code effective_range} the data gives it. */
+	static final float ROAR_RANGE = 8f;
+
+	/** Whom a move is aimed at. */
+	enum Aim {
+		/** The templar itself. */
+		SELF,
+		/** What the templar is fighting. */
+		TARGET,
+		/** The monster that has got loose and is hitting somebody else. */
+		LOOSE_ENEMY
+	}
 
 	/** What the playbook may cast, and the skill group that names it; every level of a skill has its own id and the group is what they share. */
 	enum Move {
-		HAND_OF_HEALING("KN_DIVINEHAND", false),
-		EMPYREAN_ARMOR("KN_STONEBODY", false),
-		IRON_SKIN("KN_IRONBODY", false),
-		EMPYREAN_CHASTISEMENT("KN_ABYSALJUDGEMENT", true);
+		HAND_OF_HEALING("KN_DIVINEHAND", Aim.SELF, false),
+		EMPYREAN_ARMOR("KN_STONEBODY", Aim.SELF, false),
+		IRON_SKIN("KN_IRONBODY", Aim.SELF, false),
+		PROVOKING_ROAR("KN_MASSIVEPROVOKE", Aim.SELF, true),
+		CAPTURE("KN_STUNNINGSNACHER", Aim.LOOSE_ENEMY, true),
+		TAUNT("WA_PROVOKE", Aim.LOOSE_ENEMY, true),
+		EMPYREAN_CHASTISEMENT("KN_ABYSALJUDGEMENT", Aim.TARGET, false);
 
 		final String group;
-		final boolean aimedAtTheEnemy;
+		final Aim aim;
+		/** Whether the move only means something to a group, and is therefore the playbook's alone only while there is one. */
+		final boolean groupOnly;
 
-		Move(String group, boolean aimedAtTheEnemy) {
+		Move(String group, Aim aim, boolean groupOnly) {
 			this.group = group;
-			this.aimedAtTheEnemy = aimedAtTheEnemy;
+			this.aim = aim;
+			this.groupOnly = groupOnly;
 		}
 	}
 
@@ -59,57 +76,86 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * @param ready The moves the templar knows and that are off cooldown. Mana is not in here: the engine refuses a cast it cannot pay for, which
 	 *          costs nothing but the tick, and the guide's document says a templar's mana is negligible.
 	 * @param armorUp Whether Empyrean Armor's buff is on the templar, which is what Iron Skin is kept for when it is not.
+	 * @param inTeam Whether the templar is in a group, which is what the aggro rules need.
+	 * @param enemyInRoarRange Whether an enemy that is fighting the group is close enough for Provoking Roar to take hold of it.
+	 * @param enemyLoose Whether an enemy is hitting a group mate rather than the templar.
 	 */
-	record Situation(int level, int hpPercent, int dp, boolean armorUp, Set<Move> ready) {
+	record Situation(int level, int hpPercent, int dp, boolean armorUp, boolean inTeam, boolean enemyInRoarRange, boolean enemyLoose,
+		Set<Move> ready) {
 	}
 
-	private static final Set<String> CLAIMED_GROUPS = Arrays.stream(Move.values()).map(move -> move.group).collect(Collectors.toSet());
-
 	@Override
-	public boolean claims(SkillTemplate template) {
-		return CLAIMED_GROUPS.contains(template.getGroup());
+	public boolean claims(Player bot, SkillTemplate template) {
+		for (Move move : Move.values()) {
+			// the group's moves are the generic order's own while there is no group, so a templar alone still swings Capture as the damage it is
+			if (move.group.equals(template.getGroup()))
+				return !move.groupOnly || bot.getCurrentTeam() != null;
+		}
+		return false;
 	}
 
 	@Override
 	public boolean act(Player bot, Creature target) {
-		Situation situation = situationOf(bot);
+		Creature loose = BotGroupManager.enemyLooseOnAMate(bot);
+		Situation situation = situationOf(bot, loose != null);
 		Move move = decide(situation);
 		if (move == null)
 			return false;
-		boolean cast = BotSkillManager.tryCastGroup(bot, move.aimedAtTheEnemy ? target : bot, move.group);
+		Creature aimedAt = switch (move.aim) {
+			case SELF -> bot;
+			case TARGET -> target;
+			case LOOSE_ENEMY -> loose;
+		};
+		boolean cast = BotSkillManager.tryCastGroup(bot, aimedAt, move.group);
 		if (cast)
 			log.debug("Templar {} casts {} at {}% health with {} DP", bot.getName(), move, situation.hpPercent(), situation.dp());
 		return cast;
 	}
 
-	private static Situation situationOf(Player bot) {
+	private static Situation situationOf(Player bot, boolean enemyLoose) {
 		Set<Move> ready = EnumSet.noneOf(Move.class);
 		for (Move move : Move.values()) {
 			if (BotSkillManager.isReady(bot, move.group))
 				ready.add(move);
 		}
+		boolean inTeam = bot.getCurrentTeam() != null;
+		// asked only when the roar is ready: counting is a walk over everything the bot can see
+		boolean enemyInRoarRange = inTeam && ready.contains(Move.PROVOKING_ROAR) && BotGroupManager.enemiesFightingTheGroupWithin(bot, ROAR_RANGE) > 0;
 		return new Situation(bot.getLevel(), bot.getLifeStats().getHpPercentage(), bot.getCommonData().getDp(),
-			BotSkillManager.isUp(bot, Move.EMPYREAN_ARMOR.group), ready);
+			BotSkillManager.isUp(bot, Move.EMPYREAN_ARMOR.group), inTeam, enemyInRoarRange, enemyLoose, ready);
 	}
 
 	/**
 	 * Picks what the templar does with this moment of a fight, most urgent first, or nothing.
 	 * <p>
-	 * The order follows what each is for. Hand of Healing is the last resort and so comes first once it applies. Empyrean Armor comes before Iron
-	 * Skin because it heals as well as protects, and Iron Skin is what covers the stretch while Armor is on cooldown or has worn off. Chastisement
-	 * is damage and only ever uses what is left over.
+	 * Staying alive comes first, because a dead tank holds nothing. Hand of Healing is the last resort and so leads once it applies; Empyrean Armor
+	 * comes before Iron Skin because it heals as well as protects, and Iron Skin is what covers the stretch while Armor is on cooldown or has worn
+	 * off. Then the aggro: the roar whenever it is ready, since it is what keeps every monster in reach on the templar, and the single target
+	 * taunts only for a monster that has got loose, which is what the guide saves them for. Of those two Capture goes first, because it is the slower
+	 * to come back and Taunt is then ready again for the next one. Chastisement is damage and only ever uses what is left over.
 	 *
 	 * @return The move, or null when the generic order should carry on.
 	 */
 	static Move decide(Situation situation) {
+		Set<Move> ready = situation.ready();
 		boolean hasDp = situation.dp() >= ABILITY_DP;
-		if (situation.ready().contains(Move.HAND_OF_HEALING) && hasDp && situation.hpPercent() < HAND_OF_HEALING_BELOW_PERCENT)
+		if (ready.contains(Move.HAND_OF_HEALING) && hasDp && situation.hpPercent() < HAND_OF_HEALING_BELOW_PERCENT)
 			return Move.HAND_OF_HEALING;
-		if (situation.ready().contains(Move.EMPYREAN_ARMOR) && situation.hpPercent() < EMPYREAN_ARMOR_BELOW_PERCENT)
+		if (ready.contains(Move.EMPYREAN_ARMOR) && situation.hpPercent() < EMPYREAN_ARMOR_BELOW_PERCENT)
 			return Move.EMPYREAN_ARMOR;
-		if (situation.ready().contains(Move.IRON_SKIN) && situation.hpPercent() < IRON_SKIN_BELOW_PERCENT && !situation.armorUp())
+		if (ready.contains(Move.IRON_SKIN) && situation.hpPercent() < IRON_SKIN_BELOW_PERCENT && !situation.armorUp())
 			return Move.IRON_SKIN;
-		if (situation.ready().contains(Move.EMPYREAN_CHASTISEMENT) && hasDp && situation.level() <= LAST_CHASTISEMENT_LEVEL)
+		if (situation.inTeam()) {
+			if (ready.contains(Move.PROVOKING_ROAR) && situation.enemyInRoarRange())
+				return Move.PROVOKING_ROAR;
+			if (situation.enemyLoose()) {
+				if (ready.contains(Move.CAPTURE))
+					return Move.CAPTURE;
+				if (ready.contains(Move.TAUNT))
+					return Move.TAUNT;
+			}
+		}
+		if (ready.contains(Move.EMPYREAN_CHASTISEMENT) && hasDp && situation.level() <= LAST_CHASTISEMENT_LEVEL)
 			return Move.EMPYREAN_CHASTISEMENT;
 		return null;
 	}

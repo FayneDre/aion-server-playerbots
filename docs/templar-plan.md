@@ -76,8 +76,8 @@ that can be checked without a world can have its thresholds argued about in a te
    not up; and the generic defensive and heal rules told to leave these three alone. Chastisement used on cooldown from 10 to 30 while DP is
    2000 or more, and not from 31 so the points are kept for Hand of Healing. Unit tests for every threshold. In game: a log line per use with
    health and DP, over a dozen fights.
-3. **Aggro as the guide describes it.** Roar on cooldown whenever an enemy is on the group; Taunt/Capture only to peel (an enemy whose victim is
-   not the tank), preferring whichever is ready; Capture recognised by its `pulled` effect rather than `BOOSTHATE` (confirmed a taunt by the guide's author). Measure before and after:
+3. **Aggro as the guide describes it.** *Built, without the retargeting: The guide also has the tank keep attacking the loose monster until it has its attention, and doing that now would drag the whole group onto it, since they follow the tank's target. That half waits for the mark in milestone 4. Capture is named by its skill group, not by an effect.* Roar on cooldown whenever an enemy is on the group; Taunt/Capture only to peel (an enemy whose victim is
+   not the tank), preferring whichever is ready; Capture counted as a taunt, as the guide confirms. Measure before and after:
    times a monster's most hated target is not the tank during a three monster pull.
 4. **Marking.** The core getter, the tank's marking, `targetToAssist` reading the mark, clearing it on death. In game: a group of three with a
    cleric and a gladiator, watching all three follow the skull.

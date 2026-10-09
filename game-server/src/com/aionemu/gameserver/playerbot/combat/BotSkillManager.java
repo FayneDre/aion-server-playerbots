@@ -557,23 +557,6 @@ public class BotSkillManager {
 
 
 
-	/**
-	 * Pulls what the group is fighting onto the one member built to survive it.
-	 * <p>
-	 * A tank is the only role whose job is not expressed as damage, and it is the only one that needs a skill preferred over a stronger one. Twenty
-	 * four skills in the game carry {@code BOOSTHATE}; the ones aimed at an enemy are the taunts — Audacious Taunt, Challenging Blast, Shredding
-	 * Blow — while the rest are self buffs and enmity reducers that {@link #isOffensive} already turns down. No list of ids, as everywhere else here.
-	 *
-	 * @return true if a taunt went off, in which case the bot is busy with it.
-	 */
-	public static boolean tryTaunt(Player bot, Creature target) {
-		return cast(bot, target, skills(bot, BotSkillManager::isTaunt));
-	}
-
-	private static boolean isTaunt(Player bot, SkillTemplate template) {
-		return isOffensive(bot, template) && template.hasAnyEffect(EffectType.BOOSTHATE);
-	}
-
 	private static boolean isOffensive(Player bot, SkillTemplate template) {
 		return template.getProperties().getTargetRelation() == TargetRelationAttribute.ENEMY && !template.hasAnyEffect(RETREAT_EFFECTS);
 	}
@@ -709,7 +692,7 @@ public class BotSkillManager {
 			if (template == null || template.isPassive() || template.getProperties() == null)
 				return false;
 			// what the class decides on alone is not the generic order's to cast, whatever else it would have made of it
-			if (BotPlaybooks.of(bot).claims(template))
+			if (BotPlaybooks.of(bot).claims(bot, template))
 				return false;
 			// a toggle cast a second time turns itself off, so the only rules allowed near one are those that check first that it is off: the mantra
 			// rule, and the one that puts an aethertech in its robot

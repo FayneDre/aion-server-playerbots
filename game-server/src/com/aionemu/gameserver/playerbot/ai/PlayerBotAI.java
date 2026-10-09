@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.ai.AIState;
 import com.aionemu.gameserver.ai.AITemplate;
-import com.aionemu.gameserver.controllers.attack.AggroTarget;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
@@ -743,18 +742,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 			approachSpent = true;
 			// only while there is still ground to cover: hiding on top of a target it is about to hit buys the bot nothing
 			if (BotSkillManager.tryApproachUnseen(bot))
-				return true;
-		}
-		// Holding the mob is the tank's whole job, and it is the one case where a skill must be preferred over a stronger one: a taunt that lands
-		// keeps the mob off the cleric, and the damage the bot gave up for it is damage the group deals instead. Only in a group — a templar alone
-		// taunting the thing already hitting it is a wasted cast — and only on something that is not already looking at the bot.
-		if (bot.getCurrentTeam() != null && BotRole.of(bot) == BotRole.TANK) {
-			if (!bot.equals(target.getAggroList().getTarget(AggroTarget.MOST_HATED)) && BotSkillManager.tryTaunt(bot, target))
-				return true;
-			// The one it is swinging at is only half the job. A monster that has got past the tank and is hitting somebody else is the half a group
-			// actually feels, and the half that was missing: "le templier ne gère pas correctement l'aggro si plus de 1 mob".
-			Creature loose = BotGroupManager.enemyLooseOnAMate(bot);
-			if (loose != null && BotSkillManager.tryTaunt(bot, loose))
 				return true;
 		}
 		if (!openingSpent) {

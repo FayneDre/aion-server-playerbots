@@ -243,6 +243,24 @@ public class BotGroupManager {
 	}
 
 	/**
+	 * @return How many enemies are within reach of the radius that have picked a fight with the group, the bot itself included. For an ability that
+	 *         is centred on the caster: casting it with nobody inside its radius is a cast spent on nothing.
+	 */
+	public static int enemiesFightingTheGroupWithin(Player bot, float radius) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return 0;
+		List<Player> members = team.getMembers();
+		int[] count = { 0 };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (!npc.isDead() && npc.isSpawned() && bot.isEnemy(npc) && PositionUtil.getDistance(bot, npc) <= radius
+				&& (npc.getAggroList().isHating(bot) || hatesAnyMember(npc, members, bot)))
+				count[0]++;
+		});
+		return count[0];
+	}
+
+	/**
 	 * @return The group mate in most need of a heal, or null. The bot itself is left out: it heals itself on its own thresholds, and healing is the
 	 *         one thing it can do for others that they cannot do for themselves.
 	 */

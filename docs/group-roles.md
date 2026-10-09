@@ -8,16 +8,16 @@ What a bot's role changes about how it fights, and only ever inside a group. Spl
 
 | Role | Classes | What changes |
 |---|---|---|
-| `TANK` | templar | Prefers a taunt over a stronger attack, and stays on its feet while the group is engaged rather than sitting to heal |
+| `TANK` | templar | Roars whenever it can, saves its single target taunts for a monster hitting a mate, and stays on its feet while the group is engaged rather than sitting to heal. Its own rules: [templar-plan.md](templar-plan.md) |
 | `HEALER` | cleric | Weighs the danger a member is in as well as its health, and does not join the attack at all |
 | `SUPPORT` | chanter, songweaver | Tends to the group first, then fights |
 | `DAMAGE` | everything else | Assists the tank's target before the leader's |
 
-**Only inside a group.** A solo bot is untouched: a templar alone does not taunt and still sits down to recover.
+**Only inside a group**, with one exception. A solo bot is untouched: a templar alone does not taunt and still sits down to recover. The templar's *defensives* (Hand of Healing, Empyrean Armor, Iron Skin) are the exception, and hold alone as well, which the guide confirmed.
 
-A taunt is **not** `ProvokerEffect`, which is a proc. The taunts are among the 24 skills carrying `BOOSTHATE`; the ones aimed at an enemy are the real
-article, and the rest — `Winged Strength`, `Reduce Enmity Increase Rate` — are self buffs the existing offensive test already turns down.
-
+A taunt is **not** `ProvokerEffect`, which is a proc. This used to be found by the `BOOSTHATE` effect, with no list of ids. It is named by skill group now
+(`WA_PROVOKE`, `KN_STUNNINGSNACHER`, `KN_MASSIVEPROVOKE`) in `TemplarPlaybook`, because Capture has no `BOOSTHATE` at all: it pulls and hits, and
+The guide counts it as a taunt.
 The healer's rule is the one with a number in it: being under attack counts as 20 points of health, which is both a tie-break and a widening. A member
 above the healing threshold is healed anyway while something is hitting it, because by the time the cast lands it will be under it. Lowest health alone
 always acts one beat late.
@@ -33,7 +33,8 @@ than walking into weapon range, where a cleric is a cleric being hit and silent 
 
 ## Two monsters, one tank
 
-Preferring a taunt on the target the tank is already swinging at is half the job. The half a group feels is the monster that got past and is hitting
+The tank no longer taunts the target it is already swinging at: The guide keeps Taunt and Capture for peeling, and uses Provoking Roar whenever it is
+ready and something is within 8 m. The part a group feels is the monster that got past and is hitting
 somebody else — "le templier ne gère pas correctement l'aggro si plus de 1 mob". A tank now also looks for an enemy whose chosen victim is a team mate
 and pulls it back.
 
