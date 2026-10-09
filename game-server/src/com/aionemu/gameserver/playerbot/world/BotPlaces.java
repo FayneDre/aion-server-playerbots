@@ -138,6 +138,8 @@ public class BotPlaces {
 	private static final Map<Integer, int[]> bandByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
+	/** Whether a bot living near a spot can walk back from an obelisk, by obelisk and by ten metres of home: only proofs, never a search that gave up. */
+	private static final Map<String, Boolean> walkableBack = new ConcurrentHashMap<>();
 
 	/**
 	 * A place people gather, how far it spreads, how many of them do, and what the country around it is worth fighting at.
@@ -477,11 +479,21 @@ public class BotPlaces {
 		List<Vector3f> all = new ArrayList<>(obelisksByMap.computeIfAbsent(worldId, BotPlaces::locateObelisks));
 		all.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(home.getX(), home.getY(), spot.x, spot.y)));
 		NavmeshService mesh = NavmeshService.getInstance();
-		int[] homeRegions = mesh.regionsAt(worldId, home.getX(), home.getY());
+		if (mesh.regionsAt(worldId, home.getX(), home.getY()).length == 0)
+			return all.isEmpty() ? null : all.get(0); // no mesh here, or a home with no ground to judge by: nothing can be said against the nearest
 		for (Vector3f obelisk : all) {
-			if (homeRegions.length == 0 || mesh.regionsAt(worldId, obelisk.x, obelisk.y).length == 0)
-				return all.get(0); // no mesh here, or no ground to judge by: nothing can be said against the nearest
-			if (mesh.reach(worldId, obelisk.x, obelisk.y, obelisk.z, home.getX(), home.getY(), home.getZ()) != NavmeshService.Reach.NO)
+			// A bot is bound as it enters the world and a map's bots share their villages, so most asks repeat: remembered per obelisk and ten metres of
+			// home, and only proofs are kept. A search that ran out of budget says nothing, and keeping it would bar an obelisk for good.
+			String key = worldId + ":" + Math.round(obelisk.x) + ":" + Math.round(obelisk.y) + ":" + Math.round(home.getX() / 10) + ":" + Math.round(home.getY() / 10);
+			Boolean known = walkableBack.get(key);
+			if (known == null) {
+				NavmeshService.Reach reach = mesh.reach(worldId, obelisk.x, obelisk.y, obelisk.z, home.getX(), home.getY(), home.getZ());
+				if (reach == NavmeshService.Reach.UNKNOWN)
+					return obelisk;
+				known = reach == NavmeshService.Reach.YES;
+				walkableBack.put(key, known);
+			}
+			if (known)
 				return obelisk;
 		}
 		return all.isEmpty() ? null : all.get(0);
