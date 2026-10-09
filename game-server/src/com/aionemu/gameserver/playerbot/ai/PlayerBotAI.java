@@ -539,6 +539,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 					if (isRecoveringFromDeath())
 						convalesce(); // roaming would walk it to the nearest mob, and sitting on the obelisk is what filled them
 					else {
+						convalescence.forget(); // the sickness is over, so the claim on the spot is too
 						Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
 						if (target == null)
 							roam();

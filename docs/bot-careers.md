@@ -48,6 +48,6 @@ current one: walking straight back to the farm ground (a crippled bot among the 
 (every obelisk in the region filled with seated bots).
 
 Now the bot walks to a **convalescence spot** (`BotConvalescence`) and waits there until the sickness ends, then returns to its anchor as usual. The
-spot is 16 to 45 m from the obelisk, on ground the navmesh joins to it, with no hostile creature within 25 m and nobody standing on it. It is fixed to
-the bot's id, so a crowd of simultaneous deaths spreads out, and it is chosen again at each death. A bot with no obelisk on its map, or one more than
+spot is 16 to 45 m from the obelisk, on ground the navmesh joins to it, with no hostile creature within 25 m and nobody standing on it. Spots are
+claimed, at least 9 m apart, so a crowd of simultaneous deaths spreads out, and the claim is released when the sickness ends. A bot with no obelisk on its map, or one more than
 150 m away, rests where it stands. A bot that is attacked still defends itself, and errands (selling, looting) still run. Not yet verified in game.
