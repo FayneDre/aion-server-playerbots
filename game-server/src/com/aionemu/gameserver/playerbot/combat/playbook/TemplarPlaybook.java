@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot.combat.playbook;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -55,6 +56,14 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * being cast, so that the generic order, which would take either for a buff, leaves them alone.
 	 */
 	static final Set<String> FORBIDDEN_GROUPS = Set.of("KN_MOVINGSTANCE", "KN_GRANDPROTECTION");
+	/**
+	 * Health under which Barricade of Steel is raised. The guide lists it as a defensive cooldown without a number, so this is the generic bar a bot spends
+	 * its defensives at; to be confirmed with him.
+	 */
+	static final int BARRICADE_BELOW_PERCENT = 70;
+	/** The stigmas the guide wants, in the order it lists them: first the three regular sockets, then the three advanced ones. */
+	static final List<String> REGULAR_STIGMAS = List.of("KN_HIGHPROVOKE", "KN_REFLECTSHIELD", "KN_THUNDERBLADE");
+	static final List<String> ADVANCED_STIGMAS = List.of("KN_RECOVER", "KN_SENTINEL", "KN_DESTRUCTSHIELD");
 	/** How far Provoking Roar reaches from the templar, which is the {@code effective_range} the data gives it. */
 	static final float ROAR_RANGE = 8f;
 
@@ -75,8 +84,10 @@ final class TemplarPlaybook implements ClassPlaybook {
 		REFRESH_SPIRIT("KN_PROTECTPROUD", Aim.SELF, false),
 		EMPYREAN_ARMOR("KN_STONEBODY", Aim.SELF, false),
 		IRON_SKIN("KN_IRONBODY", Aim.SELF, false),
+		BARRICADE_OF_STEEL("KN_REFLECTSHIELD", Aim.SELF, false),
 		UNWAVERING_DEVOTION("WA_STEADINESS", Aim.SELF, false),
 		PROVOKING_ROAR("KN_MASSIVEPROVOKE", Aim.SELF, true),
+		INCITE_RAGE("KN_HIGHPROVOKE", Aim.LOOSE_ENEMY, true),
 		CAPTURE("KN_STUNNINGSNACHER", Aim.LOOSE_ENEMY, true),
 		TAUNT("WA_PROVOKE", Aim.LOOSE_ENEMY, true),
 		EMPYREAN_CHASTISEMENT("KN_ABYSALJUDGEMENT", Aim.TARGET, false);
@@ -106,9 +117,10 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * @param recentlyControlled Whether it was, a moment ago and no longer.
 	 * @param shockChainOpen Whether Remove Shock was the last skill it used, which is the only moment Refresh Spirit can follow it.
 	 * @param devotionUp Whether Unwavering Devotion's resistance is already on the templar.
+	 * @param barricadeUp Whether Barricade of Steel is already switched on. It is a toggle, and casting a toggle that is on switches it off.
 	 */
 	record Situation(int level, int hpPercent, int dp, boolean armorUp, boolean inTeam, boolean enemyInRoarRange, boolean enemyLoose,
-		boolean controlled, boolean recentlyControlled, boolean shockChainOpen, boolean devotionUp, Set<Move> ready) {
+		boolean controlled, boolean recentlyControlled, boolean shockChainOpen, boolean devotionUp, boolean barricadeUp, Set<Move> ready) {
 	}
 
 	@Override
@@ -129,6 +141,11 @@ final class TemplarPlaybook implements ClassPlaybook {
 	/** @return true if the skill is aimed at an area of enemies, which is what the guide advises against in a group. */
 	static boolean isAreaAttack(TargetRelationAttribute relation, TargetRangeAttribute range) {
 		return relation == TargetRelationAttribute.ENEMY && range == TargetRangeAttribute.AREA;
+	}
+
+	@Override
+	public List<String> preferredStigmas(boolean advanced) {
+		return advanced ? ADVANCED_STIGMAS : REGULAR_STIGMAS;
 	}
 
 	@Override
@@ -168,7 +185,7 @@ final class TemplarPlaybook implements ClassPlaybook {
 		boolean recentlyControlled = !controlled && lastControlledAt != 0 && System.currentTimeMillis() - lastControlledAt <= RECENTLY_CONTROLLED_MILLIS;
 		return new Situation(bot.getLevel(), bot.getLifeStats().getHpPercentage(), bot.getCommonData().getDp(),
 			BotSkillManager.isUp(bot, Move.EMPYREAN_ARMOR.group), inTeam, enemyInRoarRange, enemyLoose, controlled, recentlyControlled,
-			BotSkillManager.isChainOpen(bot, SHOCK_CHAIN), BotSkillManager.isUp(bot, Move.UNWAVERING_DEVOTION.group), ready);
+			BotSkillManager.isChainOpen(bot, SHOCK_CHAIN), BotSkillManager.isUp(bot, Move.UNWAVERING_DEVOTION.group), BotSkillManager.isUp(bot, Move.BARRICADE_OF_STEEL.group), ready);
 	}
 
 	/**
@@ -177,8 +194,7 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * Staying alive comes first, because a dead tank holds nothing. Hand of Healing is the last resort and so leads once it applies; Empyrean Armor
 	 * comes before Iron Skin because it heals as well as protects, and Iron Skin is what covers the stretch while Armor is on cooldown or has worn
 	 * off. Then the aggro: the roar whenever it is ready, since it is what keeps every monster in reach on the templar, and the single target
-	 * taunts only for a monster that has got loose, which is what the guide saves them for. Of those two Capture goes first, because it is the slower
-	 * to come back and Taunt is then ready again for the next one. Chastisement is damage and only ever uses what is left over.
+	 * taunts only for a monster that has got loose, which is what the guide saves them for. Of the three, the slowest to come back goes first: Incite Rage (a stigma, a minute), then Capture, then Taunt, which is therefore the quickest to be ready again for the next one. Chastisement is damage and only ever uses what is left over.
 	 *
 	 * @return The move, or null when the generic order should carry on.
 	 */
@@ -198,12 +214,16 @@ final class TemplarPlaybook implements ClassPlaybook {
 			return Move.EMPYREAN_ARMOR;
 		if (ready.contains(Move.IRON_SKIN) && situation.hpPercent() < IRON_SKIN_BELOW_PERCENT && !situation.armorUp())
 			return Move.IRON_SKIN;
+		if (ready.contains(Move.BARRICADE_OF_STEEL) && !situation.barricadeUp() && situation.hpPercent() < BARRICADE_BELOW_PERCENT)
+			return Move.BARRICADE_OF_STEEL;
 		if (situation.recentlyControlled() && !situation.devotionUp() && ready.contains(Move.UNWAVERING_DEVOTION))
 			return Move.UNWAVERING_DEVOTION;
 		if (situation.inTeam()) {
 			if (ready.contains(Move.PROVOKING_ROAR) && situation.enemyInRoarRange())
 				return Move.PROVOKING_ROAR;
 			if (situation.enemyLoose()) {
+				if (ready.contains(Move.INCITE_RAGE))
+					return Move.INCITE_RAGE;
 				if (ready.contains(Move.CAPTURE))
 					return Move.CAPTURE;
 				if (ready.contains(Move.TAUNT))

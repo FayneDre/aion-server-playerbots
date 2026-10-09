@@ -94,6 +94,31 @@ that can be checked without a world can have its thresholds argued about in a te
    costs the group nothing, and a templar whose mana did run out would lose its defensives to the engine's refusal. A debug line is written whenever a
    templar is under 25 % mana in a fight, so a long instance settles it.
 
+## Stigmas (the guide's section 5, "work in progress, to test")
+
+His list, by the socket it fills, with the client names behind his French ones:
+
+| Sockets | Stigma | `group` | Role in his list | How the bot uses it |
+|---|---|---|---|---|
+| Regular, 20 | Incur Wrath = Incite Rage | `KN_HIGHPROVOKE` | taunt | Single target taunt, 60 s: the first of the three peel moves, being the slowest to return |
+| Regular, 30 | Barricade of Steel | `KN_REFLECTSHIELD` | defensive cooldown | A toggle, which the generic order never casts; raised under 70 % health when it is not on |
+| Regular, 40 | Inquisitor's Blow | `KN_THUNDERBLADE` | damage | The generic offensive order |
+| Advanced, 45 | Prayer of Resilience | `KN_RECOVER` | defensive cooldown | A heal, so the generic heal rule takes it |
+| Advanced, 50 | Prayer of Victory | `KN_SENTINEL` | defensive cooldown | A long cooldown party buff, so the generic defensive rule keeps it for a bad moment |
+| Advanced, 55 | Shield Burst (Coup de bouclier) = Shieldburst | `KN_DESTRUCTSHIELD` | damage | The generic offensive order |
+
+The last column is read from the code and the data, not watched: whether the generic defensive rule really classes Prayer of Victory as a defensive
+(it depends on what its stat changes are) is the first thing to look at in play.
+
+`ClassPlaybook.preferredStigmas(advanced)` carries the two lists and `BotStigmaFitter` ranks by them before role and power, so a templar fills its sockets
+in the guide's order and anything beyond his list falls back to the old ranking. The fitter only fills *empty* sockets: a templar socketed before this
+change keeps its stones until it is regeared from scratch.
+
+What this removed: Punishing Wave, an area stigma the fitter would have chosen for its power and the group rules would never have cast.
+
+To confirm with him: the 70 % bar for Barricade, which his list gives no number for; and that a Barricade left on after the fight is acceptable, since
+the bot never switches a toggle off.
+
 ## Where this stands
 
 All six milestones are built and unit tested (19 cases in `TemplarPlaybookTest`, 3 in `BotMarksTest`, 2 in `BotPlaybooksTest`). None has been watched in

@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot.economy;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
+import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.services.StigmaService;
 import com.aionemu.gameserver.skillengine.effect.AbstractHealEffect;
@@ -153,7 +155,7 @@ public class BotStigmaFitter {
 					found.add(stone);
 			}
 		}
-		found.sort(worthMostTo(bot));
+		found.sort(worthMostTo(bot, advanced));
 		return found;
 	}
 
@@ -164,13 +166,30 @@ public class BotStigmaFitter {
 	 * else, and as the tie-break for all of them, the stated power that already orders every other skill this module casts — so no new judgement is
 	 * invented here, only an order of preference over one that exists.
 	 */
-	private static Comparator<ItemTemplate> worthMostTo(Player bot) {
+	private static Comparator<ItemTemplate> worthMostTo(Player bot, boolean advanced) {
 		BotRole role = BotRole.of(bot);
-		return Comparator.comparingInt((ItemTemplate stone) -> switch (role) {
+		List<String> wanted = BotPlaybooks.of(bot).preferredStigmas(advanced);
+		// the class's own list first, when it has one: that is somebody who knows the class saying what it should wear, which outranks any inference
+		return Comparator.comparingInt((ItemTemplate stone) -> rankOf(wanted, groupsOf(stone))).thenComparingInt((ItemTemplate stone) -> switch (role) {
 			case TANK -> grants(stone, EffectType.BOOSTHATE) ? 0 : 1;
 			case HEALER -> heals(stone) ? 0 : 1;
 			default -> 0;
 		}).thenComparing(Comparator.comparingInt(BotStigmaFitter::power).reversed());
+	}
+
+	/**
+	 * @return Where the stone stands in the list a class wants, the first of its groups that is on it counting; the length of the list when none is, so
+	 *         that everything unwanted sorts after everything wanted and keeps its order among itself.
+	 */
+	static int rankOf(List<String> wanted, Collection<String> groups) {
+		int best = wanted.size();
+		for (String group : groups)
+			best = Math.min(best, wanted.indexOf(group) < 0 ? wanted.size() : wanted.indexOf(group));
+		return best;
+	}
+
+	private static List<String> groupsOf(ItemTemplate stone) {
+		return grantedSkills(stone).stream().map(SkillTemplate::getGroup).toList();
 	}
 
 	/** @return The strongest thing the data says any of this stone's skills does, which is how every other skill in this module is ranked. */

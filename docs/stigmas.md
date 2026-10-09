@@ -32,6 +32,8 @@ Three traps, each of which would have failed quietly:
 - **The skills are not stored with the character.** The stones persist as equipment; what they grant does not, and `PlayerEnterWorldService` hands it
   back on every login. A bot that did not do the same would have been fitted once and gone silent at the first restart, still visibly wearing them.
 
+A class can state its own list: `ClassPlaybook.preferredStigmas`, which for the templar is the guide's ([templar-plan.md](templar-plan.md)) and is ranked ahead of everything below.
+
 Which stigmas, out of the fifty or so a class can reach, is the role's question: a tank takes the ones that hold aggro, a healer the ones that heal,
 and everyone else — and all of them as the tie-break — the stated power that already orders every other skill here.
 

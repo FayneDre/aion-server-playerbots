@@ -22,12 +22,12 @@ class TemplarPlaybookTest {
 
 	/** A templar on its own: no group, so none of the aggro rules can apply. */
 	private static Situation alone(int level, int hp, int dp, boolean armorUp, Set<Move> ready) {
-		return new Situation(level, hp, dp, armorUp, false, false, false, false, false, false, false, ready);
+		return new Situation(level, hp, dp, armorUp, false, false, false, false, false, false, false, false, ready);
 	}
 
 	/** A templar in a group, healthy and with no divine power, so only the aggro rules have anything to say. */
 	private static Situation grouped(boolean enemyInRoarRange, boolean enemyLoose, Set<Move> ready) {
-		return new Situation(40, 100, 0, false, true, enemyInRoarRange, enemyLoose, false, false, false, false, ready);
+		return new Situation(40, 100, 0, false, true, enemyInRoarRange, enemyLoose, false, false, false, false, false, ready);
 	}
 
 	@Test
@@ -105,19 +105,19 @@ class TemplarPlaybookTest {
 
 	@Test
 	void stayingAliveComesBeforeTheAggro() {
-		Situation hurt = new Situation(40, 60, 0, false, true, true, true, false, false, false, false, EVERYTHING);
+		Situation hurt = new Situation(40, 60, 0, false, true, true, true, false, false, false, false, false, EVERYTHING);
 		assertEquals(EMPYREAN_ARMOR, TemplarPlaybook.decide(hurt));
 	}
 
 	@Test
 	void aTemplarAloneNeverTauntsOrRoars() {
-		Situation alone = new Situation(40, 100, 0, false, false, true, true, false, false, false, false, EVERYTHING);
+		Situation alone = new Situation(40, 100, 0, false, false, true, true, false, false, false, false, false, EVERYTHING);
 		assertNull(TemplarPlaybook.decide(alone), "a group's rules need a group, whatever the flags say");
 	}
 
 	/** A templar at full health, alone, in the given state of control. */
 	private static Situation shaken(boolean controlled, boolean recentlyControlled, boolean shockChainOpen, boolean devotionUp, int hp, Set<Move> ready) {
-		return new Situation(45, hp, 0, false, false, false, false, controlled, recentlyControlled, shockChainOpen, devotionUp, ready);
+		return new Situation(45, hp, 0, false, false, false, false, controlled, recentlyControlled, shockChainOpen, devotionUp, false, ready);
 	}
 
 	@Test
@@ -161,5 +161,27 @@ class TemplarPlaybookTest {
 		assertTrue(TemplarPlaybook.isAreaAttack(TargetRelationAttribute.ENEMY, TargetRangeAttribute.AREA));
 		assertFalse(TemplarPlaybook.isAreaAttack(TargetRelationAttribute.ENEMY, TargetRangeAttribute.ONLYONE), "a single target is not an area");
 		assertFalse(TemplarPlaybook.isAreaAttack(TargetRelationAttribute.MYPARTY, TargetRangeAttribute.AREA), "Prayer of Victory is a buff, not an attack");
+	}
+
+	@Test
+	void barricadeOfSteelIsRaisedUnderSeventyAndOnlyOnce() {
+		Set<Move> onlyBarricade = EnumSet.of(BARRICADE_OF_STEEL);
+		assertEquals(BARRICADE_OF_STEEL, TemplarPlaybook.decide(alone(40, 69, 0, false, onlyBarricade)));
+		assertNull(TemplarPlaybook.decide(alone(40, 70, 0, false, onlyBarricade)));
+		Situation alreadyOn = new Situation(40, 30, 0, false, false, false, false, false, false, false, false, true, onlyBarricade);
+		assertNull(TemplarPlaybook.decide(alreadyOn), "a toggle cast while it is on switches itself off");
+	}
+
+	@Test
+	void inciteRageIsTheFirstTauntToSpendOnAMonsterOnAMate() {
+		assertEquals(INCITE_RAGE, TemplarPlaybook.decide(grouped(false, true, EVERYTHING)));
+		assertEquals(CAPTURE, TemplarPlaybook.decide(grouped(false, true, EnumSet.of(CAPTURE, TAUNT))), "when it is not ready the others follow in their order");
+	}
+
+	@Test
+	void theStigmasAreThoseTheGuideListsInTheOrderItListsThem() {
+		assertEquals(java.util.List.of("KN_HIGHPROVOKE", "KN_REFLECTSHIELD", "KN_THUNDERBLADE"), new TemplarPlaybook().preferredStigmas(false));
+		assertEquals(java.util.List.of("KN_RECOVER", "KN_SENTINEL", "KN_DESTRUCTSHIELD"), new TemplarPlaybook().preferredStigmas(true));
+		assertTrue(ClassPlaybook.NONE.preferredStigmas(false).isEmpty(), "a class with no opinion leaves the fitter to rank by role and power");
 	}
 }

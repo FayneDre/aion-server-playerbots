@@ -1,5 +1,7 @@
 package com.aionemu.gameserver.playerbot.combat.playbook;
 
+import java.util.List;
+
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
@@ -36,5 +38,14 @@ public interface ClassPlaybook {
 	 */
 	default boolean claims(Player bot, SkillTemplate template) {
 		return false;
+	}
+
+	/**
+	 * @param advanced Which family of sockets is being filled: the regular ones, or the advanced ones that open from level 45.
+	 * @return The skill groups of the stigmas this class wants, in the order it wants them, for those sockets. Empty when it has no opinion, and then the
+	 *         fitter ranks by role and by power as it always did. A stone that is not on the list is still worn once the list runs out.
+	 */
+	default List<String> preferredStigmas(boolean advanced) {
+		return List.of();
 	}
 }
