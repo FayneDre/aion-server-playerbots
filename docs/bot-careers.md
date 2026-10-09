@@ -40,3 +40,14 @@ no handlers, no quest state. Quests that *gate* progression are completed outrig
 Every new character is given kinah, ten thousand per level, because the engine charges 25 000 to socket a stigma and a bot earns only by selling loot —
 one created at level fifty has never earned a coin. **This mints kinah**, which costs nothing while bots trade only with the engine and is the thing to
 look at again the day they trade with players.
+
+## After a death
+
+A bot comes back at its bind obelisk on a quarter of its health, under the soul sickness, which cuts every stat for minutes. Two answers failed before the
+current one: walking straight back to the farm ground (a crippled bot among the mobs that had killed it, dying in a loop), and waiting where it stood
+(every obelisk in the region filled with seated bots).
+
+Now the bot walks to a **convalescence spot** (`BotConvalescence`) and waits there until the sickness ends, then returns to its anchor as usual. The
+spot is 16 to 45 m from the obelisk, on ground the navmesh joins to it, with no hostile creature within 25 m and nobody standing on it. It is fixed to
+the bot's id, so a crowd of simultaneous deaths spreads out, and it is chosen again at each death. A bot with no obelisk on its map, or one more than
+150 m away, rests where it stands. A bot that is attacked still defends itself, and errands (selling, looting) still run. Not yet verified in game.

@@ -215,6 +215,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private final BotDay day;
 	/** The chores between fights: the corpse, the bag, the shop. */
 	private final BotErrands errands;
+	private final BotConvalescence convalescence;
 	/** When the last fight ended, 0 once the weapon has been put away. */
 	private volatile long combatEndedAt;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
@@ -248,6 +249,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		this.posture = new BotPosture(owner);
 		this.day = new BotDay(this);
 		this.errands = new BotErrands(this);
+		this.convalescence = new BotConvalescence(owner, day::isCrowded);
 	}
 
 	BotPosture posture() {
@@ -516,7 +518,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (errands.dressUp()) {
 				// dressing itself, which is five seconds of stillness the bot has to commit to rather than hope for
 			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following) && !mustHoldTheLine(following)) {
-				if (!walkOffTheObelisk()) // never sit down where it resurrected: that spot is shared by everyone who died in the region
+				if (isRecoveringFromDeath())
+					convalesce(); // not the farm ground: that is where it died, and the penalty makes it die again
+				else if (!walkOffTheObelisk()) // never sit down where it resurrected: that spot is shared by everyone who died in the region
 					recover();
 			} else if (following) {
 				serveTheGroup(); // a member has no business picking its own fights, so the rest of this chain is not its to run
@@ -532,11 +536,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 					// Starting a fight is the one thing the death penalty forbids, and it used to forbid everything: the bot sat where it stood for
 					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Walking, going home,
 					// buffing and the errands above are all things a player does on the way back from a death, so none of them is gated here.
-					Creature target = isRecoveringFromDeath() ? null : BotTargetSelector.findTarget(getOwner(), this::isIgnored);
-					if (target == null)
-						roam();
-					else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
-						startAttacking(target);
+					if (isRecoveringFromDeath())
+						convalesce(); // roaming would walk it to the nearest mob, and sitting on the obelisk is what filled them
+					else {
+						Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
+						if (target == null)
+							roam();
+						else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
+							startAttacking(target);
+					}
 				}
 			}
 		}
@@ -1232,6 +1240,26 @@ public class PlayerBotAI extends AITemplate<Player> {
 	}
 
 	/**
+	 * Waits out the death penalty at the bot's own quiet spot, see {@link BotConvalescence}. Heals there if it is hurt, and does nothing at all if it is
+	 * not. A bot with no such spot rests where it stands, as it did before.
+	 */
+	private void convalesce() {
+		Vector3f spot = convalescence.spot();
+		if (spot == null) {
+			if (!isHealthyEnoughToFight())
+				recover();
+			return;
+		}
+		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
+			return;
+		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), spot.getX(), spot.getY()) > SPOT_TOLERANCE) {
+			if (!posture.standUp())
+				tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
+		} else if (!isHealthyEnoughToFight())
+			recover();
+	}
+
+	/**
 	 * Walks a bot that has just resurrected off the obelisk before it settles down to heal.
 	 * <p>
 	 * The resting itself is right and stays: eight times the regeneration rate is the difference between a minute and ten. What was wrong is only
@@ -1495,6 +1523,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			if (!bot.isSpawned() || !bot.isDead())
 				return;
 			PlayerReviveService.bindRevive(bot);
+			convalescence.forget(); // a new death, a new look at where is quiet
 			Vector3f home = day.home();
 			if (home != null)
 				setAnchor(home.getX(), home.getY(), home.getZ());

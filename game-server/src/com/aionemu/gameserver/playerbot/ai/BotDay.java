@@ -313,7 +313,7 @@ class BotDay {
 	 *         were checked at first, which was invisible while a place held one or two inhabitants and is not once it holds twenty: they would have
 	 *         picked their corners without reference to each other and stood inside one another in the middle of a village square.
 	 */
-	private boolean isCrowded(Vector3f spot) {
+	boolean isCrowded(Vector3f spot) {
 		boolean[] taken = { false };
 		Player bot = ai.getOwner();
 		bot.getKnownList().forEachNpc(npc -> {
