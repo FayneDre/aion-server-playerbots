@@ -33,7 +33,7 @@ than walking into weapon range, where a cleric is a cleric being hit and silent 
 
 ## Two monsters, one tank
 
-The tank no longer taunts the target it is already swinging at: The guide keeps Taunt and Capture for peeling, and uses Provoking Roar whenever it is
+The tank no longer taunts the target it is already swinging at: the guide keeps Taunt and Capture for peeling, and uses Provoking Roar whenever it is
 ready and something is within 8 m. The part a group feels is the monster that got past and is hitting
 somebody else — "le templier ne gère pas correctement l'aggro si plus de 1 mob". A tank now also looks for an enemy whose chosen victim is a team mate
 and pulls it back.
@@ -52,7 +52,7 @@ that fights follows it: `targetToAssist` reads the mark before anybody's selecti
 next attack tick. When the marked one dies the tank marks the next; with nobody left, the skull is taken down, because real players in the group see it.
 
 Only the skull counts, and a skull on a live enemy is never moved, whoever put it there: a leader who marks by hand is obeyed. A mark on something that
-is not fighting the group is followed all the same: The guide has a player mark an enemy even out of combat to make it the main target, which is how a
+is not fighting the group is followed all the same: the guide has a player mark an enemy even out of combat to make it the main target, which is how a
 group is told to start. A mark the bot cannot see is left alone rather than taken down. A healer does not follow it, as it does not join the attack at all.
 
 **Without a mark, the target is the same for every class** (the guide's "Classe 101"): the enemy fighting the group, meaning hitting a member or the bot itself,

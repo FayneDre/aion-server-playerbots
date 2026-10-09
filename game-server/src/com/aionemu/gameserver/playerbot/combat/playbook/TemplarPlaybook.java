@@ -108,7 +108,7 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * Everything {@link #decide} looks at, so that it can be decided without a world.
 	 *
 	 * @param ready The moves the templar knows and that are off cooldown. Mana is not in here: the engine refuses a cast it cannot pay for, which
-	 *          costs nothing but the tick, and the guide's document says a templar's mana is negligible.
+	 *          costs nothing but the tick, and the guide says a templar's mana is negligible.
 	 * @param armorUp Whether Empyrean Armor's buff is on the templar, which is what Iron Skin is kept for when it is not.
 	 * @param inTeam Whether the templar is in a group, which is what the aggro rules need.
 	 * @param enemyInRoarRange Whether an enemy that is fighting the group is close enough for Provoking Roar to take hold of it.

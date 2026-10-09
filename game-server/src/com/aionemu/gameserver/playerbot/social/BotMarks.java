@@ -29,7 +29,7 @@ public final class BotMarks {
 
 	/**
 	 * @return The enemy carrying the skull, or null when there is none to follow: no mark, or a mark on something dead, out of sight or not an enemy.
-	 *         Whether it is fighting the group is deliberately not asked: The guide has a player mark an enemy even out of combat, to make it the main
+	 *         Whether it is fighting the group is deliberately not asked: the guide has a player mark an enemy even out of combat, to make it the main
 	 *         target, and a group that would follow only marks on monsters already engaged could not be told to start.
 	 */
 	public static Creature skulled(Player bot) {

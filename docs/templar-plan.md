@@ -1,6 +1,6 @@
 # Templar: implementation plan
 
-Plan, not built. Source: The guide's document "Templier 101 — Rôle du templier dans un groupe" (four pages, in French). It describes how a templar
+Plan, not built. Source: the guide's document "Templier 101 — Rôle du templier dans un groupe" (four pages, in French). It describes how a templar
 should play in a group; the guide confirmed its defensive rules hold solo as well. What the module does for a tank today is in [group-roles.md](group-roles.md) and
 [combat-skills.md](combat-skills.md); this file is only the distance between the two.
 
@@ -76,7 +76,7 @@ that can be checked without a world can have its thresholds argued about in a te
    not up; and the generic defensive and heal rules told to leave these three alone. Chastisement used on cooldown from 10 to 30 while DP is
    2000 or more, and not from 31 so the points are kept for Hand of Healing. Unit tests for every threshold. In game: a log line per use with
    health and DP, over a dozen fights.
-3. **Aggro as the guide describes it.** *Built, without the retargeting: The guide also has the tank keep attacking the loose monster until it has its attention, and doing that now would drag the whole group onto it, since they follow the tank's target. That half waits for the mark in milestone 4. Capture is named by its skill group, not by an effect.* Roar on cooldown whenever an enemy is on the group; Taunt/Capture only to peel (an enemy whose victim is
+3. **Aggro as the guide describes it.** *Built, without the retargeting: the guide also has the tank keep attacking the loose monster until it has its attention, and doing that now would drag the whole group onto it, since they follow the tank's target. That half waits for the mark in milestone 4. Capture is named by its skill group, not by an effect.* Roar on cooldown whenever an enemy is on the group; Taunt/Capture only to peel (an enemy whose victim is
    not the tank), preferring whichever is ready; Capture counted as a taunt, as the guide confirms. Measure before and after:
    times a monster's most hated target is not the tank during a three monster pull.
 4. **Marking.** *Built (core getter `getBrandedTarget`, `BotMarks`, the group following the skull, the tank marking before it assists and as it fights). Not built: keeping the tank on a monster that has got loose until it has its attention, because it is a state the bot has to remember from tick to tick, which is the same per-bot memory milestone 5 needs for crowd control.* The core getter, the tank's marking, `targetToAssist` reading the mark, clearing it on death. In game: a group of three with a
@@ -96,16 +96,16 @@ that can be checked without a world can have its thresholds argued about in a te
 
 ## The group's target, for every class
 
-A second page of his document sets the priority for any bot in a group: first the skull, even on an enemy nobody has engaged; then the enemy fighting the
+A second page of the document sets the priority for any bot in a group: first the skull, even on an enemy nobody has engaged; then the enemy fighting the
 group with the least health. Built in `BotGroupManager.targetToAssist` and `BotMarks`, and it is not templar specific. Two things it changed from milestone 4:
 a skull is no longer ignored on an enemy that is not yet fighting the group, and the old order of the tank's target, the leader's, then anything fighting
 the group is gone. A human templar who does not mark is therefore no longer followed by selection alone.
 
 ## Stigmas (the guide's section 5, "work in progress, to test")
 
-His list, by the socket it fills, with the client names behind his French ones:
+The guide's list, by the socket it fills, with the client names behind its French ones:
 
-| Sockets | Stigma | `group` | Role in his list | How the bot uses it |
+| Sockets | Stigma | `group` | Role in the guide's list | How the bot uses it |
 |---|---|---|---|---|
 | Regular, 20 | Incur Wrath = Incite Rage | `KN_HIGHPROVOKE` | taunt | Single target taunt, 60 s: the first of the three peel moves, being the slowest to return |
 | Regular, 30 | Barricade of Steel | `KN_REFLECTSHIELD` | defensive cooldown | A toggle, which the generic order never casts; raised under 70 % health when it is not on |
@@ -118,12 +118,12 @@ The last column is read from the code and the data, not watched: whether the gen
 (it depends on what its stat changes are) is the first thing to look at in play.
 
 `ClassPlaybook.preferredStigmas(advanced)` carries the two lists and `BotStigmaFitter` ranks by them before role and power, so a templar fills its sockets
-in the guide's order and anything beyond his list falls back to the old ranking. The fitter only fills *empty* sockets: a templar socketed before this
+in the guide's order and anything beyond its list falls back to the old ranking. The fitter only fills *empty* sockets: a templar socketed before this
 change keeps its stones until it is regeared from scratch.
 
 What this removed: Punishing Wave, an area stigma the fitter would have chosen for its power and the group rules would never have cast.
 
-To confirm with him: the 70 % bar for Barricade, which his list gives no number for; and that a Barricade left on after the fight is acceptable, since
+To confirm with the guide's author: the 70 % bar for Barricade, which its list gives no number for; and that a Barricade left on after the fight is acceptable, since
 the bot never switches a toggle off.
 
 ## Where this stands

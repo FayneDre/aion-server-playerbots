@@ -1,27 +1,27 @@
 # Group positioning: plan
 
-Plan, not built. Source: The guide's page on positioning for the members of a group (two pages and a diagram, in French) and his page on aggro distance.
+Plan, not built. Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
 Where the module stands today is in [group-roles.md](group-roles.md) and [navigation-prototype.md](navigation-prototype.md); this file is the distance
-between that and what he describes. Step 0, the measuring, is done and its figures are below.
+between that and what it describes. Step 0, the measuring, is done and its figures are below.
 
-## What he asks for
+## What it asks for
 
 The aim: every class uses its skills in the best conditions. The constraint over everything: **a bot's position must not draw new enemies.**
 
-| Where | Classes (his names, then the engine's) | Why |
+| Where | Classes (its names, then the engine's) | Why |
 |---|---|---|
 | In front of the enemy, on the side **opposite the rest of the group** | templar `TEMPLAR`, Ethertech `RIDER` | Enemies hold their attention on the tank, so they turn their back on everyone else. A cleave (a cone in front of the enemy) then hits only the tank |
 | In contact, **behind** the enemy | assassin `ASSASSIN`, aède `CHANTER`, gladiator `GLADIATOR` | Melee classes out of the cone, and the assassin's skills that need its back to the enemy |
 | At a good distance, never in melee, never in front | spiritualiste `SPIRIT_MASTER`, sorcier `SORCERER`, barde `BARD`, rôdeur `RANGER`, pistolero `GUNNER` | Enemy area attacks; a ranged class in melee is a class being hit |
 | At a good distance, **every member within heal range** | clerc `CLERIC` | Its job is to survive and keep the group healthy |
 
-In his diagram: the tank under the enemies, the enemies facing it, the melee just behind the enemies, the ranged further back, the healer off to one side,
+In its diagram: the tank under the enemies, the enemies facing it, the melee just behind the enemies, the ranged further back, the healer off to one side,
 and grey circles for the detection radius of the packs that are not part of the fight, which nobody may enter.
 
 ## Answered by the guide's author
 
-1. **Distances and sizes come from the data**, the skills' and the server's, not from figures of his.
-2. **The aggro rules are the engine's own**, not the general ones on his third page.
+1. **Distances and sizes come from the data**, the skills' and the server's, not from figures of its own.
+2. **The aggro rules are the engine's own**, not the general ones on its third page.
 3. **The tank does not walk round the enemy in the middle of a fight.** It chooses its side once, as it closes in to engage.
 4. **"Behind" is the engine's `isBehind`**: what lets the assassin cast the skills that ask for its back.
 
@@ -32,7 +32,7 @@ and grey circles for the detection radius of the packs that are not part of the 
 - Range: median 10 m, three quarters at 15 m or less, nine tenths at 20 m or less, 100 m at the extreme. Most common: 10 m, then 20, 8, 7, 15.
 - Angle: **34 000 of them state none and see all round (360°)**. Of the rest, 240° is by far the commonest (14 700), then 300°, 270°, 140°. 3 400 have 0° and
   never notice anyone. Inside the cone they notice from the full range; outside it only within a short radius, 4 m (half the range when that is under 8 m).
-- A monster ignores a player ten or more levels above it, guards excepted. His third page has that right and the rest approximately.
+- A monster ignores a player ten or more levels above it, guards excepted. Its third page has that right and the rest approximately.
 - So a pack that states a 240° cone has a blind sector of 120° straight behind it, and a pack that states nothing has none: **a zone is read per monster,
   not assumed.**
 
@@ -103,7 +103,7 @@ A cast roots a bot, so casters reposition between casts.
    distance of the ranged, both against the "before" figures taken first.
 3. **The healer.** *Built: runs on the decision tick, because a healer takes no part in the fight loop (`takeHealerStation`); placed means in the half behind the enemy, 6 m or more from it and within the heal reach less 1 m of every member, which is looser than the spot it is sent to so that arriving always ends the walk. Standing where it should, it holds rather than going back to its slot. The zones of other packs are not part of "placed" yet.* The heal range band. In game: no member out of its reach, and no healer walking into the fight.
 4. **The tank.** *Built in the chase only (`PlayerBotAI.approachPoint`): while a templar or Ethertech closes in on an enemy it aims at the contact spot on the side away from the group instead of at the enemy; once in reach nothing moves it, and an enemy that is already on it from the group's side is simply fought where it stands. Placed means the group lies within 60 degrees of straight opposite across the enemy. The walk to the far side can cross the enemy and its cone; that is step 5.* The side it engages from is the one opposite the group, chosen as it closes in and kept. In game: the enemy's back to the group in a
-   stabilised fight, as in his diagram.
+   stabilised fight, as in its diagram.
 5. **Routes that respect aggro zones.** *Built: `navmesh/Avoidance`, a cost per point that the A* multiplies a step by (15 times its length for ground inside another pack's notice); path smoothing never cuts a corner across such ground; the move controller takes it for one journey (`avoid`), and the three station walks (melee and ranged, healer, tank closing in) ask for it. It is a cost and not a wall, so a bot with no other way still goes. Known gaps: the coarse pass for journeys over 150 m does not know of it, a route planned before a pack moved is kept, and the zones are those of monsters in the bot's own known list.* Until now only the destination is checked; the walk there may still cut through a pack's cone. The path search has no
    cost for ground, so this needs one, and it is the likeliest piece to be larger than it looks. Decided after 2 to 4 have been seen.
 
