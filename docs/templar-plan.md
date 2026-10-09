@@ -94,6 +94,13 @@ that can be checked without a world can have its thresholds argued about in a te
    costs the group nothing, and a templar whose mana did run out would lose its defensives to the engine's refusal. A debug line is written whenever a
    templar is under 25 % mana in a fight, so a long instance settles it.
 
+## The group's target, for every class
+
+A second page of his document sets the priority for any bot in a group: first the skull, even on an enemy nobody has engaged; then the enemy fighting the
+group with the least health. Built in `BotGroupManager.targetToAssist` and `BotMarks`, and it is not templar specific. Two things it changed from milestone 4:
+a skull is no longer ignored on an enemy that is not yet fighting the group, and the old order of the tank's target, the leader's, then anything fighting
+the group is gone. A human templar who does not mark is therefore no longer followed by selection alone.
+
 ## Stigmas (the guide's section 5, "work in progress, to test")
 
 His list, by the socket it fills, with the client names behind his French ones:

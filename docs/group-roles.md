@@ -52,4 +52,9 @@ that fights follows it: `targetToAssist` reads the mark before anybody's selecti
 next attack tick. When the marked one dies the tank marks the next; with nobody left, the skull is taken down, because real players in the group see it.
 
 Only the skull counts, and a skull on a live enemy is never moved, whoever put it there: a leader who marks by hand is obeyed. A mark on something that
-is not fighting the group is ignored, or the whole group would walk off to pull it. A healer does not follow it, as it does not join the attack at all.
+is not fighting the group is followed all the same: The guide has a player mark an enemy even out of combat to make it the main target, which is how a
+group is told to start. A mark the bot cannot see is left alone rather than taken down. A healer does not follow it, as it does not join the attack at all.
+
+**Without a mark, the target is the same for every class** (the guide's "Classe 101"): the enemy fighting the group, meaning hitting a member or the bot itself,
+that has the least health in absolute terms. This replaced the earlier order of the tank's target, then the leader's, then anything fighting the group, so a
+leader's selection no longer steers the group; a mark does.

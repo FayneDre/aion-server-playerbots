@@ -7,6 +7,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
+import com.aionemu.gameserver.world.World;
 
 /**
  * The skull: how a group agrees on one target without a leader having to click it.
@@ -27,8 +28,9 @@ public final class BotMarks {
 	}
 
 	/**
-	 * @return The enemy carrying the skull, or null when there is none worth following: no mark, a mark on something already dead, or on something
-	 *         that is not fighting this group. The last matters because a mark on a monster nobody has engaged would send the whole group to pull it.
+	 * @return The enemy carrying the skull, or null when there is none to follow: no mark, or a mark on something dead, out of sight or not an enemy.
+	 *         Whether it is fighting the group is deliberately not asked: The guide has a player mark an enemy even out of combat, to make it the main
+	 *         target, and a group that would follow only marks on monsters already engaged could not be told to start.
 	 */
 	public static Creature skulled(Player bot) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
@@ -39,7 +41,7 @@ public final class BotMarks {
 			return null;
 		Npc[] found = { null };
 		bot.getKnownList().forEachNpc(npc -> {
-			if (npc.getObjectId() == markedId && BotGroupManager.isEngagedWithTheGroup(bot, npc))
+			if (npc.getObjectId() == markedId && !npc.isDead() && npc.isSpawned() && bot.isEnemy(npc) && bot.canSee(npc))
 				found[0] = npc;
 		});
 		return found[0];
@@ -53,18 +55,38 @@ public final class BotMarks {
 	 */
 	public static void markWeakestIfNone(Player bot) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
-		if (team == null || skulled(bot) != null)
+		if (team == null || skulled(bot) != null || isMarkedAndAlive(team))
 			return;
-		Map<Integer, Long> healthById = new HashMap<>();
-		bot.getKnownList().forEachNpc(npc -> {
-			if (BotGroupManager.isEngagedWithTheGroup(bot, npc))
-				healthById.put(npc.getObjectId(), npc.getLifeStats().getCurrentHp() * 1L);
-		});
-		int weakest = weakestOf(healthById);
-		if (weakest != 0)
-			team.updateBrand(SKULL, weakest);
+		Creature weakest = weakestEngaged(bot);
+		if (weakest != null)
+			team.updateBrand(SKULL, weakest.getObjectId());
 		else if (team.getBrandedTarget(SKULL) != 0)
 			team.updateBrand(SKULL, 0);
+	}
+
+	/**
+	 * @return true if the skull is on something that is still alive, wherever it is. The bot can only see part of the world, so a mark it cannot find may
+	 *         be one a player put on something out of its sight, and that is not the bot's to take down or to replace.
+	 */
+	private static boolean isMarkedAndAlive(TemporaryPlayerTeam<?> team) {
+		int markedId = team.getBrandedTarget(SKULL);
+		return markedId != 0 && World.getInstance().findVisibleObject(markedId) instanceof Creature marked && !marked.isDead();
+	}
+
+	/**
+	 * @return The enemy fighting this group that has the least health in absolute terms, or null when none is. The second of the guide's two rules for the
+	 *         group's target, and the one the tank marks with the skull so that the first rule then carries it.
+	 */
+	public static Creature weakestEngaged(Player bot) {
+		Map<Integer, Npc> byId = new HashMap<>();
+		Map<Integer, Long> healthById = new HashMap<>();
+		bot.getKnownList().forEachNpc(npc -> {
+			if (BotGroupManager.isEngagedWithTheGroup(bot, npc)) {
+				byId.put(npc.getObjectId(), npc);
+				healthById.put(npc.getObjectId(), npc.getLifeStats().getCurrentHp() * 1L);
+			}
+		});
+		return byId.get(weakestOf(healthById));
 	}
 
 	/**

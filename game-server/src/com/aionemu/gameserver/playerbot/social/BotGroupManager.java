@@ -143,9 +143,9 @@ public class BotGroupManager {
 	}
 
 	/**
-	 * What the bot's team is already fighting, which is what a grouped player helps with rather than pulling a second mob onto the group.
-	 * <p>
-	 * The leader is asked first, so a group converges on one target instead of each member assisting whoever is nearest. Nothing here checks the
+	 * What a grouped bot fights, by the guide's two rules in order: the enemy marked with the skull, and failing that the enemy fighting the group (hitting a
+	 * member or the bot itself) that has the least health. Every class follows them, so a group converges on one target instead of each member assisting
+	 * whoever is nearest or whatever the leader happens to have clicked. Nothing here checks the
 	 * level gap a bot applies to fights it picks itself: the group has chosen this fight, and refusing to help because the mob is big is the one
 	 * thing a member must not do.
 	 *
@@ -160,35 +160,8 @@ public class BotGroupManager {
 		Creature marked = BotMarks.skulled(bot);
 		if (marked != null)
 			return marked;
-		// The tank's target before the leader's, and that order is the whole of what makes a group fight as one. A leader is whoever formed the
-		// party; the tank is whoever is holding the mob. Assisting the leader spreads a group of five over as many mobs as the leader happens to
-		// click, while the one bot that is actually being hit fights alone.
-		Creature chosen = engagedTarget(bot, tankOf(bot, team));
-		if (chosen == null)
-			chosen = engagedTarget(bot, team.getLeaderObject());
-		return chosen != null ? chosen : npcFightingTheTeam(bot, team);
-	}
-
-	/**
-	 * @return The member holding this group together, or null when nobody is. The bot itself is never the answer: a tank does not assist itself, it
-	 *         picks its own fight, and returning it here would make {@code engagedTarget} refuse anyway.
-	 *         <p>
-	 *         A real player is preferred over a bot of the same role. If somebody is playing a templar, they are the tank and the group follows them;
-	 *         a bot templar standing next to them is a second pair of hands, not a second plan.
-	 */
-	public static Player tankOf(Player bot, TemporaryPlayerTeam<?> team) {
-		if (team == null)
-			return null;
-		Player found = null;
-		for (Player member : team.getMembers()) {
-			if (member.equals(bot) || member.isDead() || BotRole.of(member) != BotRole.TANK)
-				continue;
-			if (!member.isBot())
-				return member;
-			if (found == null)
-				found = member;
-		}
-		return found;
+		// Otherwise the enemy that is fighting the group with the least health, which is the whole of the second rule and is the same for every class.
+		return BotMarks.weakestEngaged(bot);
 	}
 
 	/**
@@ -221,31 +194,6 @@ public class BotGroupManager {
 		return found[0];
 	}
 
-	/**
-	 * Anything in sight that has picked a fight with the group, the leader's attacker first.
-	 * <p>
-	 * Reading the leader's selection was not enough, and standing by while its leader was being eaten is exactly how that showed. A player whose
-	 * selection is on something else, or who never clicked the mob that jumped them, is being attacked all the same. The mob's own aggro list is the
-	 * honest source: it remembers who it is fighting, whatever anyone has selected.
-	 */
-	private static Creature npcFightingTheTeam(Player bot, TemporaryPlayerTeam<?> team) {
-		Player leader = team.getLeaderObject();
-		// getMembers, not getOnlineMembers: the latter filters on isOnline, which is the very question bots make ambiguous
-		List<Player> members = team.getMembers();
-		Creature[] hatingLeader = { null };
-		Creature[] hatingAnyone = { null };
-		bot.getKnownList().forEachNpc(npc -> {
-			if (!isWorthAssistingOn(bot, npc))
-				return;
-			if (leader != null && !leader.equals(bot) && npc.getAggroList().isHating(leader)) {
-				if (hatingLeader[0] == null)
-					hatingLeader[0] = npc;
-			} else if (hatingAnyone[0] == null && hatesAnyMember(npc, members, bot)) {
-				hatingAnyone[0] = npc;
-			}
-		});
-		return hatingLeader[0] != null ? hatingLeader[0] : hatingAnyone[0];
-	}
 
 	/**
 	 * @return How many enemies are within reach of the radius that have picked a fight with the group, the bot itself included. For an ability that
@@ -358,18 +306,4 @@ public class BotGroupManager {
 		return PositionUtil.getDistance(bot, npc) <= ASSIST_RADIUS && bot.canSee(npc);
 	}
 
-	/**
-	 * @return What this member is actually fighting, or null. Selecting a target is not fighting it: players click things to read their level all the
-	 *         time, and a group whose bots pull whatever the leader looks at is unusable. The mob's own aggro list settles it — it holds a grudge
-	 *         against whoever has hit it, and equally against whoever it decided to attack, so a leader under attack is assisted too.
-	 */
-	private static Creature engagedTarget(Player bot, Player member) {
-		if (member == null || member.equals(bot) || !(member.getTarget() instanceof Creature target))
-			return null;
-		if (target.isDead() || !target.isSpawned() || !bot.isEnemy(target) || target instanceof Player)
-			return null;
-		if (!target.getAggroList().isHating(member))
-			return null;
-		return bot.canSee(target) ? target : null;
-	}
 }
