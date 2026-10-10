@@ -51,3 +51,8 @@ Now the bot walks to a **convalescence spot** (`BotConvalescence`) and waits the
 spot is 16 to 45 m from the obelisk, on ground the navmesh joins to it, with no hostile creature within 25 m and nobody standing on it. Spots are
 claimed, at least 9 m apart, so a crowd of simultaneous deaths spreads out, and the claim is released when the sickness ends. A bot with no obelisk on its map, or one more than
 150 m away, rests where it stands. A bot that is attacked still defends itself, and errands (selling, looting) still run. Not yet verified in game.
+
+The search for a spot has three tries, from the strictest: no hostile creature within 25 m and no crowd, then within 10 m, then none asked for. An obelisk that
+stands among creatures (a fortress, an outpost) used to find nothing at the first try, and a bot with no spot rests where it stands, which is the plinth: the
+return of the crowd at the obelisk reported on 10 October may be that, and is not proved. The log now says so, once per death, when no spot is found or only
+one among creatures (`has no place to wait out its sickness`, `waits out its sickness at N m ... among creatures`).

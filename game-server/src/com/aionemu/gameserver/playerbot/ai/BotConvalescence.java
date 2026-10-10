@@ -4,6 +4,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
@@ -26,12 +29,19 @@ import com.aionemu.gameserver.utils.PositionUtil;
  */
 final class BotConvalescence {
 
+	private static final Logger log = LoggerFactory.getLogger(BotConvalescence.class);
+
 	/** How far around the obelisk a spot may be. The nearest third is skipped by {@code BotPlaces.spotAround}, which keeps it off the plinth. */
 	private static final float SPREAD = 45f;
 	/** How many spots to try. Each costs a path search, and a spot is refused for mobs, for company and for being cut off. */
 	private static final int ATTEMPTS = 30;
-	/** How near a hostile creature a spot may be. Past the aggro range of nearly everything that walks the open world, sleeping or not. */
-	private static final float MOB_CLEARANCE = 25f;
+	/**
+	 * How near a hostile creature a spot may be, tried in this order: past the aggro range of nearly everything that walks the open world, sleeping or not;
+	 * then a good deal closer; then not at all. The last two are for obelisks that stand among creatures, a fortress or an outpost, where the first finds no
+	 * ground at all, and a bot with no spot rests where it stands, which is on the plinth. Seated beside a creature for a minute is better than seated on the
+	 * obelisk with everybody else who died in the region.
+	 */
+	private static final float[] MOB_CLEARANCES = { 25f, 10f, 0f };
 	/** How far from its obelisk a bot is still worth walking back to it. Past that the bot stays where it is rather than cross the country sick. */
 	private static final float MAX_DISTANCE = 150f;
 
@@ -47,6 +57,10 @@ final class BotConvalescence {
 	private final Predicate<Vector3f> crowded;
 	private BindPointPosition chosenFor;
 	private Vector3f spot;
+	/** How close a hostile creature the chosen spot allows, which is what it is checked against again later. */
+	private float spotClearance;
+	/** Whether this death has been written to the log yet: one line each, however many times the decision tick asks. */
+	private boolean reported;
 
 	/**
 	 * @param crowded Whether somebody is already standing at a spot, which the bot's day already knows how to answer.
@@ -65,18 +79,38 @@ final class BotConvalescence {
 			return null;
 		if (PositionUtil.getDistance(bot.getX(), bot.getY(), bind.getX(), bind.getY()) > MAX_DISTANCE)
 			return null;
-		if (spot != null && chosenFor == bind && !hostileNear(spot))
+		if (spot != null && chosenFor == bind && !hostileNear(spot, spotClearance))
 			return spot;
 		forget();
 		chosenFor = bind;
 		Vector3f obelisk = new Vector3f(bind.getX(), bind.getY(), bind.getZ());
 		// drawn at random rather than from the id: the claims are what keep the bots apart, and an id-fixed spot would be the same few metres for the
 		// same bot at every death whatever else stood there
-		Vector3f chosen = BotPlaces.spotAround(bot.getWorldId(), obelisk, SPREAD, ATTEMPTS, -1,
-			ground -> crowded.test(ground) || hostileNear(ground) || isClaimedNear(ground));
+		Vector3f chosen = null;
+		float clearance = 0;
+		int tier = 0;
+		for (; tier < MOB_CLEARANCES.length && chosen == null; tier++) {
+			float wanted = MOB_CLEARANCES[tier];
+			// being crowded is only a reason to look further at the first try: a second and a third are for places with no room to be picky
+			boolean lookAtCrowd = tier == 0;
+			chosen = BotPlaces.spotAround(bot.getWorldId(), obelisk, SPREAD, ATTEMPTS, -1,
+				ground -> lookAtCrowd && crowded.test(ground) || hostileNear(ground, wanted) || isClaimedNear(ground));
+			clearance = wanted;
+		}
 		if (chosen != null) {
 			claimed.put(bot.getObjectId(), chosen);
 			spot = chosen;
+			spotClearance = clearance;
+		}
+		if (!reported) {
+			reported = true;
+			if (chosen == null)
+				log.info("Bot {} has no place to wait out its sickness around the obelisk at {} {}, and will rest on it", bot.getName(), Math.round(bind.getX()),
+					Math.round(bind.getY()));
+			else if (tier > 1)
+				log.info("Bot {} waits out its sickness at {} m from the obelisk at {} {}, among creatures, having found nothing quieter", bot.getName(),
+					Math.round(PositionUtil.getDistance(chosen.getX(), chosen.getY(), bind.getX(), bind.getY())), Math.round(bind.getX()),
+					Math.round(bind.getY()));
 		}
 		return spot;
 	}
@@ -86,6 +120,7 @@ final class BotConvalescence {
 		claimed.remove(bot.getObjectId());
 		spot = null;
 		chosenFor = null;
+		reported = false;
 	}
 
 	private boolean isClaimedNear(Vector3f ground) {
@@ -93,10 +128,12 @@ final class BotConvalescence {
 			&& PositionUtil.getDistance(entry.getValue().getX(), entry.getValue().getY(), ground.getX(), ground.getY()) < SEPARATION);
 	}
 
-	private boolean hostileNear(Vector3f ground) {
+	private boolean hostileNear(Vector3f ground, float clearance) {
+		if (clearance <= 0)
+			return false;
 		boolean[] found = { false };
 		bot.getKnownList().forEachNpc(npc -> {
-			if (!found[0] && isThreat(npc) && PositionUtil.getDistance(npc.getX(), npc.getY(), ground.getX(), ground.getY()) < MOB_CLEARANCE)
+			if (!found[0] && isThreat(npc) && PositionUtil.getDistance(npc.getX(), npc.getY(), ground.getX(), ground.getY()) < clearance)
 				found[0] = true;
 		});
 		return found[0];
