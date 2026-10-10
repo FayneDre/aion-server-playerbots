@@ -15,7 +15,7 @@ spawn files on 2026-10-10. How to build one is in [navmesh-plan.md](navmesh-plan
 
 Columns: map id, name in the client, internal name, side in metres (`world_size`), geometry in KB, and what shares its geometry.
 
-## PvE dungeons and raids (77)
+## PvE dungeons and raids (groups of 2 or more) (54)
 
 | Id | Name | Internal | m | KB | Same geometry as |
 |---|---|---|---|---|---|
@@ -34,23 +34,16 @@ Columns: map id, name in the client, internal name, side in metres (`world_size`
 | 300150000 | Udas Temple | IDTemple_Up | 1024 | 187 |  |
 | 300160000 | Lower Udas Temple | IDTemple_Low | 2048 | 346 |  |
 | 300170000 | Beshmundir Temple | IDCatacombs | 2048 | 415 |  |
-| 300190000 | Taloc's Hollow | IDElim | 2048 | 147 |  |
-| 300200000 | Haramel | IDNovice | 512 | 222 |  |
 | 300210000 | Chantra Dredgion | IDDreadgion_02 | 1024 | 111 |  |
 | 300220000 | Abyssal Splinter | IDAbRe_Core | 1024 | 102 |  |
-| 300230000 | Kromede's Trial | IDCromede | 1024 | 257 |  |
-| 300240000 | Aturam Sky Fortress | IDStation | 1024 | 181 |  |
 | 300250000 | Esoterrace | IDF4Re_Drana | 1536 | 348 |  |
 | 300280000 | Rentus Base | IDYun | 1024 | 259 | builds 300620000 |
 | 300440000 | Terath Dredgion | IDDreadgion_03 | 1024 | 109 |  |
-| 300460000 | Steel Rake Cabin | IDshulackShip_Solo | 1024 | 428 |  |
-| 300480000 | Sealed Danuar Mysticarium | IDLDF5RE_Solo | 768 | 284 |  |
 | 300510000 | Tiamat Stronghold | IDTiamat_1 | 2048 | 372 |  |
 | 300520000 | Dragon Lord's Refuge | IDTiamat_2 | 1024 | 25 | builds 300630000 |
 | 300540000 | The Eternal Bastion | IDLDF5b_TD | 1024 | 250 |  |
 | 300590000 | Ophidan Bridge | IDLDF5_Under_01 | 1024 | 89 |  |
 | 300600000 | Unstable Abyssal Splinter | IDAbRe_Core_02 | 1024 | 101 |  |
-| 300610000 | Raksang Ruins | IDRaksha_solo | 1536 | 345 |  |
 | 300620000 | Occupied Rentus Base | IDYun_Hard | 1024 | 259 | 300280000 |
 | 300630000 | Anguished Dragon Lord's Refuge | IDTiamat_2_Hard | 1024 | 25 | 300520000 |
 | 300700000 | The Hexway | IDUnderpassRe | 1024 | 45 |  |
@@ -61,28 +54,45 @@ Columns: map id, name in the client, internal name, side in metres (`world_size`
 | 301240000 | Legion's Kysis Barracks | IDAbRe_Up3_Dkisas_02 | 1024 | 115 | builds 301280000 |
 | 301250000 | Legion's Miren Barracks | IDAbRe_Up3_Lamiren_02 | 1024 | 124 | builds 301290000 |
 | 301260000 | Legion's Krotan Barracks | IDAbRe_Up3_Crotan_02 | 1024 | 118 | builds 301300000 |
-| 301270000 | Linkgate Foundry | IDLDF4Re_01 | 512 | 179 |  |
 | 301280000 | Kysis Barracks | IDAbRe_Up3_Dkisas_02_N | 1024 | 115 | 301240000 |
 | 301290000 | Miren Barracks | IDAbRe_Up3_Lamiren_02_N | 1024 | 124 | 301250000 |
 | 301300000 | Krotan Barracks | IDAbRe_Up3_Crotan_02_N | 1024 | 118 | 301260000 |
 | 301310000 | Idgel Dome | IDLDF5_Fortress_Re | 512 | 78 |  |
 | 301320000 | Lucky Ophidan Bridge | IDLDF5_Under_01_PC | 1024 | 89 |  |
 | 301330000 | Lucky Danuar Reliquary | IDLDF5_Under_Rune_PC | 512 | 79 | 301110000 |
-| 301340000 | Linkgate Foundry | IDLDF4Re_01_Q | 512 | 84 |  |
 | 301360000 | Infernal Danuar Reliquary | IDLDF5_Under_Rune_H | 512 | 79 | 301110000 |
 | 301370000 | Infernal Illuminary Obelisk | IDLDF5_Under_03_H | 512 | 68 | 301230000 |
 | 301380000 | Danuar Sanctuary | IDLDF5_Under_02_E | 1536 | 884 | 301140000 |
 | 301390000 | Drakenspire Depths | IDSeal | 1024 | 239 |  |
+| 310050000 | Aetherogenetics Lab | IDLF3Lp | 512 | 91 |  |
+| 310090000 | Indratu Fortress | IDLF3_Castle_indratoo | 1024 | 41 |  |
+| 310100000 | Azoturan Fortress | IDLF3_Castle_Lehpar | 1024 | 34 |  |
+| 310110000 | Theobomos Lab | IDLF2a_Lab | 1024 | 136 |  |
+| 320080000 | Draupnir Cave | IDDF3_Dragon | 1024 | 161 |  |
+| 320100000 | Fire Temple | IDDF2_Dflame | 512 | 244 |  |
+| 320110000 | Alquimia Research Center | IDDF3_LP | 1024 | 111 |  |
+| 320130000 | Adma Stronghold | IDDf2a_Adma | 1024 | 166 |  |
+| 320150000 | Padmarashka's Cave | IDDramata_01 | 1024 | 34 |  |
+
+## Solo dungeons (not wanted) (23)
+
+| Id | Name | Internal | m | KB | Same geometry as |
+|---|---|---|---|---|---|
+| 300190000 | Taloc's Hollow | IDElim | 2048 | 147 |  |
+| 300200000 | Haramel | IDNovice | 512 | 222 |  |
+| 300230000 | Kromede's Trial | IDCromede | 1024 | 257 |  |
+| 300240000 | Aturam Sky Fortress | IDStation | 1024 | 181 |  |
+| 300460000 | Steel Rake Cabin | IDshulackShip_Solo | 1024 | 428 |  |
+| 300480000 | Sealed Danuar Mysticarium | IDLDF5RE_Solo | 768 | 284 |  |
+| 300610000 | Raksang Ruins | IDRaksha_solo | 1536 | 345 |  |
+| 301270000 | Linkgate Foundry | IDLDF4Re_01 | 512 | 179 |  |
+| 301340000 | Linkgate Foundry | IDLDF4Re_01_Q | 512 | 84 |  |
 | 310010000 | Karamatis | IDAbProL1 | 1024 | 26 | builds 310020000, 320010000, 320020000, 320140000 |
 | 310020000 | Karamatis | IDAbProL2 | 1024 | 26 | 310010000 |
 | 310030000 | Aerdina | IDAbGateL1 | 1024 | 11 |  |
 | 310040000 | Geranaia | IDAbGateL2 | 1024 | 11 |  |
-| 310050000 | Aetherogenetics Lab | IDLF3Lp | 512 | 91 |  |
 | 310060000 | Sliver of Darkness | IDLF1B | 3072 | 163 | builds 320060000 |
 | 310070000 | Sliver of Darkness | IDLF1B_Stigma | 512 | 62 |  |
-| 310090000 | Indratu Fortress | IDLF3_Castle_indratoo | 1024 | 41 |  |
-| 310100000 | Azoturan Fortress | IDLF3_Castle_Lehpar | 1024 | 34 |  |
-| 310110000 | Theobomos Lab | IDLF2a_Lab | 1024 | 136 |  |
 | 310120000 | Karamatis | IDAbProL3 | 1024 | 26 |  |
 | 320010000 | Ataxiar | IDAbProD1 | 1024 | 26 | 310010000 |
 | 320020000 | Ataxiar | IDAbProD2 | 1024 | 26 | 310010000 |
@@ -90,12 +100,7 @@ Columns: map id, name in the client, internal name, side in metres (`world_size`
 | 320040000 | Nidalber | IDAbGateD2 | 1024 | 11 |  |
 | 320050000 | Sky Temple Interior | IDDF2Flying | 512 | 153 |  |
 | 320060000 | Space of Oblivion | IDDF1B | 3072 | 163 | 310060000 |
-| 320080000 | Draupnir Cave | IDDF3_Dragon | 1024 | 161 |  |
-| 320100000 | Fire Temple | IDDF2_Dflame | 512 | 244 |  |
-| 320110000 | Alquimia Research Center | IDDF3_LP | 1024 | 111 |  |
-| 320130000 | Adma Stronghold | IDDf2a_Adma | 1024 | 166 |  |
 | 320140000 | Ataxiar | IDAbProD3 | 1024 | 26 | 310010000 |
-| 320150000 | Padmarashka's Cave | IDDramata_01 | 1024 | 34 |  |
 
 ## Special and event instances (6)
 
