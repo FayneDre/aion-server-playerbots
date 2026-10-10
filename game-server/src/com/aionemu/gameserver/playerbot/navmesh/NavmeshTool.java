@@ -63,6 +63,9 @@ public class NavmeshTool {
 			reportStuck(Integer.parseInt(args[0]), Path.of(args[2]));
 			return;
 		}
+		if (args.length == 2 && args[1].equals("reach")) {
+			System.exit(InstanceReach.run(Integer.parseInt(args[0])));
+		}
 		if (args.length == 2 && args[1].equals("audit")) {
 			audit(Integer.parseInt(args[0]));
 			return;
@@ -86,6 +89,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> seams <x> <y> <z>   where the ground under that spot nearly joins its neighbours, and by how much it misses");
 			System.out.println("       NavmeshTool <mapId> stuck <file>   where bots reported being unable to move: on footing or inside geometry");
 			System.out.println("       NavmeshTool <mapId> audit        walk sample routes and report how far they wander");
+			System.out.println("       NavmeshTool <mapId> reach        from an instance's entry points, how many of its spawn spots can be walked to");
 			return;
 		}
 

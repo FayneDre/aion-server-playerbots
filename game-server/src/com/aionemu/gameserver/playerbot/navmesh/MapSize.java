@@ -25,6 +25,20 @@ final class MapSize {
 		return of(WORLD_MAPS, mapId);
 	}
 
+	/** @return true if the world map list marks the map as an instance, a dungeon the party enters through a portal. */
+	static boolean isInstance(int mapId) throws IOException {
+		return isInstance(WORLD_MAPS, mapId);
+	}
+
+	static boolean isInstance(Path list, int mapId) throws IOException {
+		Pattern map = Pattern.compile("<map\s+id=\"" + mapId + "\"[^>]*\sinstance=\"true\"");
+		for (String line : Files.readAllLines(list)) {
+			if (map.matcher(line).find())
+				return true;
+		}
+		return false;
+	}
+
 	static int of(Path list, int mapId) throws IOException {
 		Pattern map = Pattern.compile("<map\\s+id=\"" + mapId + "\"[^>]*\\sworld_size=\"(\\d+)\"");
 		for (String line : Files.readAllLines(list)) {

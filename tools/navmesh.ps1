@@ -21,7 +21,8 @@
 param(
     [string]$MapId,
     [string]$ServerRoot = $env:AION_SERVER_HOME,
-    [switch]$Obelisks
+    [switch]$Obelisks,
+    [switch]$Reach
 )
 
 $ErrorActionPreference = 'Stop'
@@ -51,6 +52,15 @@ try {
         exit $LASTEXITCODE
     }
     if (-not $MapId) { throw 'Give a map id, or -Obelisks.' }
+    if ($Reach) {
+        # an instance: from where the party arrives, can a bot walk to where the monsters are? Exit code 1 when some spots cannot be reached
+        $worst = 0
+        foreach ($id in $MapId -split ',') {
+            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() reach
+            if ($LASTEXITCODE -gt $worst) { $worst = $LASTEXITCODE }
+        }
+        exit $worst
+    }
     # several maps at once, one after the other: 110010000,400010000
     foreach ($id in $MapId -split ',') {
         Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan

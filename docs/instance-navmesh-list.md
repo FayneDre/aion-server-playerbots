@@ -5,7 +5,7 @@ spawn files on 2026-10-10. How to build one is in [navmesh-plan.md](navmesh-plan
 
 ## What the data says
 
-- **110 instance maps**, of which **105 have a geometry file** and 5 have none (tests). Only 25 of them carry a terrain heightmap; the rest
+- **110 instance maps**, of which **105 have a geometry file** and 5 have none (tests). 53 of them carry a terrain heightmap, often one file named for several ids (`300090000,310050000,900220000.png`), which is a flat base under the rooms; the rest
   are made of placed meshes alone, the way Sanctum and Reshanta are, and the generator takes their size from `world_size` for that reason.
 - **86 distinct geometries.** Several instances reuse one map under other ids (a hard mode, a training copy, a legion barracks): the `geo` and `png` files are byte
   for byte the same. A mesh built once serves them all, if it may be copied under the other ids (to be checked in `NavmeshService`: is the id only the file name?).

@@ -61,7 +61,13 @@ public class HeightfieldBuilder {
 
 		Map<String, List<GeoModel>> models = GeoDataReader.readModels();
 		List<PlacedMesh> solids = new ArrayList<>(), noWalkVolumes = new ArrayList<>();
+		// In an instance everything the engine can put up or take down is left out: the doors a boss opens, the barricades and boxes a script removes. Which of them
+		// stands at any moment is a fact of the run, and a mesh that holds them as walls would shut the party's own way in; a door that really is shut is the
+		// reach report's to say. The open world keeps them, where a gate or a house is as it is drawn.
+		boolean instance = MapSize.isInstance(mapId);
 		for (GeoPlacement placement : GeoDataReader.readPlacements(mapId)) {
+			if (instance && placement.type() != 0)
+				continue;
 			List<GeoModel> parts = models.get(placement.modelName());
 			if (parts == null)
 				continue;
