@@ -37,5 +37,4 @@ The generator and its checks are [navmesh-plan.md](navmesh-plan.md)'s. This file
 
 1. **Doors**: treated as open, as closed, or per door by what opens it? The data says which doors exist, and the mesh cannot say which a bot may pass. The default proposed: open all of them, with the
    reach report naming the gates, since a bot with no way to open a door would be better told by the route than by a wall.
-2. A dungeon with a heightmap (Dark Poeta, Beshmundir, Esoterrace, Raksang, Dragon Lord's) has ground and structures, the others only structures: does the generator's terrain path matter for the 18
-   instances of the first kind, or only the meshes?
+2. 14 of the 77 carry a terrain heightmap (Nochsana Training Camp, Dark Poeta, Asteria Chamber, Beshmundir Temple, Haramel, Esoterrace, Sealed Danuar Mysticarium, The Eternal Bastion, Ophidan Bridge, Raksang Ruins, Sauro Supply Base, Idgel Dome, Lucky Ophidan Bridge, Padmarashka's Cave), the rest only placed meshes. Does the generator's terrain path matter for those, or only the meshes? The first mesh of each kind should be looked at.
