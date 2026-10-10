@@ -50,6 +50,22 @@ public interface ClassPlaybook {
 	}
 
 	/**
+	 * @param attackers How many things have decided to kill a bot that is not in a group.
+	 * @return true if this class breaks off from that many at any health, which the generic rule only does when it is losing. Never in a group.
+	 */
+	default boolean flees(Player bot, int attackers) {
+		return false;
+	}
+
+	/** Called as the bot breaks off a fight it is running from, for a class with something that helps it get away. */
+	default void onRetreat(Player bot) {
+	}
+
+	/** Called on every step of a flight, for a class with something to do about how long it can stay up. Must be cheap: it runs five times a second. */
+	default void whileFlying(Player bot) {
+	}
+
+	/**
 	 * @param inTeam Whether the bot is in a group, since a class may want other mantras for its mates than for itself.
 	 * @return The skill groups of the mantras this class wants running, best first. Empty when it has no opinion, and then the newest mantra wins as it
 	 *         always did. A mantra that is not on the list is tried after the ones that are.

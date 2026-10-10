@@ -206,6 +206,24 @@ public class BotGroupManager {
 
 
 	/**
+	 * @param except The enemy the group is attacking, which is not the one wanted.
+	 * @return Another enemy that is fighting this group and within the radius, or null. For what the guide wants done to an enemy that is not the main one.
+	 */
+	public static Creature otherEnemyOnTheGroup(Player bot, Creature except, float radius) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return null;
+		List<Player> members = team.getMembers();
+		Creature[] found = { null };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (found[0] == null && !npc.equals(except) && !npc.isDead() && npc.isSpawned() && bot.isEnemy(npc)
+				&& PositionUtil.getDistance(bot, npc) <= radius && (npc.getAggroList().isHating(bot) || hatesAnyMember(npc, members, bot)))
+				found[0] = npc;
+		});
+		return found[0];
+	}
+
+	/**
 	 * @return How many enemies are within reach of the radius that have picked a fight with the group, the bot itself included. For an ability that
 	 *         is centred on the caster: casting it with nobody inside its radius is a cast spent on nothing.
 	 */

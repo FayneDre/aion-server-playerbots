@@ -10,6 +10,7 @@ public final class BotPlaybooks {
 
 	private static final ClassPlaybook TEMPLAR = new TemplarPlaybook();
 	private static final ClassPlaybook CHANTER = new ChanterPlaybook();
+	private static final ClassPlaybook RANGER = new RangerPlaybook();
 
 	private BotPlaybooks() {
 	}
@@ -19,6 +20,7 @@ public final class BotPlaybooks {
 		return switch (playerClass) {
 			case TEMPLAR -> TEMPLAR;
 			case CHANTER -> CHANTER;
+			case RANGER -> RANGER;
 			default -> ClassPlaybook.NONE;
 		};
 	}

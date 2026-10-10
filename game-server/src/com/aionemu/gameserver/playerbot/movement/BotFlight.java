@@ -590,6 +590,7 @@ public class BotFlight {
 		wasAtX = bot.getX();
 		wasAtY = bot.getY();
 		wasAtZ = bot.getZ();
+		BotPlaybooks.of(bot).whileFlying(bot);
 
 		if (!powerless && !bot.isFlying()) {
 			// the engine ended it from under us: flight points gone, a zone left, an effect landed. Nothing falls server side, so the bot would hang

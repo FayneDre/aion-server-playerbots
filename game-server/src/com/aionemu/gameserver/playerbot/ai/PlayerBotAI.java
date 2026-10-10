@@ -179,6 +179,14 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * it began, since the health it began at is not the health it is at a cast later; kept here for the same reason as {@link #lastControlledAt}.
 	 */
 	private volatile boolean mendingToFull;
+	/**
+	 * Since when a grouped ranger has held its fire because its target turned on it, or 0, and until when it will not start again. A playbook is shared by
+	 * every bot of its class, so what one bot has been doing is kept here, as for {@link #lastControlledAt}.
+	 */
+	private volatile long holdingFireSince;
+	private volatile long holdFireRearmAt;
+	/** The enemy the bot has already spent its opening handicap on, so that the opener is once per enemy and not once per tick. */
+	private volatile int openedOn;
 	private ScheduledFuture<?> thinkTask;
 	/** Non null between death and resurrection, which also marks the death as already handled. */
 	private ScheduledFuture<?> reviveTask;
@@ -629,6 +637,30 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	public void setMendingToFull(boolean mendingToFull) {
 		this.mendingToFull = mendingToFull;
+	}
+
+	/** @return Since when the bot has been holding its fire, in milliseconds, or 0 when it is not. */
+	public long holdingFireSince() {
+		return holdingFireSince;
+	}
+
+	/** @return The time before which it will not begin to hold its fire again. */
+	public long holdFireRearmAt() {
+		return holdFireRearmAt;
+	}
+
+	public void setHoldingFire(long since, long rearmAt) {
+		this.holdingFireSince = since;
+		this.holdFireRearmAt = rearmAt;
+	}
+
+	/** @return The object id of the enemy the opening handicap was cast on, or 0. */
+	public int openedOn() {
+		return openedOn;
+	}
+
+	public void setOpenedOn(int objectId) {
+		this.openedOn = objectId;
 	}
 
 	public boolean isAttacking() {
@@ -1423,13 +1455,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return false;
 		boolean outmatched = attackers.stream().anyMatch(npc -> npc.getLevel() > bot.getLevel() + BotTargetSelector.MAX_LEVEL_GAP);
 		boolean outnumbered = attackers.size() > 1 && bot.getLifeStats().getHpPercentage() < RETREAT_HP_PERCENT;
-		if (!outmatched && !outnumbered)
+		// some classes are told by their guide to leave at a number of attackers whatever their health
+		boolean fleeing = BotPlaybooks.of(bot).flees(bot, attackers.size());
+		if (!outmatched && !outnumbered && !fleeing)
 			return false;
 		long until = System.currentTimeMillis() + RETREAT_AVOIDED_MILLIS;
 		for (Creature attacker : attackers)
 			ignoredTargets.put(attacker.getObjectId(), until);
 		log.info("Bot {} breaks off from {} attacker(s) at {}% health and heads home", bot.getName(), attackers.size(),
 			bot.getLifeStats().getHpPercentage());
+		BotPlaybooks.of(bot).onRetreat(bot);
 		stopAttacking();
 		returnToAnchor();
 		return true;
