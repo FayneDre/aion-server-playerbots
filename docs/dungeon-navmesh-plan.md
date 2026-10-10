@@ -1,6 +1,6 @@
 # Dungeon navmeshes: plan
 
-Status: milestones 0 and 2 done, 1 half done (five pilot meshes in scope built and measured, with what they show below); 3 to 6 not started. Scope decided on 2026-10-10: the **PvE dungeons and raids for a group**, in every version (normal, hard, legion barracks). **Solo dungeons are out**: a mesh is for
+Status: milestones 0 to 5 done on 2026-10-10 (45 meshes built, 9 copied, every one put through `reach`; results in "The batch"); 6, the server opening a mesh, not done. 21 of the 54 dungeons reach 90 % or more of their spawns from the arrival. Scope decided on 2026-10-10: the **PvE dungeons and raids for a group**, in every version (normal, hard, legion barracks). **Solo dungeons are out**: a mesh is for
 bots that fight in a party, and a solo instance holds one player (23 of the first 77, Haramel among them; `instance_cooltimes.xml` gives one member for each). That leaves the 54 ids of the first
 table in [instance-navmesh-list.md](instance-navmesh-list.md), which come down to **45 distinct geometries**: a mesh is built once and serves the ids that share it. Arenas, warfronts, housing
 and tests are out for now. Putting a bot in an instance is out as well: no code does it, and the meshes do not wait for it.
@@ -26,11 +26,11 @@ The generator and its checks are [navmesh-plan.md](navmesh-plan.md)'s. This file
    `components`. Decide the door question and the floor question here. Done when the images and the numbers say the mesh is walkable, written with the figures as for Sanctum.
 2. **The reachability check.** *Built: `NavmeshTool <id> reach` and `tools\navmesh.ps1 <ids> -Reach`, with `InstanceReach` and three unit tests of the file reading. A spot is moved onto the nearest walkable ground within 3 m before it is asked about, and one with none is counted apart ("no footing") and not held against the mesh. Exit code 1 when anything was not reached.*  A new `NavmeshTool <id> reach`: from each entry point of the id to every spawn of its instance files, how many are joined to the entry and by how long a route, and the
    ones that are not, with their coordinates. The unreachable ones are then either a closed door (expected, noted) or a fault in the mesh. Done when it runs on the two meshes of milestone 1.
-3. **The large ones, alone.** The three oversized, one at a time with the heap the open maps use, noting time and memory. If one does not fit, the grid is cropped to the geometry's own extent
+3. **The large ones, alone.** *Done as part of the batch: Lower Udas Temple 43 s and 8 MB, Beshmundir Temple 31 s and 48 MB, Tiamat Stronghold 13 s and 4 MB. None needed more than the heap the tool already takes.*  The three oversized, one at a time with the heap the open maps use, noting time and memory. If one does not fit, the grid is cropped to the geometry's own extent
    instead of `world_size`.
-4. **The batch.** The 45 geometries, smallest first, each followed by `audit` and `reach`, into a table in [instance-navmesh-list.md](instance-navmesh-list.md): built, median wander, share of spawns
+4. **The batch.** *Done: 45 built in 982 s, 254 MB in all (the slowest, Danuar Reliquary, 139 s, with the two Theobomos fortresses next).*  The 45 geometries, smallest first, each followed by `audit` and `reach`, into a table in [instance-navmesh-list.md](instance-navmesh-list.md): built, median wander, share of spawns
    reached. Meshes that fail are listed with the reason, not hidden.
-5. **The copies**, per milestone 0, and the same table for the ids they serve.
+5. **The copies** *(done: nine files copied, and `reach` run on each id with its own arrival)*, per milestone 0, and the same table for the ids they serve.
 6. **Restart the game server** and check that a mesh opens: it is read when the first bot is on its map, so nothing shows until a bot is in an instance. The reading is tested without one.
 
 ## The pilot
@@ -62,8 +62,33 @@ What is left:
 - **The unreached tail in the others** (2 to 27 % of the spots) is not looked at yet. Some will be real (an arena nobody can enter, a boss room behind a gate), some a fault; `reach` prints the first eight with a
   command to plan each route.
 
+## The batch
+
+All 54 ids, from the best arrival point of each (81 routes, since several have more than one). Full figures per dungeon are in the table of [instance-navmesh-list.md](instance-navmesh-list.md).
+
+| Reached from the arrival | Dungeons |
+|---|---|
+| 90 % and over (21) | Nochsana, Asteria, Chamber of Roah, Kysis, Miren and Krotan Chambers and their six barracks, Udas Temple, Beshmundir Temple, Ophidan Bridge, both Danuar Reliquaries, Aetherogenetics Lab, Indratu Fortress, Fire Temple, Padmarashka's Cave |
+| 50 to 89 % (9) | Lower Udas Temple, Chantra and Terath Dredgion, Abyssal Splinter, Rentus Base and its occupied version, Azoturan Fortress, Theobomos Lab, Adma Stronghold |
+| 1 to 49 % (15) | Sulfur Tree Nest, Left Wing Chamber, Steel Rake, Esoterrace, Tiamat Stronghold, both Dragon Lord's Refuges, Eternal Bastion, The Hexway, Sauro Supply Base, both Danuar Sanctuaries, Drakenspire Depths, Draupnir Cave, Alquimia Research Center |
+| 0 % (5) | Dark Poeta, Right Wing Chamber, Unstable Abyssal Splinter, both Illuminary Obelisks |
+| No arrival point found (4) | Dredgion, Idgel Dome, both "Lucky" copies: their arrival is not in `portal_template2.xml`, and is probably put by the instance's Java handler |
+
+**What the failures look like.** The arrival's own region, from `seams`, says which kind:
+
+- **Sealed yard** (the region holds a few hundred to ten thousand cells and touches nothing): Dark Poeta (380 and 7700 cells), Right Wing Chamber (2387), Steel Rake (132 and more), Unstable Abyssal
+  Splinter (about 2000), Adma Stronghold (919). The yard is shut by static geometry, a gate model or a wall, and the arrival rules do not open it.
+- **A big region and a tail left over** (84 thousand to 400 thousand cells, with thousands of cells that miss by a step): Tiamat Stronghold, Sauro Supply Base, Eternal Bastion, Lower Udas Temple, Rentus
+  Base, Azoturan Fortress and the other middle band. Raising the step tolerance to 1.5 m, tried on ten of them, adds 1 to 20 % to the region and no more, so the tail is not steps taken a little too high:
+  it is gated ground, lifts and the rest. Some of it is right to leave unreached.
+
+So the meshes are good for the first group, usable on the reachable part for the second, and not for the rest until the seals are looked at map by map. The step tolerance and the 3 m drop have both
+been measured and neither is the answer.
+
 ## Open questions
 
-1. **The two at 0 %**: each looks like a map with its own shape of seal, which no general rule has reached. Worth deciding how many such maps there are before building a rule for them: run the whole batch,
-   then count.
-2. **Heightmaps**: 27 of the 54 carry one, often a file shared by several ids and flat; the rest are meshes alone. Both kinds have worked so far.
+1. **Which dungeons are bots to run first?** The 21 at 90 % or more are ready as they are: the three chambers and their barracks (six of them, three geometries), Udas Temple, Beshmundir, Ophidan Bridge,
+   Fire Temple and the Reliquaries. Looking at the other 33 is work with no bot waiting for it, so it is better done for the ones chosen than for all.
+2. **The four without an arrival**: read the start position from the instance handlers (`portToStartPosition` and the like), or route from the largest region instead?
+3. **Opening a mesh in the server (milestone 6)** has not been tried: a mesh is read when the first bot is on its map, and no bot is in an instance yet. The format is the open world's, so the risk is low.
+4. **Disk**: `data/navmesh` is 2.1 GB, most of it the debugging images the tool writes beside each mesh. The meshes themselves are the `.nav` files; the images can be deleted.

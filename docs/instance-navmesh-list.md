@@ -1,6 +1,6 @@
 # Instance maps to build a navmesh for
 
-Status: list only, no instance has a mesh yet (the 26 meshes in `data/navmesh` are open world, cities and the Abyss). Read from `world_maps.xml` (`instance="true"`), `data/geo` and the
+Status: the 54 group dungeons have a mesh since 2026-10-10, 45 built and 9 copied, and the table says how much of each is reached from its arrival ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)). The other categories have none. Read from `world_maps.xml` (`instance="true"`), `data/geo` and the
 spawn files on 2026-10-10. How to build one is in [navmesh-plan.md](navmesh-plan.md): `.\tools\navmesh.ps1 300040000,300110000`.
 
 ## What the data says
@@ -17,62 +17,62 @@ Columns: map id, name in the client, internal name, side in metres (`world_size`
 
 ## PvE dungeons and raids (groups of 2 or more) (54)
 
-| Id | Name | Internal | m | KB | Same geometry as |
-|---|---|---|---|---|---|
-| 300030000 | Nochsana Training Camp | IDAb1_MiniCastle | 1024 | 18 |  |
-| 300040000 | Dark Poeta | IDLF1 | 1536 | 561 |  |
-| 300050000 | Asteria Chamber | IDAbRe_Up_Asteria | 1024 | 63 |  |
-| 300060000 | Sulfur Tree Nest | IDAbRe_Low_Divine | 1024 | 62 |  |
-| 300070000 | Chamber of Roah | IDAbRe_Up_Rhoo | 1024 | 46 |  |
-| 300080000 | Left Wing Chamber | IDAbRe_Low_Wciel | 1024 | 44 |  |
-| 300090000 | Right Wing Chamber | IDAbRe_Low_Eciel | 512 | 12 |  |
-| 300100000 | Steel Rake | IDshulackShip | 1024 | 430 |  |
-| 300110000 | Dredgion | IDAb1_Dreadgion | 1024 | 67 |  |
-| 300120000 | Kysis Chamber | IDAbRe_Up3_Dkisas | 1024 | 116 |  |
-| 300130000 | Miren Chamber | IDAbRe_Up3_Lamiren | 1024 | 124 |  |
-| 300140000 | Krotan Chamber | IDAbRe_Up3_Crotan | 1024 | 118 |  |
-| 300150000 | Udas Temple | IDTemple_Up | 1024 | 187 |  |
-| 300160000 | Lower Udas Temple | IDTemple_Low | 2048 | 346 |  |
-| 300170000 | Beshmundir Temple | IDCatacombs | 2048 | 415 |  |
-| 300210000 | Chantra Dredgion | IDDreadgion_02 | 1024 | 111 |  |
-| 300220000 | Abyssal Splinter | IDAbRe_Core | 1024 | 102 |  |
-| 300250000 | Esoterrace | IDF4Re_Drana | 1536 | 348 |  |
-| 300280000 | Rentus Base | IDYun | 1024 | 259 | builds 300620000 |
-| 300440000 | Terath Dredgion | IDDreadgion_03 | 1024 | 109 |  |
-| 300510000 | Tiamat Stronghold | IDTiamat_1 | 2048 | 372 |  |
-| 300520000 | Dragon Lord's Refuge | IDTiamat_2 | 1024 | 25 | builds 300630000 |
-| 300540000 | The Eternal Bastion | IDLDF5b_TD | 1024 | 250 |  |
-| 300590000 | Ophidan Bridge | IDLDF5_Under_01 | 1024 | 89 |  |
-| 300600000 | Unstable Abyssal Splinter | IDAbRe_Core_02 | 1024 | 101 |  |
-| 300620000 | Occupied Rentus Base | IDYun_Hard | 1024 | 259 | 300280000 |
-| 300630000 | Anguished Dragon Lord's Refuge | IDTiamat_2_Hard | 1024 | 25 | 300520000 |
-| 300700000 | The Hexway | IDUnderpassRe | 1024 | 45 |  |
-| 301110000 | Danuar Reliquary | IDLDF5_Under_Rune | 512 | 79 | builds 301330000, 301360000 |
-| 301130000 | Sauro Supply Base | IDVritra_Base | 1024 | 412 |  |
-| 301140000 | Seized Danuar Sanctuary | IDLDF5_Under_02 | 1536 | 884 | builds 301380000 |
-| 301230000 | Illuminary Obelisk | IDLDF5_Under_03 | 512 | 68 | builds 301370000 |
-| 301240000 | Legion's Kysis Barracks | IDAbRe_Up3_Dkisas_02 | 1024 | 115 | builds 301280000 |
-| 301250000 | Legion's Miren Barracks | IDAbRe_Up3_Lamiren_02 | 1024 | 124 | builds 301290000 |
-| 301260000 | Legion's Krotan Barracks | IDAbRe_Up3_Crotan_02 | 1024 | 118 | builds 301300000 |
-| 301280000 | Kysis Barracks | IDAbRe_Up3_Dkisas_02_N | 1024 | 115 | 301240000 |
-| 301290000 | Miren Barracks | IDAbRe_Up3_Lamiren_02_N | 1024 | 124 | 301250000 |
-| 301300000 | Krotan Barracks | IDAbRe_Up3_Crotan_02_N | 1024 | 118 | 301260000 |
-| 301310000 | Idgel Dome | IDLDF5_Fortress_Re | 512 | 78 |  |
-| 301320000 | Lucky Ophidan Bridge | IDLDF5_Under_01_PC | 1024 | 89 |  |
-| 301330000 | Lucky Danuar Reliquary | IDLDF5_Under_Rune_PC | 512 | 79 | 301110000 |
-| 301360000 | Infernal Danuar Reliquary | IDLDF5_Under_Rune_H | 512 | 79 | 301110000 |
-| 301370000 | Infernal Illuminary Obelisk | IDLDF5_Under_03_H | 512 | 68 | 301230000 |
-| 301380000 | Danuar Sanctuary | IDLDF5_Under_02_E | 1536 | 884 | 301140000 |
-| 301390000 | Drakenspire Depths | IDSeal | 1024 | 239 |  |
-| 310050000 | Aetherogenetics Lab | IDLF3Lp | 512 | 91 |  |
-| 310090000 | Indratu Fortress | IDLF3_Castle_indratoo | 1024 | 41 |  |
-| 310100000 | Azoturan Fortress | IDLF3_Castle_Lehpar | 1024 | 34 |  |
-| 310110000 | Theobomos Lab | IDLF2a_Lab | 1024 | 136 |  |
-| 320080000 | Draupnir Cave | IDDF3_Dragon | 1024 | 161 |  |
-| 320100000 | Fire Temple | IDDF2_Dflame | 512 | 244 |  |
-| 320110000 | Alquimia Research Center | IDDF3_LP | 1024 | 111 |  |
-| 320130000 | Adma Stronghold | IDDf2a_Adma | 1024 | 166 |  |
-| 320150000 | Padmarashka's Cave | IDDramata_01 | 1024 | 34 |  |
+| Id | Name | Internal | m | KB | Same geometry as | From the arrival |
+|---|---|---|---|---|---|---|
+| 300030000 | Nochsana Training Camp | IDAb1_MiniCastle | 1024 | 18 |  | 98 % |
+| 300040000 | Dark Poeta | IDLF1 | 1536 | 561 |  | 0 % |
+| 300050000 | Asteria Chamber | IDAbRe_Up_Asteria | 1024 | 63 |  | 100 % |
+| 300060000 | Sulfur Tree Nest | IDAbRe_Low_Divine | 1024 | 62 |  | 1 % |
+| 300070000 | Chamber of Roah | IDAbRe_Up_Rhoo | 1024 | 46 |  | 100 % |
+| 300080000 | Left Wing Chamber | IDAbRe_Low_Wciel | 1024 | 44 |  | 7 % |
+| 300090000 | Right Wing Chamber | IDAbRe_Low_Eciel | 512 | 12 |  | 0 % |
+| 300100000 | Steel Rake | IDshulackShip | 1024 | 430 |  | 9 % / 0 % / 1 % / 3 % / 2 % / 15 % |
+| 300110000 | Dredgion | IDAb1_Dreadgion | 1024 | 67 |  | no arrival point |
+| 300120000 | Kysis Chamber | IDAbRe_Up3_Dkisas | 1024 | 116 |  | 98 % |
+| 300130000 | Miren Chamber | IDAbRe_Up3_Lamiren | 1024 | 124 |  | 99 % |
+| 300140000 | Krotan Chamber | IDAbRe_Up3_Crotan | 1024 | 118 |  | 99 % |
+| 300150000 | Udas Temple | IDTemple_Up | 1024 | 187 |  | 91 % |
+| 300160000 | Lower Udas Temple | IDTemple_Low | 2048 | 346 |  | 61 % |
+| 300170000 | Beshmundir Temple | IDCatacombs | 2048 | 415 |  | 91 % / 0 % |
+| 300210000 | Chantra Dredgion | IDDreadgion_02 | 1024 | 111 |  | 53 % / 10 % |
+| 300220000 | Abyssal Splinter | IDAbRe_Core | 1024 | 102 |  | 65 % |
+| 300250000 | Esoterrace | IDF4Re_Drana | 1536 | 348 |  | 2 % |
+| 300280000 | Rentus Base | IDYun | 1024 | 259 | builds 300620000 | 64 % |
+| 300440000 | Terath Dredgion | IDDreadgion_03 | 1024 | 109 |  | 54 % |
+| 300510000 | Tiamat Stronghold | IDTiamat_1 | 2048 | 372 |  | 21 % / 45 % |
+| 300520000 | Dragon Lord's Refuge | IDTiamat_2 | 1024 | 25 | builds 300630000 | 44 % |
+| 300540000 | The Eternal Bastion | IDLDF5b_TD | 1024 | 250 |  | 34 % |
+| 300590000 | Ophidan Bridge | IDLDF5_Under_01 | 1024 | 89 |  | 99 % |
+| 300600000 | Unstable Abyssal Splinter | IDAbRe_Core_02 | 1024 | 101 |  | 0 % |
+| 300620000 | Occupied Rentus Base | IDYun_Hard | 1024 | 259 | 300280000 | 63 % |
+| 300630000 | Anguished Dragon Lord's Refuge | IDTiamat_2_Hard | 1024 | 25 | 300520000 | 11 % |
+| 300700000 | The Hexway | IDUnderpassRe | 1024 | 45 |  | 8 % |
+| 301110000 | Danuar Reliquary | IDLDF5_Under_Rune | 512 | 79 | builds 301330000, 301360000 | 100 % |
+| 301130000 | Sauro Supply Base | IDVritra_Base | 1024 | 412 |  | 27 % |
+| 301140000 | Seized Danuar Sanctuary | IDLDF5_Under_02 | 1536 | 884 | builds 301380000 | 2 % |
+| 301230000 | Illuminary Obelisk | IDLDF5_Under_03 | 512 | 68 | builds 301370000 | 0 % |
+| 301240000 | Legion's Kysis Barracks | IDAbRe_Up3_Dkisas_02 | 1024 | 115 | builds 301280000 | 97 % |
+| 301250000 | Legion's Miren Barracks | IDAbRe_Up3_Lamiren_02 | 1024 | 124 | builds 301290000 | 99 % |
+| 301260000 | Legion's Krotan Barracks | IDAbRe_Up3_Crotan_02 | 1024 | 118 | builds 301300000 | 98 % |
+| 301280000 | Kysis Barracks | IDAbRe_Up3_Dkisas_02_N | 1024 | 115 | 301240000 | 97 % |
+| 301290000 | Miren Barracks | IDAbRe_Up3_Lamiren_02_N | 1024 | 124 | 301250000 | 99 % |
+| 301300000 | Krotan Barracks | IDAbRe_Up3_Crotan_02_N | 1024 | 118 | 301260000 | 99 % |
+| 301310000 | Idgel Dome | IDLDF5_Fortress_Re | 512 | 78 |  | no arrival point |
+| 301320000 | Lucky Ophidan Bridge | IDLDF5_Under_01_PC | 1024 | 89 |  | no arrival point |
+| 301330000 | Lucky Danuar Reliquary | IDLDF5_Under_Rune_PC | 512 | 79 | 301110000 | no arrival point |
+| 301360000 | Infernal Danuar Reliquary | IDLDF5_Under_Rune_H | 512 | 79 | 301110000 | 100 % |
+| 301370000 | Infernal Illuminary Obelisk | IDLDF5_Under_03_H | 512 | 68 | 301230000 | 0 % |
+| 301380000 | Danuar Sanctuary | IDLDF5_Under_02_E | 1536 | 884 | 301140000 | 2 % |
+| 301390000 | Drakenspire Depths | IDSeal | 1024 | 239 |  | 41 % |
+| 310050000 | Aetherogenetics Lab | IDLF3Lp | 512 | 91 |  | 94 % |
+| 310090000 | Indratu Fortress | IDLF3_Castle_indratoo | 1024 | 41 |  | 99 % |
+| 310100000 | Azoturan Fortress | IDLF3_Castle_Lehpar | 1024 | 34 |  | 80 % |
+| 310110000 | Theobomos Lab | IDLF2a_Lab | 1024 | 136 |  | 67 % / 1 % |
+| 320080000 | Draupnir Cave | IDDF3_Dragon | 1024 | 161 |  | 3 % |
+| 320100000 | Fire Temple | IDDF2_Dflame | 512 | 244 |  | 97 % |
+| 320110000 | Alquimia Research Center | IDDF3_LP | 1024 | 111 |  | 34 % |
+| 320130000 | Adma Stronghold | IDDf2a_Adma | 1024 | 166 |  | 0 % / 63 % |
+| 320150000 | Padmarashka's Cave | IDDramata_01 | 1024 | 34 |  | 100 % |
 
 ## Solo dungeons (not wanted) (23)
 
