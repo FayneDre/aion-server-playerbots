@@ -47,7 +47,9 @@ is what the guide calls "enchaînement":
 
 "ED" in the guide is the engine's DP, as for the templar.
 
-## What exists, and where it disagrees with the guide
+## What existed, and where it disagreed with the guide
+
+As found before milestones 1 to 8; what each milestone did about it is under "Milestones" below.
 
 Read from the code, not watched:
 

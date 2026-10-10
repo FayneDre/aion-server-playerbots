@@ -436,13 +436,18 @@ public class BotFlight {
 
 		BotFlight flight = new BotFlight(bot, legs, hoverAfter, escorted);
 		inTheAir.put(bot.getObjectId(), flight);
-		BotPlaybooks.of(bot).onTakeOff(bot);
 		// The engine's pool, not the bots' own. Moving a body is not thinking, and the bot pool is held to half the processors and runs eighty
 		// decision ticks behind whatever is queued ahead of them -- measured as a first step that waited 7.8 seconds with the wings already out.
 		flight.task = ThreadPoolManager.getInstance().scheduleAtFixedRate(flight::step, STEP_MILLIS, STEP_MILLIS);
 		int fp = bot.getLifeStats().getCurrentFp();
 		log.info("Bot {} takes off {} at {} m/s with {} fp (flying={}, state={})", bot.getName(), what, speedOf(bot), fp, bot.isInFlyingState(),
 			bot.isInState(CreatureState.FLYING));
+		// after the flight is scheduled, and guarded: a class's own take-off rule must never be able to leave a bot registered as flying with nothing to fly it
+		try {
+			BotPlaybooks.of(bot).onTakeOff(bot);
+		} catch (RuntimeException e) {
+			log.warn("Bot {} could not do its class's take-off rule", bot.getName(), e);
+		}
 		return bot.getName() + " takes off " + what + " with " + fp + " fp";
 	}
 
@@ -590,7 +595,12 @@ public class BotFlight {
 		wasAtX = bot.getX();
 		wasAtY = bot.getY();
 		wasAtZ = bot.getZ();
-		BotPlaybooks.of(bot).whileFlying(bot);
+		// guarded: an exception out of a task scheduled at a fixed rate silently cancels every step after it, which would leave the bot hanging in the air
+		try {
+			BotPlaybooks.of(bot).whileFlying(bot);
+		} catch (RuntimeException e) {
+			log.warn("Bot {} could not do its class's rule for the air", bot.getName(), e);
+		}
 
 		if (!powerless && !bot.isFlying()) {
 			// the engine ended it from under us: flight points gone, a zone left, an effect landed. Nothing falls server side, so the bot would hang

@@ -72,8 +72,9 @@ Player-owned bots are never regeared, enchanted or socketed by the server; they 
 
 What is left:
 
-- **Other classes' playbooks.** The templar is the first and the pattern is set (`ClassPlaybook`, rules by skill group, a test that checks every group
-  against the data). The guide has documents for the rest; each is a plan, a playbook and a data test.
+- **Other classes' playbooks.** The templar, the chanter ([chanter-plan.md](chanter-plan.md)) and the ranger ([ranger-plan.md](ranger-plan.md)) are built
+  and unit tested, the last two watched for a few minutes alone and not at all in a group. The pattern is set (`ClassPlaybook`, rules by skill group, a test that
+  checks every group against the data). The guide has documents for the rest; each is a plan, a playbook and a data test.
 - **Damage waits for the tank to hold.** It focuses the tank's target now, but it opens at the same instant the tank does, so the first blow can still
   pull the mob off. Needs a notion of the tank having established aggro, which `AggroList.getTarget(MOST_HATED)` can answer.
 - **Composition**: the director should be able to offer a balanced group, which means the pool has to be stocked by role as well as by level. This is

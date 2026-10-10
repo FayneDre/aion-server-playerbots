@@ -44,6 +44,11 @@ final class BotConvalescence {
 	private static final float[] MOB_CLEARANCES = { 25f, 10f, 0f };
 	/** How far from its obelisk a bot is still worth walking back to it. Past that the bot stays where it is rather than cross the country sick. */
 	private static final float MAX_DISTANCE = 150f;
+	/**
+	 * How long after finding no spot at all the search is not made again. It is a run of path searches, up to ninety of them, and the decision tick comes round
+	 * every second: asked every time, an obelisk with no room costs a bot that many searches a second for as long as it is sick.
+	 */
+	private static final long RETRY_MILLIS = 5000;
 
 	/**
 	 * How far apart two convalescent bots must be, spot to spot. Checking where bots stand is not enough: a crowd that dies together chooses in the same
@@ -61,6 +66,8 @@ final class BotConvalescence {
 	private float spotClearance;
 	/** Whether this death has been written to the log yet: one line each, however many times the decision tick asks. */
 	private boolean reported;
+	/** Before this, a search that found nothing is not repeated. */
+	private long noSpotUntil;
 
 	/**
 	 * @param crowded Whether somebody is already standing at a spot, which the bot's day already knows how to answer.
@@ -79,9 +86,15 @@ final class BotConvalescence {
 			return null;
 		if (PositionUtil.getDistance(bot.getX(), bot.getY(), bind.getX(), bind.getY()) > MAX_DISTANCE)
 			return null;
+		// A member of a group waits with its group: the leader's heels are the place, and a bot raised where it fell by a resurrection is nowhere near its
+		// obelisk's quiet ground, so sending it there would walk it away from the people who have just raised it.
+		if (bot.getCurrentTeam() != null)
+			return null;
 		if (spot != null && chosenFor == bind && !hostileNear(spot, spotClearance))
 			return spot;
-		forget();
+		if (spot == null && chosenFor == bind && System.currentTimeMillis() < noSpotUntil)
+			return null;
+		release();
 		chosenFor = bind;
 		Vector3f obelisk = new Vector3f(bind.getX(), bind.getY(), bind.getZ());
 		// drawn at random rather than from the id: the claims are what keep the bots apart, and an id-fixed spot would be the same few metres for the
@@ -101,6 +114,8 @@ final class BotConvalescence {
 			claimed.put(bot.getObjectId(), chosen);
 			spot = chosen;
 			spotClearance = clearance;
+		} else {
+			noSpotUntil = System.currentTimeMillis() + RETRY_MILLIS;
 		}
 		if (!reported) {
 			reported = true;
@@ -117,10 +132,16 @@ final class BotConvalescence {
 
 	/** Forgets the spot, because the sickness is over and the next death should choose again among whatever has changed by then. */
 	synchronized void forget() {
+		release();
+		reported = false;
+		noSpotUntil = 0;
+	}
+
+	/** Lets go of the spot and its claim to choose again, without forgetting that this death has already been written to the log. */
+	private void release() {
 		claimed.remove(bot.getObjectId());
 		spot = null;
 		chosenFor = null;
-		reported = false;
 	}
 
 	private boolean isClaimedNear(Vector3f ground) {

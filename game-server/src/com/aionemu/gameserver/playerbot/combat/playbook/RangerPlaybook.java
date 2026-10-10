@@ -202,6 +202,9 @@ final class RangerPlaybook implements ClassPlaybook {
 
 	@Override
 	public boolean tend(Player bot) {
+		// a fight that has ended leaves its hold behind, which a new fight would take for one it is in the middle of
+		if (bot.getAi() instanceof PlayerBotAI ai && ai.holdingFireSince() != 0)
+			ai.setHoldingFire(0, ai.holdFireRearmAt());
 		return perform(bot, null, decideAtRest(situationOf(bot, null, false)));
 	}
 
@@ -285,7 +288,9 @@ final class RangerPlaybook implements ClassPlaybook {
 			&& BotGroupManager.otherEnemyOnTheGroup(bot, target, SLEEP_RANGE) != null;
 		boolean inMelee = inFight && !inTeam && target != null && ready.contains(Move.SHACKLE_ARROW)
 			&& PositionUtil.getDistance(bot, target, true) <= MELEE_DISTANCE;
-		EnemyKind kind = inFight && !inTeam && !opened && target != null ? kindOf(target) : EnemyKind.OTHER;
+		// read only when there is an opener to cast: it walks the enemy's skill list
+		boolean haveOpener = ready.contains(Move.SILENCE_ARROW) || ready.contains(Move.ENTANGLING_SHOT);
+		EnemyKind kind = inFight && !inTeam && !opened && haveOpener && target != null ? kindOf(target) : EnemyKind.OTHER;
 		boolean stealthNeeded = !inFight && !inTeam && ready.contains(Move.STEALTH) && !BotSkillManager.isUp(bot, Move.STEALTH.group) && onAJourneyNearEnemies(bot);
 		// the need to hide is carried in the ready set rather than a field of its own: only a ranger at rest on a journey is ever asked it
 		if (stealthNeeded)

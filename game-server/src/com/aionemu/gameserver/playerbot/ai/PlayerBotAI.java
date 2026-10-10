@@ -1293,6 +1293,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void recover() {
 		if (getOwner().getMoveController().isInMove())
 			return;
+		// The class's own answer to being hurt comes before sitting down. A chanter's Healing Light is its heal and the generic rule below has been told to
+		// leave it alone, and a bot is under the engage threshold at nine tenths of its health, which is where the class's own rules would otherwise never be asked.
+		if (BotPlaybooks.of(getOwner()).tend(getOwner()))
+			return;
 		// Healing is far quicker than resting, but it spends mana that resting would have restored alongside the health. So it is worth a cast only
 		// when there is a real wound to close and the mana to spare; a scratch, or an empty mana bar, and sitting down wins on both counts.
 		if (getOwner().getLifeStats().getMpPercentage() >= BotSkillManager.HEAL_MIN_MP_PERCENT

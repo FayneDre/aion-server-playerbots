@@ -173,3 +173,23 @@ of the two masks is the player's, and the task manager that stops ticking a body
 **Maven's incremental build can miss a change** and leave the IDE's error stubs in place while reporting success. Use `clean package` when a build result looks impossible.
 
 **The IDE and Maven compile into the same directory.** A terminal build corrupts the language server's state and fills the Problems panel with errors that are not in the source. The project disables the language server's own build for this reason.
+
+## A resurrection is a question put to the dead
+
+`ResurrectEffect` does not raise anybody: it marks the dead player (`setPlayerResActivate(true)`) and sends them a window. The raising is the player's own
+reply, `CM_REVIVE` with the skill kind, which ends in `PlayerReviveService.skillRevive`. A bot has no client to reply, so a resurrection cast on one is a mark that
+nothing ever answers, and the bot walks back from its obelisk as if nobody had come. `skillRevive` also writes the character into the audit log as a
+resurrection hack when the mark is not there, so a bot must be asked `getResStatus()` before it is made to reply. Not a patch of the engine: the bot's decision tick
+notices the mark and replies, in `PlayerBotAI.handleDeath`.
+
+## Ready again at once is not the same as not on
+
+A buff with a one second cooldown, as the ranger's Strong Shots and Aiming have, is ready every second for the whole of its minute. A rule that picks "the first of
+these that is ready" casts the one that is already on, every second, until something else changes the answer; seen in the log as 35 casts of one buff in eight
+minutes, with the unit test passing because it took the buff out of the ready set. Ask whether it is on as well as whether it is ready, and test with both.
+
+## Two small ones in the same family
+
+An immutable list refuses to be asked about `null` (`List.of(...).indexOf(null)`, `Set.of(...).contains(null)`), and most skill templates have no group, so a rule keyed
+by group must be fed every template in the game by a test. And a task scheduled at a fixed rate stops for good the first time it throws: anything called from a
+flight step is guarded, or one exception leaves a bot in the air with nothing flying it.
