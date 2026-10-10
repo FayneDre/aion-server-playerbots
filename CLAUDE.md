@@ -72,6 +72,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
 - [docs/navigation-stuck-plan.md](docs/navigation-stuck-plan.md) — why bots end up stuck and teleported home: the obelisk pockets found in the logs, and the milestones.
 - [docs/navmesh-plan.md](docs/navmesh-plan.md) — design for real path planning, to replace reactive steering.
+- [docs/instance-navmesh-list.md](docs/instance-navmesh-list.md) — the 110 instance maps (dungeons, arenas, warfronts, housing, tests) a navmesh is wanted for, by category, with which ones share their geometry.
 - [docs/moving-a-body.md](docs/moving-a-body.md) — driving a body from the server: what a movement packet carries, how often, and the task manager that stops ticking a body that says it arrived.
 - [docs/flight-plan.md](docs/flight-plan.md) — how bots get off the ground: what the engine already does, what it leaves to the server, and the milestones in verifiable order.
 
