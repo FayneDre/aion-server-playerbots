@@ -58,7 +58,7 @@ A templar also never casts Stubborn Spirit or Bodyguard, and in a group no area 
 
 ## The mark
 
-A group fights one thing at a time, and it is the tank that chooses it. When monsters are on the group, the tank puts the skull (brand 14, the engine's own
+A group fights one thing at a time, and it is the tank that chooses it. When monsters are on the group, the tank puts the skull (brand id 13, which a player types as `/Brand 14` since the command counts from one; the id was 14 at first, which is the shield with a 1 that `/Brand 15` draws; it is the engine's own
 `/Brand`) on the one with the **least health in absolute terms** — the one that dies first, whatever fraction of its bar that is — and every member
 that fights follows it: `targetToAssist` reads the mark before anybody's selection, and a bot already swinging at something else moves onto it at its
 next attack tick. When the marked one dies the tank marks the next; with nobody left, the skull is taken down, because real players in the group see it.

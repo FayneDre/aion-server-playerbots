@@ -11,19 +11,25 @@
     The map to work on, or "all" to report totals across every map. Several maps can be given, separated by commas or spaces, and are generated one after the other.
     Quoted or not: PowerShell reads an unquoted 110010000,400010000 as a list of two numbers, not as one piece of text, and this takes both.
 
+.PARAMETER Dungeons
+    Builds the mesh of every group dungeon listed in tools/dungeon-meshes.txt, and copies each under the ids that share its geometry. With -Reach, checks all of them instead.
+    A bot in an instance only positions itself where its map has a mesh, so this is what a server needs once.
+
 .PARAMETER ServerRoot
     Root of the server installation. Defaults to the AION_SERVER_HOME environment variable.
 
 .EXAMPLE
     .\tools\navmesh.ps1 210010000
     .\tools\navmesh.ps1 all
+    .\tools\navmesh.ps1 -Dungeons            # the 45 geometries of the group dungeons, and their copies
     .\tools\navmesh.ps1 110010000,400010000   # Sanctum and Reshanta, one after the other
 #>
 param(
     [string[]]$MapId,
     [string]$ServerRoot = $env:AION_SERVER_HOME,
     [switch]$Obelisks,
-    [switch]$Reach
+    [switch]$Reach,
+    [switch]$Dungeons
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,7 +61,26 @@ try {
         & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool @arguments
         exit $LASTEXITCODE
     }
-    if (-not $maps) { throw 'Give a map id, or -Obelisks.' }
+    if ($Dungeons) {
+        $groups = Get-Content (Join-Path $PSScriptRoot 'dungeon-meshes.txt') | Where-Object { $_ -match '^\d' } | ForEach-Object { ,($_ -split '\s+' | Where-Object { $_ }) }
+        if ($Reach) {
+            $worst = 0
+            foreach ($group in $groups) { foreach ($id in $group) {
+                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id reach
+                if ($LASTEXITCODE -gt $worst) { $worst = $LASTEXITCODE }
+            } }
+            exit $worst
+        }
+        foreach ($group in $groups) {
+            Write-Host "Generating the mesh of map $($group[0])..." -ForegroundColor Cyan
+            & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $group[0]
+            if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $($group[0]) (exit code $LASTEXITCODE)" }
+            foreach ($copy in $group | Select-Object -Skip 1) { Copy-Item "data/navmesh/$($group[0]).nav" "data/navmesh/$copy.nav" -Force; Write-Host "  copied under $copy" }
+        }
+        Write-Host 'Done. Restart the game server to load the new meshes: .\tools\stop-server.ps1 then .\tools\start-server.ps1' -ForegroundColor Green
+        exit 0
+    }
+    if (-not $maps) { throw 'Give a map id, -Dungeons or -Obelisks.' }
     if ($Reach) {
         # an instance: from where the party arrives, can a bot walk to where the monsters are? Exit code 1 when some spots cannot be reached
         $worst = 0

@@ -158,6 +158,11 @@ public class NavmeshService {
 		BotScheduler.getInstance().planRoute(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid)));
 	}
 
+	/** @return true if the map has a generated mesh that opens, which is what says whether anything planned on it can be trusted. */
+	public boolean hasMesh(int worldId) {
+		return get(worldId) != null;
+	}
+
 	/** @return The map, opening it on first use, or null when it has no generated file. */
 	private Navmesh get(int mapId) {
 		if (missing.contains(mapId))

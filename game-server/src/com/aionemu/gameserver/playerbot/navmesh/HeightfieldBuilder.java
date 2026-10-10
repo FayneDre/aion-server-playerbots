@@ -37,7 +37,10 @@ public class HeightfieldBuilder {
 	private final List<PlacedMesh> solids, noWalkVolumes;
 	private final int width, height;
 
-	private HeightfieldBuilder(TerrainData terrain, List<PlacedMesh> solids, List<PlacedMesh> noWalkVolumes, int width, int height) {
+	private final int agentRadius;
+
+	private HeightfieldBuilder(TerrainData terrain, List<PlacedMesh> solids, List<PlacedMesh> noWalkVolumes, int width, int height, int agentRadius) {
+		this.agentRadius = agentRadius;
 		this.terrain = terrain;
 		this.solids = solids;
 		this.noWalkVolumes = noWalkVolumes;
@@ -61,16 +64,17 @@ public class HeightfieldBuilder {
 
 		Map<String, List<GeoModel>> models = GeoDataReader.readModels();
 		List<PlacedMesh> solids = new ArrayList<>(), noWalkVolumes = new ArrayList<>();
-		// In an instance everything the engine can put up or take down is left out: the doors a boss opens, the barricades and boxes a script removes. Which of them
-		// stands at any moment is a fact of the run, and a mesh that holds them as walls would shut the party's own way in; a door that really is shut is the
-		// reach report's to say. The open world keeps them, where a gate or a house is as it is drawn.
+		// In an instance three kinds of obstacle are left out, each measured on the dungeons before it was written down:
+		// - everything the engine can put up or take down (doors a boss opens, barricades and boxes a script removes): which of them stands is a fact of the run, and a mesh that
+		//   holds them as walls shuts the party's own way in;
+		// - every authored no-walk volume and every invisible collision wall, which the designers stood as fences round yards and in doorways until something opens them: taking them all
+		//   out took Right Wing Chamber from none of its monsters reached to all of them, Dark Poeta to all, Sauro Supply Base from 27 to 80 %, Alquimia Research Center from 34 to 89 %;
+		// - the erosion of the ground by a body's width, since a doorway a metre wide is the commonest thing in a dungeon (see Heightfield.INSTANCE_AGENT_RADIUS_CELLS).
+		// Tried and left in: the static models called door or gate. Taking those out as well reached nothing more and lost ground in two maps, since a doorframe is a wall too.
+		// The open world keeps all of it, where a gate, a house or a fence is as it is drawn and a no-walk volume is a real boundary.
 		boolean instance = MapSize.isInstance(mapId);
-		List<float[]> arrivals = instance ? InstanceReach.entries(mapId) : List.of();
 		for (GeoPlacement placement : GeoDataReader.readPlacements(mapId)) {
-			if (instance && placement.type() != 0)
-				continue;
-			// the invisible walls the designers stood round an arrival yard, which is the same fence as the no-walk volumes below and not architecture
-			if (instance && placement.modelName().contains("collision_wall") && nearAnArrival(placement, arrivals))
+			if (instance && (placement.type() != 0 || placement.modelName().contains("collision_wall")))
 				continue;
 			List<GeoModel> parts = models.get(placement.modelName());
 			if (parts == null)
@@ -84,50 +88,14 @@ public class HeightfieldBuilder {
 					solids.add(place(part, placement));
 			}
 		}
-
-		// Authored no-walk volumes near where the party arrives are the yard's own fence, put there for the length of a cutscene or until a gate opens, and the
-		// way out of the yard has to be somewhere: they are left out within a few metres of an arrival, and kept everywhere else, where they fence what they fence.
-		if (!arrivals.isEmpty()) {
-			int before = noWalkVolumes.size();
-			noWalkVolumes.removeIf(volume -> nearAnArrival(volume, arrivals));
-			if (noWalkVolumes.size() != before)
-				System.out.printf("Map %d: %d no-walk volume(s) within %.0f m of an arrival point left out%n", mapId, before - noWalkVolumes.size(), ARRIVAL_CLEARANCE);
-		}
+		if (instance)
+			noWalkVolumes.clear();
 
 		List<Integer> worldSize = terrain != null ? terrain.worldSize() : List.of(mapSize, mapSize);
 		int width = (int) (worldSize.get(0) / Heightfield.CELL_SIZE);
 		int height = (int) (worldSize.get(1) / Heightfield.CELL_SIZE);
-		return new HeightfieldBuilder(terrain, solids, noWalkVolumes, width, height).rasterize();
-	}
-
-	/** How far from an arrival point, in metres, an authored no-walk volume is ignored in an instance. */
-	static final float ARRIVAL_CLEARANCE = 20f;
-
-	private static boolean nearAnArrival(GeoPlacement placement, List<float[]> arrivals) {
-		for (float[] arrival : arrivals) {
-			if (Math.hypot(arrival[0] - placement.position().x, arrival[1] - placement.position().y) <= ARRIVAL_CLEARANCE)
-				return true;
-		}
-		return false;
-	}
-
-	/** @return true if the middle of the volume is within {@link #ARRIVAL_CLEARANCE} metres of any arrival, in the plane. */
-	private static boolean nearAnArrival(PlacedMesh volume, List<float[]> arrivals) {
-		float[] vertices = volume.vertices();
-		if (vertices.length == 0)
-			return false;
-		float x = 0, y = 0;
-		for (int v = 0; v < vertices.length; v += 3) {
-			x += vertices[v];
-			y += vertices[v + 1];
-		}
-		x /= vertices.length / 3;
-		y /= vertices.length / 3;
-		for (float[] arrival : arrivals) {
-			if (Math.hypot(arrival[0] - x, arrival[1] - y) <= ARRIVAL_CLEARANCE)
-				return true;
-		}
-		return false;
+		return new HeightfieldBuilder(terrain, solids, noWalkVolumes, width, height,
+			instance ? Heightfield.INSTANCE_AGENT_RADIUS_CELLS : Heightfield.AGENT_RADIUS_CELLS).rasterize();
 	}
 
 	private static PlacedMesh place(GeoModel model, GeoPlacement placement) {
@@ -163,7 +131,7 @@ public class HeightfieldBuilder {
 		field.applyHeadroom();
 		field.block(noWalkColumns());
 		blockWalls(field);
-		field.erode(Heightfield.AGENT_RADIUS_CELLS);
+		field.erode(agentRadius);
 		return field;
 	}
 

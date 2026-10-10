@@ -65,6 +65,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long CHASE_REROUTE_INTERVAL = 600;
 	/** How long a walk to a fight position is left alone before the place is worked out again. Longer than a chase: the place moves only when the enemy does. */
 	private static final long STATION_REROUTE_MILLIS = 1500;
+	/** Health of a group mate under which a healer heals before it walks to its place: somebody in danger is the job, and the walk can wait a cast. */
+	private static final int HEALER_DANGER_PERCENT = 50;
+	/** How often the log may say that a healer has no place to stand. */
+	private static final long NO_PLACE_LOG_MILLIS = 30_000;
 	/**
 	 * How long the bot waits after getting up before it swings, so the two do not arrive as one frame of the client's work. How long each posture
 	 * itself takes to draw is {@link BotPosture}'s business; this is the fight's own sequencing, which is why it stays here.
@@ -218,6 +222,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long lastChaseRoute;
 	/** When the bot last set out for its place in a fight, so that a route under way is not replaced on every tick. */
 	private volatile long lastStationRoute;
+	/** When the log last said that the healer had no place to stand. */
+	private volatile long lastNoPlaceLog;
 	/**
 	 * Whether this character is somebody's own rather than one the world made to fill a region. Read once: it is a fact about the character and does
 	 * not change while it is in the world.
@@ -386,6 +392,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		if (BotPlaybooks.of(getOwner()).tend(getOwner()) || BotSkillManager.tryBuffSelf(getOwner()) || BotSkillManager.tryChantMantra(getOwner()))
 			return;
+		// A healer takes its place before the casting that is not urgent: with a mate to heal or a buff to give on every tick, which is most of a fight, the walk was never
+		// reached and the healer stood wherever the pull had left it. A mate in danger is healed first.
+		if (healerTakesItsPlace())
+			return;
 		if (tendToTheGroup())
 			return;
 		// A healer in a group does not join the attack, and that is the rule rather than a limitation. Assisting means closing to weapon range, and a
@@ -544,7 +554,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following) && !mustHoldTheLine(following)) {
 				if (isRecoveringFromDeath())
 					convalesce(); // not the farm ground: that is where it died, and the penalty makes it die again
-				else if (!walkOffTheObelisk()) // never sit down where it resurrected: that spot is shared by everyone who died in the region
+				else if (!walkOffTheObelisk() && !healerTakesItsPlace()) // never sit down where it resurrected: that spot is shared by everyone who died in the region
 					recover();
 			} else if (following) {
 				serveTheGroup(); // a member has no business picking its own fights, so the rest of this chain is not its to run
@@ -787,7 +797,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean takeStation(Creature target) {
 		Player bot = getOwner();
-		if (!PlayerBotConfig.POSITIONING || !BotStations.handles(bot) || BotStations.isWellPlaced(bot, target) || BotStations.isHeldByEnemy(bot, target))
+		boolean healer = BotStations.handlesHealer(bot);
+		if (!PlayerBotConfig.POSITIONING || !(BotStations.handles(bot) || healer) || BotStations.isWellPlaced(bot, target) || BotStations.isHeldByEnemy(bot, target))
+			return false;
+		// a healer that is attacking with its spare mana still heals first when somebody is in danger, and a walk would take the tick the heal needs
+		if (healer && BotGroupManager.mostHurtMember(bot, HEALER_DANGER_PERCENT, true) != null)
 			return false;
 		if (!(bot.getMoveController() instanceof BotMoveController moveController))
 			return false;
@@ -832,6 +846,25 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return positioned && BotStations.isWellPlaced(bot, fight);
 	}
 
+	/**
+	 * Walks a healer to its place when the group is fighting, it is not there, and nobody is in danger.
+	 * <p>
+	 * It was only ever tried after the healer had found nothing to cast, which in a fight is almost never: a hurt mate or a missing buff came first on every tick, an attacking healer was
+	 * never looked at by the decision tick at all, and a healer short of mana sat down where it stood, in the cone of whatever the tank held. Reported in play as a healer that did
+	 * not feel concerned by positioning.
+	 *
+	 * @return true if the tick is spent walking, false when there is nothing to do about the healer's place.
+	 */
+	private boolean healerTakesItsPlace() {
+		Player bot = getOwner();
+		if (!PlayerBotConfig.POSITIONING || !BotStations.handlesHealer(bot))
+			return false;
+		Creature fight = BotGroupManager.targetToAssist(bot);
+		if (fight == null || BotStations.isWellPlaced(bot, fight) || BotGroupManager.mostHurtMember(bot, HEALER_DANGER_PERCENT, true) != null)
+			return false;
+		return walkToHealerStation(fight);
+	}
+
 	/** @return true while the healer is on its way to its place, or has just set out; false when there is no place to go or no way there. */
 	private boolean walkToHealerStation(Creature fight) {
 		Player bot = getOwner();
@@ -841,8 +874,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
 			return true;
 		Vector3f spot = BotStations.spotFor(bot, fight);
-		if (spot == null)
+		if (spot == null) {
+			// said once in a while, since it is asked every second of a fight: with the reason, because "has no place" is a map with no mesh, a group too spread out for the heal's reach,
+			// or an enemy with its back to a wall, and three different things to do about it
+			if (now - lastNoPlaceLog > NO_PLACE_LOG_MILLIS) {
+				lastNoPlaceLog = now;
+				log.info("Healer {} has no place to stand against {} at {} {} {} (mesh on this map: {}, heal reach {} m)", bot.getName(), fight.getName(), Math.round(fight.getX()),
+					Math.round(fight.getY()), Math.round(fight.getZ()), NavmeshService.getInstance().hasMesh(bot.getWorldId()), Math.round(BotSkillManager.healReach(bot)));
+			}
 			return false;
+		}
 		lastStationRoute = now;
 		moveController.avoid(BotStations.avoidanceFor(bot, fight));
 		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());

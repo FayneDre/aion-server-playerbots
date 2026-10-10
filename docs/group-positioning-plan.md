@@ -129,3 +129,20 @@ and on its mana. Before, it walked into melee to swing.
 - **Walls.** Indoors, the side opposite the group may be stone. A candidate with no ground is dropped, and a role with no candidate stays where it is.
 - **The tank still reaches the far side by walking there**, through a pack's cone if that is the way. Until step 5 that is the one place a bot can draw a new
   enemy on its own account.
+
+## What the first group tests showed (10 October)
+
+Reported by a tester playing with bots, before any of this had been seen in a group, and what was done about each:
+
+- **Without a templar, bots ran in circles behind the boss, with the boss on them, and pulled other packs on the way.** The place behind an enemy is only safe because the tank holds it, so
+  positioning is now asked of a bot only when a tank is alive in the group (`BotStations.hasTank`), and a bot the enemy is hitting stays where it is (`isHeldByEnemy`, no longer the chanter's alone).
+  A group with no tank fights as it did before positioning existed.
+- **No positioning in instances.** There was no mesh for any instance. The group dungeons have one now, built by `tools
+avmesh.ps1 -Dungeons`; a server needs to run it once
+  ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)). Without a mesh `spotFor` finds no ground and the bot does what it did before.
+- **The healer did not position.** Three causes in the decision loop, each fixed in `PlayerBotAI`: the walk came only after the healer had found nothing to cast (a hurt mate or a missing buff came first on every tick);
+  a healer attacking with spare mana was never visited by the decision tick again and the fight loop did not place healers; and a healer short of mana sat down where it stood. It now walks first
+  (`healerTakesItsPlace`) unless a mate is under half health, in all three places. When it has no place to stand the log says so, with the mesh and the heal reach, once in thirty seconds.
+- **The mark** the group follows was brand id 14, typed `/Brand 15` and drawn as a shield with a 1; the skull is `/Brand 14`, brand id 13, and the code now uses it (see [group-roles.md](group-roles.md)).
+
+Not yet seen in a group again: all of the above is unit tested only in the parts that can be, and the loop changes are not.

@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
-import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -21,6 +20,7 @@ import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.navmesh.Avoidance;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
+import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.services.TribeRelationService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
@@ -61,7 +61,7 @@ public final class BotStations {
 	/** @return true if this bot's place in a fight is one this class handles, so that the old way of walking to the target is not the answer. */
 	public static boolean handles(Player bot) {
 		BotPosition role = BotPosition.of(bot);
-		if (bot.getCurrentTeam() == null)
+		if (bot.getCurrentTeam() == null || !hasTank(bot))
 			return false;
 		// a ranged class that reaches no further than a spear has nowhere to stand back to: the old way of closing in on the enemy is the only one that works
 		return role == BotPosition.BEHIND || role == BotPosition.RANGED && BotSkillManager.reach(bot) >= CombatSpots.MIN_STANDOFF + CombatSpots.REACH_MARGIN;
@@ -74,15 +74,34 @@ public final class BotStations {
 
 	/** @return true if this is a healer in a group, whose place is worked out outside the fight loop since it does not join the attack. */
 	public static boolean handlesHealer(Player bot) {
-		return bot.getCurrentTeam() != null && BotPosition.of(bot) == BotPosition.HEALER;
+		return bot.getCurrentTeam() != null && BotPosition.of(bot) == BotPosition.HEALER && hasTank(bot);
 	}
 
 	/**
-	 * @return true if this is a chanter that the enemy is hitting, which the guide has stay where it is: a bot walking round an enemy to its back while the
-	 *         enemy follows it is a bot taking the blows for nothing, and the place behind is for a chanter nobody is attacking.
+	 * @return true if somebody else in the group is a tank, alive, bot or player.
+	 *         <p>
+	 *         Positioning is built on the tank holding the enemy: it says which way the enemy faces and so where behind and out of the cone are, and it is why a melee bot may walk round to
+	 *         the back at all. Without one, the enemy turns on whoever hits it first and a bot that sets off round it is taking the blows for nothing, and pulling whatever is on the
+	 *         way. Seen in play as a group with no templar running in circles behind a boss that followed it; the group then does what it did before positioning existed.
+	 */
+	public static boolean hasTank(Player bot) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return false;
+		for (Player member : team.getMembers()) {
+			if (!member.equals(bot) && !member.isDead() && BotRole.of(member) == BotRole.TANK)
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @return true if the enemy is hitting this bot, which then stays where it is: a bot walking round an enemy to its back while the enemy follows it is a bot taking the blows for
+	 *         nothing, and the place behind is for those nobody is attacking. Reported in play for every class that stands behind or back, going back and forth behind the boss with the
+	 *         boss on it.
 	 */
 	public static boolean isHeldByEnemy(Player bot, Creature enemy) {
-		return bot.getPlayerClass() == PlayerClass.CHANTER && bot.equals(enemy.getTarget());
+		return bot.equals(enemy.getTarget());
 	}
 
 	/** @return true if the bot stands where its class does against this enemy. */

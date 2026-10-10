@@ -11,7 +11,7 @@ import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.world.World;
 
 /**
- * The skull: how a group agrees on one target without a leader having to click it.
+ * The skull: how a group agrees on one target without a leader having to click it. A player marks the target with {@code /Brand 14}.
  * <p>
  * The tank marks the enemy with the least health when the fight begins, the rest of the group follows the mark, and when the marked one dies the
  * tank marks the next. That is the guide's rule for a group, and the mark is the engine's own brand (the {@code /Brand} command), so a real player in
@@ -22,8 +22,11 @@ import com.aionemu.gameserver.world.World;
  */
 public final class BotMarks {
 
-	/** The skull: brand 14, which is the one the guide named. */
-	public static final int SKULL = 14;
+	/**
+	 * The skull: brand id 13, which is what the player types as {@code /Brand 14}, since the command counts from one. It was 14 at first, taken from the guide's number as if it were the id,
+	 * and a tester found that {@code /Brand 15} was what the bots followed and that the client draws it as a shield with a 1; the skull is the one before.
+	 */
+	public static final int SKULL = 13;
 
 	private BotMarks() {
 	}

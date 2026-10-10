@@ -63,6 +63,13 @@ public class NavmeshTool {
 			reportStuck(Integer.parseInt(args[0]), Path.of(args[2]));
 			return;
 		}
+		if (args.length == 5 && args[1].equals("blockers")) {
+			Blockers.run(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]), 2f);
+			return;
+		}
+		if (args.length == 2 && args[1].equals("gaps")) {
+			System.exit(GapReport.run(Integer.parseInt(args[0])));
+		}
 		if (args.length == 2 && args[1].equals("reach")) {
 			System.exit(InstanceReach.run(Integer.parseInt(args[0])));
 		}
@@ -90,6 +97,8 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> stuck <file>   where bots reported being unable to move: on footing or inside geometry");
 			System.out.println("       NavmeshTool <mapId> audit        walk sample routes and report how far they wander");
 			System.out.println("       NavmeshTool <mapId> reach        from an instance's entry points, how many of its spawn spots can be walked to");
+			System.out.println("       NavmeshTool <mapId> gaps         where the instance's unreached spawn spots come closest to the arrival's ground, and what is placed there");
+			System.out.println("       NavmeshTool <mapId> blockers <x> <y> <z>   which placed models have a wall or something overhead at that spot");
 			return;
 		}
 

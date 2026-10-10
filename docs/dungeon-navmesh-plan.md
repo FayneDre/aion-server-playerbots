@@ -1,6 +1,6 @@
 # Dungeon navmeshes: plan
 
-Status: milestones 0 to 5 done on 2026-10-10 (45 meshes built, 9 copied, every one put through `reach`; results in "The batch"); 6, the server opening a mesh, not done. 21 of the 54 dungeons reach 90 % or more of their spawns from the arrival. Scope decided on 2026-10-10: the **PvE dungeons and raids for a group**, in every version (normal, hard, legion barracks). **Solo dungeons are out**: a mesh is for
+Status: milestones 0 to 5 done on 2026-10-10 (45 meshes built, 9 copied, every one put through `reach`); 6, the server opening a mesh, not done. After the final instance policy (below) 20 of the 54 dungeons reach 90 % or more of their spawns from the arrival, 12 reach 50 to 89 %. Still open: sealed arrival yards, gated or lifted ground, four maps with no arrival point, and Miren Barracks, which fell from 99 % to 0 % under the policy and is not explained. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**.
 bots that fight in a party, and a solo instance holds one player (23 of the first 77, Haramel among them; `instance_cooltimes.xml` gives one member for each). That leaves the 54 ids of the first
 table in [instance-navmesh-list.md](instance-navmesh-list.md), which come down to **45 distinct geometries**: a mesh is built once and serves the ids that share it. Arenas, warfronts, housing
 and tests are out for now. Putting a bot in an instance is out as well: no code does it, and the meshes do not wait for it.
@@ -84,6 +84,13 @@ All 54 ids, from the best arrival point of each (81 routes, since several have m
 
 So the meshes are good for the first group, usable on the reachable part for the second, and not for the rest until the seals are looked at map by map. The step tolerance and the 3 m drop have both
 been measured and neither is the answer.
+
+## The final instance policy (second pass)
+
+In an instance the generator leaves out: every placement that is not static (doors, barricades, anything a script puts up or takes down), every `collision_wall` model, every authored no-walk volume, and the erosion by a body's width (`navmesh.instanceErode`, default 0). The open world keeps all of it. Measured against the first pass: Right Wing Chamber 0 to 100 %, Dark Poeta 100 % from its second arrival, Alquimia 34 to 89, Sauro 27 to 80, Dragon Lord's Refuge 80, Rentus Base 78, Occupied Rentus 71, Lower Udas 65, Theobomos 63, Abyssal Splinter 67, Steel Rake 45. Totals: 20 at 90 % or more, 12 at 50 to 89, 11 at 1 to 49, 5 at 0, 4 without an arrival.
+
+- **Miren Barracks (both ids) regressed** from 99 to 0 %. Erosion is not the cause (0 % with it at 1 as well). The arrival sits in a 1239-cell pocket cut from the main region by a one-cell strip, where a model's triangle faces up at 0.48 (about 61 degrees, over the 45 degree walking limit). The first 99 % may have been a snapping false positive. Not settled.
+- **Still failing in the 40 to 50 band**: Draupnir Cave 3 % (the arrival is high above the floors), Esoterrace 2 % (arrival pocket more than 5 m from the rest), Steel Rake 45 % (nine arrivals), Dredgion (no arrival point), Theobomos 63 %, Adma 64 %, Abyssal Splinter 67 %. What is left is a one-way link (drop or lift) the planner does not have, and the arrival of four maps.
 
 ## Open questions
 

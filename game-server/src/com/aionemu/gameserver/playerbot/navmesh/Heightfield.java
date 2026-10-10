@@ -33,6 +33,12 @@ public class Heightfield {
 	 * rule that removes ground no obstacle stands on, so when the mesh comes out in pieces this is the first thing to vary.
 	 */
 	public static final int AGENT_RADIUS_CELLS = Integer.getInteger("navmesh.erode", 1);
+	/**
+	 * The erosion in an instance, none by default. A dungeon is built of doorways, and a doorway a metre wide is the commonest thing in one: eroded by half a metre
+	 * from each side it closes, and the first dungeon measured, Dark Poeta, went from no arrival that reached anything to 95 % of its monsters reached when the erosion was taken off.
+	 * What the erosion guards against in the open, a body climbing a trunk by its branches, has no counterpart indoors. Overridable like {@link #AGENT_RADIUS_CELLS}.
+	 */
+	public static final int INSTANCE_AGENT_RADIUS_CELLS = Integer.getInteger("navmesh.instanceErode", 0);
 	/** Fine cells per side of a coarse cell, making the coarse grid 4 m. */
 	public static final int COARSE_FACTOR = 8;
 	private static final int[] NEIGHBOUR_X = { 1, 1, 0, -1, -1, -1, 0, 1 }, NEIGHBOUR_Y = { 0, 1, 1, 1, 0, -1, -1, -1 };

@@ -49,7 +49,7 @@ hitting it would be a wasted cast, which is what the existing rule says.
 
 The engine has it: `TemporaryPlayerTeam.updateBrand(brandId, targetObjectId)` stores the brand and sends `SM_SHOW_BRAND` to the members.
 `CM_SHOW_BRAND` only lets the **leader** (or an alliance captain) call it; the bot calls `updateBrand` directly, which skips that check. The guide's
-`/Brand 14` is brand id 14, the skull.
+`/Brand 14` is brand id **13**, the skull: the command counts from one. The plan first wrote 14, which is the shield with a 1 that `/Brand 15` draws.
 
 Needs one small core change: `targetIdsByBrandId` is `protected` with no reader, so the tank cannot ask whether a mark exists. A
 `getBrandedTarget(int brandId)` on `TemporaryPlayerTeam` is the whole patch, and goes in `playerbot-architecture.md` with the other two.
@@ -140,5 +140,5 @@ purpose: keeping the tank on a loose monster until it has its attention (3, need
 2. **"Peu de pierre" was a slip for "peau de fer"** (Iron Skin).
 3. **The defensive rules hold solo too.** Aggro stays group only.
 4. **Only the skull counts as a mark.** Another kind of mark present does not stop the tank placing the skull; an existing skull is never moved or
-   replaced, a human leader's included. So the core getter is `getBrandedTarget(14)`.
+   replaced, a human leader's included. So the core getter is `getBrandedTarget(13)`.
 5. **"Least HP" is absolute**, not a percentage.
