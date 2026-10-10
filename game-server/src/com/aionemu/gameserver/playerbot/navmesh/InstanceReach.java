@@ -5,9 +5,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -30,7 +32,10 @@ final class InstanceReach {
 	/** How many unreachable spots are printed. */
 	private static final int SHOWN = 8;
 
-	private static final Pattern PORTAL = Pattern.compile("<portal_loc\\s+world_id=\"(\\d+)\"[^>]*\\sx=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
+	private static final Pattern PORTAL = Pattern
+		.compile("<portal_loc\\s+world_id=\"(\\d+)\"\\s+loc_id=\"(\\d+)\"[^>]*\\sx=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
+	/** A portal's destination, in the list of what each portal npc leads to. */
+	private static final Pattern PORTAL_PATH = Pattern.compile("<portal_path\\s+loc_id=\"(\\d+)\"");
 	private static final Pattern SPOT = Pattern.compile("<spot\\s+x=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
 
 	private InstanceReach() {
@@ -112,19 +117,33 @@ final class InstanceReach {
 		return Float.isNaN(best) ? null : new float[] { spot[0], spot[1], best };
 	}
 
-	/** @return Where a party arrives in the instance, from the portal list: x, y, z each. */
+	/**
+	 * @return Where a party arrives in the instance: x, y, z each. The portal list holds every portal location of the map, the way out and the ones inside as well, so
+	 *         only those that a portal npc leads to are arrivals; a map none of whose locations is led to by anyone gets all of them rather than none.
+	 */
 	static List<float[]> entries(int mapId) throws IOException {
-		return entries(STATIC_DATA.resolve("portals/portal_loc.xml"), mapId);
+		return entries(STATIC_DATA.resolve("portals/portal_loc.xml"), STATIC_DATA.resolve("portals/portal_template2.xml"), mapId);
 	}
 
-	static List<float[]> entries(Path portalList, int mapId) throws IOException {
-		List<float[]> found = new ArrayList<>();
+	static List<float[]> entries(Path portalList, Path portalTemplates, int mapId) throws IOException {
+		Set<Integer> led = new HashSet<>();
+		if (Files.isRegularFile(portalTemplates)) {
+			for (String line : Files.readAllLines(portalTemplates)) {
+				Matcher matcher = PORTAL_PATH.matcher(line);
+				if (matcher.find())
+					led.add(Integer.parseInt(matcher.group(1)));
+			}
+		}
+		List<float[]> arrivals = new ArrayList<>(), all = new ArrayList<>();
 		for (String line : Files.readAllLines(portalList)) {
 			Matcher matcher = PORTAL.matcher(line);
-			if (matcher.find() && Integer.parseInt(matcher.group(1)) == mapId)
-				found.add(spot(matcher));
+			if (!matcher.find() || Integer.parseInt(matcher.group(1)) != mapId)
+				continue;
+			all.add(spot(matcher));
+			if (led.contains(Integer.parseInt(matcher.group(2))))
+				arrivals.add(spot(matcher));
 		}
-		return found;
+		return arrivals.isEmpty() ? all : arrivals;
 	}
 
 	/** @return Every distinct place a monster or object is put in the instance, read from its spawn file. */

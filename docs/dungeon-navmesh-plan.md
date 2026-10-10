@@ -35,29 +35,34 @@ The generator and its checks are [navmesh-plan.md](navmesh-plan.md)'s. This file
 
 ## The pilot
 
-Six dungeons, built and put through `reach`, before and after one change to the generator: **in an instance, every placement the engine can put up or take down is left out**
-(`GeoPlacement.type` other than 0: the doors a script opens, barricades, boxes, statues), because the open or shut state of a dungeon is a fact of a run and a mesh with them as walls
-shuts the party's own way in. The open world is unchanged. Share of the monsters' spawn spots reached from the arrival point:
+Six dungeons, built and put through `reach`. Two rules in the generator are specific to instances: every placement the engine can put up or take down is left out
+(`GeoPlacement.type` other than 0: doors a script opens, barricades, boxes, statues), because the open or shut state of a dungeon is a fact of a run and a mesh with them as walls
+shuts the party's own way in; and the invisible `collision_wall` pieces and authored no-walk volumes **within 20 m of an arrival point** are left out, since they are the fence the designers
+stood round the arrival yard. The arrival points are the portal locations that a portal npc leads to (`portal_template2.xml`), not every location of the map. The open world is unchanged.
+Share of the monsters' spawn spots reached from the arrival point:
 
-| Dungeon | Before | After | What is left |
-|---|---|---|---|
-| Nochsana Training Camp (300030000) | 54 % | **98 %** | |
-| Udas Temple (300150000) | 69 % | **91 %** | |
-| Haramel (300200000) | 66 % / 3 % | 74 % / 3 % | the second portal is not an arrival point: the list holds two per map |
-| Asteria Chamber (300050000) | 0 % | 0 % | the arrival platform is 2 m above everything around it, so walking down is a step the finder refuses (1.1 m over) |
-| Dark Poeta (300040000) | 0 % | 0 % | both arrival points are in sealed pockets (377 and 7700 cells): a plateau ringed by steep ground and by authored no-walk volumes, 1178 of them in this map |
-| Right Wing Chamber (300090000) | 0 % | 0 % | a static gate model in the geometry shuts the hall the party arrives in; the "Stone Gate" next to it is a portal (`ai="portal"`), not a door |
+| Dungeon | Plain generator | With the instance rules |
+|---|---|---|
+| Nochsana Training Camp (300030000) | 54 % | **98 %** |
+| Asteria Chamber (300050000) | 0 % | **100 %** |
+| Udas Temple (300150000) | 69 % | **91 %** |
+| Haramel (300200000) | 66 % | 73 % |
+| Dark Poeta (300040000) | 0 % | 0 % (both arrivals) |
+| Right Wing Chamber (300090000) | 0 % | 0 % |
 
-So the policy fixed what it could (doors and props that come and go) and left three different faults, none of which a rule about doors reaches:
+**A rule that was tried and removed.** Letting a body drop up to 3 m between neighbouring cells, which the first reading of Asteria suggested (its arrival platform is 2 m above the floor), joined
+nothing that the arrival-yard rule did not already join: Asteria reaches 100 % with no drop at all. And it cost: Haramel fell from 73 % to 45 %, Nochsana from 98 % to 96 %, Udas Temple from 91 % to 89 %, since
+a path finder allowed to step off every ledge has far more ground to search and gives up sooner. Measured at 0, 1.5 and 3 m; 0 kept.
 
-- **A drop.** Players walk off a platform two metres up; the path finder allows a step of about 0.9 m either way. Allowing a longer way down in instances only (no fall damage under a few metres)
-  would join Asteria. To decide: how far, and whether a bot should be told it is a drop.
-- **Authored no-walk volumes** used as boundaries, in Dark Poeta by the hundred. They are right to keep bots out of the places they fence; they are wrong where they fence the way in.
-- **Static geometry that is a closed door** (the Right Wing gate). Nothing in the data says so; only the arrival and the spawns do, which is what `reach` is for.
+What is left:
+
+- **Dark Poeta**: both arrivals are still in sealed pockets (377 and 7700 cells). The yard is ringed by steep terrain as well as by walls; the rule above did not open it.
+- **Right Wing Chamber**: a static gate model in the geometry shuts the hall the party arrives in. The "Stone Gate" next to it is a portal (`ai="portal"`), not a door.
+- **The unreached tail in the others** (2 to 27 % of the spots) is not looked at yet. Some will be real (an arena nobody can enter, a boss room behind a gate), some a fault; `reach` prints the first eight with a
+  command to plan each route.
 
 ## Open questions
 
-1. **Drops**: allowed in instances, and to what height?
-2. **No-walk volumes in the arrival area**: ignored within some distance of an arrival point, or per map by hand? A ring around the arrival yard is the usual shape.
-3. **Arrival points**: `portal_loc` holds every portal of a map, not only the ones a party appears at. Is there a data file for the arrival point (the instance's start position) to use instead?
-4. **Heightmaps**: 31 of the 77 carry one, often a file shared by several ids and flat; the rest are meshes alone. Both kinds have worked so far, and the first mesh of each deserves its images looked at.
+1. **The two at 0 %**: each looks like a map with its own shape of seal, which no general rule has reached. Worth deciding how many such maps there are before building a rule for them: run the whole batch,
+   then count.
+2. **Heightmaps**: 31 of the 77 carry one, often a file shared by several ids and flat; the rest are meshes alone. Both kinds have worked so far.

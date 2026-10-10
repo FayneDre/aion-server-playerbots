@@ -18,22 +18,33 @@ import org.junit.jupiter.api.io.TempDir;
 class InstanceReachTest {
 
 	@Test
-	void entriesAreThoseOfTheMapAskedForAndNoOther(@TempDir Path directory) throws IOException {
+	void entriesAreTheLocationsAPortalLeadsToAndOnlyOfTheMapAskedFor(@TempDir Path directory) throws IOException {
 		Path list = directory.resolve("portal_loc.xml");
 		Files.writeString(list, """
 			<portal_locs>
 				<portal_loc world_id="300040000" loc_id="3000400" x="1225.9075" y="419.7187" z="140.18988"/>
 				<portal_loc world_id="300040000" loc_id="3000401" x="1188.80707" y="1241.4151" z="143.85065"/>
+				<portal_loc world_id="300040000" loc_id="3000499" x="10.0" y="20.0" z="30.0"/>
 				<portal_loc world_id="300090000" loc_id="3000900" x="265.984" y="387.77493" z="103.24291"/>
+				<portal_loc world_id="300200000" loc_id="3002000" x="1.0" y="2.0" z="3.0"/>
+				<portal_loc world_id="300200000" loc_id="3002001" x="4.0" y="5.0" z="6.0"/>
 			</portal_locs>
 			""");
+		Path templates = directory.resolve("portal_template2.xml");
+		Files.writeString(templates, """
+			<portal_use npc_id="1"><portal_path loc_id="3000400" race="ELYOS" /></portal_use>
+			<portal_use npc_id="2"><portal_path loc_id="3000401" race="ASMODIANS" /></portal_use>
+			<portal_use npc_id="3"><portal_path loc_id="3000900" /></portal_use>
+			""");
 
-		List<float[]> poeta = InstanceReach.entries(list, 300040000);
-		assertEquals(2, poeta.size());
+		List<float[]> poeta = InstanceReach.entries(list, templates, 300040000);
+		assertEquals(2, poeta.size(), "the third location of the map is not led to by any portal: not an arrival");
 		assertEquals(1225.9075f, poeta.get(0)[0], 0.001f);
 		assertEquals(143.85065f, poeta.get(1)[2], 0.001f);
-		assertEquals(1, InstanceReach.entries(list, 300090000).size());
-		assertTrue(InstanceReach.entries(list, 999).isEmpty());
+		assertEquals(1, InstanceReach.entries(list, templates, 300090000).size());
+		assertEquals(2, InstanceReach.entries(list, templates, 300200000).size(), "no portal leads to either: all of them, rather than none");
+		assertTrue(InstanceReach.entries(list, templates, 999).isEmpty());
+		assertEquals(3, InstanceReach.entries(list, directory.resolve("missing.xml"), 300040000).size(), "no list of portals to go by: every location");
 	}
 
 	@Test
