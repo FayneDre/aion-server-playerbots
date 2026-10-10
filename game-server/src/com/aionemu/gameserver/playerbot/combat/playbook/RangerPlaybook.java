@@ -155,7 +155,8 @@ final class RangerPlaybook implements ClassPlaybook {
 	 * @param targeted Whether the enemy it is shooting is aiming at it.
 	 * @param controlled Whether it is stunned, knocked about, spun or held in the air right now.
 	 * @param shockChainOpen Whether Remove Shock was the last skill it used, which is the only moment Finishing Arrow can follow it.
-	 * @param oneMinuteUp How many of the four one minute buffs are on it.
+	 * @param oneMinuteOn Which of the four one minute buffs are on it: how many decides whether another may go on, and which decides that the one that is on
+	 *          is not cast again, which a one second cooldown would otherwise have it do every second.
 	 * @param breathUp Whether Breath of Nature, a toggle that must not be cast twice, is on.
 	 * @param bowUp Whether Bow of Blessing is on.
 	 * @param windUp Whether Speed of the Wind is on.
@@ -168,7 +169,7 @@ final class RangerPlaybook implements ClassPlaybook {
 	 * @param hold Its hold-fire state.
 	 * @param ready The moves it knows and that are off cooldown.
 	 */
-	record Situation(int hpPercent, int dp, boolean inTeam, boolean targeted, boolean controlled, boolean shockChainOpen, int oneMinuteUp, boolean breathUp,
+	record Situation(int hpPercent, int dp, boolean inTeam, boolean targeted, boolean controlled, boolean shockChainOpen, Set<Move> oneMinuteOn, boolean breathUp,
 		boolean bowUp, boolean windUp, boolean transformed, boolean evasionUp, EnemyKind kind, boolean opened, boolean inMelee, boolean otherEnemy, Hold hold,
 		Set<Move> ready) {
 	}
@@ -263,10 +264,10 @@ final class RangerPlaybook implements ClassPlaybook {
 				ready.add(move);
 		}
 		boolean inTeam = bot.getCurrentTeam() != null;
-		int oneMinuteUp = 0;
+		Set<Move> oneMinuteOn = EnumSet.noneOf(Move.class);
 		for (Move move : ONE_MINUTE_ORDER) {
 			if (BotSkillManager.isUp(bot, move.group))
-				oneMinuteUp++;
+				oneMinuteOn.add(move);
 		}
 		boolean targeted = inFight && target != null && bot.equals(target.getTarget());
 		long now = System.currentTimeMillis();
@@ -292,7 +293,7 @@ final class RangerPlaybook implements ClassPlaybook {
 		else
 			ready.remove(Move.STEALTH);
 		return new Situation(bot.getLifeStats().getHpPercentage(), bot.getCommonData().getDp(), inTeam, targeted, BotSkillManager.isCrowdControlled(bot),
-			BotSkillManager.isChainOpen(bot, "ALL_CHAINA_1TH"), oneMinuteUp, BotSkillManager.isUp(bot, Move.BREATH_OF_NATURE.group),
+			BotSkillManager.isChainOpen(bot, "ALL_CHAINA_1TH"), oneMinuteOn, BotSkillManager.isUp(bot, Move.BREATH_OF_NATURE.group),
 			BotSkillManager.isUp(bot, Move.BOW_OF_BLESSING.group), BotSkillManager.isUp(bot, Move.SPEED_OF_THE_WIND.group),
 			BotSkillManager.isUp(bot, Move.TRANSFORMATION_MAU.group) || BotSkillManager.isUp(bot, Move.TRANSFORMATION_MAU_LIGHT.group),
 			BotSkillManager.isUp(bot, Move.FOCUSED_EVASION.group), kind, opened, inMelee, otherEnemy, hold, ready);
@@ -376,9 +377,9 @@ final class RangerPlaybook implements ClassPlaybook {
 		Set<Move> ready = situation.ready();
 		if (ready.contains(Move.BREATH_OF_NATURE) && !situation.breathUp())
 			return Move.BREATH_OF_NATURE;
-		if (situation.oneMinuteUp() < ONE_MINUTE_BUFFS_AT_ONCE) {
+		if (situation.oneMinuteOn().size() < ONE_MINUTE_BUFFS_AT_ONCE) {
 			for (Move buff : ONE_MINUTE_ORDER) {
-				if (ready.contains(buff))
+				if (ready.contains(buff) && !situation.oneMinuteOn().contains(buff))
 					return buff;
 			}
 		}

@@ -26,7 +26,7 @@ class RangerPlaybookTest {
 		int hp = 100;
 		int dp;
 		boolean inTeam, targeted, controlled, shockChainOpen, breathUp, bowUp, windUp, transformed, evasionUp, opened, inMelee, otherEnemy;
-		int oneMinuteUp;
+		final Set<Move> oneMinuteOn = EnumSet.noneOf(Move.class);
 		EnemyKind kind = EnemyKind.OTHER;
 		Hold hold = FREE;
 		final Set<Move> ready = EnumSet.noneOf(Move.class);
@@ -47,7 +47,7 @@ class RangerPlaybookTest {
 		}
 
 		Situation build() {
-			return new Situation(hp, dp, inTeam, targeted, controlled, shockChainOpen, oneMinuteUp, breathUp, bowUp, windUp, transformed, evasionUp, kind, opened,
+			return new Situation(hp, dp, inTeam, targeted, controlled, shockChainOpen, oneMinuteOn, breathUp, bowUp, windUp, transformed, evasionUp, kind, opened,
 				inMelee, otherEnemy, hold, ready);
 		}
 
@@ -68,10 +68,10 @@ class RangerPlaybookTest {
 	void theOneMinuteBuffsGoOnBestFirstAndNeverMoreThanTwoAtOnce() {
 		Scene s = scene().ready(DODGING, AIMING, STRONG_SHOTS);
 		assertEquals(STRONG_SHOTS, s.atRest(), "Strong Shots leads");
-		s.ready.remove(STRONG_SHOTS);
-		s.oneMinuteUp = 1;
-		assertEquals(AIMING, s.atRest());
-		s.oneMinuteUp = 2;
+		// still ready a second after it was cast, its cooldown being one second: what is on is not cast again
+		s.oneMinuteOn.add(STRONG_SHOTS);
+		assertEquals(AIMING, s.atRest(), "Strong Shots is on and ready again: the next one is wanted, not the same");
+		s.oneMinuteOn.add(AIMING);
 		assertNull(s.atRest(), "two are up: a third would remove the first, and the ranger would cast it again for ever");
 	}
 
