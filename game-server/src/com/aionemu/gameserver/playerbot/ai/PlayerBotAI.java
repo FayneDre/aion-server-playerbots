@@ -144,6 +144,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final float FOLLOW_DISTANCE = 2f;
 	/** Roughly the time a player spends looking at the resurrection window. */
 	private static final int REVIVE_DELAY_MILLIS = 10000;
+	/** How long a player takes to click "accept" once a resurrection has been cast on them. */
+	private static final int ACCEPT_RESURRECTION_DELAY_MILLIS = 2000;
 	/**
 	 * How far from its bind point a bot gets before it is willing to sit down.
 	 * <p>
@@ -172,9 +174,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * last was, which is what a class that answers it afterwards needs; a playbook is shared by every bot of its class, so the memory is kept here.
 	 */
 	private volatile long lastControlledAt;
+	/**
+	 * Whether the bot has begun healing itself back to full after a critical moment and is to keep at it. A rule that says "until full" has to remember that
+	 * it began, since the health it began at is not the health it is at a cast later; kept here for the same reason as {@link #lastControlledAt}.
+	 */
+	private volatile boolean mendingToFull;
 	private ScheduledFuture<?> thinkTask;
 	/** Non null between death and resurrection, which also marks the death as already handled. */
 	private ScheduledFuture<?> reviveTask;
+	/** Whether the pending revival is the acceptance of a resurrection somebody cast, rather than the walk back from the obelisk. */
+	private boolean resurrectionPending;
 	/**
 	 * True while a decision tick is actually running, as opposed to merely scheduled.
 	 * <p>
@@ -367,7 +376,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void serveTheGroup() {
 		if (posture.standUp()) // one tick before acting, so the animation has played out by then
 			return;
-		if (BotSkillManager.tryBuffSelf(getOwner()) || BotSkillManager.tryChantMantra(getOwner()))
+		if (BotPlaybooks.of(getOwner()).tend(getOwner()) || BotSkillManager.tryBuffSelf(getOwner()) || BotSkillManager.tryChantMantra(getOwner()))
 			return;
 		if (tendToTheGroup())
 			return;
@@ -538,7 +547,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (!posture.standUp()) { // stand up one tick before acting, so the animation has played out by then
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing.
 				// the servant before the buffs, because it is the one of them that is still there in ten minutes and the class cannot fight without it
-				if (!callUpServant() && !boardRobot() && !BotSkillManager.tryBuffSelf(getOwner())
+				if (!callUpServant() && !boardRobot() && !BotPlaybooks.of(getOwner()).tend(getOwner()) && !BotSkillManager.tryBuffSelf(getOwner())
 					&& !BotSkillManager.tryChantMantra(getOwner()) && !day.pursue()) {
 					// Starting a fight is the one thing the death penalty forbids, and it used to forbid everything: the bot sat where it stood for
 					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Walking, going home,
@@ -611,6 +620,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** @return When the bot was last seen crowd controlled, in milliseconds, or 0 if it has not been. */
 	public long lastControlledAt() {
 		return lastControlledAt;
+	}
+
+	/** @return true if the bot is in the middle of healing itself back to full. See {@link #mendingToFull}. */
+	public boolean isMendingToFull() {
+		return mendingToFull;
+	}
+
+	public void setMendingToFull(boolean mendingToFull) {
+		this.mendingToFull = mendingToFull;
 	}
 
 	public boolean isAttacking() {
@@ -737,7 +755,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean takeStation(Creature target) {
 		Player bot = getOwner();
-		if (!PlayerBotConfig.POSITIONING || !BotStations.handles(bot) || BotStations.isWellPlaced(bot, target))
+		if (!PlayerBotConfig.POSITIONING || !BotStations.handles(bot) || BotStations.isWellPlaced(bot, target) || BotStations.isHeldByEnemy(bot, target))
 			return false;
 		if (!(bot.getMoveController() instanceof BotMoveController moveController))
 			return false;
@@ -1527,8 +1545,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private void handleDeath() {
 		synchronized (combatLock) {
-			if (reviveTask != null) // already dealt with
+			if (reviveTask != null) { // already dealt with, unless a resurrection has been cast on it since
+				if (!resurrectionPending && getOwner().getResStatus()) {
+					// the window a resurrection opens is clicked by the player it is cast on, so for a bot the decision tick clicks it: taking a resurrection
+					// instead of the obelisk is what a player does when one is offered, and it is what a chanter's Light of Resurrection is for
+					resurrectionPending = true;
+					reviveTask.cancel(false);
+					reviveTask = BotScheduler.getInstance().schedule(this::acceptResurrection, ACCEPT_RESURRECTION_DELAY_MILLIS);
+				}
 				return;
+			}
 			// nobody will ever click the resurrection window for a bot, so without this it lies dead forever
 			reviveTask = BotScheduler.getInstance().schedule(this::revive, REVIVE_DELAY_MILLIS);
 		}
@@ -1554,10 +1580,31 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * across the region.
 	 */
 	private void revive() {
+		bringBack(false);
+	}
+
+	/**
+	 * Takes the resurrection somebody has cast on the bot, where it lies: no obelisk and no walk home, which is the whole of what a resurrection is for. It
+	 * comes back on a third of its health with soul sickness, as the engine gives it to a player ({@code skillRevive}), and its anchor stays where it was,
+	 * since it is still beside the group that raised it.
+	 */
+	private void acceptResurrection() {
+		bringBack(true);
+	}
+
+	private void bringBack(boolean resurrected) {
 		Player bot = getOwner();
 		try {
 			if (!bot.isSpawned() || !bot.isDead())
 				return;
+			// skillRevive writes the character into the audit log as a resurrection hack when nobody cast one, so it is asked first
+			if (resurrected && bot.getResStatus()) {
+				PlayerReviveService.skillRevive(bot);
+				convalescence.forget();
+				setStateIfNot(AIState.IDLE);
+				log.info("Bot {} accepted a resurrection at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
+				return;
+			}
 			PlayerReviveService.bindRevive(bot);
 			checkLanding = true; // looked at on the next tick, once the move to the obelisk has settled
 			convalescence.forget(); // a new death, a new look at where is quiet
@@ -1570,6 +1617,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// cleared last, so the decision tick cannot mistake the bot for freshly dead while it is being brought back
 			synchronized (combatLock) {
 				reviveTask = null;
+				resurrectionPending = false;
 			}
 		}
 	}

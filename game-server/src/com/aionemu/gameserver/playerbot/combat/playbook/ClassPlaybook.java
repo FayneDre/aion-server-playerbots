@@ -32,6 +32,33 @@ public interface ClassPlaybook {
 	boolean act(Player bot, Creature target);
 
 	/**
+	 * Gives the class its chance to act while it is <b>not</b> fighting: buffs, mending, resurrecting. Called ahead of the generic upkeep, alone and in a
+	 * group alike.
+	 *
+	 * @return true if the bot did something, in which case it is busy for this tick. Same contract as {@link #act}: false means "nothing to say" and the bot
+	 *         must have been left as it was found.
+	 */
+	default boolean tend(Player bot) {
+		return false;
+	}
+
+	/**
+	 * Called the moment the bot has left the ground, so that a class with something to do about flight, such as raising its flight speed for the group,
+	 * does it as the wings open. Nothing to say by default.
+	 */
+	default void onTakeOff(Player bot) {
+	}
+
+	/**
+	 * @param inTeam Whether the bot is in a group, since a class may want other mantras for its mates than for itself.
+	 * @return The skill groups of the mantras this class wants running, best first. Empty when it has no opinion, and then the newest mantra wins as it
+	 *         always did. A mantra that is not on the list is tried after the ones that are.
+	 */
+	default List<String> mantraOrder(boolean inTeam) {
+		return List.of();
+	}
+
+	/**
 	 * @return true if this class decides alone when this bot casts the skill, so the generic order never offers it. Without this the two would both act on
 	 *         the same skill by different rules: the generic heal fires at half health on any heal a class has, which for a templar is the half hour
 	 *         Hand of Healing that is meant to be kept for a fifth.

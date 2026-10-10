@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -74,6 +75,14 @@ public final class BotStations {
 	/** @return true if this is a healer in a group, whose place is worked out outside the fight loop since it does not join the attack. */
 	public static boolean handlesHealer(Player bot) {
 		return bot.getCurrentTeam() != null && BotPosition.of(bot) == BotPosition.HEALER;
+	}
+
+	/**
+	 * @return true if this is a chanter that the enemy is hitting, which the guide has stay where it is: a bot walking round an enemy to its back while the
+	 *         enemy follows it is a bot taking the blows for nothing, and the place behind is for a chanter nobody is attacking.
+	 */
+	public static boolean isHeldByEnemy(Player bot, Creature enemy) {
+		return bot.getPlayerClass() == PlayerClass.CHANTER && bot.equals(enemy.getTarget());
 	}
 
 	/** @return true if the bot stands where its class does against this enemy. */

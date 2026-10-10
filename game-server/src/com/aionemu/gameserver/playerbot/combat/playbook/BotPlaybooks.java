@@ -9,6 +9,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 public final class BotPlaybooks {
 
 	private static final ClassPlaybook TEMPLAR = new TemplarPlaybook();
+	private static final ClassPlaybook CHANTER = new ChanterPlaybook();
 
 	private BotPlaybooks() {
 	}
@@ -17,6 +18,7 @@ public final class BotPlaybooks {
 	public static ClassPlaybook of(PlayerClass playerClass) {
 		return switch (playerClass) {
 			case TEMPLAR -> TEMPLAR;
+			case CHANTER -> CHANTER;
 			default -> ClassPlaybook.NONE;
 		};
 	}

@@ -28,6 +28,10 @@ import com.aionemu.gameserver.skillengine.model.ChargedSkill;
 import com.aionemu.gameserver.skillengine.model.HitType;
 import com.aionemu.gameserver.skillengine.model.Skill;
 import com.aionemu.gameserver.skillengine.model.SkillSubType;
+import com.aionemu.gameserver.skillengine.model.SkillTargetSlot;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.combat.playbook.ClassPlaybook;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
@@ -40,6 +44,8 @@ import com.aionemu.gameserver.skillengine.properties.TargetRelationAttribute;
  * NpcSkillList and an NpcAI.
  */
 public class BotSkillManager {
+
+	private static final Logger log = LoggerFactory.getLogger(BotSkillManager.class);
 
 	/** Health below which a bot that can heal itself does so rather than trading blows and hoping. */
 	public static final int HEAL_IN_COMBAT_PERCENT = 50;
@@ -354,7 +360,25 @@ public class BotSkillManager {
 	public static boolean tryChantMantra(Player bot) {
 		if (isSavingMana(bot) || activeMantras(bot) >= MAX_MANTRAS)
 			return false;
-		return cast(bot, bot, skills(bot, BotSkillManager::isMissingMantra));
+		List<SkillTemplate> candidates = skills(bot, BotSkillManager::isMissingMantra);
+		return cast(bot, bot, byMantraOrder(candidates, BotPlaybooks.of(bot).mantraOrder(bot.getCurrentTeam() != null)));
+	}
+
+	/**
+	 * @return The mantras in the class's order of preference, the ones it has no opinion on after them. A stable sort, so the ranks of one mantra keep the
+	 *         order they had. With no order given the list is returned as it came, which is how every class without a playbook plays.
+	 */
+	public static List<SkillTemplate> byMantraOrder(List<SkillTemplate> mantras, List<String> order) {
+		if (order.isEmpty())
+			return mantras;
+		return mantras.stream().sorted(Comparator.comparingInt(template -> mantraRank(order, template))).toList();
+	}
+
+	/** @return The place of the mantra in the class's order, or past the end of it for one the class has no opinion on. */
+	private static int mantraRank(List<String> order, SkillTemplate template) {
+		// an immutable list refuses to be asked about null, and most skill templates have no group
+		int rank = template.getGroup() == null ? -1 : order.indexOf(template.getGroup());
+		return rank < 0 ? order.size() : rank;
 	}
 
 	private static boolean isMissingMantra(Player bot, SkillTemplate template) {
@@ -626,6 +650,8 @@ public class BotSkillManager {
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			// useNoAnimationSkill validates mp, cooldown, range and target itself, and skips the client hit time checks a bot cannot satisfy
 			if (skill != null && skill.useNoAnimationSkill()) {
+				// the sequence a class casts in, read from the log to compare a rotation with the guide's: enable DEBUG for this class to see it
+				log.debug("{} casts {} (group {}) at {}", bot.getName(), template.getName(), template.getGroup(), target.getName());
 				if (template.isCharge())
 					releaseWhenCharged(bot, skill);
 				return true;
@@ -724,6 +750,20 @@ public class BotSkillManager {
 	public static boolean isCrowdControlled(Creature creature) {
 		for (AbnormalState state : CONTROL_STATES) {
 			if (creature.getEffectController().isAbnormalSet(state))
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @param dispelLevel The strongest dispel the caller has, as its skill states it.
+	 * @return true if something on the creature is a weakening effect that a dispel of that level can reach. Read the way the engine reads it when the
+	 *         dispel is cast ({@code EffectController.removeEffectByDispelCat}): the effect sits in the debuff slot and asks for no more than the level.
+	 *         Whether it is then strong enough to be removed is the engine's to decide, so this says "worth trying", not "will work".
+	 */
+	public static boolean hasDispellableDebuff(Creature creature, int dispelLevel) {
+		for (Effect effect : creature.getEffectController().getAbnormalEffects()) {
+			if (effect.getTargetSlot() == SkillTargetSlot.DEBUFF && effect.getReqDispelLevel() <= dispelLevel)
 				return true;
 		}
 		return false;

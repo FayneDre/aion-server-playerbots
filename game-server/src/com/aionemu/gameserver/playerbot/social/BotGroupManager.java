@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
+import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -276,6 +277,41 @@ public class BotGroupManager {
 			}
 		});
 		return hunted;
+	}
+
+	/**
+	 * Finds the group mate that this bot is the one to resurrect.
+	 * <p>
+	 * A dead mate in reach is not enough: a cleric or another chanter in the group may do it, and two resurrections on one body are one wasted. So a human
+	 * cleric or chanter near the body is left to do it themselves, and among the bots the lowest object id does. Another bot cleric does not count,
+	 * since it has no playbook to resurrect with yet; deferring to it would leave the body lying there.
+	 *
+	 * @param range How far the skill reaches.
+	 * @return The mate, or null if there is none, or somebody else is to raise them, or one is already being raised.
+	 */
+	public static Player mateToResurrect(Player bot, float range) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return null;
+		Player dead = null;
+		for (Player member : team.getMembers()) {
+			if (member.isDead() && !member.getResStatus() && member.getWorldId() == bot.getWorldId() && PositionUtil.getDistance(bot, member) <= range) {
+				dead = member;
+				break;
+			}
+		}
+		if (dead == null)
+			return null;
+		for (Player member : team.getMembers()) {
+			if (member.equals(bot) || member.isDead() || member.getWorldId() != dead.getWorldId() || PositionUtil.getDistance(dead, member) > ASSIST_RADIUS)
+				continue;
+			boolean canResurrect = member.getPlayerClass() == PlayerClass.CHANTER || member.getPlayerClass() == PlayerClass.CLERIC;
+			if (canResurrect && !member.isBot())
+				return null;
+			if (member.getPlayerClass() == PlayerClass.CHANTER && member.isBot() && member.getObjectId() < bot.getObjectId())
+				return null;
+		}
+		return dead;
 	}
 
 	/** @return A group mate to look after, or null. Used to spread buffs around without a list of who has what. */
