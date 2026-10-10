@@ -8,7 +8,8 @@
     a jar under a running JVM breaks it, because classes are loaded lazily.
 
 .PARAMETER MapId
-    The map to work on, or "all" to report totals across every map. Several maps can be given, separated by commas, and are generated one after the other.
+    The map to work on, or "all" to report totals across every map. Several maps can be given, separated by commas or spaces, and are generated one after the other.
+    Quoted or not: PowerShell reads an unquoted 110010000,400010000 as a list of two numbers, not as one piece of text, and this takes both.
 
 .PARAMETER ServerRoot
     Root of the server installation. Defaults to the AION_SERVER_HOME environment variable.
@@ -19,13 +20,16 @@
     .\tools\navmesh.ps1 110010000,400010000   # Sanctum and Reshanta, one after the other
 #>
 param(
-    [string]$MapId,
+    [string[]]$MapId,
     [string]$ServerRoot = $env:AION_SERVER_HOME,
     [switch]$Obelisks,
     [switch]$Reach
 )
 
 $ErrorActionPreference = 'Stop'
+
+# one id per entry, whether they came as a list, as "a,b" or as "a b"
+$maps = @($MapId | ForEach-Object { "$_" -split '[,\s]+' } | Where-Object { $_ })
 
 if (-not $ServerRoot) {
     throw "No server path. Set the AION_SERVER_HOME environment variable or pass -ServerRoot."
@@ -47,22 +51,22 @@ Push-Location $gameServer
 try {
     if ($Obelisks) {
         # the audit asks the same service the bots do, which logs through slf4j: the server's libraries are needed, the generator's bare jar is not enough
-        $arguments = @('obelisks'); if ($MapId) { $arguments += $MapId }
+        $arguments = @('obelisks'); if ($maps) { $arguments += $maps[0] }
         & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool @arguments
         exit $LASTEXITCODE
     }
-    if (-not $MapId) { throw 'Give a map id, or -Obelisks.' }
+    if (-not $maps) { throw 'Give a map id, or -Obelisks.' }
     if ($Reach) {
         # an instance: from where the party arrives, can a bot walk to where the monsters are? Exit code 1 when some spots cannot be reached
         $worst = 0
-        foreach ($id in $MapId -split ',') {
+        foreach ($id in $maps) {
             & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() reach
             if ($LASTEXITCODE -gt $worst) { $worst = $LASTEXITCODE }
         }
         exit $worst
     }
     # several maps at once, one after the other: 110010000,400010000
-    foreach ($id in $MapId -split ',') {
+    foreach ($id in $maps) {
         Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
         & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim()
         if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
