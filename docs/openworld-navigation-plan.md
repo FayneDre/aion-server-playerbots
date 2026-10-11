@@ -1,6 +1,6 @@
 # Open world navigation: plan
 
-Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 next, which starts with measurements and needs no rebuild. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
+Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 measured (8 of the 12 failing obelisks freed by glide links, files of 1 to 8 MB except Cygnea and Enshar at 34 and 40), not written: a cap for those two first. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
 obelisk audit went from 151 routes found to 173 with none lost. Each milestone below is verifiable on its own, in this order, and none needs the next.
 
 ## Where it stands
@@ -63,6 +63,30 @@ down a cliff instead of walking round it, and leave the ground apart from the re
   is a test the tester should see.
 
 Verified by the obelisk audit (fewer failures, none new) and `fieldreach`.
+
+**Measured on 11 October, nothing written** (`NavmeshTool <map> glidecheck` builds the ground and the links in memory; a `.glide` file on disk would be read
+by the server at once). With the instances' rule, stretches of 40 surfaces or more:
+
+| Map | Links | File | Failing obelisks freed |
+|---|---|---|---|
+| Verteron | 25 741 | 0.8 MB | 1 of 1 |
+| Altgard | 60 018 | 1.9 MB | none failing; 2 apart from the main ground join it |
+| Heiron | 83 876 | 2.7 MB | 1 of 1 |
+| Eltnen | 87 718 | 2.8 MB | none failing; 1 apart joins |
+| Kaldor | 177 274 | 5.7 MB | 2 of 2 |
+| Reshanta | 187 863 | 6.0 MB | 0 of 2: floating islands, which only flight leaves |
+| Levinshor | 196 143 | 6.3 MB | 2 of 2 |
+| Inggison | 258 398 | 8.3 MB | 1 of 1 |
+| Cygnea | 1 075 225 | 34.4 MB | its failure is not a ground question |
+| Enshar | 1 245 202 | 39.8 MB | 1 of 1 |
+
+Every stretch linked, as on Esoterrace, freed nothing more anywhere and weighed two to three times as much. **8 of the 12 failing obelisks would be freed**;
+Reshanta's two need flight, Cygnea's has no route on its own ground, and Enshar's other one is inside geometry. Cygnea and Enshar are the problem: 140 000
+and more stretches of ground, a million links each, and the links are held in the server's memory as objects. A cap is needed before they are written for
+the open world, by fewer links per pair of stretches or links into large stretches only, measured the same way.
+
+The links can be written without building the `.nav` again: the stretches are numbered by the same computation from the same geometry, so a command that
+writes only the `.glide` would take half a minute a map instead of a rebuild.
 
 ### 3. Portal links: using things to get somewhere (a week)
 

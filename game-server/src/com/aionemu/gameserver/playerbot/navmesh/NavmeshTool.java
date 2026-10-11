@@ -80,6 +80,10 @@ public class NavmeshTool {
 		if (args.length == 2 && args[1].equals("fieldreach")) {
 			System.exit(FieldReach.run(Integer.parseInt(args[0])));
 		}
+		if (args.length == 2 && args[1].equals("glidecheck")) {
+			GlideCheck.run(Integer.parseInt(args[0]));
+			return;
+		}
 		if (args.length == 2 && args[1].equals("audit")) {
 			audit(Integer.parseInt(args[0]));
 			return;
@@ -106,6 +110,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> reach        from an instance's entry points, how many of its spawn spots can be walked to");
 			System.out.println("       NavmeshTool <mapId> gaps         where the instance's unreached spawn spots come closest to the arrival's ground, and what is placed there");
 			System.out.println("       NavmeshTool <mapId> fieldreach   from where a monster stands, how many of the monsters a hunting bot would pick next can be walked to");
+			System.out.println("       NavmeshTool <mapId> glidecheck   the glide links the map would have, their weight, and which stranded obelisks they free; writes nothing");
 			System.out.println("       NavmeshTool <mapId> blockers <x> <y> <z>   which placed models have a wall or something overhead at that spot");
 			return;
 		}
