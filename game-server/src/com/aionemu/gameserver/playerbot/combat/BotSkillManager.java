@@ -12,6 +12,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.playerbot.BotScheduler;
+import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.skillengine.change.Change;
 import com.aionemu.gameserver.skillengine.condition.ChainCondition;
 import com.aionemu.gameserver.skillengine.condition.SkillChargeCondition;
@@ -653,8 +654,12 @@ public class BotSkillManager {
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			// useNoAnimationSkill validates mp, cooldown, range and target itself, and skips the client hit time checks a bot cannot satisfy
 			if (skill != null && skill.useNoAnimationSkill()) {
+				// a cast roots its caster, and the walk it began in has to end without the stop that cancels it
+				boolean halted = (template.getDuration() > 0 || template.isCharge()) && bot.getMoveController() instanceof BotMoveController walking
+					&& walking.isInMove() && walking.haltForCast();
 				// the sequence a class casts in, read from the log to compare a rotation with the guide's: enable DEBUG for this class to see it
-				log.debug("{} casts {} (group {}) at {}", bot.getName(), template.getName(), template.getGroup(), target.getName());
+				log.debug("{} casts {} (group {}) at {}{}", bot.getName(), template.getName(), template.getGroup(), target.getName(),
+					halted ? ", stopping its walk for it" : "");
 				if (template.isCharge())
 					releaseWhenCharged(bot, skill);
 				return true;

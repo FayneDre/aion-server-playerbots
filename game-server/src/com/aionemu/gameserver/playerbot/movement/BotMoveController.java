@@ -751,6 +751,31 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	/**
+	 * Ends the walk because a cast has just begun, without cancelling the cast.
+	 * <p>
+	 * {@link #stop} ends in the engine's {@code onStopMove}, which for a player cancels the skill being cast: a cast begun while walking was cancelled by the
+	 * very stop meant to root it. A ranged class in a group, which walks to its place most of a fight, was seen moving and never landing a spell, and a healer
+	 * following its group was seen casting heals that never healed anybody. A player's client stops before it casts; this is that stop, after the fact.
+	 *
+	 * @return true if the body was walking and has been stopped.
+	 */
+	public boolean haltForCast() {
+		if (flying)
+			return false;
+		hasGoal = false;
+		route = List.of();
+		routeGlides = Set.of();
+		pendingRoute = null;
+		aimIsGlide = false;
+		routeIndex = 0;
+		MoveTaskManager.getInstance().removeCreature(owner);
+		if (!started.compareAndSet(true, false))
+			return false;
+		setAndSendStopMove(owner);
+		return true;
+	}
+
+	/**
 	 * @return Whether the body has reached what it was last sent towards.
 	 *         <p>
 	 *         <b>In three dimensions while flying, and only then.</b> On foot the height is the ground's business and asking about it would have a bot
