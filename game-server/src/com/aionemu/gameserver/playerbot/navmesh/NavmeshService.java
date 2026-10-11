@@ -57,7 +57,10 @@ public class NavmeshService {
 		if (mesh == null)
 			return new BotPathFinder.Route(List.of(), true);
 
-		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid, link -> isAirClear(bot, link));
+		// only a daeva has wings: anyone else is given no glide, and the planner answers as though the links were not there
+		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid,
+			link -> canGlide && isAirClear(bot, link));
 		if (route.isEmpty() && route.gaveUp())
 			log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		return route;

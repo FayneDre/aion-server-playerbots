@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.controllers.movement.MovementMask;
 import com.aionemu.gameserver.controllers.movement.PlayerMoveController;
 import java.util.List;
+import java.util.Set;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.EmotionType;
@@ -85,6 +86,17 @@ public class BotMoveController extends PlayerMoveController {
 	private int routeIndex;
 	/** A route that arrived from a planning thread, waiting for the next leg to adopt it. */
 	private volatile List<Vector3f> pendingRoute;
+	/** The indexes of {@link #route}, and of {@link #pendingRoute}, whose waypoint is reached by gliding down from the one before. */
+	private volatile Set<Integer> routeGlides = Set.of(), pendingGlides = Set.of();
+	/** Whether the point being gone to is a glide's landing: the leg is flown, wings out, and not walked off the edge. */
+	private volatile boolean aimIsGlide;
+	/**
+	 * True while this controller glides the body down to a landing. Walked as any other leg, a glide went off the edge and down through the air at a run, no wings:
+	 * the bots of the Ardus Shrine camp, in Verteron, jumped into the void that way to go and farm below it.
+	 */
+	private volatile boolean gliding;
+	/** How fast a glide is flown, in metres a second along its slant: a little under a body's flight, since nothing pushes it but the fall. */
+	private static final float GLIDE_SPEED = 8f;
 	/** Whether the point being walked to came from the navmesh, and so needs no second opinion on the ground between here and there. */
 	private volatile boolean onPlannedWaypoint;
 	/**
@@ -206,11 +218,13 @@ public class BotMoveController extends PlayerMoveController {
 			// the plan asked for on an earlier call has arrived: taking it is the whole point of having waited, and planning again here would throw
 			// the answer away and start the wait over
 			route = pendingRoute;
+			routeGlides = pendingGlides;
 			pendingRoute = null;
 			routeIndex = 0;
 			aimAtNextWaypoint();
 		} else if (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE) {
 			route = List.of();
+			routeGlides = Set.of();
 			routeIndex = 0;
 			plannedForX = x;
 			plannedForY = y;
@@ -220,6 +234,7 @@ public class BotMoveController extends PlayerMoveController {
 			NavmeshService.getInstance().planRoute(owner, x, y, z, avoid, planned -> offerRoute(planned, x, y));
 			if (pendingRoute != null) {
 				route = pendingRoute;
+				routeGlides = pendingGlides;
 				pendingRoute = null;
 			}
 			aimAtNextWaypoint();
@@ -387,10 +402,13 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return true if the bot keeps moving.
 	 */
 	public boolean continueToGoal() {
+		if (gliding)
+			land();
 		List<Vector3f> planned = pendingRoute;
 		if (planned != null) {
 			pendingRoute = null;
 			route = planned;
+			routeGlides = pendingGlides;
 			routeIndex = 0;
 			aimAtNextWaypoint();
 		}
@@ -472,10 +490,11 @@ public class BotMoveController extends PlayerMoveController {
 			}
 			return;
 		}
+		pendingGlides = answer.glides();
 		pendingRoute = planned;
 		log.info("Bot {} has a route of {} waypoints to {}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY));
 		if (!answer.glides().isEmpty()) {
-			// walked as any other leg for now, off the edge and down: logged so that the first glide in game can be gone and watched
+			// logged so that a glide in game can be gone and watched
 			Vector3f landing = planned.get(answer.glides().iterator().next());
 			log.info("Bot {} plans {} glide(s), the first landing at {}", owner.getName(), answer.glides().size(),
 				String.format("%.1f %.1f %.1f", landing.getX(), landing.getY(), landing.getZ()));
@@ -498,16 +517,20 @@ public class BotMoveController extends PlayerMoveController {
 	 */
 	private boolean aimAtNextWaypoint() {
 		while (routeIndex < route.size()) {
+			boolean glide = routeGlides.contains(routeIndex);
 			Vector3f waypoint = route.get(routeIndex++);
-			// the first waypoint is the bot's own cell, and a route may pass close to where it already stands
-			if (PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
+			// the first waypoint is the bot's own cell, and a route may pass close to where it already stands; a landing never is, however close
+			// across, since it is metres below
+			if (!glide && PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
 				continue;
 			goalX = waypoint.getX();
 			goalY = waypoint.getY();
 			goalZ = waypoint.getZ();
 			onPlannedWaypoint = true;
+			aimIsGlide = glide;
 			return true;
 		}
+		aimIsGlide = false;
 		boolean changed = goalX != finalX || goalY != finalY;
 		goalX = finalX;
 		goalY = finalY;
@@ -518,6 +541,10 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	private boolean startNextLeg() {
+		if (aimIsGlide && !gliding)
+			return glideDown();
+		if (gliding)
+			return true; // the glide owns the leg until it lands, and continueToGoal takes it from there
 		if (reachedWaypoint() && routeIndex >= route.size()) {
 			hasGoal = false;
 			return false;
@@ -570,6 +597,41 @@ public class BotMoveController extends PlayerMoveController {
 		return true;
 	}
 
+	/**
+	 * Opens the wings at the edge and flies the leg down to the landing, as a player's client does when it sends a move with the glide flag: the engine's own
+	 * {@code switchToGliding} sets the states and the flight points, and the clients are told with the emote that starts a glide.
+	 * <p>
+	 * When the engine refuses, the bot waits at the edge and the next tick asks again: within ten seconds of a take off a glide is not allowed, which a player
+	 * meets as the same wait. Only a daeva glides, and the planner gives no glide to anyone else.
+	 *
+	 * @return true, the bot being on its way either way.
+	 */
+	private boolean glideDown() {
+		if (BotFlight.isInTheAir(owner))
+			return true; // flying already, and a flight is not this controller's to turn into a glide
+		if (!owner.getFlyController().switchToGliding())
+			return true;
+		gliding = true;
+		PacketSendUtility.broadcastToSightedPlayers(owner, new SM_EMOTION(owner, EmotionType.START_GLIDE), true);
+		log.info("Bot {} glides down from {} to {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()), describe(goalX, goalY, goalZ));
+		flyLegTo(goalX, goalY, goalZ, GLIDE_SPEED);
+		return true;
+	}
+
+	/** The glide has reached its landing: the wings are folded, as the engine does for a player who lands, and the body stands on the ground under it. */
+	private void land() {
+		gliding = false;
+		aimIsGlide = false;
+		flying = false;
+		owner.getFlyController().onStopGliding();
+		World.getInstance().updatePosition(owner, owner.getX(), owner.getY(), groundZ(owner.getX(), owner.getY(), owner.getZ()), heading, true);
+	}
+
+	/** @return true while this controller is gliding the body down a planned glide, which is a leg of the walk and not a flight of {@link BotFlight}'s. */
+	public boolean isGliding() {
+		return gliding;
+	}
+
 	private void moveToReachablePoint(float x, float y, float z) {
 		if (BotFlight.isInTheAir(owner)) {
 			// Two things writing one body's position is the oldest fault in this module, and in the air it is also the most visible: this one pins z
@@ -597,7 +659,9 @@ public class BotMoveController extends PlayerMoveController {
 			return; // a flight ends through endFlight, and every other caller of this is a walking journey being given up
 		hasGoal = false;
 		route = List.of();
+		routeGlides = Set.of();
 		pendingRoute = null;
+		aimIsGlide = false;
 		routeIndex = 0;
 		MoveTaskManager.getInstance().removeCreature(owner);
 		if (started.compareAndSet(true, false)) {
