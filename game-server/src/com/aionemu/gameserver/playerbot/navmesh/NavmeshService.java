@@ -11,9 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
+import com.aionemu.gameserver.geoEngine.collision.IgnoreProperties;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.utils.PositionUtil;
+import com.aionemu.gameserver.world.geo.GeoService;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 
 /**
@@ -54,10 +57,22 @@ public class NavmeshService {
 		if (mesh == null)
 			return new BotPathFinder.Route(List.of(), true);
 
-		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid);
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid, link -> isAirClear(bot, link));
 		if (route.isEmpty() && route.gaveUp())
 			log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		return route;
+	}
+
+	/**
+	 * @return Whether the air between the two ends of a glide holds nothing solid, asked of the game's own geometry. The links were found from the floors alone, which cannot say whether
+	 *         a wall stands between an edge and the ground below it.
+	 */
+	private static boolean isAirClear(Player bot, GlideLink link) {
+		// raised to a body's chest, and the first and last metre forgiven: the edge's own rail and the floor it lands on are what the body is leaving and reaching
+		Vector3f met = GeoService.getInstance().getClosestCollision(bot, link.fromX(), link.fromY(), link.fromZ() + 1.5f, link.toX(), link.toY(), link.toZ() + 1.5f, false,
+			CollisionIntention.DEFAULT_COLLISIONS.getId(), IgnoreProperties.ANY_RACE);
+		return met == null || PositionUtil.getDistance(met.getX(), met.getY(), met.getZ(), link.toX(), link.toY(), link.toZ() + 1.5f) < 1.5f
+			|| PositionUtil.getDistance(met.getX(), met.getY(), met.getZ(), link.fromX(), link.fromY(), link.fromZ() + 1.5f) < 1f;
 	}
 
 	/**

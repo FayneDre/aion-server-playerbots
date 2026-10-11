@@ -28,8 +28,6 @@ public class BotPathFinder {
 	 * strips: Poeta came out as eleven thousand islands, the largest covering an eighth of the map.
 	 */
 	public static final float STEP_TOLERANCE = 0.15f;
-	/** Tangent of the steepest walkable slope, matching the 45° the generator accepts. */
-	private static final float MAX_WALKABLE_TANGENT = 1f;
 	/** How far above or below the requested height a start or goal surface may be found. */
 	private static final float SNAP_RANGE = 3f;
 	/** How many cells outwards to look for walkable ground when the exact spot is not, about six metres. */
@@ -72,12 +70,17 @@ public class BotPathFinder {
 
 	/**
 	 * @param waypoints From start to goal, empty when there is no route.
+	 * @param glides the indexes of the waypoints that are reached by gliding down from the one before, which is not a walk and is not planned as one
 	 * @param gaveUp true when the search ran out of budget rather than proving there is no way. The caller can retry in steps, or fall back to
 	 *          walking straight at the goal, but it must not conclude the place is unreachable.
 	 */
-	public record Route(List<Vector3f> waypoints, boolean gaveUp) {
+	public record Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides) {
 
 		static final Route NONE = new Route(List.of(), true);
+
+		public Route(List<Vector3f> waypoints, boolean gaveUp) {
+			this(waypoints, gaveUp, Set.of());
+		}
 
 		public boolean isEmpty() {
 			return waypoints.isEmpty();
@@ -96,6 +99,26 @@ public class BotPathFinder {
 	 * only way. The rough pass over the coarse grid does not know about it; only the fine stretches do.
 	 */
 	public static Route findPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid) {
+		return findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, GlideRoutes.AirTest.ALWAYS);
+	}
+
+	/**
+	 * As above, and where the ground does not join the two ends but the map has glide links, the way down by gliding.
+	 *
+	 * @param air whether the air along a glide is clear, asked only of links the plan would use
+	 */
+	static Route findPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid, GlideRoutes.AirTest air) {
+		Route walking = findWalkingPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
+		// only a proof that the ground does not join them is answered with a glide: a search that ran out of room proved nothing, and a body that can walk there should
+		if (!walking.isEmpty() || walking.gaveUp() || !mesh.hasGlides())
+			return walking;
+		Route gliding = GlideRoutes.plan(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air);
+		// a glide search that ran out of time proved nothing, and must not be read as the proof the walking search gave
+		return gliding.isEmpty() && !gliding.gaveUp() ? walking : gliding;
+	}
+
+	/** The route on foot alone. */
+	static Route findWalkingPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid) {
 		float distance = (float) Math.hypot(goalX - startX, goalY - startY);
 		if (distance > LONG_DISTANCE)
 			return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
@@ -409,7 +432,7 @@ public class BotPathFinder {
 	}
 
 	/** Coarse ends need snapping too: a spot can sit in a cell the rough grid calls too thin to route through. */
-	private static int coarseCellNear(Navmesh mesh, int coarseX, int coarseY) {
+	static int coarseCellNear(Navmesh mesh, int coarseX, int coarseY) {
 		for (int ring = 0; ring <= COARSE_SNAP_RINGS; ring++) {
 			for (int offsetY = -ring; offsetY <= ring; offsetY++) {
 				for (int offsetX = -ring; offsetX <= ring; offsetX++) {
@@ -530,7 +553,7 @@ public class BotPathFinder {
 	 */
 	public static float maxClimb(Navmesh mesh, boolean diagonal) {
 		float distance = mesh.cellSize() * (diagonal ? 1.41421f : 1);
-		return distance * MAX_WALKABLE_TANGENT + STEP_TOLERANCE;
+		return distance * mesh.slopeTangent() + STEP_TOLERANCE;
 	}
 
 	/** Straight line distance, which never overestimates and so keeps the search honest. */

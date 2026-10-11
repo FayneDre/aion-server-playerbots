@@ -1,6 +1,6 @@
 # Instance maps to build a navmesh for
 
-Status: the 54 group dungeons have a mesh since 2026-10-10, 45 built and 9 copied, and the table says how much of each is reached from its arrival ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)). The other categories have none. Read from `world_maps.xml` (`instance="true"`), `data/geo` and the
+Status: the 54 group dungeons have a mesh since 2026-10-10, 45 built and 9 copied, and the table says how much of each was reached from its arrival **in the first pass**: the figures of 11 October, after the glide links and the other fixes, are in [dungeon-navmesh-plan.md](dungeon-navmesh-plan.md) and differ in many rows. The other categories have none. Read from `world_maps.xml` (`instance="true"`), `data/geo` and the
 spawn files on 2026-10-10. How to build one is in [navmesh-plan.md](navmesh-plan.md): `.\tools\navmesh.ps1 300040000,300110000`.
 
 ## What the data says

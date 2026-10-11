@@ -1,6 +1,6 @@
 # Dungeon navmeshes: plan
 
-Status: milestones 0 to 5 done on 2026-10-10 (45 meshes built, 9 copied, every one put through `reach`); 6, the server opening a mesh, not done. After the final instance policy (below) 20 of the 54 dungeons reach 90 % or more of their spawns from the arrival, 12 reach 50 to 89 %. Still open: sealed arrival yards, gated or lifted ground, four maps with no arrival point, and Miren Barracks, which fell from 99 % to 0 % under the policy and is not explained. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**.
+Status: milestones 0 to 5 done (45 meshes built, 9 copied, every one put through `reach`), plus the two mechanisms the failures asked for: glide links and a steeper slope for three stairs. 6, the server opening an instance mesh, not tried. Reached from the arrival, on 11 October: 29 of the 54 dungeons reach 90 % or more, 14 reach 50 to 89 %, 6 reach 1 to 49 %, 2 reach none, 3 have no spawn to measure. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**. Nothing here is watched in game.
 bots that fight in a party, and a solo instance holds one player (23 of the first 77, Haramel among them; `instance_cooltimes.xml` gives one member for each). That leaves the 54 ids of the first
 table in [instance-navmesh-list.md](instance-navmesh-list.md), which come down to **45 distinct geometries**: a mesh is built once and serves the ids that share it. Arenas, warfronts, housing
 and tests are out for now. Putting a bot in an instance is out as well: no code does it, and the meshes do not wait for it.
@@ -55,47 +55,44 @@ Haramel, a sixth pilot at 73 %, is a solo dungeon and out of scope; its mesh was
 nothing that the arrival-yard rule did not already join: Asteria reaches 100 % with no drop at all. And it cost: Haramel (then still a pilot) fell from 73 % to 45 %, Nochsana from 98 % to 96 %, Udas Temple from 91 % to 89 %, since
 a path finder allowed to step off every ledge has far more ground to search and gives up sooner. Measured at 0, 1.5 and 3 m; 0 kept.
 
-What is left:
-
-- **Dark Poeta**: both arrivals are still in sealed pockets (377 and 7700 cells). The yard is ringed by steep terrain as well as by walls; the rule above did not open it.
-- **Right Wing Chamber**: a static gate model in the geometry shuts the hall the party arrives in. The "Stone Gate" next to it is a portal (`ai="portal"`), not a door.
-- **The unreached tail in the others** (2 to 27 % of the spots) is not looked at yet. Some will be real (an arena nobody can enter, a boss room behind a gate), some a fault; `reach` prints the first eight with a
-  command to plan each route.
-
-## The batch
-
-All 54 ids, from the best arrival point of each (81 routes, since several have more than one). Full figures per dungeon are in the table of [instance-navmesh-list.md](instance-navmesh-list.md).
-
-| Reached from the arrival | Dungeons |
-|---|---|
-| 90 % and over (21) | Nochsana, Asteria, Chamber of Roah, Kysis, Miren and Krotan Chambers and their six barracks, Udas Temple, Beshmundir Temple, Ophidan Bridge, both Danuar Reliquaries, Aetherogenetics Lab, Indratu Fortress, Fire Temple, Padmarashka's Cave |
-| 50 to 89 % (9) | Lower Udas Temple, Chantra and Terath Dredgion, Abyssal Splinter, Rentus Base and its occupied version, Azoturan Fortress, Theobomos Lab, Adma Stronghold |
-| 1 to 49 % (15) | Sulfur Tree Nest, Left Wing Chamber, Steel Rake, Esoterrace, Tiamat Stronghold, both Dragon Lord's Refuges, Eternal Bastion, The Hexway, Sauro Supply Base, both Danuar Sanctuaries, Drakenspire Depths, Draupnir Cave, Alquimia Research Center |
-| 0 % (5) | Dark Poeta, Right Wing Chamber, Unstable Abyssal Splinter, both Illuminary Obelisks |
-| No arrival point found (4) | Dredgion, Idgel Dome, both "Lucky" copies: their arrival is not in `portal_template2.xml`, and is probably put by the instance's Java handler |
-
-**What the failures look like.** The arrival's own region, from `seams`, says which kind:
-
-- **Sealed yard** (the region holds a few hundred to ten thousand cells and touches nothing): Dark Poeta (380 and 7700 cells), Right Wing Chamber (2387), Steel Rake (132 and more), Unstable Abyssal
-  Splinter (about 2000), Adma Stronghold (919). The yard is shut by static geometry, a gate model or a wall, and the arrival rules do not open it.
-- **A big region and a tail left over** (84 thousand to 400 thousand cells, with thousands of cells that miss by a step): Tiamat Stronghold, Sauro Supply Base, Eternal Bastion, Lower Udas Temple, Rentus
-  Base, Azoturan Fortress and the other middle band. Raising the step tolerance to 1.5 m, tried on ten of them, adds 1 to 20 % to the region and no more, so the tail is not steps taken a little too high:
-  it is gated ground, lifts and the rest. Some of it is right to leave unreached.
-
-So the meshes are good for the first group, usable on the reachable part for the second, and not for the rest until the seals are looked at map by map. The step tolerance and the 3 m drop have both
-been measured and neither is the answer.
+What the pilot left, and the later passes settled: Dark Poeta and Right Wing Chamber are now at 100 % (see the second pass), and the unreached tail of the others is what the third pass and the table below deal with.
 
 ## The final instance policy (second pass)
 
-In an instance the generator leaves out: every placement that is not static (doors, barricades, anything a script puts up or takes down), every `collision_wall` model, every authored no-walk volume, and the erosion by a body's width (`navmesh.instanceErode`, default 0). The open world keeps all of it. Measured against the first pass: Right Wing Chamber 0 to 100 %, Dark Poeta 100 % from its second arrival, Alquimia 34 to 89, Sauro 27 to 80, Dragon Lord's Refuge 80, Rentus Base 78, Occupied Rentus 71, Lower Udas 65, Theobomos 63, Abyssal Splinter 67, Steel Rake 45. Totals: 20 at 90 % or more, 12 at 50 to 89, 11 at 1 to 49, 5 at 0, 4 without an arrival.
+In an instance the generator leaves out: every placement that is not static (doors, barricades, anything a script puts up or takes down), every `collision_wall` model, every authored no-walk volume, and the erosion by a body's width (`navmesh.instanceErode`, default 0). The open world keeps all of it. Measured against the first pass: Right Wing Chamber 0 to 100 %, Dark Poeta 100 % from its second arrival, Alquimia 34 to 89, Sauro 27 to 80, Dragon Lord's Refuge 80, Rentus Base 78.
 
-- **Miren Barracks (both ids) regressed** from 99 to 0 %. Erosion is not the cause (0 % with it at 1 as well). The arrival sits in a 1239-cell pocket cut from the main region by a one-cell strip, where a model's triangle faces up at 0.48 (about 61 degrees, over the 45 degree walking limit). The first 99 % may have been a snapping false positive. Not settled.
-- **Still failing in the 40 to 50 band**: Draupnir Cave 3 % (the arrival is high above the floors), Esoterrace 2 % (arrival pocket more than 5 m from the rest), Steel Rake 45 % (nine arrivals), Dredgion (no arrival point), Theobomos 63 %, Adma 64 %, Abyssal Splinter 67 %. What is left is a one-way link (drop or lift) the planner does not have, and the arrival of four maps.
+## Glide links (third pass)
+
+Draupnir Cave reached 3 %, Esoterrace 2 %, Steel Rake 45 %, Eternal Bastion 35 %: the party arrives on a platform far above the ground it is going to, and the only way down is to jump, which is what the `GLIDE` flag on those maps is for. Walking never joins them, and neither does a drop of any height between neighbouring cells (measured with `NavmeshTool <map> flood <drop> <cells>`). A fall of any height out to ten metres from an edge did: Draupnir 98 %, Esoterrace 66 %, Eternal Bastion 100 %.
+
+- **`GlideLinks`** finds them when the mesh is written, for instance maps with `GLIDE` only: an edge (a walkable cell with a neighbour holding no walkable ground within a step), then every column out to 10 m with walkable ground at least 1.5 m below, in another stretch of ground of at least 40 cells. At most 24 per pair of stretches, 8 m apart. Stored in `<mapId>.glide` beside the `.nav`, which does not change.
+- **`GlideRoutes`** plans with them when the walking search *proves* the ground does not join the two ends (a search that merely ran out of room is not answered with a glide): a breadth first search over the stretches, fewest glides first, then the walking route to each edge. The start and the goal each list the stretches of the 4 m cell and its eight neighbours, so every pair is tried; two seconds at most. The air between the ends is checked against the game's geometry in the server (`NavmeshService.isAirClear`), and not in the offline tools, which therefore overestimate.
+- **Not done:** the mover walks a glide as a straight leg with the height interpolated, which is the best guess and is untested. A glide is a waypoint in `Route.glides()` that nothing reads yet.
+
+## Stairs modelled as ramps
+
+The Miren Chamber and its two barracks were cut off at their first room by a staircase whose collision is a single face at about 61 degrees, over the 45 the generator allows. `MapSlopes` allows 62 on those three maps and 45 everywhere else (a slope for every dungeon was measured: Rentus 78 to 83, Udas 91 to 93, but Lower Udas 68 to 55 with more searches giving up). Miren Barracks 0 to 100 %.
+
+## The batch, 11 October
+
+| Reached from the arrival | Dungeons |
+|---|---|
+| 90 % and over (29) | Dark Poeta, Asteria, Sulfur Tree Nest, Roah, Left and Right Wing, Miren and Krotan chambers and their four barracks, Eternal Bastion, both Danuar Reliquaries, Indratu, Padmarashka, Nochsana, Kysis chamber and barracks, Ophidan Bridge, Hexway, Fire Temple, Beshmundir, Aetherogenetics, Udas Temple, Steel Rake 90, Draupnir Cave 90 |
+| 50 to 89 % (14) | Alquimia 89, Adma 87, Abyssal Splinter 83, Tiamat 82, Dragon Lord's Refuge 80, Azoturan 80, Sauro 79, Rentus 78 and its occupied version 71, Lower Udas 67, Theobomos 67, Terath Dredgion 62, Chantra Dredgion 56, Dredgion 51 |
+| 1 to 49 % (6) | Drakenspire 41, Anguished Dragon Lord's Refuge 20, Unstable Abyssal Splinter 4, Esoterrace 2, both Danuar Sanctuaries 2 |
+| 0 % (2) | Both Illuminary Obelisks |
+| No spawn to measure (3) | Idgel Dome and the two "Lucky" copies |
+
+**Read these with one fault in mind.** The glide search was given two seconds, and when it ran out it was reported as proof that there is no way: fixed afterwards (it now says it gave up). Illuminary Obelisk measured 83 % by hand and 0 % in the batch for that reason, and Esoterrace, Unstable Abyssal and the Danuar Sanctuaries probably moved the same way. They have not been measured again.
+
+**What the tester says about the 40 to 50 band** (Discord, 10 October): Draupnir and Theobomos have a lift near the end and a platform phase in the middle; Theobomos and Adma need an interaction with the door to the boss (he teleports the bots to himself once it is open); Dredgion has one start for each faction and goes down plateau by plateau, which is what `DredgionInstance.portToStartPosition` says (two starts, now the arrivals of the three Dredgions); Adma is only large. **None of the lifts, doors and phases is in the mesh.**
+
+Tools: `-Dungeons` leaves the meshes that exist alone and `-Force` builds them again; `-Reach` measures; `NavmeshTool <map> flood <drop> <cells>`, `gaps` and `blockers x y z` are for finding out why one fails. A mesh set takes about two hours to build and as long to measure, the meshes are not in git, and a server needs `.\tools\navmesh.ps1 -Dungeons` once.
 
 ## Open questions
 
-1. **Which dungeons are bots to run first?** The 21 at 90 % or more are ready as they are: the three chambers and their barracks (six of them, three geometries), Udas Temple, Beshmundir, Ophidan Bridge,
-   Fire Temple and the Reliquaries. Looking at the other 33 is work with no bot waiting for it, so it is better done for the ones chosen than for all.
-2. **The four without an arrival**: read the start position from the instance handlers (`portToStartPosition` and the like), or route from the largest region instead?
-3. **Opening a mesh in the server (milestone 6)** has not been tried: a mesh is read when the first bot is on its map, and no bot is in an instance yet. The format is the open world's, so the risk is low.
-4. **Disk**: `data/navmesh` is 2.1 GB, most of it the debugging images the tool writes beside each mesh. The meshes themselves are the `.nav` files; the images can be deleted.
+1. **Measure the doubtful maps again** with the fixed search, without building them again: the two Illuminary Obelisks, Esoterrace, Unstable Abyssal Splinter, both Danuar Sanctuaries.
+2. **Doors, lifts and platform phases** are not in any mesh. A door that a boss fight opens can be walked through when it is open and not when it is shut; a lift is a one way link of another kind than a glide. Draupnir, Theobomos and Adma ask for them.
+3. **Walking a glide** (`BotMoveController`) and **opening an instance mesh in the server** (milestone 6) have not been tried in game. The format is the open world's, so the second is a low risk.
+4. **Dredgion, Drakenspire, Theobomos, Adma, Lower Udas** are the maps left under 70 % that a group of level 40 to 50 plays.
+5. **Disk**: `data/navmesh` is 2 GB, most of it the debugging images the tool writes beside each mesh. The meshes are the `.nav` and `.glide` files.

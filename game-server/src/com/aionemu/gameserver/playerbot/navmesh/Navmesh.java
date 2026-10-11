@@ -6,8 +6,12 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -108,6 +112,13 @@ public class Navmesh {
 	/** Held only while giving tiles back, so the readers that fill the cache never contend with each other. */
 	private final Object evictionLock = new Object();
 	private final FileChannel channel;
+	/** How steep a body walks up on this map, as the rise over the run; see {@link MapSlopes}. */
+	float slopeTangent() {
+		return MapSlopes.tangent(mapId);
+	}
+
+	/** The glide links by the region they leave from. Filled once, while the mesh is opened, and only read afterwards. */
+	private final Map<Integer, List<GlideLink>> glides = new HashMap<>();
 	private final long dataStart;
 
 	/**
@@ -184,8 +195,21 @@ public class Navmesh {
 		int cells = ((width + coarseFactor - 1) / coarseFactor) * ((height + coarseFactor - 1) / coarseFactor);
 		int[] regionOffsets = Arrays.copyOfRange(flat, 0, cells + 1);
 		int[] regionIds = Arrays.copyOfRange(flat, cells + 1, flat.length);
-		return new Navmesh(storedMapId, width, height, cellSize, zOrigin, zStep, tilesX, coarseFactor, regionOffsets, regionIds, offsets, lengths, channel,
+		Navmesh mesh = new Navmesh(storedMapId, width, height, cellSize, zOrigin, zStep, tilesX, coarseFactor, regionOffsets, regionIds, offsets, lengths, channel,
 			header.capacity() + coarseBytes + directory.capacity());
+		for (GlideLink link : GlideLinks.read(mapId))
+			mesh.glides.computeIfAbsent(link.fromRegion(), region -> new ArrayList<>()).add(link);
+		return mesh;
+	}
+
+	/** @return The ways down from a stretch of ground to lower ones, as {@link GlideLinks} found them; empty for a map that has none. */
+	List<GlideLink> glidesFrom(int region) {
+		return glides.getOrDefault(region, List.of());
+	}
+
+	/** @return true if the map has any glide link at all, so the planner knows whether there is anything else to try. */
+	boolean hasGlides() {
+		return !glides.isEmpty();
 	}
 
 	/**

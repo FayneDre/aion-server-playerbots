@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -37,6 +38,16 @@ final class InstanceReach {
 	/** A portal's destination, in the list of what each portal npc leads to. */
 	private static final Pattern PORTAL_PATH = Pattern.compile("<portal_path\\s+loc_id=\"(\\d+)\"");
 	private static final Pattern SPOT = Pattern.compile("<spot\\s+x=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
+
+	/**
+	 * Where the instance's own handler puts each side's party, for the maps whose arrival is not in the portal list: the three Dredgions start one faction at each end of the ship
+	 * ({@code DredgionInstance.portToStartPosition}, which all three share), and a portal location there leads nowhere a body can stand.
+	 */
+	private static final Map<Integer, List<float[]>> HANDLER_ARRIVALS = Map.of(300110000, dredgionStarts(), 300210000, dredgionStarts(), 300440000, dredgionStarts());
+
+	private static List<float[]> dredgionStarts() {
+		return List.of(new float[] { 570.468f, 166.897f, 432.29f }, new float[] { 400.741f, 166.713f, 432.29f });
+	}
 
 	private InstanceReach() {
 	}
@@ -98,7 +109,7 @@ final class InstanceReach {
 	}
 
 	/** @return The spot moved onto the nearest walkable ground within {@link #SNAP} metres of it in height, or null when there is none. */
-	private static float[] snapped(Navmesh mesh, float[] spot) {
+	static float[] snapped(Navmesh mesh, float[] spot) {
 		int centreX = mesh.cellX(spot[0]), centreY = mesh.cellY(spot[1]);
 		int rings = Math.round(SNAP / mesh.cellSize());
 		float best = Float.NaN;
@@ -122,6 +133,8 @@ final class InstanceReach {
 	 *         only those that a portal npc leads to are arrivals; a map none of whose locations is led to by anyone gets all of them rather than none.
 	 */
 	static List<float[]> entries(int mapId) throws IOException {
+		if (HANDLER_ARRIVALS.containsKey(mapId))
+			return HANDLER_ARRIVALS.get(mapId);
 		return entries(STATIC_DATA.resolve("portals/portal_loc.xml"), STATIC_DATA.resolve("portals/portal_template2.xml"), mapId);
 	}
 

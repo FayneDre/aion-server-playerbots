@@ -25,7 +25,7 @@ public class Heightfield {
 	/** Distance the terrain slope is measured over, about a stride. */
 	public static final float SLOPE_WINDOW = 2f;
 	/** Steepest ground a bot may walk on, matching the 45° the engine's own movement probe allows. */
-	public static final float MAX_SLOPE_COSINE = (float) Math.cos(Math.toRadians(45));
+	public static final float MAX_SLOPE_COSINE = (float) Math.cos(Math.toRadians(MapSlopes.WALKABLE_DEGREES));
 	/**
 	 * How many cells of walkable ground to shave off along every edge, so routes keep a body's width from what a body cannot pass.
 	 * <p>
@@ -199,6 +199,13 @@ public class Heightfield {
 	 * @return One region id per surface, indexed as {@code surfaces} is, 0 for anything not walkable. Ids start at 1 and count up.
 	 */
 	int[] regions(float climbTolerance) {
+		return regions(climbTolerance, 1f);
+	}
+
+	/**
+	 * @param slopeTangent How steep a body walks up, as the rise over the run: 1 for the engine's 45 degrees.
+	 */
+	int[] regions(float climbTolerance, float slopeTangent) {
 		int[] region = new int[surfaces.length];
 		int[] stack = new int[surfaces.length];
 		int next = 0;
@@ -218,7 +225,7 @@ public class Heightfield {
 					if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height)
 						continue;
 					boolean diagonal = NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0;
-					float reach = CELL_SIZE * (diagonal ? 1.41421f : 1) + climbTolerance;
+					float reach = CELL_SIZE * (diagonal ? 1.41421f : 1) * slopeTangent + climbTolerance;
 					// every walkable height of the neighbouring column, not just its highest: which one a body steps onto depends on where it is
 					// standing, and that is exactly what a single label per column cannot say
 					for (int neighbour = columnStart(nextX, nextY); neighbour < columnEnd(nextX, nextY); neighbour++) {

@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
@@ -38,7 +39,8 @@ public class NavmeshWriter {
 				compressedTiles[tileY * tilesX + tileX] = compress(tile(field, tileX, tileY, zOrigin, zStep));
 
 		// the regions of each coarse cell rather than a bit: the rough grid has to know what the fine grid keeps apart, or it routes across it
-		Heightfield.CoarseRegions coarseRegions = field.coarseRegions(field.regions(BotPathFinder.STEP_TOLERANCE));
+		int[] regions = field.regions(BotPathFinder.STEP_TOLERANCE, MapSlopes.tangent(mapId));
+		Heightfield.CoarseRegions coarseRegions = field.coarseRegions(regions);
 		byte[] coarse = new byte[(coarseRegions.offsets().length + coarseRegions.ids().length) * 4];
 		// offsets then ids, and how many offsets there are follows from the map's size, so the block carries no length of its own
 		ByteBuffer.wrap(coarse).asIntBuffer().put(coarseRegions.offsets()).put(coarseRegions.ids());
@@ -57,6 +59,9 @@ public class NavmeshWriter {
 			for (byte[] compressed : compressedTiles)
 				out.write(compressed);
 		}
+		// a dungeon that allows gliding is walked down as much as along, and the links are what the party's way down is made of; every other map has none, and says so
+		// by having no file, which also clears the links of an earlier build of the same map
+		GlideLinks.write(mapId, MapSize.allowsGlide(mapId) && MapSize.isInstance(mapId) ? GlideLinks.find(field, regions) : List.of());
 		return file;
 	}
 

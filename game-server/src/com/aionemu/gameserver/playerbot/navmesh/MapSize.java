@@ -30,6 +30,18 @@ final class MapSize {
 		return isInstance(WORLD_MAPS, mapId);
 	}
 
+	/** @return true if the world map list gives the map the {@code GLIDE} flag, which is what lets a body jump off an edge and come down far from it. */
+	static boolean allowsGlide(int mapId) throws IOException {
+		Pattern map = Pattern.compile("<map\s+id=\"" + mapId + "\"[^>]*\sflags=\"[^\"]*\\bGLIDE\\b");
+		if (!Files.isRegularFile(WORLD_MAPS))
+			return false; // a tool run away from the server has no list, and a map it builds then has no glide links
+		for (String line : Files.readAllLines(WORLD_MAPS)) {
+			if (map.matcher(line).find())
+				return true;
+		}
+		return false;
+	}
+
 	static boolean isInstance(Path list, int mapId) throws IOException {
 		Pattern map = Pattern.compile("<map\s+id=\"" + mapId + "\"[^>]*\sinstance=\"true\"");
 		for (String line : Files.readAllLines(list)) {

@@ -70,6 +70,10 @@ public class NavmeshTool {
 		if (args.length == 2 && args[1].equals("gaps")) {
 			System.exit(GapReport.run(Integer.parseInt(args[0])));
 		}
+		if (args.length == 4 && args[1].equals("flood")) {
+			Flood.run(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Integer.parseInt(args[3]));
+			return;
+		}
 		if (args.length == 2 && args[1].equals("reach")) {
 			System.exit(InstanceReach.run(Integer.parseInt(args[0])));
 		}

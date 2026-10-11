@@ -38,9 +38,13 @@ public class HeightfieldBuilder {
 	private final int width, height;
 
 	private final int agentRadius;
+	/** The cosine of the steepest face a body is taken to walk on, which is the map's own: see {@link MapSlopes}. */
+	private final float slopeCosine;
 
-	private HeightfieldBuilder(TerrainData terrain, List<PlacedMesh> solids, List<PlacedMesh> noWalkVolumes, int width, int height, int agentRadius) {
+	private HeightfieldBuilder(TerrainData terrain, List<PlacedMesh> solids, List<PlacedMesh> noWalkVolumes, int width, int height, int agentRadius,
+		float slopeCosine) {
 		this.agentRadius = agentRadius;
+		this.slopeCosine = slopeCosine;
 		this.terrain = terrain;
 		this.solids = solids;
 		this.noWalkVolumes = noWalkVolumes;
@@ -95,7 +99,7 @@ public class HeightfieldBuilder {
 		int width = (int) (worldSize.get(0) / Heightfield.CELL_SIZE);
 		int height = (int) (worldSize.get(1) / Heightfield.CELL_SIZE);
 		return new HeightfieldBuilder(terrain, solids, noWalkVolumes, width, height,
-			instance ? Heightfield.INSTANCE_AGENT_RADIUS_CELLS : Heightfield.AGENT_RADIUS_CELLS).rasterize();
+			instance ? Heightfield.INSTANCE_AGENT_RADIUS_CELLS : Heightfield.AGENT_RADIUS_CELLS, MapSlopes.cosine(mapId)).rasterize();
 	}
 
 	private static PlacedMesh place(GeoModel model, GeoPlacement placement) {
@@ -172,12 +176,12 @@ public class HeightfieldBuilder {
 	}
 
 	/** @return true if a body could not climb this face, using the engine's own 45° limit. */
-	private static boolean isSteep(float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz) {
+	private boolean isSteep(float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz) {
 		float ux = bx - ax, uy = by - ay, uz = bz - az;
 		float vx = cx - ax, vy = cy - ay, vz = cz - az;
 		float nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
 		float length = (float) Math.sqrt(nx * nx + ny * ny + nz * nz);
-		return length > 0 && Math.abs(nz) / length < Heightfield.MAX_SLOPE_COSINE;
+		return length > 0 && Math.abs(nz) / length < slopeCosine;
 	}
 
 	/**
@@ -259,7 +263,7 @@ public class HeightfieldBuilder {
 				float slopeX = (terrain.heightAt(x + half, y) - terrain.heightAt(x - half, y)) / Heightfield.SLOPE_WINDOW;
 				float slopeY = (terrain.heightAt(x, y + half) - terrain.heightAt(x, y - half)) / Heightfield.SLOPE_WINDOW;
 				float normalZ = 1 / (float) Math.sqrt(slopeX * slopeX + slopeY * slopeY + 1);
-				sink.accept(cellY * width + cellX, z, normalZ >= Heightfield.MAX_SLOPE_COSINE);
+				sink.accept(cellY * width + cellX, z, normalZ >= slopeCosine);
 			}
 		}
 		for (PlacedMesh mesh : solids)
@@ -304,12 +308,12 @@ public class HeightfieldBuilder {
 	}
 
 	/** @return true if the triangle's face is flat enough to stand on. */
-	private static boolean isGentleEnough(float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz) {
+	private boolean isGentleEnough(float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz) {
 		float ux = bx - ax, uy = by - ay, uz = bz - az;
 		float vx = cx - ax, vy = cy - ay, vz = cz - az;
 		float nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
 		float length = (float) Math.sqrt(nx * nx + ny * ny + nz * nz);
-		return length > 0 && Math.abs(nz) / length >= Heightfield.MAX_SLOPE_COSINE;
+		return length > 0 && Math.abs(nz) / length >= slopeCosine;
 	}
 
 	private static int cell(float world) {
