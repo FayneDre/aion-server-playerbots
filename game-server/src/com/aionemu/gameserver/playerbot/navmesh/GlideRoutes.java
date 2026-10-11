@@ -53,27 +53,31 @@ final class GlideRoutes {
 		goals.sort(Comparator.comparingDouble(region -> nearestEdge(mesh, region, goalX, goalY, goalZ)));
 
 		// a 4 m cell can hold the ground the body stands on and ground above or below it, so which of them is the body's own is not known: each is tried as the start in turn
-		BotPathFinder.Route failure = new BotPathFinder.Route(List.of(), false);
+		// a proof that no glide gets there only when every chain was followed to its end and every walk in it proved its own way shut: a chain left untried, or a walk that
+		// ran out of room, proves nothing. Answering "gave up" for any failed chain turned the routes up to Verteron's plateau, proved shut before the links, into undecided ones
+		boolean undecided = false;
 		long deadline = System.currentTimeMillis() + BUDGET_MILLIS;
 		if (DEBUG)
 			System.out.printf("glide: starts %s goals %s%n", starts, goals);
 		for (int start : starts) {
-			for (List<Integer> chain : chainsFrom(mesh, start, goals)) {
+			List<List<Integer>> chains = chainsFrom(mesh, start, goals);
+			undecided |= chains.size() > CHAINS_TRIED;
+			for (List<Integer> chain : chains.subList(0, Math.min(CHAINS_TRIED, chains.size()))) {
 				if (System.currentTimeMillis() > deadline)
 					return new BotPathFinder.Route(List.of(), true);
 				BotPathFinder.Route route = follow(mesh, chain, startX, startY, startZ, goalX, goalY, goalZ, avoid, air, deadline);
 				if (!route.isEmpty())
 					return route;
-				failure = route;
+				undecided |= route.gaveUp();
 			}
 		}
-		if (DEBUG && failure.isEmpty())
-			System.out.printf("glide: no chain from any of %s to %s%n", starts, goals);
-		return failure;
+		if (DEBUG && !undecided)
+			System.out.printf("glide: no chain from any of %s to %s gets there%n", starts, goals);
+		return new BotPathFinder.Route(List.of(), undecided);
 	}
 
 	/**
-	 * @return The chains of stretches that lead from {@code start} to the goals, in the order the goals are given and at most {@link #CHAINS_TRIED}, both ends included; each the
+	 * @return The chains of stretches that lead from {@code start} to the goals, in the order the goals are given, both ends included; each the
 	 *         fewest glides to its goal. Each goal is a stretch that touches the goal's 4 m cell, which says only that the goal may be on it, so several are offered and the walk to the
 	 *         goal itself decides. Taken fewest glides first, the floor below the goal came before the goal's own and the budget ran out on it.
 	 */
@@ -96,8 +100,6 @@ final class GlideRoutes {
 			for (int step = goal; step != 0; step = cameFrom.get(step))
 				chain.add(0, step);
 			chains.add(chain);
-			if (chains.size() == CHAINS_TRIED)
-				break;
 		}
 		return chains;
 	}
@@ -118,7 +120,7 @@ final class GlideRoutes {
 			}
 			// the edge nearest to where the body stands, and landing nearest to where it is going: a long walk to a convenient edge costs more than a long glide
 			choices.sort(Comparator.comparingDouble(link -> Math.hypot(link.fromX() - nearX, link.fromY() - nearY) + Math.hypot(link.toX() - goalX, link.toY() - goalY)));
-			boolean done = false;
+			boolean done = false, undecided = choices.size() > LINKS_TRIED;
 			for (GlideLink link : choices.subList(0, Math.min(LINKS_TRIED, choices.size()))) {
 				if (System.currentTimeMillis() > deadline)
 					return new BotPathFinder.Route(List.of(), true);
@@ -126,6 +128,7 @@ final class GlideRoutes {
 					continue;
 				BotPathFinder.Route walk = BotPathFinder.findWalkingPath(mesh, x, y, z, link.fromX(), link.fromY(), link.fromZ(), avoid);
 				if (walk.isEmpty()) {
+					undecided |= walk.gaveUp();
 					if (DEBUG)
 						System.out.printf("glide:   link %.1f %.1f %.1f -> %.1f %.1f %.1f: walk from %.1f %.1f %.1f is empty (gave up %b)%n", link.fromX(), link.fromY(), link.fromZ(),
 							link.toX(), link.toY(), link.toZ(), x, y, z, walk.gaveUp());
@@ -143,14 +146,14 @@ final class GlideRoutes {
 			if (!done) {
 				if (DEBUG)
 					System.out.printf("glide: chain %s stops at hop %d: %d links from %d to %d%n", chain, hop, choices.size(), from, to);
-				return new BotPathFinder.Route(List.of(), true);
+				return new BotPathFinder.Route(List.of(), undecided);
 			}
 		}
 		BotPathFinder.Route last = BotPathFinder.findWalkingPath(mesh, x, y, z, goalX, goalY, goalZ, avoid);
 		if (last.isEmpty()) {
 			if (DEBUG)
 				System.out.printf("glide: chain %s ends at %.0f %.0f %.0f and cannot walk to the goal (gave up %b)%n", chain, x, y, z, last.gaveUp());
-			return new BotPathFinder.Route(List.of(), true);
+			return new BotPathFinder.Route(List.of(), last.gaveUp());
 		}
 		append(waypoints, last.waypoints());
 		return new BotPathFinder.Route(waypoints, false, glides);

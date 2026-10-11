@@ -48,6 +48,7 @@ $kinds = [ordered]@{
     'day plans given up'      = 'BotDay - Bot \S+ cannot get to '
     'routes planned'          = 'BotMoveController - Bot \S+ has a route of '
     'routes refused'          = 'BotMoveController - Bot \S+ has no route to '
+    'routes with a glide'     = 'BotMoveController - Bot \S+ plans \d+ glide'
     'arrivals'                = 'PlayerBotAI - Bot \S+ arrived at destination'
     'steps aside'             = 'BotMoveController - Bot \S+ steps aside '
     'no headway'              = 'BotMoveController - Bot \S+ makes no headway '

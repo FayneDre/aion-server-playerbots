@@ -474,6 +474,12 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		pendingRoute = planned;
 		log.info("Bot {} has a route of {} waypoints to {}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY));
+		if (!answer.glides().isEmpty()) {
+			// walked as any other leg for now, off the edge and down: logged so that the first glide in game can be gone and watched
+			Vector3f landing = planned.get(answer.glides().iterator().next());
+			log.info("Bot {} plans {} glide(s), the first landing at {}", owner.getName(), answer.glides().size(),
+				String.format("%.1f %.1f %.1f", landing.getX(), landing.getY(), landing.getZ()));
+		}
 		// A bot that waited for this plan is standing still, so nothing will come back to pick it up: no leg is running, so continueToGoal is never
 		// called, and the ai only asks again while the bot is on its way somewhere. Restarting the journey on a task thread keeps this one off the
 		// movement state, which belongs to whoever calls moveToPoint.
