@@ -220,4 +220,38 @@ class BotPathFinderTest {
 		for (int i = 1; i < guide.size() - 1; i++)
 			assertTrue(Math.abs(guide.get(i).getZ() - guide.get(i - 1).getZ()) <= 9, "no guide point jumps a level it cannot climb");
 	}
+
+	/**
+	 * Two terraces a metre apart, the step between them at cell 60, inside a coarse cell and not on its border, and a ramp joining them only in rows 110 to 119. A metre is too high
+	 * to step up and close enough that a band of heights took both terraces for one floor.
+	 */
+	private Navmesh terracesMesh() throws IOException {
+		int[] offsets = new int[SIZE * SIZE + 1];
+		float[] heights = new float[SIZE * SIZE];
+		BitSet walkable = new BitSet();
+		for (int y = 0; y < SIZE; y++) {
+			for (int x = 0; x < SIZE; x++) {
+				int i = y * SIZE + x;
+				offsets[i] = i;
+				boolean ramp = y >= 110 && y < 120 && x >= 56 && x < 64;
+				heights[i] = ramp ? HEIGHT + (x - 55) * 0.125f : x < 60 ? HEIGHT : HEIGHT + 1;
+				walkable.set(i);
+			}
+		}
+		offsets[SIZE * SIZE] = SIZE * SIZE;
+		NavmeshWriter.write(TEST_MAP_ID, new Heightfield(SIZE, SIZE, offsets, heights, walkable));
+		mesh = Navmesh.open(TEST_MAP_ID);
+		return mesh;
+	}
+
+	@Test
+	void theRoughRouteGoesRoundAStepTooHighToClimbEvenWhenBothSidesAreCloseInHeight() throws IOException {
+		Navmesh terraces = terracesMesh();
+
+		List<Vector3f> guide = BotPathFinder.coarseRoute(terraces, 20, 10, HEIGHT, 44, 10, HEIGHT + 1);
+
+		assertFalse(guide.isEmpty());
+		// the straight line is along y = 10 and the ramp is at 55 to 60; guide points are 40 m apart, so the one on the way there is well north of the line
+		assertTrue(guide.stream().anyMatch(point -> point.getY() >= 40), "the way up is the ramp at the north end, so the rough route goes there: " + guide);
+	}
 }

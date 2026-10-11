@@ -73,6 +73,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
 - [docs/navigation-stuck-plan.md](docs/navigation-stuck-plan.md) — why bots end up stuck and teleported home: the obelisk pockets found in the logs, and the milestones.
 - [docs/navmesh-plan.md](docs/navmesh-plan.md) — design for real path planning, to replace reactive steering.
+- [docs/long-walk-planner.md](docs/long-walk-planner.md) — how a long route is planned: the rough route over stretches of ground per 4 m cell, the stretches it is refined in, and what each fault cost.
 - [docs/instance-navmesh-list.md](docs/instance-navmesh-list.md) — the 110 instance maps (dungeons, arenas, warfronts, housing, tests) a navmesh is wanted for, by category, with which ones share their geometry.
 - [docs/dungeon-navmesh-plan.md](docs/dungeon-navmesh-plan.md) — plan for building navmeshes for the PvE dungeons: what an interior asks that the open world did not (floors, doors, no obelisk), and the milestones.
 - [docs/moving-a-body.md](docs/moving-a-body.md) — driving a body from the server: what a movement packet carries, how often, and the task manager that stops ticking a body that says it arrived.
