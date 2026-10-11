@@ -43,6 +43,19 @@ public interface ClassPlaybook {
 	}
 
 	/**
+	 * Gives the class its chance to heal the group, ahead of the generic heal, in a fight and between fights alike.
+	 * <p>
+	 * A separate hook from {@link #act} and {@link #tend} because a healer's work is neither: it happens on the decision tick whatever the fight is doing, and
+	 * the generic heal it replaces casts the strongest heal at one threshold for everybody, which is not how any class rations its mana. A class that claims
+	 * its heals through {@link #claims} must answer for them here, or nobody does.
+	 *
+	 * @return true if the bot cast something, in which case it is busy for this tick. Same contract as {@link #act}.
+	 */
+	default boolean heal(Player bot) {
+		return false;
+	}
+
+	/**
 	 * Called the moment the bot has left the ground, so that a class with something to do about flight, such as raising its flight speed for the group,
 	 * does it as the wings open. Nothing to say by default.
 	 */

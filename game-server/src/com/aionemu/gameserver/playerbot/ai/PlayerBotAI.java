@@ -183,6 +183,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * it began, since the health it began at is not the health it is at a cast later; kept here for the same reason as {@link #lastControlledAt}.
 	 */
 	private volatile boolean mendingToFull;
+	/** What the members of the group have lost over the last half minute, for the class that rations its heals by it. Touched by the decision tick only. */
+	private final HealthRecord healthRecord = new HealthRecord();
 	/**
 	 * Since when a grouped ranger has held its fire because its target turned on it, or 0, and until when it will not start again. A playbook is shared by
 	 * every bot of its class, so what one bot has been doing is kept here, as for {@link #lastControlledAt}.
@@ -426,6 +428,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * @return true if a skill was cast, in which case the bot is busy with it.
 	 */
 	private boolean tendToTheGroup() {
+		// the class that rations its heals does it itself, and the generic heal below is then not asked
+		if (BotPlaybooks.of(getOwner()).heal(getOwner()))
+			return true;
 		// A healer reads the danger as well as the damage; everyone else who happens to carry a heal reads the bar, as before. Giving every class
 		// the anticipating rule would have a chanter break off mid swing because somebody took a scratch.
 		boolean anticipate = BotRole.of(getOwner()) == BotRole.HEALER;
@@ -638,6 +643,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** @return When the bot was last seen crowd controlled, in milliseconds, or 0 if it has not been. */
 	public long lastControlledAt() {
 		return lastControlledAt;
+	}
+
+	/** @return The record of how much health each member of the group has lost lately, which a healer fills as it reads the group and asks about. */
+	public HealthRecord healthRecord() {
+		return healthRecord;
 	}
 
 	/** @return true if the bot is in the middle of healing itself back to full. See {@link #mendingToFull}. */
@@ -991,7 +1001,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
 		// The class gets first refusal, and what it declines falls through to the order below. See docs/templar-plan.md for the templar's.
-		if (BotPlaybooks.of(bot).act(bot, target))
+		if (BotPlaybooks.of(bot).act(bot, target) || BotPlaybooks.of(bot).heal(bot))
 			return true;
 		boolean healer = BotRole.of(bot) == BotRole.HEALER;
 		// A healer heals before anything else, and that is the whole of its priority: every other thing it does, the damage it is allowed included, is what

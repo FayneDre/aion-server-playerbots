@@ -9,7 +9,7 @@ What a bot's role changes about how it fights, and only ever inside a group. Spl
 | Role | Classes | What changes |
 |---|---|---|
 | `TANK` | templar | Roars whenever it can, saves its single target taunts for a monster hitting a mate, and stays on its feet while the group is engaged rather than sitting to heal. Its own rules: [templar-plan.md](templar-plan.md) |
-| `HEALER` | cleric | Weighs the danger a member is in as well as its health, and does not join the attack at all |
+| `HEALER` | cleric | Weighs the danger a member is in as well as its health, and joins the attack only with mana to spare. Its heals, cleanses and buffs are the playbook's: [cleric-plan.md](cleric-plan.md) |
 | `SUPPORT` | chanter, songweaver | Tends to the group first, then fights |
 | `DAMAGE` | everything else | Assists the tank's target before the leader's |
 
@@ -26,14 +26,14 @@ always acts one beat late.
 
 A cleric in a group used to heal and nothing else, for a whole instance, whatever its bar said — watched that way through the Fire Temple, damage
 "néant". The rule it obeyed is right at low mana and was stated too strongly: a healer's mana belongs to the people it keeps alive, and only the
-surplus belongs to the monster. Above 60% it joins the attack; below, it goes back to its own job.
+surplus belongs to the monster. Above 50% (60% at first, until the guide said 50) it joins the attack; below, it goes back to its own job.
 
 **Healing always comes first.** The order, on both ticks, is the bot itself if it is low, then the member in most danger, and only then anything else:
 on the decision tick `tendToTheGroup` runs before `tendTheFight` is even asked, and in the fight loop the first thing `useBestSkill` does for a healer is heal,
 ahead of its opening burst, its buffs and every damage skill. The damage is what it does when nobody needs mending, and nothing more.
 
 It is wired in `PlayerBotAI.tendTheFight` on the decision tick: with nobody to heal and the bot in its place, it attacks what the group attacks while it has
-the surplus, and `fight` stops it again when the mana is under 60 %, unless the monster is hitting the healer itself. Written down for a long time before it was
+the surplus, and `fight` stops it again when the mana is under 50 %, unless the monster is hitting the healer itself. Written down for a long time before it was
 actually connected: `hasManaToSpare` existed and nothing called it.
 
 One bug went with it: the rule that ends a fight with a monster nearly dead (20 % health) by skipping every heal skipped the heal of the **tank** too, so a

@@ -301,8 +301,8 @@ public class BotGroupManager {
 	 * Finds the group mate that this bot is the one to resurrect.
 	 * <p>
 	 * A dead mate in reach is not enough: a cleric or another chanter in the group may do it, and two resurrections on one body are one wasted. So a human
-	 * cleric or chanter near the body is left to do it themselves, and among the bots the lowest object id does. Another bot cleric does not count,
-	 * since it has no playbook to resurrect with yet; deferring to it would leave the body lying there.
+	 * cleric or chanter near the body is left to do it themselves. Among the bots a chanter has the right of way over a cleric, which is the guide's ("do not use it
+	 * if a chanter is in the group"), and between two of one class the lowest object id does.
 	 *
 	 * @param range How far the skill reaches.
 	 * @return The mate, or null if there is none, or somebody else is to raise them, or one is already being raised.
@@ -326,10 +326,58 @@ public class BotGroupManager {
 			boolean canResurrect = member.getPlayerClass() == PlayerClass.CHANTER || member.getPlayerClass() == PlayerClass.CLERIC;
 			if (canResurrect && !member.isBot())
 				return null;
-			if (member.getPlayerClass() == PlayerClass.CHANTER && member.isBot() && member.getObjectId() < bot.getObjectId())
+			if (!canResurrect)
+				continue;
+			// among bots the chanter has the right of way over the cleric, which is the guide's ("do not use it if a chanter is in the group"); between two of one
+			// class the lowest object id does
+			if (member.getPlayerClass() == PlayerClass.CHANTER && bot.getPlayerClass() == PlayerClass.CLERIC)
+				return null;
+			if (member.getPlayerClass() == bot.getPlayerClass() && member.getObjectId() < bot.getObjectId())
 				return null;
 		}
 		return dead;
+	}
+
+	/**
+	 * @return How many members of the group lie dead within the range of this bot, in the same world. For the area resurrection, which the guide keeps for a group
+	 *         that has lost most of its members.
+	 */
+	public static int deadMembersWithin(Player bot, float range) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return 0;
+		int dead = 0;
+		for (Player member : team.getMembers()) {
+			if (member.isDead() && member.getWorldId() == bot.getWorldId() && PositionUtil.getDistance(bot, member) <= range)
+				dead++;
+		}
+		return dead;
+	}
+
+	/** @return A dead member within the range, for aiming the area resurrection at, or null. */
+	public static Player deadMemberWithin(Player bot, float range) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return null;
+		for (Player member : team.getMembers()) {
+			if (member.isDead() && !member.getResStatus() && member.getWorldId() == bot.getWorldId() && PositionUtil.getDistance(bot, member) <= range)
+				return member;
+		}
+		return null;
+	}
+
+	/**
+	 * @return An enemy within the radius that is hitting this bot, which is to say that has it as the one it hates most, or null. For the skill that makes a monster
+	 *         forget the bot, cast by a bot that is not meant to be the one in front.
+	 */
+	public static Creature enemyHitting(Player bot, float radius) {
+		Creature[] found = { null };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (found[0] == null && !npc.isDead() && npc.isSpawned() && bot.isEnemy(npc) && PositionUtil.getDistance(bot, npc) <= radius
+				&& bot.equals(npc.getAggroList().getTarget(AggroTarget.MOST_HATED)))
+				found[0] = npc;
+		});
+		return found[0];
 	}
 
 	/** @return A group mate to look after, or null. Used to spread buffs around without a list of who has what. */

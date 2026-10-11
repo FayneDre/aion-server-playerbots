@@ -67,7 +67,7 @@ public class BotSkillManager {
 	/** Mana a bot that can heal keeps out of reach of its attacks, so a fight it is losing does not find it unable to pay for a heal. */
 	public static final int MANA_RESERVE_PERCENT = 25;
 	/** Above this, a healer's mana is more than its own job needs and the surplus may go on damage. */
-	public static final int HEALER_SPARE_MANA_PERCENT = 60;
+	public static final int HEALER_SPARE_MANA_PERCENT = 50;
 	/**
 	 * Longest cooldown a bot will spend at the start of an ordinary fight. Above it the ability is rare enough that a player keeps it for something
 	 * that warrants it, and a bot has no way to tell that a given mob does — so it keeps it for the moment it is in trouble instead.
@@ -780,6 +780,36 @@ public class BotSkillManager {
 	/** @return true if an effect of that stack group is on the bot, which for a buff is the same name as its skill group. */
 	public static boolean isUp(Player bot, String group) {
 		return bot.getEffectController().getAbnormalEffect(group) != null;
+	}
+
+	/**
+	 * @return true if the target already carries what the bot's skill of that group would put on it, by the same test the generic buffs use: the stack group, and an
+	 *         effect of the same kind that another skill already put there. False when the bot does not know the skill. For the buffs a playbook puts on a mate
+	 *         itself, which would otherwise be cast again every second or laid over the better one of another class.
+	 */
+	public static boolean isCovered(Player bot, Creature target, String group) {
+		SkillTemplate template = knownTemplate(bot, group);
+		return template != null && isAlreadyUp(target, template);
+	}
+
+	/**
+	 * @return true if an effect of the stack group of the bot's skill of that group is on the target. Unlike {@link #alreadyAfflicts} it does not ask that the skill
+	 *         be a plain debuff: a damage over time is an attack that leaves its mark, and casting it again over itself is a cast spent on nothing.
+	 */
+	public static boolean isOnTarget(Player bot, Creature target, String group) {
+		SkillTemplate template = knownTemplate(bot, group);
+		return template != null && template.getStack() != null && target.getEffectController().getAbnormalEffect(template.getStack()) != null;
+	}
+
+	/** @return The bot's highest ranked skill of the group, ready or not, or null. */
+	private static SkillTemplate knownTemplate(Player bot, String group) {
+		SkillTemplate best = null;
+		for (PlayerSkillEntry entry : bot.getSkillList().getAllSkills()) {
+			SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId());
+			if (template != null && group.equals(template.getGroup()) && (best == null || template.getSkillId() > best.getSkillId()))
+				best = template;
+		}
+		return best;
 	}
 
 	private static List<SkillTemplate> readyOfGroup(Player bot, String group) {

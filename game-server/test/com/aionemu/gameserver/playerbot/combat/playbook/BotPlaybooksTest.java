@@ -13,7 +13,7 @@ import com.aionemu.gameserver.model.PlayerClass;
  */
 class BotPlaybooksTest {
 
-	private static final Set<PlayerClass> WITH_A_PLAYBOOK = Set.of(PlayerClass.TEMPLAR, PlayerClass.CHANTER, PlayerClass.RANGER);
+	private static final Set<PlayerClass> WITH_A_PLAYBOOK = Set.of(PlayerClass.TEMPLAR, PlayerClass.CHANTER, PlayerClass.RANGER, PlayerClass.CLERIC);
 
 	@Test
 	void everyClassHasAPlaybook() {
