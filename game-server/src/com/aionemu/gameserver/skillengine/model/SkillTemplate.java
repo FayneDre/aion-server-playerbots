@@ -1,5 +1,8 @@
 package com.aionemu.gameserver.skillengine.model;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 import javax.xml.bind.annotation.*;
 
 import com.aionemu.gameserver.controllers.attack.AttackStatus;
@@ -102,7 +105,10 @@ public class SkillTemplate implements L10n {
 	@XmlAttribute(name = "conflict_id")
 	private int conflictId;
 	@XmlAttribute(name = "counter_skill")
-	private AttackStatus counterSkill = null;
+	private String counterSkill = null;
+	/** {@link #counterSkill} read once: a skill can name several statuses, such as {@code BLOCK,RESIST}. */
+	@XmlTransient
+	private volatile Set<AttackStatus> counterStatuses;
 	@XmlAttribute(name = "noremoveatdie")
 	private boolean noRemoveOnDie = false;
 	@XmlAttribute(name = "no_save_on_logout")
@@ -337,8 +343,27 @@ public class SkillTemplate implements L10n {
 		return isGroundSkill;
 	}
 
+	/**
+	 * @return The status the skill answers, or null when it answers none <b>or several</b>. Those with several, {@code BLOCK,RESIST} and the like, never parsed as one status and so
+	 *         were never restricted by the engine; {@link #getCounterSkills()} is the whole list.
+	 */
 	public AttackStatus getCounterSkill() {
-		return counterSkill;
+		Set<AttackStatus> statuses = getCounterSkills();
+		return statuses.size() == 1 ? statuses.iterator().next() : null;
+	}
+
+	/** @return The statuses after which the skill may be used: a dodge, a parry, a block or a resist. Empty for a skill that can be used at any time. */
+	public Set<AttackStatus> getCounterSkills() {
+		Set<AttackStatus> statuses = counterStatuses;
+		if (statuses == null) {
+			statuses = EnumSet.noneOf(AttackStatus.class);
+			if (counterSkill != null) {
+				for (String name : counterSkill.split(","))
+					statuses.add(AttackStatus.valueOf(name.trim()));
+			}
+			counterStatuses = statuses;
+		}
+		return statuses;
 	}
 
 	public int getAmmoSpeed() {

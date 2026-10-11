@@ -561,6 +561,9 @@ public class Effect implements StatOwner {
 				setSpellStatus(SpellStatus.NONE);
 				effectResult = EffectResult.RESIST;
 			}
+			// the resist is what the skills that answer one wait for; see AttackUtil.calculatePhysicalStatus for why it is noted here and not only in the packet
+			if (getEffected() instanceof Player player)
+				player.setLastCounterSkill(getAttackStatus());
 		}
 
 		// set spellstatus for sm_castspell_end packet

@@ -142,3 +142,18 @@ purpose: keeping the tank on a loose monster until it has its attention (3, need
 4. **Only the skull counts as a mark.** Another kind of mark present does not stop the tank placing the skull; an existing skull is never moved or
    replaced, a human leader's included. So the core getter is `getBrandedTarget(13)`.
 5. **"Least HP" is absolute**, not a percentage.
+
+## Courageous Shield and the skills that answer a block
+
+Reported by a tester: the templar used Courageous Shield (level 15, `KN_COUNTEROFFENSIVE`) whenever it was ready, when it can only be used in the few seconds
+after a block or a resist. The log agreed, with over twenty thousand casts in a day. Two faults sat under it, both in the engine and neither in the playbook:
+
+- **The skill names two statuses** (`counter_skill="BLOCK,RESIST"`), and `SkillTemplate` read the attribute into one. A value naming two never parsed, so the check in
+  `Skill.canUseSkill` that exists for exactly this was skipped for it, as for the other skill templates that name both (22 in all, every level counted: Avenging Blow, Shield Counter).
+  `SkillTemplate.getCounterSkills()` now returns the whole set; `getCounterSkill()` still returns the single status for the templates that name exactly one, and null otherwise.
+- **The engine notes a block only when the hit's packet is written for the player who was hit**, which never happens for a body with no client. `AttackUtil` and
+  `Effect` now note it where the result is decided. A bot could never have satisfied the check even where it ran.
+
+The bot-side rule is in `BotSkillManager`: a skill with a counter status is offered only within 4.5 s of one, for every class. The templates that answer a dodge (40) or a
+parry (25) could not have worked for a bot before, and now can. Unverified in game: that a templar casts it right after a block and not otherwise.
+

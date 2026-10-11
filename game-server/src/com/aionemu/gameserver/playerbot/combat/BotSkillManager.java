@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.aionemu.gameserver.controllers.attack.AttackStatus;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -89,6 +90,8 @@ public class BotSkillManager {
 	 * How far inside the top stage the bot lets go, so rounding and thread scheduling cannot drop the release back into the stage below.
 	 */
 	private static final long CHARGE_RELEASE_MARGIN_MILLIS = 200;
+	/** How long after a block, dodge, parry or resist the skills that answer one are offered; the engine allows five seconds. */
+	private static final long COUNTER_WINDOW_MILLIS = 4_500;
 	/** Auras a bot keeps running. The engine ends the oldest past this many (see {@code EffectController}), so going further would only cycle them. */
 	private static final int MAX_MANTRAS = 3;
 
@@ -781,7 +784,29 @@ public class BotSkillManager {
 
 	private static List<SkillTemplate> readyOfGroup(Player bot, String group) {
 		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId()))
-			.filter(template -> template != null && group.equals(template.getGroup()) && !bot.isSkillDisabled(template)).toList();
+			.filter(template -> template != null && group.equals(template.getGroup()) && !bot.isSkillDisabled(template) && !isWaitingForTheEventItAnswers(bot, template))
+			.toList();
+	}
+
+	/**
+	 * @return true for a skill that answers a block, a dodge, a parry or a resist, and none has happened to the bot lately.
+	 *         <p>
+	 *         Courageous Shield, Avenging Blow, Shield Counter and some forty others are usable only in the few seconds after one, and a client greys them out the rest of the time. The engine
+	 *         checks it for the skills that name a single status and not for those that name two, which never parsed, and a bot has no client to grey anything: a templar cast Courageous Shield
+	 *         every ten seconds, over twenty thousand times in a day's log, reported by a tester as abuse of the skill.
+	 *         <p>
+	 *         A little less than the engine's five seconds, since the cast takes a moment to go off.
+	 */
+	private static boolean isWaitingForTheEventItAnswers(Player bot, SkillTemplate template) {
+		Set<AttackStatus> statuses = template.getCounterSkills();
+		if (statuses.isEmpty())
+			return false;
+		long now = System.currentTimeMillis();
+		for (AttackStatus status : statuses) {
+			if (bot.getLastCounterSkill(status) + COUNTER_WINDOW_MILLIS >= now)
+				return false;
+		}
+		return true;
 	}
 
 	/** @return The bot's usable skills of one kind, in the order it should try them. */
@@ -797,6 +822,8 @@ public class BotSkillManager {
 			if (template.isToggle() && !isMantra(template) && !isRobotToggle(template))
 				return false;
 			if (bot.isSkillDisabled(template)) // cooldowns are keyed by cooldown id, not skill id, which this handles
+				return false;
+			if (isWaitingForTheEventItAnswers(bot, template))
 				return false;
 			return filter.matches(bot, template);
 		}).sorted(CHAIN_FIRST_THEN_STRONGEST).toList();

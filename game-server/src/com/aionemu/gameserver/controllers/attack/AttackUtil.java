@@ -485,6 +485,10 @@ public class AttackUtil {
 				default -> AttackStatus.CRITICAL;
 			};
 		}
+		// The skills that answer a block, a dodge or a parry listen for it on the one that was hit. The engine notes it when the hit's packet is written for that player,
+		// which never happens for a character with no client, so it is noted here as well: where the result is decided.
+		if (attacked instanceof Player player)
+			player.setLastCounterSkill(status);
 		return isMainHand ? status : AttackStatus.getOffHandStats(status);
 	}
 
