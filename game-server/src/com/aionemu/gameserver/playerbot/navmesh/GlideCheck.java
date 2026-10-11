@@ -39,24 +39,32 @@ final class GlideCheck {
 		System.out.printf(Locale.ROOT, "Map %d: ground built in %d s, %d stretches, the main one %d surfaces%n", mapId, (System.currentTimeMillis() - started) / 1000,
 			sizes.size(), sizes.getOrDefault(main, 0));
 
-		for (int minimum : new int[] { 40, 1 }) {
+		List<ObeliskAudit.Obelisk> apart = new ArrayList<>();
+		for (ObeliskAudit.Obelisk obelisk : ObeliskAudit.readObelisks(Path.of("data/static_data")).getOrDefault(mapId, List.of())) {
+			int surface = floorOf(field, obelisk);
+			if (surface != -1 && regions[surface] != main) // inside geometry is no ground question, and on the main ground there is nothing to glide to
+				apart.add(obelisk);
+		}
+		System.out.printf(Locale.ROOT, "  %d obelisk(s) on ground apart from the main one%n", apart.size());
+		for (GlideLinks.Rules rules : CANDIDATES) {
 			started = System.currentTimeMillis();
-			List<GlideLink> links = GlideLinks.find(field, regions, minimum);
+			List<GlideLink> links = GlideLinks.find(field, regions, rules);
 			Map<Integer, List<GlideLink>> from = new HashMap<>();
 			for (GlideLink link : links)
 				from.computeIfAbsent(link.fromRegion(), k -> new ArrayList<>()).add(link);
-			System.out.printf(Locale.ROOT, "  stretches of %d surfaces or more: %d links, a file of %.1f MB, found in %d s%n", minimum, links.size(), (4 + links.size() * 32L) / 1e6,
-				(System.currentTimeMillis() - started) / 1000);
-			for (ObeliskAudit.Obelisk obelisk : ObeliskAudit.readObelisks(Path.of("data/static_data")).getOrDefault(mapId, List.of())) {
-				int surface = floorOf(field, obelisk);
-				if (surface == -1 || regions[surface] == main)
-					continue; // inside geometry is no ground question, and on the main ground there is nothing to glide to
-				Set<Integer> reached = glidedTo(from, regions[surface]);
-				System.out.printf(Locale.ROOT, "    obelisk %.0f %.0f %.0f on stretch %d of %d surfaces: %s%n", obelisk.x(), obelisk.y(), obelisk.z(), regions[surface],
-					sizes.getOrDefault(regions[surface], 0), reached.contains(main) ? "glides down to the main ground" : "no chain of glides reaches the main ground (" + (reached.size() - 1) + " stretches reached)");
+			int freed = 0;
+			for (ObeliskAudit.Obelisk obelisk : apart) {
+				if (glidedTo(from, regions[floorOf(field, obelisk)]).contains(main))
+					freed++;
 			}
+			System.out.printf(Locale.ROOT, "  %-30s %8d links, %5.1f MB, %d of %d obelisk(s) freed, %d s%n", rules, links.size(), (4 + links.size() * 32L) / 1e6, freed, apart.size(),
+				(System.currentTimeMillis() - started) / 1000);
 		}
 	}
+
+	/** The rules measured against each other: the instances', then fewer links a pair, then landing on large ground only, then both. */
+	private static final List<GlideLinks.Rules> CANDIDATES = List.of(new GlideLinks.Rules(40, 40, 24), new GlideLinks.Rules(40, 40, 4), new GlideLinks.Rules(40, 400, 24),
+		new GlideLinks.Rules(40, 400, 4), new GlideLinks.Rules(400, 2000, 4));
 
 	/** @return The walkable surface under the obelisk or beside its plinth, nearest its recorded height within {@link #FLOOR_REACH}, or -1. */
 	private static int floorOf(Heightfield field, ObeliskAudit.Obelisk obelisk) {

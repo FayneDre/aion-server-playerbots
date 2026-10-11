@@ -1,6 +1,6 @@
 # Open world navigation: plan
 
-Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 measured (8 of the 12 failing obelisks freed by glide links, files of 1 to 8 MB except Cygnea and Enshar at 34 and 40), not written: a cap for those two first. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
+Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 measured and ready (8 of the 12 failing obelisks freed by glide links; the open world's own rule keeps every file under 5 MB), not written on any map yet. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
 obelisk audit went from 151 routes found to 173 with none lost. Each milestone below is verifiable on its own, in this order, and none needs the next.
 
 ## Where it stands
@@ -85,8 +85,14 @@ Reshanta's two need flight, Cygnea's has no route on its own ground, and Enshar'
 and more stretches of ground, a million links each, and the links are held in the server's memory as objects. A cap is needed before they are written for
 the open world, by fewer links per pair of stretches or links into large stretches only, measured the same way.
 
-The links can be written without building the `.nav` again: the stretches are numbered by the same computation from the same geometry, so a command that
-writes only the `.glide` would take half a minute a map instead of a rebuild.
+**The cap, measured the same evening** on the same nine maps (`glidecheck` now tries five rules side by side). Four links a pair instead of 24 saved a
+tenth: the weight is in the number of pairs of stretches, not in the links of each. Landing only on large ground is what counts. The rule kept,
+`GlideLinks.OPEN_WORLD`, glides from ground of 400 surfaces or more onto ground of 2000 or more, 4 links a pair: it frees all fifteen obelisks the instances'
+rule frees, and weighs 0.1 MB (Verteron) to 4.8 MB (Cygnea), Enshar 3.5 instead of 39.8.
+
+**Writing them**: `.\tools\navmesh.ps1 <maps> -Glides` (`GlideLinks.writeAlone`) builds the ground and writes the `.glide` alone, the `.nav` untouched, in
+the half minute it takes to build the ground: the stretches are numbered by the same computation from the same geometry. The generator still writes links
+for instances only. Nothing has been written for the open world yet: the first map is the user's call, then the obelisk audit and `nav-stats` measure it.
 
 ### 3. Portal links: using things to get somewhere (a week)
 

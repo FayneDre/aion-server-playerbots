@@ -81,6 +81,18 @@ class GlideLinksTest {
 	}
 
 	@Test
+	void theRulesSayWhatGroundIsLinkedAndHowManyLinksAPairKeeps() {
+		Heightfield field = field();
+		int[] regions = field.regions(BotPathFinder.STEP_TOLERANCE);
+
+		// the floor holds 38 columns of 64 cells, 2432 surfaces: asking for more to land on leaves nothing to land on
+		assertTrue(GlideLinks.find(field, regions, new GlideLinks.Rules(40, 5000, 4)).isEmpty());
+		assertEquals(1, GlideLinks.find(field, regions, new GlideLinks.Rules(40, 40, 1)).size(), "one link for the one pair of stretches");
+		// and the platform, 1280 surfaces, is too small to leave when 2000 are asked of it
+		assertTrue(GlideLinks.find(field, regions, new GlideLinks.Rules(2000, 40, 4)).isEmpty());
+	}
+
+	@Test
 	void noPlatformMeansNoLinks() {
 		int[] offsets = new int[SIZE * SIZE + 1];
 		float[] surfaces = new float[SIZE * SIZE];

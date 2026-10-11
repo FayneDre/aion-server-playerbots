@@ -84,6 +84,18 @@ public class NavmeshTool {
 			GlideCheck.run(Integer.parseInt(args[0]));
 			return;
 		}
+		if (args.length == 2 && args[1].equals("glides")) {
+			int mapId = Integer.parseInt(args[0]);
+			if (!Files.isRegularFile(Navmesh.fileOf(mapId))) {
+				System.out.println("Map " + mapId + " has no mesh: its glide links would name stretches of ground nothing knows");
+				System.exit(1);
+			}
+			long started = System.currentTimeMillis();
+			int count = GlideLinks.writeAlone(mapId);
+			System.out.printf("Wrote %d glide links to %s in %d s, with the rule %s%n", count, GlideLinks.fileOf(mapId).toAbsolutePath(), (System.currentTimeMillis() - started) / 1000,
+				GlideLinks.rulesFor(mapId));
+			return;
+		}
 		if (args.length == 2 && args[1].equals("audit")) {
 			audit(Integer.parseInt(args[0]));
 			return;
@@ -111,6 +123,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> gaps         where the instance's unreached spawn spots come closest to the arrival's ground, and what is placed there");
 			System.out.println("       NavmeshTool <mapId> fieldreach   from where a monster stands, how many of the monsters a hunting bot would pick next can be walked to");
 			System.out.println("       NavmeshTool <mapId> glidecheck   the glide links the map would have, their weight, and which stranded obelisks they free; writes nothing");
+			System.out.println("       NavmeshTool <mapId> glides       writes the map's glide links alone, the mesh untouched; the server reads them on its next start");
 			System.out.println("       NavmeshTool <mapId> blockers <x> <y> <z>   which placed models have a wall or something overhead at that spot");
 			return;
 		}

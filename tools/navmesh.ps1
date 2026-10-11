@@ -19,6 +19,10 @@
 .PARAMETER Field
     For open-world maps: pairs of monsters a hunting bot would pick one after the other, and how many can be walked between. .\tools\navmesh.ps1 210020000,220030000 -Field
 
+.PARAMETER Glides
+    Writes the glide links of the maps given, alone: the mesh is not built again, and the server reads them on its next start. For the open world, where the
+    generator does not write them. .\tools\navmesh.ps1 210030000 -Glides
+
 .PARAMETER Force
     With -Dungeons: builds again the meshes that already exist. Without it they are left alone, since a dungeon takes minutes to build and one that is already good is not
     made better by building it again. Needed after a change to the generator.
@@ -39,6 +43,7 @@ param(
     [switch]$Obelisks,
     [switch]$Reach,
     [switch]$Field,
+    [switch]$Glides,
     [switch]$Dungeons,
     [switch]$Force
 )
@@ -106,6 +111,15 @@ try {
         exit 0
     }
     if (-not $maps) { throw 'Give a map id, -Dungeons or -Obelisks.' }
+    if ($Glides) {
+        # writes each map's .glide alone, the .nav untouched: the server reads it on its next start, so this is run map by map, on purpose
+        foreach ($id in $maps) {
+            & java -Xmx3g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() glides
+            if ($LASTEXITCODE -ne 0) { throw "Writing the glide links of map $id failed (exit code $LASTEXITCODE)" }
+        }
+        Write-Host 'Done. Restart the game server to load them: .\tools\stop-server.ps1 then .\tools\start-server.ps1' -ForegroundColor Green
+        exit 0
+    }
     if ($Field) {
         # the open world: from where a monster stands, can a hunting bot walk to the monsters it would pick next? Exit code 1 when some pairs cannot be
         $worst = 0

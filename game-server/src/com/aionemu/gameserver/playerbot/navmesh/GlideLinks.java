@@ -103,8 +103,58 @@ public final class GlideLinks {
 		return EVERY_STRETCH.contains(mapId) ? 1 : MIN_REGION_SURFACES;
 	}
 
+	/**
+	 * The rule of the open world, stricter than the instances': glided from ground of 400 surfaces or more, onto ground of 2000 or more, 4 links a pair. Chosen by
+	 * {@code glidecheck} on the nine maps with obelisks apart from their main ground: it frees all fifteen the instances' rule frees, and Enshar's file weighs 3.5 MB
+	 * instead of 39.8, Cygnea's 4.8 instead of 34.4, the others between 0.1 and 1. Fewer links a pair alone saved a tenth: the weight is in the number of pairs.
+	 */
+	static final Rules OPEN_WORLD = new Rules(400, 2000, 4);
+
+	/** @return The rule a map's links are found with. */
+	static Rules rulesFor(int mapId) throws IOException {
+		if (!MapSize.isInstance(mapId))
+			return OPEN_WORLD;
+		int minimum = minRegionSurfaces(mapId);
+		return new Rules(minimum, minimum, MAX_PER_PAIR);
+	}
+
+	/**
+	 * Finds a map's links and writes its {@code .glide} file alone, the {@code .nav} untouched. The stretches are numbered by the same computation from the same
+	 * geometry as when the mesh was written, so the links name the mesh's own stretches; it takes the half minute of building the ground instead of a rebuild.
+	 * <p>
+	 * This is how the open world gets its links: the generator writes them for instances only, and a map whose file appears is read by the server on its next
+	 * start, so writing one is a decision taken map by map.
+	 *
+	 * @return How many links were written.
+	 */
+	static int writeAlone(int mapId) throws IOException {
+		Heightfield field = HeightfieldBuilder.build(mapId);
+		List<GlideLink> links = find(field, field.regions(BotPathFinder.STEP_TOLERANCE, MapSlopes.tangent(mapId)), rulesFor(mapId));
+		write(mapId, links);
+		return links.size();
+	}
+
 	/** As above, with the fewest surfaces a stretch of ground needs to be linked at all. */
 	static List<GlideLink> find(Heightfield field, int[] regions, int minRegionSurfaces) {
+		return find(field, regions, new Rules(minRegionSurfaces, minRegionSurfaces, MAX_PER_PAIR));
+	}
+
+	/**
+	 * What is linked: the fewest surfaces of the stretch glided from and of the stretch landed on, and how many links a pair of stretches keeps.
+	 * <p>
+	 * One rule did for the instances. The open world has maps of a hundred and forty thousand stretches, where it made a million links, held as objects in the
+	 * server's memory, so a map may need a stricter one; {@code NavmeshTool <map> glidecheck} measures the candidates.
+	 */
+	record Rules(int minFrom, int minLanding, int perPair) {
+
+		@Override
+		public String toString() {
+			return "from " + minFrom + ", onto " + minLanding + ", " + perPair + " a pair";
+		}
+	}
+
+	/** As above, with every rule given. */
+	static List<GlideLink> find(Heightfield field, int[] regions, Rules rules) {
 		int highest = 0;
 		for (int region : regions)
 			highest = Math.max(highest, region);
@@ -117,7 +167,7 @@ public final class GlideLinks {
 			for (int x = 0; x < field.width(); x++) {
 				for (int surface = field.columnStart(x, y); surface < field.columnEnd(x, y); surface++) {
 					int from = regions[surface];
-					if (!field.isWalkable(surface) || from == 0 || sizes[from] < minRegionSurfaces)
+					if (!field.isWalkable(surface) || from == 0 || sizes[from] < rules.minFrom())
 						continue;
 					float z = field.surfaceAt(surface);
 					for (int direction = 0; direction < STEP_X.length; direction++) {
@@ -132,8 +182,9 @@ public final class GlideLinks {
 							if (landing < 0)
 								continue;
 							int to = regions[landing];
-							if (to != from && to != 0 && sizes[to] >= minRegionSurfaces)
-								keep(byPair, new GlideLink((x + 0.5f) * step, (y + 0.5f) * step, z, (landX + 0.5f) * step, (landY + 0.5f) * step, field.surfaceAt(landing), from, to));
+							if (to != from && to != 0 && sizes[to] >= rules.minLanding())
+								keep(byPair, new GlideLink((x + 0.5f) * step, (y + 0.5f) * step, z, (landX + 0.5f) * step, (landY + 0.5f) * step, field.surfaceAt(landing), from, to),
+									rules.perPair());
 						}
 					}
 				}
@@ -176,9 +227,9 @@ public final class GlideLinks {
 		return best;
 	}
 
-	private static void keep(Map<Long, List<GlideLink>> byPair, GlideLink link) {
+	private static void keep(Map<Long, List<GlideLink>> byPair, GlideLink link, int perPair) {
 		List<GlideLink> kept = byPair.computeIfAbsent(((long) link.fromRegion() << 32) | link.toRegion(), pair -> new ArrayList<>());
-		if (kept.size() >= MAX_PER_PAIR)
+		if (kept.size() >= perPair)
 			return;
 		float spacing = SPACING_CELLS * Heightfield.CELL_SIZE;
 		for (GlideLink other : kept) {
