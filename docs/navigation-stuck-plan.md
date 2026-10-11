@@ -1,7 +1,8 @@
 # Bots stuck in scenery, then teleported home
 
 Status: analysed 2026-10-09. Milestones 2 and 3 built and unit tested, not yet watched in game (`BotLanding`, the levelled rough route, binding to a reachable
-obelisk); milestone 4 (the obelisk audit) built and run once.
+obelisk); milestone 4 (the obelisk audit) built and run once. **Open since 11 October: bots walking into obstacles and teleported behind them**
+(section at the end), the next navigation subject.
 The cause is **not** the quality of the mesh in the camps; milestones below.
 Reported from in game: a bot inside a wall at the Verteron fortress, a bot sunk into the floor of the Eltnen fortress, both followed by a teleport.
 
@@ -98,3 +99,20 @@ obelisk choice, and milestone 4 will name every obelisk that has this problem. O
 
 3328 of 5278 resurrections are at the Tursin obelisk: that ground kills bots faster than any other. Not a navigation fault, and the new waiting spot
 after a death (`bot-careers.md`) helps, but it deserves its own look.
+
+## Open, reported 11 October: into an obstacle, then teleported behind it
+
+Reported from in game, and asked to be the next subject: bots walk into scenery (a rail, a balcony, a wall) and then appear on the other side of it, or
+back home. Not the obelisk traps above, which are fixed for a daeva by the glide-aware landing check.
+
+- **Rate.** `could not move at all from X Y and is put back home`: 239 in 4 h 30 on the 11th (about one a minute), 25 in 12 minutes the same evening with
+  about 140 bots, 10 in 5 minutes after a restart. Many say "which is where it already was": a bot wedged at its own home is teleported onto itself.
+- **Spread.** Not one spot: Eltnen 280 2750 and 300 2780 (a village, the most repeated), Verteron 1650 1490 and 2300 1840, Tursin 2330 840 to 2400 830,
+  1240 2180, 1530 1760. Mixed with them, 20 `makes no headway ... and gives up moving` in 3 minutes, many with the goal a metre away.
+- **What the eye sees.** `steps aside` moves the body sideways by a metre or two along a detour the reactive layer picks, and a step aside through a
+  rail looks like a teleport; then the stuck rescue teleports it home. Seen at Ardus Shrine: a bot crossing the balcony rail in two steps aside.
+- **Leads, none checked yet.** Whether `steps aside` checks the geometry between the body and the detour point; whether a planned waypoint lands on
+  the other side of a thin wall the 0.5 m grid does not hold; why a goal one metre away makes no headway (the goal inside a prop the mesh calls
+  walkable); and whether rescuing a bot "home" when it already is home should do something else.
+- **First step.** Measure before changing anything: per map and spot, rescues, no-headway and steps aside over a quiet hour (`tools/nav-stats.ps1`
+  can be extended), then `NavmeshTool <map> path` on the worst spots.
