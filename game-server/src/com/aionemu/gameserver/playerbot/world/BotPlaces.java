@@ -6,6 +6,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -134,7 +135,12 @@ public class BotPlaces {
 	 */
 	private static final float FLIGHT_RANGE = 300;
 
-	private static final Map<Integer, Places> placesByMap = new ConcurrentHashMap<>();
+	/**
+	 * The places of each map, worked out once. A future and not the places themselves, so the work is done outside the map's lock: computed inside
+	 * {@code computeIfAbsent}, Heiron's took 75 seconds holding a bin of the table, and every bot thread that asked about any map in that bin waited
+	 * the whole time, while the monsters went on hitting them -- twenty nine died in the same millisecond when it let go.
+	 */
+	private static final Map<Integer, CompletableFuture<Places>> placesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, int[]> bandByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
@@ -597,31 +603,46 @@ public class BotPlaces {
 	 * nothing anybody else does, which is the shape this is looking for. Verteron, for comparison, maroons one place in fourteen.
 	 */
 	private static Places places(int worldId) {
-		return placesByMap.computeIfAbsent(worldId, id -> {
-			List<Settlement> settlements = locateSettlements(id);
-			List<Settlement> grounds = locateHuntingGrounds(id, settlements);
-			List<Settlement> everywhere = new ArrayList<>(settlements);
-			everywhere.addAll(grounds);
-			Map<Integer, Integer> votes = new HashMap<>();
-			for (Settlement place : everywhere)
-				for (int region : NavmeshService.getInstance().regionsAt(id, place.centre().getX(), place.centre().getY()))
-					votes.merge(region, 1, Integer::sum);
-			if (votes.isEmpty())
-				return new Places(settlements, grounds); // no mesh for this map, so nothing has been shown to be cut off
-			int mainland = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
-			long began = System.currentTimeMillis();
-			Places onTheGrid = new Places(onTheMainland(id, settlements, mainland), onTheMainland(id, grounds, mainland));
-			Places beforeFlight = offThePockets(id, onTheGrid);
-			Places walkable = withTheFlyable(id, everywhere, beforeFlight);
-			int onGrid = onTheGrid.settlements().size() + onTheGrid.huntingGrounds().size();
-			int afterFill = beforeFlight.settlements().size() + beforeFlight.huntingGrounds().size();
-			int kept = walkable.settlements().size() + walkable.huntingGrounds().size();
-			if (everywhere.size() != kept)
-				log.info("Map {}: {} of {} place(s) are no use to anybody ({} by the coarse grid, {} for having no ground to speak of, {} put back "
-					+ "for being flyable, {} ms)", id, everywhere.size() - kept, everywhere.size(), everywhere.size() - onGrid, onGrid - afterFill,
-					kept - afterFill, System.currentTimeMillis() - began);
-			return walkable;
-		});
+		CompletableFuture<Places> mine = new CompletableFuture<>();
+		CompletableFuture<Places> known = placesByMap.putIfAbsent(worldId, mine);
+		if (known != null)
+			return known.join(); // worked out already, or being worked out by another thread: only those asking about this map wait for it
+		try {
+			mine.complete(locatePlaces(worldId));
+		} catch (RuntimeException | Error e) {
+			placesByMap.remove(worldId, mine); // the next one to ask tries again
+			mine.completeExceptionally(e);
+			throw e;
+		}
+		return mine.join();
+	}
+
+	private static Places locatePlaces(int id) {
+		long located = System.currentTimeMillis();
+		List<Settlement> settlements = locateSettlements(id);
+		List<Settlement> grounds = locateHuntingGrounds(id, settlements);
+		located = System.currentTimeMillis() - located;
+		List<Settlement> everywhere = new ArrayList<>(settlements);
+		everywhere.addAll(grounds);
+		Map<Integer, Integer> votes = new HashMap<>();
+		for (Settlement place : everywhere)
+			for (int region : NavmeshService.getInstance().regionsAt(id, place.centre().getX(), place.centre().getY()))
+				votes.merge(region, 1, Integer::sum);
+		if (votes.isEmpty())
+			return new Places(settlements, grounds); // no mesh for this map, so nothing has been shown to be cut off
+		int mainland = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
+		long began = System.currentTimeMillis();
+		Places onTheGrid = new Places(onTheMainland(id, settlements, mainland), onTheMainland(id, grounds, mainland));
+		Places beforeFlight = offThePockets(id, onTheGrid);
+		Places walkable = withTheFlyable(id, everywhere, beforeFlight);
+		int onGrid = onTheGrid.settlements().size() + onTheGrid.huntingGrounds().size();
+		int afterFill = beforeFlight.settlements().size() + beforeFlight.huntingGrounds().size();
+		int kept = walkable.settlements().size() + walkable.huntingGrounds().size();
+		if (everywhere.size() != kept)
+			log.info("Map {}: {} of {} place(s) are no use to anybody ({} by the coarse grid, {} for having no ground to speak of, {} put back "
+				+ "for being flyable, {} ms, after {} ms finding the places)", id, everywhere.size() - kept, everywhere.size(), everywhere.size() - onGrid,
+				onGrid - afterFill, kept - afterFill, System.currentTimeMillis() - began, located);
+		return walkable;
 	}
 
 	/**

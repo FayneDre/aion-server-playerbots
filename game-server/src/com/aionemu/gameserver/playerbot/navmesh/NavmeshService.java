@@ -123,7 +123,23 @@ public class NavmeshService {
 	 */
 	public boolean canReach(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
 		Navmesh mesh = get(worldId);
-		return mesh == null || !BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ).isEmpty();
+		if (mesh == null)
+			return true;
+		long began = System.currentTimeMillis();
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ);
+		logIfSlow(worldId, began, fromX, fromY, fromZ, toX, toY, toZ, route);
+		return !route.isEmpty();
+	}
+
+	/** A search that took longer than this is logged with its ends, which is what finding out why takes ({@code NavmeshTool <map> path}). */
+	private static final long SLOW_SEARCH_MILLIS = 1000;
+
+	private static void logIfSlow(int worldId, long began, float fromX, float fromY, float fromZ, float toX, float toY, float toZ, BotPathFinder.Route route) {
+		long took = System.currentTimeMillis() - began;
+		if (took >= SLOW_SEARCH_MILLIS)
+			log.info("Path search on map {} took {} ms ({}): NavmeshTool {} path {} {} {} {} {} {}", worldId, took,
+				!route.isEmpty() ? "found" : route.gaveUp() ? "gave up" : "no way", worldId, String.format("%.1f", fromX), String.format("%.1f", fromY),
+				String.format("%.1f", fromZ), String.format("%.1f", toX), String.format("%.1f", toY), String.format("%.1f", toZ));
 	}
 
 	/** What a reachability question came back with, for a caller that means to remember the answer. */
@@ -147,7 +163,9 @@ public class NavmeshService {
 		Navmesh mesh = get(worldId);
 		if (mesh == null)
 			return Reach.UNKNOWN; // a map with no mesh refuses nothing: its bots walk without a plan, which is not the same as having nowhere to go
+		long began = System.currentTimeMillis();
 		BotPathFinder.Route route = BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ);
+		logIfSlow(worldId, began, fromX, fromY, fromZ, toX, toY, toZ, route);
 		if (!route.isEmpty())
 			return Reach.YES;
 		return route.gaveUp() ? Reach.UNKNOWN : Reach.NO;

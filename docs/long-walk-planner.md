@@ -26,6 +26,12 @@ What it replaced, and what each change fixed:
 
 The older search (the grid of regions, no heights) now runs only when the levelled one could not answer: out of nodes, or an end with no stretch in its cell.
 
+**A budget of 1.5 s.** Without the region filter, a search for a cliff top from its foot went through the whole ground of Eltnen before it could say
+there was no way up: 12 to 18 seconds, on a bot tick thread, measured in the server the evening it was deployed. Out of time, it now answers "gave up"
+without falling back to the older search. Timed against the planner of the morning on 19 slow searches taken from the server's log: the same ones give up
+in both, in 35 s against 34 in all, and the worst of them takes 2.3 s instead of 18. Searches over a second are logged with their ends
+(`Path search on map … took … ms`).
+
 ## Glides after a walk that gave up
 
 `findPath` asked the glide links only after the walk *proved* there was no way. On a large stretch of ground the walk never proves it, it runs out of room

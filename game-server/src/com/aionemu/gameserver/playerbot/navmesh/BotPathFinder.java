@@ -212,14 +212,26 @@ public class BotPathFinder {
 		if (sharedRegions(mesh, startCell, goalCell).isEmpty())
 			return List.of();
 		List<Vector3f> guide = levelledRoute(mesh, startCell, startX, startY, startZ, goalCell, goalX, goalY, goalZ);
+		if (guide == OUT_OF_TIME)
+			return List.of(); // the caller reads an empty guide on shared ground as a search that gave up, which is what this is
 		return guide != null ? guide : coarseRoute(mesh, startX, startY, goalX, goalY);
 	}
+
+	/**
+	 * How long the levelled search may run, in milliseconds. Asked for a cliff top from its foot, with no way up, it went through the whole of Eltnen's
+	 * ground before it could say so: 12 to 14 seconds a search, on the thread that thinks for eight bots, while the old one had answered in a fraction of
+	 * that by way of a shortcut that did not exist.
+	 */
+	private static final long LEVELLED_BUDGET_MILLIS = 1500;
+	/** What {@link #levelledRoute} answers when it ran out of time, told apart from an empty guide by being this very list. */
+	private static final List<Vector3f> OUT_OF_TIME = Collections.unmodifiableList(new ArrayList<>());
 
 	/**
 	 * Not kept to the cells the grid lists a region in: it lists one only where it covers a fair part of the cell, so a path along the edge of a cell was cut there, and Altgard
 	 * lost routes from two obelisks that the older search found. The stretches of each cell say exactly what joins what, which is what the region was standing in for.
 	 *
-	 * @return The guide; empty when the search went through all the ground it could reach without finding the goal, null when it could not answer.
+	 * @return The guide; empty when the search went through all the ground it could reach without finding the goal, {@link #OUT_OF_TIME} when its time
+	 *         ran out, null when it could not answer for want of ground at an end or of nodes.
 	 */
 	private static List<Vector3f> levelledRoute(Navmesh mesh, int startCell, float startX, float startY, float startZ, int goalCell, float goalX, float goalY,
 		float goalZ) {
@@ -238,8 +250,11 @@ public class BotPathFinder {
 		costSoFar.put(start, 0f);
 		open.add(new int[] { start, 0 });
 
+		long deadline = System.currentTimeMillis() + LEVELLED_BUDGET_MILLIS;
 		int expanded = 0;
 		while (!open.isEmpty() && expanded++ < MAX_COARSE_NODES) {
+			if ((expanded & 1023) == 0 && System.currentTimeMillis() > deadline)
+				return OUT_OF_TIME;
 			int current = open.poll()[0];
 			if (current == goal)
 				return sampleLevelledGuide(mesh, levels, cameFrom, current, start);

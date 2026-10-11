@@ -94,6 +94,12 @@ rule frees, and weighs 0.1 MB (Verteron) to 4.8 MB (Cygnea), Enshar 3.5 instead 
 the half minute it takes to build the ground: the stretches are numbered by the same computation from the same geometry. The generator still writes links
 for instances only. Nothing has been written for the open world yet: the first map is the user's call, then the obelisk audit and `nav-stats` measure it.
 
+**Written for Verteron on 11 October.** 4 266 links, 0.13 MB; its stranded obelisk gets 3 routes of 3. The first glides were walked off the edge at a run,
+reported from in game at the Ardus Shrine camp; the mover now opens the wings (`switchToGliding`, the emote that starts a glide), flies the leg down at
+8 m/s and folds them on landing (`onStopGliding`), and only a daeva is given a glide. Five bots resurrected on the plateau glided 85 m down to the camp and
+fought there. Watching it showed something else: 29 bots died in the same millisecond, the bot threads having all waited 75 s on Heiron's places being
+worked out inside `computeIfAbsent`. They are now worked out outside the lock, and the searches made slow by the long-walk planner have a budget.
+
 ### 3. Portal links: using things to get somewhere (a week)
 
 This is the same work as Steel Rake's levers and the Danuar teleporters ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)), done once for both.
