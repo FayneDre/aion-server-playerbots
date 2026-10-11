@@ -48,6 +48,28 @@ class InstanceReachTest {
 	}
 
 	@Test
+	void anEntranceWithADialogBeforeItsLocationIsAnArrival(@TempDir Path directory) throws IOException {
+		Path list = directory.resolve("portal_loc.xml");
+		Files.writeString(list, """
+			<portal_loc world_id="300600000" loc_id="3006000" x="707.06085" y="159.32991" z="453.47333"/>
+			<portal_loc world_id="300600000" loc_id="3006001" x="295.75" y="735.73" z="215.8" h="60"/>
+			""");
+		Path templates = directory.resolve("portal_template2.xml");
+		Files.writeString(templates, """
+			<portal_use npc_id="219982">
+				<portal_path loc_id="3006001" />
+			</portal_use>
+			<portal_dialog npc_id="730366">
+				<portal_path dialog="10000" loc_id="3006000" siege_id="1011" race="ASMODIANS" />
+			</portal_dialog>
+			""");
+
+		List<float[]> splinter = InstanceReach.entries(list, templates, 300600000);
+		assertEquals(2, splinter.size(), "the entrance from outside and the pad inside are both led to");
+		assertEquals(707.06085f, splinter.get(0)[0], 0.001f);
+	}
+
+	@Test
 	void spawnSpotsAreReadFromTheFilesOfThatInstanceOnly(@TempDir Path directory) throws IOException {
 		Files.writeString(directory.resolve("300090000_Right_Wing_Chamber.xml"), """
 			<spawns>

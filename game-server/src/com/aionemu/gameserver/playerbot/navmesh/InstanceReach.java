@@ -35,8 +35,11 @@ final class InstanceReach {
 
 	private static final Pattern PORTAL = Pattern
 		.compile("<portal_loc\\s+world_id=\"(\\d+)\"\\s+loc_id=\"(\\d+)\"[^>]*\\sx=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
-	/** A portal's destination, in the list of what each portal npc leads to. */
-	private static final Pattern PORTAL_PATH = Pattern.compile("<portal_path\\s+loc_id=\"(\\d+)\"");
+	/**
+	 * A portal's destination, in the list of what each portal npc leads to. The entrances from outside are written {@code <portal_path dialog="10000" loc_id=...>}, so the location is
+	 * not always the first attribute: read only as the first, Unstable Abyssal Splinter's entrance was missed and its three inner pads were measured as the arrivals.
+	 */
+	private static final Pattern PORTAL_PATH = Pattern.compile("<portal_path\\b[^>]*?\\sloc_id=\"(\\d+)\"");
 	private static final Pattern SPOT = Pattern.compile("<spot\\s+x=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
 
 	/**
@@ -45,8 +48,18 @@ final class InstanceReach {
 	 */
 	private static final Map<Integer, List<float[]>> HANDLER_ARRIVALS = Map.of(300110000, dredgionStarts(), 300210000, dredgionStarts(), 300440000, dredgionStarts());
 
+	/**
+	 * Where a teleporter inside the instance puts the party, for the maps whose handler moves it in code and not through the portal list: each is measured as a further arrival, since
+	 * its ground is not joined to the rest. The Danuar Sanctuaries go from the hall to each wing in turn ({@code handleUseItemFinish} of npcs 701873, 701871, 701872).
+	 */
+	private static final Map<Integer, List<float[]>> TELEPORT_LANDINGS = Map.of(301140000, danuarWings(), 301380000, danuarWings());
+
 	private static List<float[]> dredgionStarts() {
 		return List.of(new float[] { 570.468f, 166.897f, 432.29f }, new float[] { 400.741f, 166.713f, 432.29f });
+	}
+
+	private static List<float[]> danuarWings() {
+		return List.of(new float[] { 1029.273f, 362.651f, 297.89f }, new float[] { 1006.0412f, 1366.468f, 337.26f }, new float[] { 846.172f, 991.731f, 300.04f });
 	}
 
 	private InstanceReach() {
@@ -64,6 +77,9 @@ final class InstanceReach {
 		Collections.shuffle(spots, new Random(mapId)); // seeded on the map, so two runs of the same mesh are comparable
 		List<float[]> sample = spots.subList(0, Math.min(MAX_SPOTS, spots.size()));
 		int worst = 0;
+		// a map reached in parts, by teleporters or one faction at each end, is only read right as a whole: what some arrival reaches
+		Set<float[]> reachedByAny = new HashSet<>();
+		int askedOfAny = 0;
 		for (float[] given : entries) {
 			float[] entry = snapped(mesh, given);
 			if (entry == null) {
@@ -89,6 +105,7 @@ final class InstanceReach {
 					continue;
 				}
 				reached++;
+				reachedByAny.add(original);
 				float length = 0;
 				for (int i = 1; i < route.waypoints().size(); i++)
 					length += route.waypoints().get(i).distance(route.waypoints().get(i - 1));
@@ -96,6 +113,7 @@ final class InstanceReach {
 			}
 			Collections.sort(lengths);
 			int asked = sample.size() - noFooting;
+			askedOfAny = Math.max(askedOfAny, asked);
 			System.out.printf(Locale.ROOT, "Map %d, from %.1f %.1f %.1f: %d of %d spots reached (%.0f%%), %d of the others gave up, %d more have no footing, median route %s m%n",
 				mapId, entry[0], entry[1], entry[2], reached, asked, asked == 0 ? 0f : reached * 100f / asked, gaveUp, noFooting,
 				lengths.isEmpty() ? "-" : String.valueOf(Math.round(lengths.get(lengths.size() / 2))));
@@ -105,6 +123,9 @@ final class InstanceReach {
 			if (!missed.isEmpty())
 				worst = 1;
 		}
+		if (entries.size() > 1)
+			System.out.printf(Locale.ROOT, "Map %d, from any of its %d arrivals: %d of %d spots reached (%.0f%%)%n", mapId, entries.size(), reachedByAny.size(), askedOfAny,
+				askedOfAny == 0 ? 0f : reachedByAny.size() * 100f / askedOfAny);
 		return worst;
 	}
 
@@ -135,7 +156,9 @@ final class InstanceReach {
 	static List<float[]> entries(int mapId) throws IOException {
 		if (HANDLER_ARRIVALS.containsKey(mapId))
 			return HANDLER_ARRIVALS.get(mapId);
-		return entries(STATIC_DATA.resolve("portals/portal_loc.xml"), STATIC_DATA.resolve("portals/portal_template2.xml"), mapId);
+		List<float[]> entries = entries(STATIC_DATA.resolve("portals/portal_loc.xml"), STATIC_DATA.resolve("portals/portal_template2.xml"), mapId);
+		entries.addAll(TELEPORT_LANDINGS.getOrDefault(mapId, List.of()));
+		return entries;
 	}
 
 	static List<float[]> entries(Path portalList, Path portalTemplates, int mapId) throws IOException {
@@ -143,7 +166,7 @@ final class InstanceReach {
 		if (Files.isRegularFile(portalTemplates)) {
 			for (String line : Files.readAllLines(portalTemplates)) {
 				Matcher matcher = PORTAL_PATH.matcher(line);
-				if (matcher.find())
+				while (matcher.find()) // a portal leading to several places can write them all on one line
 					led.add(Integer.parseInt(matcher.group(1)));
 			}
 		}

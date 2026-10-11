@@ -18,6 +18,10 @@ final class Flood {
 	private static final int[] STEP_X = { -1, 0, 1, -1, 1, -1, 0, 1 }, STEP_Y = { -1, -1, -1, 0, 0, 1, 1, 1 };
 	/** How close in height, in metres, a flooded surface must be to a spawn spot to count as the ground under it. */
 	private static final float UNDER = 1.5f;
+	/** How many of the first drops are printed: where a flood first leaves the arrival's ground is where to look when the glide links do not. */
+	private static final int SHOWN_DROPS = 12;
+	/** Only the drops that land below this height are printed, so the ones that leave a raised arrival are not lost among those that stay on it. */
+	private static final float SHOWN_BELOW = Float.parseFloat(System.getProperty("navmesh.floodShownBelow", "100000"));
 
 	private Flood() {
 	}
@@ -33,6 +37,7 @@ final class Flood {
 			if (entry == null)
 				continue;
 			Set<Long> seen = new HashSet<>();
+			int shown = 0;
 			ArrayDeque<long[]> pending = new ArrayDeque<>();
 			int centreX = mesh.cellX(entry[0]), centreY = mesh.cellY(entry[1]);
 			for (int startY = centreY - 6; startY <= centreY + 6; startY++) {
@@ -66,8 +71,12 @@ final class Flood {
 								if (mesh.isWalkable(landX, landY, surface) && below >= 1f && below <= drop && (best < 0 || mesh.surfaceZ(landX, landY, surface) > mesh.surfaceZ(landX, landY, best)))
 									best = surface;
 							}
-							if (best >= 0 && seen.add(key(mesh, landX, landY, best)))
+							if (best >= 0 && seen.add(key(mesh, landX, landY, best))) {
 								pending.add(new long[] { landX, landY, best });
+								if (mesh.surfaceZ(landX, landY, best) < SHOWN_BELOW && shown++ < SHOWN_DROPS)
+									System.out.printf(Locale.ROOT, "  drop from %.1f %.1f %.1f to %.1f %.1f %.1f%n", (x + 0.5f) * mesh.cellSize(), (y + 0.5f) * mesh.cellSize(), z,
+										(landX + 0.5f) * mesh.cellSize(), (landY + 0.5f) * mesh.cellSize(), mesh.surfaceZ(landX, landY, best));
+							}
 						}
 					}
 				}

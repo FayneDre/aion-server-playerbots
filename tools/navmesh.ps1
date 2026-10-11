@@ -89,7 +89,9 @@ try {
                 if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $($group[0]) (exit code $LASTEXITCODE)" }
             }
             foreach ($copy in $group | Select-Object -Skip 1) {
-                if (-not $Force -and (Test-Path "data/navmesh/$copy.nav")) { continue }
+                # a copy older than its source is the mesh of an earlier build: the Illuminary Obelisk's kept glide links from before they were fixed, and measured nothing
+                $copied = Get-Item "data/navmesh/$copy.nav" -ErrorAction SilentlyContinue
+                if (-not $Force -and $copied -and $copied.LastWriteTime -ge (Get-Item "data/navmesh/$($group[0]).nav").LastWriteTime) { continue }
                 Copy-Item "data/navmesh/$($group[0]).nav" "data/navmesh/$copy.nav" -Force
                 Remove-Item "data/navmesh/$copy.glide" -ErrorAction SilentlyContinue
                 if (Test-Path "data/navmesh/$($group[0]).glide") { Copy-Item "data/navmesh/$($group[0]).glide" "data/navmesh/$copy.glide" -Force }

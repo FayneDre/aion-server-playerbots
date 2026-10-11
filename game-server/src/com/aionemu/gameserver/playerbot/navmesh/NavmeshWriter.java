@@ -61,7 +61,7 @@ public class NavmeshWriter {
 		}
 		// a dungeon that allows gliding is walked down as much as along, and the links are what the party's way down is made of; every other map has none, and says so
 		// by having no file, which also clears the links of an earlier build of the same map
-		GlideLinks.write(mapId, MapSize.allowsGlide(mapId) && MapSize.isInstance(mapId) ? GlideLinks.find(field, regions) : List.of());
+		GlideLinks.write(mapId, MapSize.allowsGlide(mapId) && MapSize.isInstance(mapId) ? GlideLinks.find(field, regions, GlideLinks.minRegionSurfaces(mapId)) : List.of());
 		return file;
 	}
 

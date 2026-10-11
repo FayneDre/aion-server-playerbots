@@ -162,9 +162,11 @@ public class NavmeshService {
 
 	/** @param avoid Ground to keep out of where there is another way; see {@link Avoidance}. */
 	public void planRoute(Player bot, float goalX, float goalY, float goalZ, Avoidance avoid, Consumer<BotPathFinder.Route> whenReady) {
-		if (get(bot.getWorldId()) == null)
+		Navmesh mesh = get(bot.getWorldId());
+		if (mesh == null)
 			return;
-		if (PositionUtil.getDistance(bot.getX(), bot.getY(), goalX, goalY) <= BotPathFinder.LONG_DISTANCE) {
+		// a short hop on a map glided down can still become a search for a chain of glides, which may take seconds: that is not for the tick thread
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), goalX, goalY) <= BotPathFinder.LONG_DISTANCE && !mesh.hasGlides()) {
 			whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid));
 			return;
 		}

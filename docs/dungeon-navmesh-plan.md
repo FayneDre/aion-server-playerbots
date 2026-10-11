@@ -1,6 +1,6 @@
 # Dungeon navmeshes: plan
 
-Status: milestones 0 to 5 done (45 meshes built, 9 copied, every one put through `reach`), plus the two mechanisms the failures asked for: glide links and a steeper slope for three stairs. 6, the server opening an instance mesh, not tried. Reached from the arrival, on 11 October: 29 of the 54 dungeons reach 90 % or more, 14 reach 50 to 89 %, 6 reach 1 to 49 %, 2 reach none, 3 have no spawn to measure. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**. Nothing here is watched in game.
+Status: milestones 0 to 5 done (45 meshes built, 9 copied, every one put through `reach`), plus glide links and a steeper slope for three stairs; 6, the server opening an instance mesh, not tried. Sixteen maps measured again on the evening of 11 October with the long-walk planner rebuilt (table below): Illuminary Obelisk, 310100000, Lower Udas, Steel Rake, Dredgion and Dragon Lord's Refuge are now at 91 % or more; of those sixteen, Esoterrace, the Danuar Sanctuaries and the two Rentus remain under 80 %. The others, Drakenspire and Theobomos among them, have not been measured again. Next: portal links. Nothing here is watched in game. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**: the goal is
 bots that fight in a party, and a solo instance holds one player (23 of the first 77, Haramel among them; `instance_cooltimes.xml` gives one member for each). That leaves the 54 ids of the first
 table in [instance-navmesh-list.md](instance-navmesh-list.md), which come down to **45 distinct geometries**: a mesh is built once and serves the ids that share it. Arenas, warfronts, housing
 and tests are out for now. Putting a bot in an instance is out as well: no code does it, and the meshes do not wait for it.
@@ -65,8 +65,8 @@ In an instance the generator leaves out: every placement that is not static (doo
 
 Draupnir Cave reached 3 %, Esoterrace 2 %, Steel Rake 45 %, Eternal Bastion 35 %: the party arrives on a platform far above the ground it is going to, and the only way down is to jump, which is what the `GLIDE` flag on those maps is for. Walking never joins them, and neither does a drop of any height between neighbouring cells (measured with `NavmeshTool <map> flood <drop> <cells>`). A fall of any height out to ten metres from an edge did: Draupnir 98 %, Esoterrace 66 %, Eternal Bastion 100 %.
 
-- **`GlideLinks`** finds them when the mesh is written, for instance maps with `GLIDE` only: an edge (a walkable cell with a neighbour holding no walkable ground within a step), then every column out to 10 m with walkable ground at least 1.5 m below, in another stretch of ground of at least 40 cells. At most 24 per pair of stretches, 8 m apart. Stored in `<mapId>.glide` beside the `.nav`, which does not change.
-- **`GlideRoutes`** plans with them when the walking search *proves* the ground does not join the two ends (a search that merely ran out of room is not answered with a glide): a breadth first search over the stretches, fewest glides first, then the walking route to each edge. The start and the goal each list the stretches of the 4 m cell and its eight neighbours, so every pair is tried; two seconds at most. The air between the ends is checked against the game's geometry in the server (`NavmeshService.isAirClear`), and not in the offline tools, which therefore overestimate.
+- **`GlideLinks`** finds them when the mesh is written, for instance maps with `GLIDE` only: an edge (a walkable cell with a neighbour holding no walkable ground within a step), then every column out to 10 m, landing on the highest *walkable* ground at least 1 m below (a tree or a rail on the way does not stop it), in another stretch of ground of at least 40 cells; on Esoterrace, whose way down goes rock to rock, every stretch counts (`EVERY_STRETCH`, its file grows from 3 to 12 MB). At most 24 per pair of stretches, 8 m apart. Stored in `<mapId>.glide` beside the `.nav`, which does not change.
+- **`GlideRoutes`** plans with them when the walking search finds nothing, whether it proved there is no way or ran out of room: on a large stretch of ground the walk never proves it. A breadth first search over the stretches, then the walking route to each edge. The start and the goal each list the stretches of the 4 m cell and its eight neighbours, the floor nearest in height first (a tower lists thirty); two seconds at most. On a map with glides every route is planned off the bot's tick thread. The air between the ends is checked against the game's geometry in the server (`NavmeshService.isAirClear`), and not in the offline tools, which therefore overestimate.
 - **Not done:** the mover walks a glide as a straight leg with the height interpolated, which is the best guess and is untested. A glide is a waypoint in `Route.glides()` that nothing reads yet.
 
 ## Stairs modelled as ramps
@@ -83,7 +83,29 @@ The Miren Chamber and its two barracks were cut off at their first room by a sta
 | 0 % (2) | Both Illuminary Obelisks |
 | No spawn to measure (3) | Idgel Dome and the two "Lucky" copies |
 
-**Read these with one fault in mind.** The glide search was given two seconds, and when it ran out it was reported as proof that there is no way: fixed afterwards (it now says it gave up). Illuminary Obelisk measured 83 % by hand and 0 % in the batch for that reason, and Esoterrace, Unstable Abyssal and the Danuar Sanctuaries probably moved the same way. They have not been measured again.
+## Measured again, 11 October evening
+
+No mesh was built again but Esoterrace's. What moved the figures was the measurement and the planner:
+
+- **The arrivals.** `InstanceReach` read only `<portal_path loc_id=..>` and missed the entrances written `<portal_path dialog=.. loc_id=..>`: Unstable Abyssal Splinter was measured from three inner pads instead of its entrance. The Danuar Sanctuaries' hall reaches its wings by teleporters coded in the handler, whose landings are now arrivals too, and every map with several arrivals gets a line "from any of its arrivals".
+- **The long walk** (see [long-walk-planner.md](long-walk-planner.md)): the rough route took shortcuts the fine search could not follow, and gave up where the walk round was 500 m.
+- **Copies**: `-Dungeons` skipped a copy whose `.nav` existed even when its source had been rebuilt since; the Illuminary Obelisk copy kept glide links from before they were fixed.
+
+| Dungeon | Morning | Evening |
+|---|---|---|
+| Illuminary Obelisk (both) | 0 | 97 |
+| 310100000 | 80 | 99 |
+| Lower Udas | 67 | 97 |
+| Steel Rake (any arrival) | 90 | 94 |
+| Dredgion, Terath, Chantra | 51, 62, 56 | 91, 89, 88 |
+| Tiamat (300510000) | 82 | 88 |
+| Unstable Abyssal Splinter | 4 | 87 |
+| Danuar Sanctuaries (any arrival) | 2 | 76, 74 |
+| Esoterrace | 2 | 65 (a fall of any height reaches 66) |
+| Dragon Lord's Refuge | 80 | 100 |
+| Rentus, occupied Rentus | 78, 71 | 78, 70 |
+
+Rentus has a deck of 54 monsters 9.5 m above anything walked to, and nothing placed explains how a player gets up there. Occupied Rentus lost 2 spots of 206 with the last change to the planner, not explained yet.
 
 **What the tester says about the 40 to 50 band** (Discord, 10 October): Draupnir and Theobomos have a lift near the end and a platform phase in the middle; Theobomos and Adma need an interaction with the door to the boss (he teleports the bots to himself once it is open); Dredgion has one start for each faction and goes down plateau by plateau, which is what `DredgionInstance.portToStartPosition` says (two starts, now the arrivals of the three Dredgions); Adma is only large. **None of the lifts, doors and phases is in the mesh.**
 
@@ -91,8 +113,8 @@ Tools: `-Dungeons` leaves the meshes that exist alone and `-Force` builds them a
 
 ## Open questions
 
-1. **Measure the doubtful maps again** with the fixed search, without building them again: the two Illuminary Obelisks, Esoterrace, Unstable Abyssal Splinter, both Danuar Sanctuaries.
+1. **Portal links.** Steel Rake is rooms joined by things to use (`portal_use` in `portal_template2.xml`: elevator levers, the anchor, the brig, the captain's cabin), the Danuar Sanctuaries by teleporters. A link "walk to the object, use it, arrive there", read from the portal list and the spawns, would let the planner route through them; the bot must also learn to use the object.
 2. **Doors, lifts and platform phases** are not in any mesh. A door that a boss fight opens can be walked through when it is open and not when it is shut; a lift is a one way link of another kind than a glide. Draupnir, Theobomos and Adma ask for them.
 3. **Walking a glide** (`BotMoveController`) and **opening an instance mesh in the server** (milestone 6) have not been tried in game. The format is the open world's, so the second is a low risk.
-4. **Dredgion, Drakenspire, Theobomos, Adma, Lower Udas** are the maps left under 70 % that a group of level 40 to 50 plays.
+4. **Drakenspire, Theobomos, Adma** are the maps left that a group of level 40 to 50 plays and nothing today has improved; Rentus's upper deck is a question for the tester. A glide link down to the plane at height zero under a map (region 1 on the Danuar Sanctuaries) is a fall nobody survives and should not be offered.
 5. **Disk**: `data/navmesh` is 2 GB, most of it the debugging images the tool writes beside each mesh. The meshes are the `.nav` and `.glide` files.

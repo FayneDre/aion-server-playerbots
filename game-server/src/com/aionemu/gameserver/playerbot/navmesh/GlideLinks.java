@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Finds, stores and reads the glide links of a map.
@@ -21,11 +22,19 @@ public final class GlideLinks {
 
 	/** How far out from an edge, in cells, a body is taken to carry before it lands: 10 m, a little under what a glide covers for the heights these dungeons have. */
 	static final int REACH_CELLS = 20;
-	/** The least height, in metres, that makes it a glide and not a hop: the climb rule already lets a body go down a slope or a kerb. */
-	static final float MIN_DROP = 1.5f;
+	/**
+	 * The least height, in metres, that makes it a drop: the climb rule already lets a body go down a slope or a kerb. A metre, as the fall that measured Esoterrace at 66 % took it:
+	 * at a metre and a half, the ledges of a metre and a bit that lead down from its arrival were neither walked nor dropped from.
+	 */
+	static final float MIN_DROP = 1f;
 	static final float MAX_DROP = 250f;
 	/** Ground this small is a crate or a ledge a monster stands on, and linking to it or from it only fills the file. */
 	private static final int MIN_REGION_SURFACES = 40;
+	/**
+	 * Maps whose way down goes from rock to rock, each too small to pass the rule above: Esoterrace's arrival reached nothing below it until every stretch of ground was linked, and
+	 * its file grew from 3 to 12 MB for it, which is why the rule stays everywhere else.
+	 */
+	private static final Set<Integer> EVERY_STRETCH = Set.of(300250000);
 	/** Two links between the same pair of stretches are kept at least this far apart, in cells, so a long edge gives a few choices and not thousands. */
 	private static final int SPACING_CELLS = 16;
 	private static final int MAX_PER_PAIR = 24;
@@ -86,6 +95,16 @@ public final class GlideLinks {
 	 * @param regions One id per surface, as {@link Heightfield#regions} returns them.
 	 */
 	static List<GlideLink> find(Heightfield field, int[] regions) {
+		return find(field, regions, MIN_REGION_SURFACES);
+	}
+
+	/** @return The fewest surfaces a stretch of ground of the map needs to be glided from or onto. */
+	static int minRegionSurfaces(int mapId) {
+		return EVERY_STRETCH.contains(mapId) ? 1 : MIN_REGION_SURFACES;
+	}
+
+	/** As above, with the fewest surfaces a stretch of ground needs to be linked at all. */
+	static List<GlideLink> find(Heightfield field, int[] regions, int minRegionSurfaces) {
 		int highest = 0;
 		for (int region : regions)
 			highest = Math.max(highest, region);
@@ -98,7 +117,7 @@ public final class GlideLinks {
 			for (int x = 0; x < field.width(); x++) {
 				for (int surface = field.columnStart(x, y); surface < field.columnEnd(x, y); surface++) {
 					int from = regions[surface];
-					if (!field.isWalkable(surface) || from == 0 || sizes[from] < MIN_REGION_SURFACES)
+					if (!field.isWalkable(surface) || from == 0 || sizes[from] < minRegionSurfaces)
 						continue;
 					float z = field.surfaceAt(surface);
 					for (int direction = 0; direction < STEP_X.length; direction++) {
@@ -113,7 +132,7 @@ public final class GlideLinks {
 							if (landing < 0)
 								continue;
 							int to = regions[landing];
-							if (to != from && to != 0 && sizes[to] >= MIN_REGION_SURFACES)
+							if (to != from && to != 0 && sizes[to] >= minRegionSurfaces)
 								keep(byPair, new GlideLink((x + 0.5f) * step, (y + 0.5f) * step, z, (landX + 0.5f) * step, (landY + 0.5f) * step, field.surfaceAt(landing), from, to));
 						}
 					}
@@ -139,15 +158,20 @@ public final class GlideLinks {
 		return true;
 	}
 
-	/** @return The walkable surface a body falling in this column lands on, or -1 when it would land on something it cannot stand on, or on nothing. */
+	/**
+	 * @return The highest walkable surface below in this column, or -1 when there is none within the drop. Something a body cannot stand on above it does not stop the link: a tree, a
+	 *         rail or a steep rock under the edge is glided round, and taken as the landing it cut Esoterrace's arrival off from everything below it (2 % reached where a fall measured 66).
+	 *         Whether the air is really clear is the server's question, asked of the game's geometry when a route uses the link.
+	 */
 	private static int landingBelow(Heightfield field, int x, int y, float z) {
 		int best = -1;
 		for (int surface = field.columnStart(x, y); surface < field.columnEnd(x, y); surface++) {
 			float other = field.surfaceAt(surface);
-			if (other < z - 0.5f && (best < 0 || other > field.surfaceAt(best)))
+			// a kerb half a metre down is not the landing: a body that steps off it falls on past, to the next ground a drop below
+			if (field.isWalkable(surface) && other <= z - MIN_DROP && (best < 0 || other > field.surfaceAt(best)))
 				best = surface;
 		}
-		if (best < 0 || !field.isWalkable(best) || z - field.surfaceAt(best) < MIN_DROP || z - field.surfaceAt(best) > MAX_DROP)
+		if (best < 0 || z - field.surfaceAt(best) > MAX_DROP)
 			return -1;
 		return best;
 	}

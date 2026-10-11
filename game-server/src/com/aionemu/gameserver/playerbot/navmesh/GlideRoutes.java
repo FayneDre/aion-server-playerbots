@@ -28,6 +28,8 @@ final class GlideRoutes {
 	 * the generator's own check of random journeys went from seconds to an hour on one map for want of this.
 	 */
 	private static final long BUDGET_MILLIS = 2000;
+	/** How many metres across one metre of height counts for, when telling which floor round the body is its own: floors stacked in a tower are close across and far apart in height. */
+	private static final float HEIGHT_WEIGHT = 4;
 	private static final boolean DEBUG = Boolean.getBoolean("navmesh.glideDebug");
 
 	private GlideRoutes() {
@@ -45,6 +47,10 @@ final class GlideRoutes {
 		if (startCell == -1 || goalCell == -1)
 			return new BotPathFinder.Route(List.of(), false);
 		List<Integer> starts = regionsOf(mesh, startCell), goals = regionsOf(mesh, goalCell);
+		// in a tower the cells round the body list thirty floors, and tried in the grid's order the body's own came fifth, after the budget had run out on the others: the
+		// Illuminary Obelisk measured nothing reached. The floor whose edges are nearest, height counted most, is the body's own far more often than not
+		starts.sort(Comparator.comparingDouble(region -> nearestEdge(mesh, region, startX, startY, startZ)));
+		goals.sort(Comparator.comparingDouble(region -> nearestEdge(mesh, region, goalX, goalY, goalZ)));
 
 		// a 4 m cell can hold the ground the body stands on and ground above or below it, so which of them is the body's own is not known: each is tried as the start in turn
 		BotPathFinder.Route failure = new BotPathFinder.Route(List.of(), false);
@@ -67,27 +73,31 @@ final class GlideRoutes {
 	}
 
 	/**
-	 * @return The chains of stretches that lead from {@code start} to each of the goals, the fewest glides first and at most {@link #CHAINS_TRIED}, both ends included. Each goal is a
-	 *         stretch that touches the goal's 4 m cell, which says only that the goal may be on it, so several are offered and the walk to the goal itself decides.
+	 * @return The chains of stretches that lead from {@code start} to the goals, in the order the goals are given and at most {@link #CHAINS_TRIED}, both ends included; each the
+	 *         fewest glides to its goal. Each goal is a stretch that touches the goal's 4 m cell, which says only that the goal may be on it, so several are offered and the walk to the
+	 *         goal itself decides. Taken fewest glides first, the floor below the goal came before the goal's own and the budget ran out on it.
 	 */
 	private static List<List<Integer>> chainsFrom(Navmesh mesh, int start, List<Integer> goals) {
 		Map<Integer, Integer> cameFrom = new HashMap<>();
 		ArrayDeque<Integer> pending = new ArrayDeque<>();
 		cameFrom.put(start, 0);
 		pending.add(start);
-		List<List<Integer>> chains = new ArrayList<>();
-		while (!pending.isEmpty() && chains.size() < CHAINS_TRIED) {
-			int region = pending.poll();
-			if (goals.contains(region)) {
-				List<Integer> chain = new ArrayList<>();
-				for (int step = region; step != 0; step = cameFrom.get(step))
-					chain.add(0, step);
-				chains.add(chain);
-			}
-			for (GlideLink link : mesh.glidesFrom(region)) {
-				if (cameFrom.putIfAbsent(link.toRegion(), region) == null)
+		while (!pending.isEmpty()) {
+			for (GlideLink link : mesh.glidesFrom(pending.poll())) {
+				if (cameFrom.putIfAbsent(link.toRegion(), link.fromRegion()) == null)
 					pending.add(link.toRegion());
 			}
+		}
+		List<List<Integer>> chains = new ArrayList<>();
+		for (int goal : goals) {
+			if (!cameFrom.containsKey(goal))
+				continue;
+			List<Integer> chain = new ArrayList<>();
+			for (int step = goal; step != 0; step = cameFrom.get(step))
+				chain.add(0, step);
+			chains.add(chain);
+			if (chains.size() == CHAINS_TRIED)
+				break;
 		}
 		return chains;
 	}
@@ -144,6 +154,14 @@ final class GlideRoutes {
 		}
 		append(waypoints, last.waypoints());
 		return new BotPathFinder.Route(waypoints, false, glides);
+	}
+
+	/** @return How far the nearest edge a glide leaves this stretch from is, a metre of height counting as {@link #HEIGHT_WEIGHT} across; infinite when none leaves it. */
+	private static double nearestEdge(Navmesh mesh, int region, float x, float y, float z) {
+		double nearest = Double.POSITIVE_INFINITY;
+		for (GlideLink link : mesh.glidesFrom(region))
+			nearest = Math.min(nearest, Math.hypot(link.fromX() - x, link.fromY() - y) + HEIGHT_WEIGHT * Math.abs(link.fromZ() - z));
+		return nearest;
 	}
 
 	/** Adds a stretch of the route, leaving out its first waypoint when it only repeats where the one before ended. */

@@ -18,6 +18,11 @@ class GlideLinksTest {
 
 	/** Platform on the west half of the square (cells 0-19), the floor on the east (cells 26-63): six cells, three metres, of nothing in between. */
 	private Heightfield field() {
+		return field(false);
+	}
+
+	/** @param treeTops whether the floor's first columns hold, halfway up, something nobody can stand on: a tree's crown, a rail, a steep rock */
+	private Heightfield field(boolean treeTops) {
 		int[] offsets = new int[SIZE * SIZE + 1];
 		List<Float> heights = new ArrayList<>();
 		BitSet walkable = new BitSet();
@@ -28,6 +33,8 @@ class GlideLinksTest {
 					walkable.set(heights.size());
 					heights.add(x < 20 ? PLATFORM : FLOOR);
 				}
+				if (treeTops && x >= 26 && x < 20 + GlideLinks.REACH_CELLS + 2) // under the whole reach of a glide, or the floor past them would be found anyway
+					heights.add(PLATFORM / 2);
 			}
 		}
 		offsets[SIZE * SIZE] = heights.size();
@@ -49,6 +56,17 @@ class GlideLinksTest {
 			assertNotEquals(link.fromRegion(), link.toRegion());
 			assertTrue(link.fromX() < 10 && link.toX() > 13, "from the platform to the floor: " + link);
 		}
+	}
+
+	@Test
+	void somethingNobodyStandsOnUnderTheEdgeDoesNotHideTheFloor() {
+		Heightfield field = field(true);
+
+		List<GlideLink> links = GlideLinks.find(field, field.regions(BotPathFinder.STEP_TOLERANCE));
+
+		assertFalse(links.isEmpty(), "the floor below the crowns is still where a glide lands");
+		for (GlideLink link : links)
+			assertEquals(FLOOR, link.toZ(), 0.01f, "landing on the floor, not on the crown: " + link);
 	}
 
 	@Test
