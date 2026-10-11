@@ -78,6 +78,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long SHEATHE_DELAY_MILLIS = 8000;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
 	private static final long UNREACHABLE_MILLIS = 10000;
+	/** How long a target given up on a second time, then a third and after, is left alone. */
+	private static final long UNREACHABLE_AGAIN_MILLIS = 120000, UNREACHABLE_FOR_GOOD_MILLIS = 600000;
+	/** Give-ups in a row, with no blow landed between them, after which the bot goes back to its camp instead of picking the next monster beside it. */
+	private static final int GIVE_UPS_BEFORE_CAMP = 3;
+	/** How many monsters' failures are remembered before the memory is started again: a monster respawns under a new id, so old ones only take room. */
+	private static final int MAX_FAILED_CHASES_KEPT = 256;
 	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
 	private static final long KILLER_AVOIDED_MILLIS = 120000;
 	/**
@@ -248,6 +254,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile long combatEndedAt;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
+	/** How many times each monster was given up on as out of reach, so the next time it is left alone for longer. */
+	private final Map<Integer, Integer> failedChases = new ConcurrentHashMap<>();
+	/** Give-ups since the bot last landed a blow. */
+	private volatile int giveUpsInARow;
 	/** How many refusals in a row mean the bot is not blocked from somewhere but wedged where it stands. */
 	private static final int STUCK_REFUSALS = 12;
 	/** Refusals in a row, reset by any movement that starts. */
@@ -579,7 +589,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 						convalesce(); // roaming would walk it to the nearest mob, and sitting on the obelisk is what filled them
 					else {
 						convalescence.forget(); // the sickness is over, so the claim on the spot is too
-						Creature target = BotTargetSelector.findTarget(getOwner(), this::isIgnored);
+						// the camp's leash as well as what was given up: the nearest monster to a bot walking home from an obelisk is outside its camp, chase()
+						// refuses it in the same millisecond, and one bot went round three of them 1345 times in forty minutes, logged as "cannot reach"
+						Creature target = BotTargetSelector.findTarget(getOwner(), npc -> isIgnored(npc) || isOffLeash(npc));
 						if (target == null)
 							roam();
 						else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
@@ -774,10 +786,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
 			chaseStartTime = 0;
 			stopMoving();
-			if (useBestSkill(target) || BotAttackManager.autoAttack(bot, target))
+			if (useBestSkill(target) || BotAttackManager.autoAttack(bot, target)) {
 				lastBlow = System.currentTimeMillis();
+				giveUpsInARow = 0;
+			}
 		} else if (castFromAfar(target)) {
 			lastBlow = System.currentTimeMillis();
+			giveUpsInARow = 0;
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
 		} else if (holdsStation(target)) {
 			// a ranged class in its place with nothing in reach to cast. Walking up to the enemy would be the chase this whole rule exists to replace, and
@@ -787,9 +802,26 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// the surplus damage it was spending is not worth leaving it for. It waits instead; the group's own fight brings the target into range,
 			// and where it never does the stalled fight watchdog lets this one go.
 		} else if (!chase(target)) {
+			// told apart, because the two read the same in the log and are not the same fault: the second is the mesh's, the first is not
+			if (isOffLeash(target)) {
+				log.info("Bot {} leaves {} alone: it is beyond its camp", bot.getName(), target.getName());
+				ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
+				stopAttacking();
+				return;
+			}
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
-			ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
+			// the same monster given up on again is left alone for longer each time: ten seconds was shorter than a round of three of them
+			if (failedChases.size() > MAX_FAILED_CHASES_KEPT)
+				failedChases.clear();
+			int failures = failedChases.merge(target.getObjectId(), 1, Integer::sum);
+			ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + unreachableFor(failures));
 			stopAttacking();
+			if (++giveUpsInARow >= GIVE_UPS_BEFORE_CAMP) {
+				// three in a row without landing a blow: the ground here is the problem, not the monster, and the camp is where its ground is good
+				giveUpsInARow = 0;
+				log.info("Bot {} gave up on {} targets in a row and goes back to its camp", bot.getName(), GIVE_UPS_BEFORE_CAMP);
+				returnToAnchor();
+			}
 			return;
 		}
 
@@ -1077,7 +1109,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			chaseStartTime = now;
 		else if (now - chaseStartTime > MAX_CHASE_MILLIS)
 			return false;
-		if (PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE)
+		if (isOffLeash(target))
 			return false;
 		if (posture.isAnimating())
 			return true; // on its feet, or drawing its weapon; walking now is what makes it slide
@@ -1557,6 +1589,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 				attacker[0] = npc;
 		});
 		return attacker[0];
+	}
+
+	/** @return How long a monster given up on for the n-th time is left alone. */
+	static long unreachableFor(int failures) {
+		return failures <= 1 ? UNREACHABLE_MILLIS : failures == 2 ? UNREACHABLE_AGAIN_MILLIS : UNREACHABLE_FOR_GOOD_MILLIS;
+	}
+
+	/** @return true if a target is further from the bot's anchor than it follows anything, which is a fight it would break off as soon as it chased. */
+	private boolean isOffLeash(Creature target) {
+		return PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE;
 	}
 
 	private boolean isIgnored(Creature target) {

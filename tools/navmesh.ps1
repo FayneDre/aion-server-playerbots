@@ -16,6 +16,9 @@
     A bot in an instance only positions itself where its map has a mesh, so this is what a server needs once. With ids after it, only those dungeons (and the copies
     that share their geometry) are worked on: .\tools\navmesh.ps1 -Dungeons 300040000,300050000
 
+.PARAMETER Field
+    For open-world maps: pairs of monsters a hunting bot would pick one after the other, and how many can be walked between. .\tools\navmesh.ps1 210020000,220030000 -Field
+
 .PARAMETER Force
     With -Dungeons: builds again the meshes that already exist. Without it they are left alone, since a dungeon takes minutes to build and one that is already good is not
     made better by building it again. Needed after a change to the generator.
@@ -35,6 +38,7 @@ param(
     [string]$ServerRoot = $env:AION_SERVER_HOME,
     [switch]$Obelisks,
     [switch]$Reach,
+    [switch]$Field,
     [switch]$Dungeons,
     [switch]$Force
 )
@@ -102,6 +106,15 @@ try {
         exit 0
     }
     if (-not $maps) { throw 'Give a map id, -Dungeons or -Obelisks.' }
+    if ($Field) {
+        # the open world: from where a monster stands, can a hunting bot walk to the monsters it would pick next? Exit code 1 when some pairs cannot be
+        $worst = 0
+        foreach ($id in $maps) {
+            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() fieldreach
+            if ($LASTEXITCODE -gt $worst) { $worst = $LASTEXITCODE }
+        }
+        exit $worst
+    }
     if ($Reach) {
         # an instance: from where the party arrives, can a bot walk to where the monsters are? Exit code 1 when some spots cannot be reached
         $worst = 0

@@ -1,6 +1,6 @@
 # Open world navigation: plan
 
-Status: not started. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
+Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 next, which starts with measurements and needs no rebuild. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
 obelisk audit went from 151 routes found to 173 with none lost. Each milestone below is verifiable on its own, in this order, and none needs the next.
 
 ## Where it stands
@@ -27,6 +27,14 @@ The dungeons moved because every change was measured before and after. The open 
 
 Verified when both run on Poeta, Eltnen and Altgard and their figures are written here.
 
+**Done on 11 October.** `.\tools\navmesh.ps1 <maps> -Field` (`FieldReach`) pairs the monster spawns of a map that are within 25 m and 8 m of each other,
+which is what a bot hunting at one picks next, and routes 400 of them: **94 to 100 % reached on every open-world map** (Heiron 94, Verteron, Morheim and
+Beluslan 95, Eltnen 96, Altgard and Inggison 97, Cygnea, Ishalgen, Gelkmaros and Levinshor 99, Poeta and Brusthonin 100). Theobomos and Reshanta keep their
+monsters in other files and give no pairs. So the mesh is not why half the fights were given up. `.\tools\nav-stats.ps1 [-Since HH:mm]` reads the log:
+over forty minutes, 4 129 fights started and 1 880 given up (46 %), **1 345 of them by one bot**. It was not out of reach of anything: walking home from an
+obelisk 600 m away, it picked the monsters beside it, which `chase()` refuses in the same millisecond as being further than 60 m from its anchor, and the
+log said "cannot reach".
+
 ### 1. Do not go back to what could not be reached (a day)
 
 - The time a target is left alone grows with each failure on it, ten seconds then two minutes then ten, instead of ten seconds every time.
@@ -35,6 +43,13 @@ Verified when both run on Poeta, Eltnen and Altgard and their figures are writte
   the bot's ground does not join is not offered at all.
 
 Verified by `nav-stats`: the give-ups per fight fall, and no bot gives up more than a handful of times in ten minutes.
+
+**Done on 11 October**, in another order than written: the cause was the leash, not the ground. The target is now picked with the camp's leash as well
+(`isOffLeash`, the rule `chase()` already applied), a target refused for that is logged as "leaves … alone: it is beyond its camp", a monster given up on
+again is left alone 10 s, then 2 min, then 10 min, and three give-ups in a row send the bot back to its camp. Ten minutes after a restart, against the ten
+after the one before: fights given up 594 to **0**, fights started 1 127 to 548 (the loop's starts gone, the real fights the same), 28 targets left as
+beyond the camp, errands, routes refused and steps aside unchanged. The check of shared ground before offering a target was not needed: `fieldreach` says
+the neighbouring monsters are reachable, and none was given up on.
 
 ### 2. Glide links in the open world (two days, plus a mesh build that is the user's call)
 
