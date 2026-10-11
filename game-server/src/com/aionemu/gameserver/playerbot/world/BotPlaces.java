@@ -619,9 +619,14 @@ public class BotPlaces {
 
 	private static Places locatePlaces(int id) {
 		long located = System.currentTimeMillis();
-		List<Settlement> settlements = locateSettlements(id);
-		List<Settlement> grounds = locateHuntingGrounds(id, settlements);
+		AnchorCache anchors = AnchorCache.open(id);
+		int known = anchors.size();
+		List<Settlement> settlements = locateSettlements(id, anchors);
+		List<Settlement> grounds = locateHuntingGrounds(id, settlements, anchors);
+		anchors.save();
 		located = System.currentTimeMillis() - located;
+		log.info("Map {}: {} place(s) found in {} ms, {} of them entered where they were before the restart", id, settlements.size() + grounds.size(),
+			located, known);
 		List<Settlement> everywhere = new ArrayList<>(settlements);
 		everywhere.addAll(grounds);
 		Map<Integer, Integer> votes = new HashMap<>();
@@ -778,7 +783,7 @@ public class BotPlaces {
 	 * Greedy and good enough: townsfolk are few, and two clusters that should have been one merely give a wanderer two destinations a few paces
 	 * apart. Lone npcs are dropped — a road keeper is not a village.
 	 */
-	private static List<Settlement> locateSettlements(int worldId) {
+	private static List<Settlement> locateSettlements(int worldId, AnchorCache anchors) {
 		// Clustered per faction rather than all together, which is what lets a place say whose it is. On a faction's own ground there is only ever one
 		// of these lists and the result is what it always was; in Reshanta there are two, and Teminon does not absorb Primum because they are a few
 		// hundred metres apart in the same data.
@@ -800,7 +805,7 @@ public class BotPlaces {
 		for (Map.Entry<Race, List<List<Vector3f>>> entry : clustersByRace.entrySet()) {
 			for (List<Vector3f> cluster : entry.getValue()) {
 				if (cluster.size() >= SETTLEMENT_SIZE) {
-					Vector3f centre = anchorOf(worldId, cluster);
+					Vector3f centre = anchorOf(worldId, cluster, anchors);
 					settlements.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(countryside, centre), entry.getKey()));
 				}
 			}
@@ -818,7 +823,7 @@ public class BotPlaces {
 	 * to keep somebody busy: two roadside beetles are scenery, not a place to spend an afternoon, and a population scattered over every pair of them
 	 * would be a population standing alone in the grass.
 	 */
-	private static List<Settlement> locateHuntingGrounds(int worldId, List<Settlement> settlements) {
+	private static List<Settlement> locateHuntingGrounds(int worldId, List<Settlement> settlements, AnchorCache anchors) {
 		List<List<Vector3f>> clusters = new ArrayList<>();
 		List<float[]> creatures = new ArrayList<>();
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
@@ -841,7 +846,7 @@ public class BotPlaces {
 		for (List<Vector3f> cluster : clusters) {
 			if (cluster.size() < HUNTING_GROUND_SIZE)
 				continue;
-			Vector3f centre = anchorOf(worldId, cluster);
+			Vector3f centre = anchorOf(worldId, cluster, anchors);
 			// the level of what stands here, not of the country around it: a ground is a handful of creatures in one spot, and averaging over a
 			// hundred and fifty metres of everything nearby is exactly how a place of eights came to read as a place of twos
 			grounds.add(new Settlement(centre, reachOf(centre, cluster), cluster.size(), levelAround(creatures, centre, GATHERING_RADIUS),
@@ -968,7 +973,16 @@ public class BotPlaces {
 	 * So the members are tried from the middle outwards and the first one the mesh accepts wins. Falling back to the average keeps a map with no
 	 * generated mesh working as it did before.
 	 */
-	private static Vector3f anchorOf(int worldId, List<Vector3f> cluster) {
+	private static Vector3f anchorOf(int worldId, List<Vector3f> cluster, AnchorCache anchors) {
+		Vector3f known = anchors.get(cluster);
+		if (known != null)
+			return known;
+		Vector3f anchor = chooseAnchor(worldId, cluster);
+		anchors.put(cluster, anchor);
+		return anchor;
+	}
+
+	private static Vector3f chooseAnchor(int worldId, List<Vector3f> cluster) {
 		Vector3f middle = centreOf(cluster);
 		List<Vector3f> fromTheMiddle = new ArrayList<>(cluster);
 		fromTheMiddle.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(middle.x, middle.y, spot.x, spot.y)));

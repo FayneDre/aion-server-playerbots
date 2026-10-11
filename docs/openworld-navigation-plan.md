@@ -100,6 +100,11 @@ reported from in game at the Ardus Shrine camp; the mover now opens the wings (`
 fought there. Watching it showed something else: 29 bots died in the same millisecond, the bot threads having all waited 75 s on Heiron's places being
 worked out inside `computeIfAbsent`. They are now worked out outside the lock, and the searches made slow by the long-walk planner have a budget.
 
+**The places at startup.** Working them out still took 0.5 to 42 s a map, 4 min 30 in all: 178 searches over a second (312 s), most of them giving up
+between two spots of one place while its entrance was chosen (`BotPlaces.anchorOf`, ten tries a place). The entrances are now kept in
+`cache/playerbot/anchors-<map>.txt` and chosen again only when the map's `.nav` or `.glide` changes (`AnchorCache`), which also stops a search out of
+time from moving a place, and its residents' homes with it, between two restarts.
+
 ### 3. Portal links: using things to get somewhere (a week)
 
 This is the same work as Steel Rake's levers and the Danuar teleporters ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)), done once for both.
