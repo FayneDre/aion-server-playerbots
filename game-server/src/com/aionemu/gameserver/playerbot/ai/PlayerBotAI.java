@@ -1316,7 +1316,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// Ground it can walk away from, close by, before anything that takes it across the map: a bot that cannot leave its pocket does not need its
 		// home, it needs the floor beside it. Only when the mesh says the spot is cut off from its anchor or is inside geometry; one that is merely
 		// wedged against a prop on connected ground is left to the rescue below.
-		Vector3f near = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId());
+		Vector3f near = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId(),
+			bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly());
 		if (near != null) {
 			log.info("Bot {} could not move at {} {} {}, which the map does not join to its anchor, and is put on walkable ground at {} {} {}", bot.getName(),
 				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(bot.getZ()), Math.round(near.getX()), Math.round(near.getY()), Math.round(near.getZ()));
@@ -1402,7 +1403,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private void stepOffTrappedGround() {
 		Player bot = getOwner();
-		Vector3f ground = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId());
+		Vector3f ground = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId(),
+			bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly());
 		if (ground == null)
 			return;
 		log.info("Bot {} came back at {} {} {}, where it cannot walk away from, and is put on walkable ground at {} {} {}", bot.getName(),

@@ -5,9 +5,14 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.controllers.movement.MovementMask;
 import com.aionemu.gameserver.controllers.movement.PlayerMoveController;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
+import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
+import com.aionemu.gameserver.geoEngine.collision.IgnoreProperties;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.EmotionType;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -97,6 +102,16 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile boolean gliding;
 	/** How fast a glide is flown, in metres a second along its slant: a little under a body's flight, since nothing pushes it but the fall. */
 	private static final float GLIDE_SPEED = 8f;
+	/**
+	 * How many metres a glide goes forward for each metre it comes down. A link is found from the edge to the first ground below within ten metres, so
+	 * Ardus Shrine's was 85 m down for 14 m out: flown as a line, the body dropped along the cliff face and was seen to vanish. Short of that ratio, the
+	 * glide circles down over its landing, as a player does.
+	 */
+	private static final float GLIDE_RATIO = 2.5f;
+	private static final float GLIDE_TURN_RADIUS = 8f;
+	private static final int GLIDE_LEGS_PER_TURN = 12;
+	/** The points still to be flown before the landing, when the glide circles down to it. */
+	private final Deque<Vector3f> glideTurns = new ConcurrentLinkedDeque<>();
 	/** Whether the point being walked to came from the navmesh, and so needs no second opinion on the ground between here and there. */
 	private volatile boolean onPlannedWaypoint;
 	/**
@@ -316,7 +331,7 @@ public class BotMoveController extends PlayerMoveController {
 	 */
 	private void tellFlightLeg(float x, float y, float z) {
 		lastFlightTell = System.currentTimeMillis();
-		if (flightRising)
+		if (flightRising || gliding) // a glide is driven too: told only where it ends, a client draws the body down the cliff face, clamped to it
 			beginFlightVelocity(x, y, z, flightSpeed);
 		else
 			beginFlightLeg(x, y, z);
@@ -379,7 +394,7 @@ public class BotMoveController extends PlayerMoveController {
 		if (gap * (1 - fraction) <= FLIGHT_ARRIVED)
 			flightLegDone = true;
 
-		if (flightRising && System.currentTimeMillis() - lastFlightTell >= FLIGHT_TELL_MILLIS)
+		if ((flightRising || gliding) && System.currentTimeMillis() - lastFlightTell >= FLIGHT_TELL_MILLIS)
 			tellFlightLeg(getTargetX2(), getTargetY2(), getTargetZ2());
 	}
 
@@ -402,8 +417,14 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return true if the bot keeps moving.
 	 */
 	public boolean continueToGoal() {
-		if (gliding)
+		if (gliding) {
+			Vector3f next = glideTurns.poll();
+			if (next != null) {
+				flyLegTo(next.getX(), next.getY(), next.getZ(), GLIDE_SPEED);
+				return true;
+			}
 			land();
+		}
 		List<Vector3f> planned = pendingRoute;
 		if (planned != null) {
 			pendingRoute = null;
@@ -613,8 +634,63 @@ public class BotMoveController extends PlayerMoveController {
 			return true;
 		gliding = true;
 		PacketSendUtility.broadcastToSightedPlayers(owner, new SM_EMOTION(owner, EmotionType.START_GLIDE), true);
-		log.info("Bot {} glides down from {} to {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()), describe(goalX, goalY, goalZ));
-		flyLegTo(goalX, goalY, goalZ, GLIDE_SPEED);
+		glideTurns.clear();
+		glideTurns.addAll(circlingDown(owner.getX(), owner.getY(), owner.getZ(), goalX, goalY, goalZ));
+		log.info("Bot {} glides down from {} to {}{}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()), describe(goalX, goalY, goalZ),
+			glideTurns.isEmpty() ? "" : ", circling over it in " + glideTurns.size() + " legs");
+		Vector3f first = glideTurns.poll();
+		if (first != null)
+			flyLegTo(first.getX(), first.getY(), first.getZ(), GLIDE_SPEED);
+		else
+			flyLegTo(goalX, goalY, goalZ, GLIDE_SPEED);
+		return true;
+	}
+
+	/**
+	 * @return The points of a glide that circles down to its landing, the landing last; empty when the line from the edge is already a glide, or when the
+	 *         air around the landing is not clear either way round, in which case the glide is flown as a line.
+	 *         <p>
+	 *         The circle is beyond the landing, away from the edge, and passes through the landing: the body glides out from the edge to above the landing,
+	 *         turns over the ground it lands on and comes back to it, a whole number of turns later.
+	 */
+	private List<Vector3f> circlingDown(float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
+		float runX = toX - fromX, runY = toY - fromY;
+		float run = (float) Math.hypot(runX, runY), drop = fromZ - toZ;
+		float circling = drop * GLIDE_RATIO - run;
+		if (run < 0.5f || circling < GLIDE_TURN_RADIUS * 2)
+			return List.of();
+		float outX = runX / run, outY = runY / run;
+		float centreX = toX + outX * GLIDE_TURN_RADIUS, centreY = toY + outY * GLIDE_TURN_RADIUS;
+		double startAngle = Math.atan2(toY - centreY, toX - centreX);
+		int turns = Math.max(1, Math.round(circling / (float) (2 * Math.PI * GLIDE_TURN_RADIUS)));
+		int legs = turns * GLIDE_LEGS_PER_TURN;
+		float aboveLanding = fromZ - run / GLIDE_RATIO;
+		for (int side : new int[] { 1, -1 }) {
+			List<Vector3f> points = new ArrayList<>(legs + 1);
+			points.add(new Vector3f(toX, toY, aboveLanding));
+			for (int leg = 1; leg <= legs; leg++) {
+				double angle = startAngle + side * 2 * Math.PI * leg / GLIDE_LEGS_PER_TURN;
+				float z = aboveLanding - (aboveLanding - toZ) * leg / legs;
+				points.add(leg == legs ? new Vector3f(toX, toY, toZ)
+					: new Vector3f(centreX + (float) Math.cos(angle) * GLIDE_TURN_RADIUS, centreY + (float) Math.sin(angle) * GLIDE_TURN_RADIUS, z));
+			}
+			if (isAirClear(new Vector3f(fromX, fromY, fromZ), points))
+				return points;
+		}
+		return List.of();
+	}
+
+	/** @return true if nothing solid stands on the way through these points, asked of the game's geometry at a body's chest, the last metre forgiven. */
+	private boolean isAirClear(Vector3f from, List<Vector3f> points) {
+		Vector3f last = from;
+		for (Vector3f point : points) {
+			Vector3f met = GeoService.getInstance().getClosestCollision(owner, last.getX(), last.getY(), last.getZ() + 1.5f, point.getX(), point.getY(),
+				point.getZ() + 1.5f, false, CollisionIntention.DEFAULT_COLLISIONS.getId(), IgnoreProperties.ANY_RACE);
+			if (met != null && PositionUtil.getDistance(met.getX(), met.getY(), met.getZ(), point.getX(), point.getY(), point.getZ() + 1.5f) >= 1f
+				&& PositionUtil.getDistance(met.getX(), met.getY(), met.getZ(), last.getX(), last.getY(), last.getZ() + 1.5f) >= 1f)
+				return false;
+			last = point;
+		}
 		return true;
 	}
 
@@ -623,6 +699,10 @@ public class BotMoveController extends PlayerMoveController {
 		gliding = false;
 		aimIsGlide = false;
 		flying = false;
+		glideTurns.clear();
+		// the time spent in the air is not time spent making no headway on the ground
+		closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
+		lastProgressTime = System.currentTimeMillis();
 		owner.getFlyController().onStopGliding();
 		World.getInstance().updatePosition(owner, owner.getX(), owner.getY(), groundZ(owner.getX(), owner.getY(), owner.getZ()), heading, true);
 	}

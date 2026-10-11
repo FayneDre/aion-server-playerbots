@@ -2,6 +2,8 @@ package com.aionemu.gameserver.playerbot.navmesh;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -221,6 +223,35 @@ public class NavmeshService {
 				return null;
 			}
 		});
+	}
+
+	/**
+	 * @return true if a chain of glide links leads from a stretch of ground under one spot to a stretch under the other: the same cheap test as
+	 *         sharing a stretch, for something with wings. Read off the links and the coarse grid alone, so no route is searched.
+	 */
+	public boolean glidesJoin(int worldId, float fromX, float fromY, float toX, float toY) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null || !mesh.hasGlides())
+			return false;
+		Set<Integer> goals = new HashSet<>();
+		for (int region : regionsAt(worldId, toX, toY))
+			goals.add(region);
+		Set<Integer> seen = new HashSet<>();
+		ArrayDeque<Integer> pending = new ArrayDeque<>();
+		for (int region : regionsAt(worldId, fromX, fromY)) {
+			if (seen.add(region))
+				pending.add(region);
+		}
+		while (!pending.isEmpty()) {
+			int region = pending.poll();
+			if (goals.contains(region))
+				return true;
+			for (GlideLink link : mesh.glidesFrom(region)) {
+				if (seen.add(link.toRegion()))
+					pending.add(link.toRegion());
+			}
+		}
+		return false;
 	}
 
 	/**

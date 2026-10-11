@@ -30,6 +30,8 @@ public final class BotLanding {
 
 	/**
 	 * @param seed Which way to start looking round each ring, so that bots put down together do not all pick the same side.
+	 * @param canGlide Whether the bot has wings. Ground it can glide down from to its goal is not a trap: the obelisk of Ardus Shrine stands on a
+	 *          plateau nothing walks off, and the bots resurrected there were put 86 m below, among the creatures, while still sick, and died again.
 	 * @return Ground near {@code from} that has a walking route to {@code goal}, when the bot is not already on such ground. Null when the bot is
 	 *         fine where it is, when the map has no mesh, or when nothing better was found within reach.
 	 *         <p>
@@ -38,12 +40,13 @@ public final class BotLanding {
 	 *         answer; and <b>on a pocket</b> (a floor the goal's ground does not include), where the way out is on another level, found by trying the
 	 *         floors of each column and confirming the first with a real route.
 	 */
-	public static Vector3f toWalkableGround(int worldId, Vector3f from, Vector3f goal, int seed) {
+	public static Vector3f toWalkableGround(int worldId, Vector3f from, Vector3f goal, int seed, boolean canGlide) {
 		NavmeshService mesh = NavmeshService.getInstance();
 		if (mesh.regionsAt(worldId, goal.getX(), goal.getY()).length == 0)
 			return null; // no mesh, or a goal with no footing of its own: nothing to measure against
 		boolean onFloor = isOnFloor(mesh, worldId, from);
-		boolean joined = sharesGround(mesh, worldId, from.getX(), from.getY(), goal);
+		boolean joined = sharesGround(mesh, worldId, from.getX(), from.getY(), goal)
+			|| canGlide && mesh.glidesJoin(worldId, from.getX(), from.getY(), goal.getX(), goal.getY());
 		if (onFloor && joined)
 			return null;
 		int confirmations = 0;

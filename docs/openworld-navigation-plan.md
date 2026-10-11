@@ -105,6 +105,12 @@ between two spots of one place while its entrance was chosen (`BotPlaces.anchorO
 `cache/playerbot/anchors-<map>.txt` and chosen again only when the map's `.nav` or `.glide` changes (`AnchorCache`), which also stops a search out of
 time from moving a place, and its residents' homes with it, between two restarts.
 
+**Seen in game the same evening, at Ardus Shrine.** The resurrection rescue (`BotLanding`) judged the plateau a trap by walking alone and put the bots
+86 m below, among the creatures, still sick: ten in twelve minutes, dying again. A daeva on ground that glides down to its anchor (`glidesJoin`, the
+links and the coarse grid, no search) is now left there. And a link runs from the edge to the first ground below within 10 m, so a glide was 85 m down
+for 14 m out, drawn by the clients down the cliff face: one steeper than 2.5 to 1 now circles down over its landing (49 legs there, about 35 s), each
+leg checked against the game's geometry, and is driven like a climb. Three bots glided down that way after the restart; how it looks is the tester's call.
+
 ### 3. Portal links: using things to get somewhere (a week)
 
 This is the same work as Steel Rake's levers and the Danuar teleporters ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)), done once for both.
