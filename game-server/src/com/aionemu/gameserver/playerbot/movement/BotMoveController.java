@@ -707,6 +707,19 @@ public class BotMoveController extends PlayerMoveController {
 		World.getInstance().updatePosition(owner, owner.getX(), owner.getY(), groundZ(owner.getX(), owner.getY(), owner.getZ()), heading, true);
 	}
 
+	/**
+	 * Drops a glide the body will not finish, because it died on the way down. Nothing else ends one: {@link #stop} leaves a flight alone, so a bot killed
+	 * in the air came back at its obelisk still flying, and would have flown on to what was left of its circle.
+	 */
+	public void abandonGlide() {
+		if (!gliding)
+			return;
+		gliding = false;
+		aimIsGlide = false;
+		glideTurns.clear();
+		endFlight();
+	}
+
 	/** @return true while this controller is gliding the body down a planned glide, which is a leg of the walk and not a flight of {@link BotFlight}'s. */
 	public boolean isGliding() {
 		return gliding;

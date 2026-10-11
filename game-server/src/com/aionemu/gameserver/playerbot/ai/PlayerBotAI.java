@@ -1698,6 +1698,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (bot.getTarget() instanceof Creature killer)
 			ignoredTargets.put(killer.getObjectId(), System.currentTimeMillis() + KILLER_AVOIDED_MILLIS);
 		cancelCombat();
+		if (bot.getMoveController() instanceof BotMoveController moveController)
+			moveController.abandonGlide();
 		setStateIfNot(AIState.DIED);
 		log.info("Bot {} died at {} {} {} (anchor {} {} {})", bot.getName(), bot.getX(), bot.getY(), bot.getZ(), anchorX, anchorY, anchorZ);
 		day.recordDeath(); // a home that keeps killing its resident is a home the resident leaves, whatever the reason turns out to be
