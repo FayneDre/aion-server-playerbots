@@ -658,7 +658,7 @@ public class BotSkillManager {
 				boolean halted = (template.getDuration() > 0 || template.isCharge()) && bot.getMoveController() instanceof BotMoveController walking
 					&& walking.isInMove() && walking.haltForCast();
 				// the sequence a class casts in, read from the log to compare a rotation with the guide's: enable DEBUG for this class to see it
-				log.debug("{} casts {} (group {}) at {}{}", bot.getName(), template.getName(), template.getGroup(), target.getName(),
+				log.debug("{} casts {} rank {} (group {}) at {}{}", bot.getName(), template.getName(), template.getLvl(), template.getGroup(), target.getName(),
 					halted ? ", stopping its walk for it" : "");
 				if (template.isCharge())
 					releaseWhenCharged(bot, skill);
@@ -817,11 +817,23 @@ public class BotSkillManager {
 		return best;
 	}
 
+	/**
+	 * The bot's ready skills of the group, highest rank first.
+	 * <p>
+	 * A character keeps every rank it ever learned: rank 13 of Healing Light does not replace rank 1 in the skill list, it sits beside it under another id.
+	 * The list is a hash map, which hands small ids back in ascending order, so a playbook asking for "the group" was given rank 1 first and cast it,
+	 * every time, since the ranks share one cooldown: a level 63 cleric healed for 110 points where its own book said 1346, reported by a tester.
+	 * The lower ranks stay as fallbacks, for the one case where the top one turns a cast down and a cheaper one would not: mana.
+	 */
 	private static List<SkillTemplate> readyOfGroup(Player bot, String group) {
 		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId()))
 			.filter(template -> template != null && group.equals(template.getGroup()) && !bot.isSkillDisabled(template) && !isWaitingForTheEventItAnswers(bot, template))
-			.toList();
+			.sorted(HIGHEST_RANK_FIRST).toList();
 	}
+
+	/** The rank the data gives a skill, then its id for ranks the data leaves equal. */
+	static final Comparator<SkillTemplate> HIGHEST_RANK_FIRST = Comparator.comparingInt(SkillTemplate::getLvl).thenComparingInt(SkillTemplate::getSkillId)
+		.reversed();
 
 	/**
 	 * @return true for a skill that answers a block, a dodge, a parry or a resist, and none has happened to the bot lately.

@@ -150,6 +150,13 @@ What depends on that quietly is the outfitter: it will not put armour on a chara
 engine asks when it refuses a piece — so dressing before teaching leaves the character in its starting kit and says so at `debug` level only. Teach, then
 dress. This held for as long as it did only because teaching happened on the way into the world, which was once the only way a bot was ever dressed.
 
+## Every rank of a skill stays in the book, and the lowest comes first
+
+Each rank is its own id (Healing Light is 1838 to 1850), and learning rank 13 adds an entry beside rank 1 rather than replacing it. The skill list is a hash map,
+which hands small ids back in ascending order, and the ranks share one cooldown: anything that takes "the first ready skill of the group" casts rank 1 for ever.
+Every playbook did until 2026-10-12, unseen because the cast log printed the name, which every rank shares. `readyOfGroup` sorts highest rank first;
+the log now prints the rank. `SkillRankDataTest` checks that the first rank offered is the strongest, game wide.
+
 ## A creature's level does not say whether one character can fight it
 
 `rating` does, in one word, and nothing else in the template hints at it. An `ELITE` of a bot's own level is several times the creature a `NORMAL` one
