@@ -111,7 +111,7 @@ Made for test sessions, and for whoever reads their log afterwards; the plan is 
 `//bot`, answering in the log as `BOT INBOX`. `tools/bot-command.ps1 '<command>', ...` appends the lines and prints the answers. There is no caller, so
 it takes only `squad`, `note`, `version`, `debug`, `position`, `list`, `create` (the bot then belongs to the world), `despawn`, `delete`, `stop`,
 `auto`, and two of its own: `spawn <name> near <bot>`, next to a spawned bot instead of a player, and `teleport <name> <map> <x> <y> <z>`, which
-also makes that place the bot's camp. Anyone who can write to the server's folder could already do anything to it, so the file opens nothing new.
+also makes that place the bot's camp. A `note` from the inbox describes every bot in a squad, since there is no caller to stand next to. Anyone who can write to the server's folder could already do anything to it, so the file opens nothing new.
 
 ## Two things worth knowing before handing this out
 

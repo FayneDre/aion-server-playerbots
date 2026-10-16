@@ -13,8 +13,10 @@ import com.aionemu.gameserver.model.team.TeamType;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.team.group.PlayerGroup;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
+import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.services.teleport.TeleportService;
+import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
  * Groups of bots with a bot at their head, which exist so that a group fight can be watched, and measured, without a player in the group.
@@ -32,6 +34,9 @@ public final class BotSquads {
 	private static final int MAX_SIZE = 6;
 	/** How far apart the members are put round the leader when a squad is formed. */
 	private static final float FORMED_SPACING = 2.5f;
+	/** How long after forming a squad its members are looked at again, and how far from the leader one may then be before it is brought over a second time. */
+	private static final long ARRIVAL_CHECK_MILLIS = 2000;
+	private static final float ARRIVED_WITHIN = 30;
 
 	/** The team ids of the groups that are squads. A group keeps its id for as long as it exists, whatever happens to its leader. */
 	private static final Set<Integer> squads = ConcurrentHashMap.newKeySet();
@@ -75,12 +80,17 @@ public final class BotSquads {
 			if (everyone.indexOf(bot) != everyone.lastIndexOf(bot))
 				return bot.getName() + " is named twice.";
 		}
-		for (int i = 0; i < members.size(); i++) {
-			Player member = members.get(i);
-			double angle = 2 * Math.PI * i / members.size();
-			TeleportService.teleportTo(member, leader.getWorldId(), leader.getInstanceId(), leader.getX() + (float) Math.cos(angle) * FORMED_SPACING,
-				leader.getY() + (float) Math.sin(angle) * FORMED_SPACING, leader.getZ());
-		}
+		bringOver(leader, members);
+		// Looked at again a moment later. In the first squad a cleric that had resurrected seconds before stayed at its obelisk 770 m away, for a reason
+		// the log did not give, and walked the whole way afterwards; one that has not arrived is brought over once more, and the log says so.
+		BotScheduler.getInstance().schedule(() -> {
+			List<Player> strayed = members.stream().filter(member -> member.isSpawned() && !member.isDead()
+				&& (member.getWorldId() != leader.getWorldId() || PositionUtil.getDistance(member, leader) > ARRIVED_WITHIN)).toList();
+			if (strayed.isEmpty())
+				return;
+			log.info("Squad of {}: {} had not arrived, brought over again", leader.getName(), strayed.stream().map(Player::getName).toList());
+			bringOver(leader, strayed);
+		}, ARRIVAL_CHECK_MILLIS);
 		PlayerGroup group = PlayerGroupService.createGroup(leader, members.getFirst(), TeamType.GROUP, 0);
 		squads.add(group.getTeamId());
 		for (Player member : members.subList(1, members.size()))
@@ -91,6 +101,14 @@ public final class BotSquads {
 		log.info("Squad {} formed: {} leads {} on map {} at {} {} {}", group.getTeamId(), leader.getName(), names, leader.getWorldId(),
 			Math.round(leader.getX()), Math.round(leader.getY()), Math.round(leader.getZ()));
 		return "Squad formed: " + leader.getName() + " leads " + names + ", camping where " + leader.getName() + " stands.";
+	}
+
+	private static void bringOver(Player leader, List<Player> members) {
+		for (int i = 0; i < members.size(); i++) {
+			double angle = 2 * Math.PI * i / members.size();
+			TeleportService.teleportTo(members.get(i), leader.getWorldId(), leader.getInstanceId(), leader.getX() + (float) Math.cos(angle) * FORMED_SPACING,
+				leader.getY() + (float) Math.sin(angle) * FORMED_SPACING, leader.getZ());
+		}
 	}
 
 	/** Dissolves the squad the bot is in. */

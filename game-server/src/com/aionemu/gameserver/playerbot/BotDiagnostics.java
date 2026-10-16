@@ -19,6 +19,7 @@ import com.aionemu.gameserver.model.gameobjects.VisibleObject;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.playerbot.social.BotRole;
+import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
@@ -52,7 +53,8 @@ public final class BotDiagnostics {
 	 * Writes a note to the log: the text, where the caller stands, and the state of every bot in the caller's group, or near the caller when there is none.
 	 * A tester types it the moment something looks wrong, so the minute that matters can be found in a log of eighteen megabytes.
 	 *
-	 * @param caller Who typed it, or null when it came from the command inbox: the note then describes nobody.
+	 * @param caller Who typed it, or null when it came from the command inbox: the note then describes every bot in a squad, which is what a test run
+	 *          without a client is watching.
 	 * @return The answer for the chat window, with the note's number so a report can quote it.
 	 */
 	public static String note(String text, Player caller) {
@@ -60,10 +62,14 @@ public final class BotDiagnostics {
 		String where = caller == null ? "no caller" : String.format("%s on map %d instance %d at %.0f %.0f %.0f", caller.getName(), caller.getWorldId(),
 			caller.getInstanceId(), caller.getX(), caller.getY(), caller.getZ());
 		log.info("{} #{} \"{}\" by {}, positioning {}", NOTE_MARK, number, text == null ? "" : text, where, PlayerBotConfig.POSITIONING);
-		List<Player> described = caller == null ? List.of() : botsAround(caller);
+		List<Player> described = caller == null ? squadMembers() : botsAround(caller);
 		for (Player bot : described)
 			log.info("{} #{} | {}", NOTE_MARK, number, describe(bot));
 		return "Note #" + number + " written to the log with " + described.size() + " bot(s) described.";
+	}
+
+	private static List<Player> squadMembers() {
+		return PlayerBotService.getInstance().spawnedBots().stream().filter(bot -> BotSquads.isSquad(bot.getCurrentTeam())).toList();
 	}
 
 	/** @return The bots in the caller's group, or those within {@value #NOTE_RADIUS} m of the caller when it has none. */
