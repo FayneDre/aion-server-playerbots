@@ -44,6 +44,17 @@ if (-not (Test-Path $Log)) { throw "Not found: $Log" }
 $Log = (Resolve-Path $Log).Path
 if (-not $Out) { $Out = Join-Path (Get-Location) ("feedback-{0:yyyy-MM-dd-HHmm}.zip" -f (Get-Date)) }
 
+# Opened shared, because the log of a running server is still held open for writing by it, and File.ReadLines asks for it alone
+function Read-LogLines([string]$Path) {
+    $stream = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+    $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::UTF8)
+    try {
+        while ($null -ne ($line = $reader.ReadLine())) { $line }
+    } finally {
+        $reader.Dispose()
+    }
+}
+
 # Every line the server writes starts with an ISO time; a line that does not (a stack trace) belongs to the one before it.
 $timePattern = '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})'
 function Get-LineTime([string]$line) {
@@ -54,7 +65,7 @@ function Get-LineTime([string]$line) {
 # First pass: the notes and the revision. A note is its header line; the lines describing its bots follow it and fall inside its window anyway.
 $notes = @()
 $revision = $null
-foreach ($line in [System.IO.File]::ReadLines($Log)) {
+foreach ($line in (Read-LogLines $Log)) {
     if ($line -match 'BOT NOTE #(\d+) "') {
         $notes += [pscustomobject]@{ Number = [int]$Matches[1]; Time = (Get-LineTime $line); Line = $line }
     } elseif ($line -match 'game-server-[^ ]+\.jar (revision .*)$') {
@@ -77,7 +88,7 @@ try {
         $writers[$note.Number] = New-Object System.IO.StreamWriter((Join-Path $work ("note-{0:D3}.log" -f $note.Number)), $false, (New-Object System.Text.UTF8Encoding($false)))
     }
     $current = $null
-    foreach ($line in [System.IO.File]::ReadLines($Log)) {
+    foreach ($line in (Read-LogLines $Log)) {
         $time = Get-LineTime $line
         if ($time) { $current = $time }
         if (-not $current) { continue }
