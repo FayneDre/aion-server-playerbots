@@ -189,7 +189,7 @@ public class BotFlight {
 		this.wasAtX = bot.getX();
 		this.wasAtY = bot.getY();
 		this.wasAtZ = bot.getZ();
-		this.legs = legs;
+		this.legs = new ArrayList<>(legs); // a copy that can be cut short: comeDown replaces the rest of the journey, and some callers pass List.of
 		this.hoverAfter = hoverAfter;
 		this.escorted = escorted;
 	}

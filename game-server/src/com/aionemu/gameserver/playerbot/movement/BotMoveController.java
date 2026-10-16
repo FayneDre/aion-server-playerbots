@@ -233,12 +233,9 @@ public class BotMoveController extends PlayerMoveController {
 		if (sameJourney && onDetour && !isArrived())
 			return true;
 		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
-		if (pendingRoute != null && plannedForX == x && plannedForY == y) {
+		if (pendingRoute != null && plannedForX == x && plannedForY == y && adoptPendingRoute()) {
 			// the plan asked for on an earlier call has arrived: taking it is the whole point of having waited, and planning again here would throw
 			// the answer away and start the wait over
-			route = pendingRoute;
-			routeGlides = pendingGlides;
-			pendingRoute = null;
 			routeIndex = 0;
 			aimAtNextWaypoint();
 		} else if (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE) {
@@ -252,11 +249,7 @@ public class BotMoveController extends PlayerMoveController {
 			// a long journey is planned on another thread, so the bot waits where it stands rather than setting off blind; a short one plans on this
 			// very call, in which case the result must be adopted right here or the first leg walks for nothing
 			NavmeshService.getInstance().planRoute(owner, x, y, z, avoid, planned -> offerRoute(planned, x, y));
-			if (pendingRoute != null) {
-				route = pendingRoute;
-				routeGlides = pendingGlides;
-				pendingRoute = null;
-			}
+			adoptPendingRoute();
 			aimAtNextWaypoint();
 		} else if (routeIndex >= route.size()) {
 			// keeping the route, but its waypoints are all behind us: the last stretch is walked at the destination itself, which may have shifted
@@ -430,11 +423,7 @@ public class BotMoveController extends PlayerMoveController {
 			}
 			land();
 		}
-		List<Vector3f> planned = pendingRoute;
-		if (planned != null) {
-			pendingRoute = null;
-			route = planned;
-			routeGlides = pendingGlides;
+		if (adoptPendingRoute()) {
 			routeIndex = 0;
 			aimAtNextWaypoint();
 		}
@@ -532,6 +521,22 @@ public class BotMoveController extends PlayerMoveController {
 			BotScheduler.getInstance().execute(() -> moveToPoint(finalX, finalY, finalZ));
 	}
 
+	/**
+	 * Takes the route a planning thread left, if there is one. The field is read once: it is written from other threads, and reading it twice -- once to
+	 * ask, once to take -- handed a bot a null route under 790 bots on 16 October.
+	 *
+	 * @return true if a route was taken.
+	 */
+	private boolean adoptPendingRoute() {
+		List<Vector3f> planned = pendingRoute;
+		if (planned == null)
+			return false;
+		pendingRoute = null;
+		route = planned;
+		routeGlides = pendingGlides;
+		return true;
+	}
+
 	private boolean reachedWaypoint() {
 		return PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY) < ARRIVE_OFFSET;
 	}
@@ -546,9 +551,12 @@ public class BotMoveController extends PlayerMoveController {
 		// second time -- an index out of bounds that cost a bot its decision tick in the log of 16 October
 		List<Vector3f> current = route;
 		Set<Integer> glides = routeGlides;
-		while (routeIndex < current.size()) {
-			boolean glide = glides.contains(routeIndex);
-			Vector3f waypoint = current.get(routeIndex++);
+		// the index too: two threads stepping it at once walked it past the end of a two waypoint route
+		int index = routeIndex;
+		while (index < current.size()) {
+			boolean glide = glides.contains(index);
+			Vector3f waypoint = current.get(index++);
+			routeIndex = index;
 			// the first waypoint is the bot's own cell, and a route may pass close to where it already stands; a landing never is, however close
 			// across, since it is metres below
 			if (!glide && PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
@@ -661,11 +669,7 @@ public class BotMoveController extends PlayerMoveController {
 		plannedForY = y;
 		awaitingPlan = true;
 		NavmeshService.getInstance().planRoute(owner, x, y, z, journeyAvoidance, planned -> offerRoute(planned, x, y));
-		if (pendingRoute != null) {
-			route = pendingRoute;
-			routeGlides = pendingGlides;
-			pendingRoute = null;
-		}
+		adoptPendingRoute();
 		aimAtNextWaypoint();
 		return true;
 	}
