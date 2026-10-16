@@ -1,6 +1,6 @@
 # Walking into scenery: plan
 
-Status: not started; measured 16 October, plan awaiting approval. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
+Status: milestones 0 and 1 built 16 October, with the first step of 2 (a plan asked for instead of a sidestep); the "after" measure is pending. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
 ("into an obstacle, then teleported behind it"), which this replaces as the place the work is tracked.
 
 ## What is seen
@@ -56,6 +56,18 @@ mesh, which already knows rails, walls and props, decide the short moves too.
 
 Done when, over the same half hour: steps aside under a tenth of today's, no teleport while a player is within sight, no-headway under one in ten
 minutes.
+
+## Built so far (16 October)
+
+- **0:** `nav-stats.ps1` prints steps aside per minute, by kind of leg (the log line now ends with it: planned, last stretch, awaiting a plan, no
+  route, no mesh), by length, by bot and by 20 m square, and rescue teleports with how many a player saw (`(seen by a player)` on the line) and how
+  many landed where the bot already was. The server writes decimals with a comma on this machine; the script reads both.
+- **1:** `BotPathFinder.clearDistance` (the first metre forgiven, for a body pressed into a wall), `NavmeshService.clearDistance`, and
+  `BotGeoHelper.withinMesh` cutting every reactive leg and every sidestep down to it; the goal's last metre is left to the rays.
+- **2, first step:** `BotMoveController.planAroundObstacle`: an unplanned leg the way ahead of which is shut asks for a route once per place and
+  destination before any sidestep, keeping the journey's avoidance.
+- **Seen in the "before" log, for 4:** of 7031 steps aside over five hours, 938 were one bot (Rasalon) on the upper floor of the Verteron fortress,
+  heading for a route that starts with a glide and is planned again every second. Also 218 steps aside headed for the spot the bot stood on.
 
 ## Risks
 

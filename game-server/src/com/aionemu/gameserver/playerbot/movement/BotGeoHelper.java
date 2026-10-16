@@ -3,6 +3,7 @@ package com.aionemu.gameserver.playerbot.movement;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Gatherable;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.geo.GeoService;
 
@@ -40,6 +41,11 @@ public class BotGeoHelper {
 	private static final float[] DETOUR_DISTANCES = { 2f, 4f, 8f };
 	/** A detour may lose some ground to the goal, since walking around an obstacle is rarely a shortcut. */
 	private static final float DETOUR_MAX_LOSS = 3f;
+	/**
+	 * How short of a goal the mesh may stop a straight walk and still let it through. A creature stands on the strip erosion shaved off a wall or a
+	 * rock as readily as a bot does, and the last metre to it is the rays' to judge.
+	 */
+	private static final float GOAL_SLACK = 1f;
 
 	private BotGeoHelper() {
 	}
@@ -59,7 +65,8 @@ public class BotGeoHelper {
 	public static Vector3f reachablePointToward(Player bot, float x, float y, float z) {
 		float angle = PositionUtil.calculateAngleFrom(bot.getX(), bot.getY(), x, y);
 		float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), x, y);
-		return walkableCorridor(bot, angle, Math.min(distance, MAX_LEG_DISTANCE));
+		float leg = Math.min(distance, MAX_LEG_DISTANCE);
+		return withinMesh(bot, angle, walkableCorridor(bot, angle, leg), leg, leg == distance);
 	}
 
 	/**
@@ -79,7 +86,8 @@ public class BotGeoHelper {
 		for (float angle : DETOUR_ANGLES) {
 			for (float detourDistance : DETOUR_DISTANCES) {
 				for (int side : sides) {
-					Vector3f point = walkableCorridor(bot, goalAngle + side * angle, detourDistance);
+					Vector3f point = withinMesh(bot, goalAngle + side * angle, walkableCorridor(bot, goalAngle + side * angle, detourDistance),
+						detourDistance, false);
 					if (!isWorthMovingTo(bot, point))
 						continue;
 					double distanceToGoal = PositionUtil.getDistance(point.getX(), point.getY(), x, y);
@@ -137,6 +145,28 @@ public class BotGeoHelper {
 		if (clearance >= reach - CLEARANCE_TOLERANCE)
 			return ahead; // nothing narrows the way
 		return clearance < MIN_STEP ? new Vector3f(bot.getX(), bot.getY(), bot.getZ()) : probe(bot, angle, clearance);
+	}
+
+	/**
+	 * Cuts a move the rays allowed down to what the mesh allows. The rays are raised a metre off the ground and do not see a rail, a low wall or the
+	 * base of a prop; the mesh was built around all three. Before this, every sidestep was chosen by the rays alone, and a sidestep through a rail was
+	 * what bots crossing scenery looked like: 747 of them in half an hour on 16 October, 64 of 83 bots.
+	 *
+	 * @param leg How far the move was asked to go, along {@code angle}.
+	 * @param reachesGoal Whether the end of the leg is the goal itself, whose last metre is forgiven ({@link #GOAL_SLACK}).
+	 * @return The point, or a nearer one on the same bearing; the bot's own position when the mesh allows less than a step. Unchanged on a map
+	 *         without a mesh.
+	 */
+	private static Vector3f withinMesh(Player bot, float angle, Vector3f point, float leg, boolean reachesGoal) {
+		float rays = walkedDistance(bot, point);
+		if (rays < MIN_STEP)
+			return point;
+		double rad = Math.toRadians(angle);
+		float clear = NavmeshService.getInstance().clearDistance(bot, bot.getX() + leg * (float) Math.cos(rad), bot.getY() + leg * (float) Math.sin(rad),
+			point.getZ());
+		if (Float.isNaN(clear) || clear >= rays || reachesGoal && leg - clear <= GOAL_SLACK)
+			return point;
+		return clear < MIN_STEP ? new Vector3f(bot.getX(), bot.getY(), bot.getZ()) : probe(bot, angle, clear);
 	}
 
 	/**

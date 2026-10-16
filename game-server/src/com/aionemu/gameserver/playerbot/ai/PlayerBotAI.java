@@ -1341,8 +1341,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				Vector3f out = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()),
 					new Vector3f(leader.getX(), leader.getY(), leader.getZ()), bot.getObjectId(), false);
 				if (out != null) {
-					log.info("Bot {} could not move at {} {}, cut off from {}, and is put on walkable ground at {} {} {}", bot.getName(), Math.round(bot.getX()),
-						Math.round(bot.getY()), leader.getName(), Math.round(out.getX()), Math.round(out.getY()), Math.round(out.getZ()));
+					log.info("Bot {} could not move at {} {}, cut off from {}, and is put on walkable ground at {} {} {}{}", bot.getName(), Math.round(bot.getX()),
+						Math.round(bot.getY()), leader.getName(), Math.round(out.getX()), Math.round(out.getY()), Math.round(out.getZ()), witnessed(bot));
 					TeleportService.teleportTo(bot, bot.getWorldId(), out.getX(), out.getY(), out.getZ());
 					return;
 				}
@@ -1358,8 +1358,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Vector3f near = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId(),
 			bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly());
 		if (near != null) {
-			log.info("Bot {} could not move at {} {} {}, which the map does not join to its anchor, and is put on walkable ground at {} {} {}", bot.getName(),
-				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(bot.getZ()), Math.round(near.getX()), Math.round(near.getY()), Math.round(near.getZ()));
+			log.info("Bot {} could not move at {} {} {}, which the map does not join to its anchor, and is put on walkable ground at {} {} {}{}", bot.getName(),
+				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(bot.getZ()), Math.round(near.getX()), Math.round(near.getY()), Math.round(near.getZ()),
+				witnessed(bot));
 			TeleportService.teleportTo(bot, bot.getWorldId(), near.getX(), near.getY(), near.getZ());
 			return;
 		}
@@ -1376,8 +1377,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// went there: on a terrace it flew to, at the end of an errand, behind a rock. Rehousing it for that moves a resident across the map for
 		// having gone somewhere, which is what an escort landing on a ledge made it do -- three rescues in under a minute, and its home 1200 m away.
 		boolean atHome = PositionUtil.getDistance(bot.getX(), bot.getY(), home.getX(), home.getY()) < STRANDED_AT_HOME;
-		log.info("Bot {} could not move at all from {} {} and is put back home{}", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()),
-			atHome ? ", which is where it already was" : "");
+		log.info("Bot {} could not move at all from {} {} and is put back home{}{}", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()),
+			atHome ? ", which is where it already was" : "", witnessed(bot));
 		day.forget(); // whatever it was doing was decided from a place it is no longer in
 		Vector3f moved = atHome ? day.recordStranding() : null;
 		if (moved != null) {
@@ -1387,6 +1388,14 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 		TeleportService.teleportTo(bot, bot.getWorldId(), x, y, z);
 		setAnchor(x, y, z);
+	}
+
+	/**
+	 * @return A note for the log when a real player has the bot in sight, the same question {@link com.aionemu.gameserver.playerbot.PlayerBotService#sleep} asks before taking one away:
+	 *         a teleport nobody sees is a fault in the log, one somebody sees is a fault in the game.
+	 */
+	private static String witnessed(Player bot) {
+		return bot.getKnownList().streamPlayers().anyMatch(other -> !other.isBot()) ? " (seen by a player)" : "";
 	}
 
 	/**
@@ -1449,9 +1458,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 			bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly());
 		if (ground == null)
 			return;
-		log.info("Bot {} came back at {} {} {}, where it cannot walk away from, and is put on walkable ground at {} {} {}", bot.getName(),
+		log.info("Bot {} came back at {} {} {}, where it cannot walk away from, and is put on walkable ground at {} {} {}{}", bot.getName(),
 			Math.round(bot.getX()), Math.round(bot.getY()), Math.round(bot.getZ()), Math.round(ground.getX()), Math.round(ground.getY()),
-			Math.round(ground.getZ()));
+			Math.round(ground.getZ()), witnessed(bot));
 		stopMoving();
 		TeleportService.teleportTo(bot, bot.getWorldId(), ground.getX(), ground.getY(), ground.getZ());
 	}

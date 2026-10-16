@@ -5,6 +5,8 @@
 .DESCRIPTION
     The figures the open world plan is measured by (docs/openworld-navigation-plan.md, milestone 0). The give-ups are counted per bot and per target as well
     as in total, because a total hides what the first count of them showed: one bot made 404 of 594, going round three monsters it could not reach.
+    Steps aside and rescue teleports are broken down the same way (docs/obstacle-steering-plan.md, milestone 0): per minute, by kind of leg, by
+    length, by bot and by 20 m square, and the teleports by whether a real player saw them.
 
 .PARAMETER Since
     Only the lines from this time of day on, as HH:mm or HH:mm:ss, to measure a stretch of play after a restart or a change.
@@ -54,6 +56,7 @@ $kinds = [ordered]@{
     'no headway'              = 'BotMoveController - Bot \S+ makes no headway '
     'walled in'               = 'BotMoveController - Bot \S+ is walled in '
     'could not move at all'   = 'PlayerBotAI - Bot \S+ could not move at all '
+    'rescue teleports'        = 'PlayerBotAI - Bot \S+ .*(is put back home|is put on walkable ground)'
     'deaths'                  = 'PlayerBotAI - Bot \S+ died at '
 }
 $counts = [ordered]@{}
@@ -72,4 +75,37 @@ if ($giveUps) {
     $giveUps | Group-Object Bot | Sort-Object Count -Descending | Select-Object -First $Top | ForEach-Object { "  {0,6}  {1}" -f $_.Count, $_.Name }
     Write-Host 'Bot and target given up on most' -ForegroundColor Cyan
     $giveUps | Group-Object { "$($_.Bot) -> $($_.Target)" } | Sort-Object Count -Descending | Select-Object -First $Top | ForEach-Object { "  {0,6}  {1}" -f $_.Count, $_.Name }
+}
+
+# Steps aside and rescue teleports, the figures docs/obstacle-steering-plan.md is judged by
+$minutes = [math]::Max(1.0, ([timespan]::Parse($last) - [timespan]::Parse($first)).TotalMinutes)
+$steps = @($lines | Where-Object { $_ -match 'BotMoveController - Bot (\S+) steps aside at (\S+) (\S+) \S+ to (\S+) (\S+) \S+, heading for [^(]+(\((.+)\))?$' } | ForEach-Object {
+    # the server writes its decimals in the machine's locale, which here puts a comma where the point goes
+    $number = { param($text) [double]::Parse($text.Replace(',', '.'), [cultureinfo]::InvariantCulture) }
+    $fromX = & $number $Matches[2]; $fromY = & $number $Matches[3]; $toX = & $number $Matches[4]; $toY = & $number $Matches[5]
+    [pscustomobject]@{
+        Bot = $Matches[1]
+        Kind = if ($Matches[7]) { $Matches[7] } else { 'untagged' }
+        Length = [math]::Sqrt(($toX - $fromX) * ($toX - $fromX) + ($toY - $fromY) * ($toY - $fromY))
+        Square = '{0}-{1} {2}-{3}' -f ([math]::Floor($fromX / 20) * 20), ([math]::Floor($fromX / 20) * 20 + 20), ([math]::Floor($fromY / 20) * 20), ([math]::Floor($fromY / 20) * 20 + 20)
+    }
+})
+if ($steps) {
+    Write-Host ("Steps aside: {0}, {1:N1} a minute, by {2} bot(s)" -f $steps.Count, ($steps.Count / $minutes), @($steps | Select-Object -ExpandProperty Bot -Unique).Count) -ForegroundColor Cyan
+    "  by kind of leg"
+    $steps | Group-Object Kind | Sort-Object Count -Descending | ForEach-Object { "  {0,6}  {1}" -f $_.Count, $_.Name }
+    "  by length"
+    "  {0,6}  under 2 m" -f @($steps | Where-Object { $_.Length -lt 2 }).Count
+    "  {0,6}  2 to 4 m" -f @($steps | Where-Object { $_.Length -ge 2 -and $_.Length -lt 4 }).Count
+    "  {0,6}  4 m and more" -f @($steps | Where-Object { $_.Length -ge 4 }).Count
+    "  bots that stepped aside most"
+    $steps | Group-Object Bot | Sort-Object Count -Descending | Select-Object -First $Top | ForEach-Object { "  {0,6}  {1}" -f $_.Count, $_.Name }
+    "  20 m squares they cluster in"
+    $steps | Group-Object Square | Sort-Object Count -Descending | Select-Object -First $Top | ForEach-Object { "  {0,6}  {1}" -f $_.Count, $_.Name }
+}
+$rescues = @($lines | Where-Object { $_ -match $kinds['rescue teleports'] })
+if ($rescues) {
+    $seen = @($rescues | Where-Object { $_ -match '\(seen by a player\)' }).Count
+    $onItself = @($rescues | Where-Object { $_ -match 'which is where it already was' }).Count
+    Write-Host ("Rescue teleports: {0}, {1} seen by a player, {2} onto where the bot already was" -f $rescues.Count, $seen, $onItself) -ForegroundColor Cyan
 }

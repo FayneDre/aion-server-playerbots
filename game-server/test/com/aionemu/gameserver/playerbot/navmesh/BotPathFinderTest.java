@@ -80,6 +80,23 @@ class BotPathFinderTest {
 	}
 
 	@Test
+	void aStraightWalkIsClearUpToTheWall() throws IOException {
+		Navmesh walled = meshOf((x, y) -> wall(x, y) ? SOLID : OPEN);
+
+		assertEquals(20, BotPathFinder.clearDistance(walled, new Vector3f(5, 10, HEIGHT), new Vector3f(25, 10, HEIGHT)), 0.01f, "open ground is clear all the way");
+		assertEquals(10, BotPathFinder.clearDistance(walled, new Vector3f(20, 10, HEIGHT), new Vector3f(44, 10, HEIGHT)), 0.5f, "the wall starts at 30 m");
+	}
+
+	@Test
+	void aBodyAgainstTheWallMayStillStepAwayFromIt() throws IOException {
+		// a bot pressed into a wall stands on ground the erosion took away: the first metre is forgiven, the wall itself is not
+		Navmesh walled = meshOf((x, y) -> wall(x, y) ? SOLID : OPEN);
+
+		assertEquals(10.2f, BotPathFinder.clearDistance(walled, new Vector3f(30.2f, 10, HEIGHT), new Vector3f(20, 10, HEIGHT)), 0.3f);
+		assertEquals(0, BotPathFinder.clearDistance(walled, new Vector3f(30.2f, 10, HEIGHT), new Vector3f(40, 10, HEIGHT)), 0.01f, "two metres of wall ahead");
+	}
+
+	@Test
 	void goesRoundAWallThroughItsGap() throws IOException {
 		// a wall from the south edge to y=50 (cells 0..99), open above it
 		Navmesh walled = meshOf((x, y) -> wall(x, y) && y < 100 ? SOLID : OPEN);

@@ -172,6 +172,10 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile boolean blocked;
 	/** Ground the next journey keeps out of where it can. One shot: {@link #moveToPoint} takes it and puts {@link Avoidance#NONE} back. */
 	private volatile Avoidance nextAvoidance = Avoidance.NONE;
+	/** The ground the journey in hand keeps out of, for a plan asked for again partway along it. */
+	private volatile Avoidance journeyAvoidance = Avoidance.NONE;
+	/** Where the bot stood, and where it was going, when it last asked for a plan round something in its way; see {@link #planAroundObstacle}. */
+	private float replannedAtX = Float.NaN, replannedAtY, replannedForX, replannedForY;
 
 	public BotMoveController(Player owner) {
 		super(owner);
@@ -243,6 +247,7 @@ public class BotMoveController extends PlayerMoveController {
 			routeIndex = 0;
 			plannedForX = x;
 			plannedForY = y;
+			journeyAvoidance = avoid;
 			awaitingPlan = true; // before asking, so a plan that resolves synchronously clears it again inside the call below
 			// a long journey is planned on another thread, so the bot waits where it stands rather than setting off blind; a short one plans on this
 			// very call, in which case the result must be adopted right here or the first leg walks for nothing
@@ -593,6 +598,13 @@ public class BotMoveController extends PlayerMoveController {
 			moveToReachablePoint(reachable.getX(), reachable.getY(), reachable.getZ());
 			return true;
 		}
+		if (!onPlannedWaypoint && planAroundObstacle()) {
+			if (!hasGoal)
+				return false; // the mesh proved there is no way, and said so
+			if (awaitingPlan)
+				return true; // a long plan, answered on another thread, which restarts the walk when it comes
+			return startNextLeg();
+		}
 		Detour detour = BotGeoHelper.detourPointToward(owner, goalX, goalY, goalZ, detourSide);
 		if (detour == null) {
 			if (onPlannedWaypoint) {
@@ -615,11 +627,58 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		detourSide = detour.side();
 		if (!onDetour) // once per obstacle, not once per tick: enough to measure how wide a sidestep really goes
-			log.info("Bot {} steps aside at {} to {}, heading for {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
-				describe(detour.point().getX(), detour.point().getY(), detour.point().getZ()), describe(goalX, goalY, goalZ));
+			log.info("Bot {} steps aside at {} to {}, heading for {} ({})", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
+				describe(detour.point().getX(), detour.point().getY(), detour.point().getZ()), describe(goalX, goalY, goalZ), legKind());
 		onDetour = true;
 		moveToReachablePoint(detour.point().getX(), detour.point().getY(), detour.point().getZ());
 		return true;
+	}
+
+	/**
+	 * Asks the mesh for a route round whatever stops a leg it did not plan: the last stretch to a creature that moved, or a stretch walked while a long
+	 * plan is still being searched for. A sidestep chosen without the mesh is what walked bots into rails and through them; a route goes round.
+	 * <p>
+	 * Once per place and destination: a route ends on the walkable cell nearest the goal, and when that is still short of it, asking again from there
+	 * gets the same answer for ever. The sidestep, vetted by the mesh, is what is left then.
+	 *
+	 * @return true if a route was asked for and the leg should be decided again: walked if it came at once, waited for otherwise, or refused.
+	 */
+	private boolean planAroundObstacle() {
+		if (awaitingPlan || !NavmeshService.getInstance().hasMesh(owner.getWorldId()))
+			return false;
+		if (PositionUtil.getDistance(owner.getX(), owner.getY(), replannedAtX, replannedAtY) < REPLAN_DISTANCE
+			&& PositionUtil.getDistance(finalX, finalY, replannedForX, replannedForY) < REPLAN_DISTANCE)
+			return false;
+		float x = finalX, y = finalY, z = finalZ;
+		replannedAtX = owner.getX();
+		replannedAtY = owner.getY();
+		replannedForX = x;
+		replannedForY = y;
+		route = List.of();
+		routeGlides = Set.of();
+		routeIndex = 0;
+		plannedForX = x;
+		plannedForY = y;
+		awaitingPlan = true;
+		NavmeshService.getInstance().planRoute(owner, x, y, z, journeyAvoidance, planned -> offerRoute(planned, x, y));
+		if (pendingRoute != null) {
+			route = pendingRoute;
+			routeGlides = pendingGlides;
+			pendingRoute = null;
+		}
+		aimAtNextWaypoint();
+		return true;
+	}
+
+	/** @return What kind of leg is being walked, for the log: which of them the sidesteps come from is what decides where to look next. */
+	private String legKind() {
+		if (onPlannedWaypoint)
+			return "planned, something spawned in the way";
+		if (!NavmeshService.getInstance().hasMesh(owner.getWorldId()))
+			return "no mesh";
+		if (awaitingPlan)
+			return "awaiting a plan";
+		return route.isEmpty() ? "no route" : "last stretch";
 	}
 
 	/**

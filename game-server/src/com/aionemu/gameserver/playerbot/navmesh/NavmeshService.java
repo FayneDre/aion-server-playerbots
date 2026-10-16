@@ -91,6 +91,18 @@ public class NavmeshService {
 	}
 
 	/**
+	 * Asks the mesh how far the bot can walk straight towards a point, see {@link BotPathFinder#clearDistance}. This is what the short moves are vetted
+	 * by: the geo probes are raised a metre off the ground and miss every rail, low wall and prop base the mesh was built around.
+	 *
+	 * @return The clear distance in metres, or NaN where the map has no mesh to ask.
+	 */
+	public float clearDistance(Player bot, float x, float y, float z) {
+		Navmesh mesh = get(bot.getWorldId());
+		return mesh == null ? Float.NaN
+			: BotPathFinder.clearDistance(mesh, new Vector3f(bot.getX(), bot.getY(), bot.getZ()), new Vector3f(x, y, z));
+	}
+
+	/**
 	 * Lists every floor a body can stand on at a spot, one above another, nearest to {@code z} first.
 	 * <p>
 	 * {@link #groundNear} answers one: the floor closest in height, which inside a building is always the floor the bot is already on. A way out of a

@@ -800,6 +800,42 @@ public class BotPathFinder {
 		return true;
 	}
 
+	/** How far from its start a straight walk may cross ground that is not walkable before it counts as stopped, see {@link #clearDistance}. */
+	private static final float START_SLACK = 1f;
+
+	/**
+	 * Measures how far a straight walk stays on walkable ground, for the short moves no route was planned for: a sidestep, the last metres to a
+	 * creature that moved.
+	 * <p>
+	 * The first metre is forgiven. Walkable ground is eroded by a body's width, so a bot pressed against the wall it is trying to get past stands on
+	 * the strip that erosion took away, and judged strictly it could not take a single step in any direction.
+	 *
+	 * @return The distance in metres, in plan view, from the start to where the walk leaves walkable ground, or the whole distance when it never does.
+	 */
+	public static float clearDistance(Navmesh mesh, Vector3f from, Vector3f to) {
+		float distance = (float) Math.sqrt((to.x - from.x) * (to.x - from.x) + (to.y - from.y) * (to.y - from.y));
+		int steps = Math.max(1, (int) (distance / (mesh.cellSize() / 2)));
+		float previousZ = from.z, clear = 0;
+		boolean footed = false;
+		for (int step = 1; step <= steps; step++) {
+			float ratio = (float) step / steps;
+			float x = from.x + (to.x - from.x) * ratio, y = from.y + (to.y - from.y) * ratio;
+			int cellX = mesh.cellX(x), cellY = mesh.cellY(y);
+			if (!mesh.contains(cellX, cellY))
+				break;
+			float z = nearestWalkableZ(mesh, cellX, cellY, previousZ, maxClimb(mesh, true));
+			if (Float.isNaN(z)) {
+				if (!footed && distance * ratio <= START_SLACK)
+					continue;
+				break;
+			}
+			footed = true;
+			previousZ = z;
+			clear = distance * ratio;
+		}
+		return clear;
+	}
+
 	private static float nearestWalkableZ(Navmesh mesh, int cellX, int cellY, float z, float range) {
 		float best = Float.NaN, bestDistance = range;
 		for (int surface = 0; surface < mesh.surfaceCount(cellX, cellY); surface++) {
