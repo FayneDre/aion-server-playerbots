@@ -537,9 +537,13 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return true if it moved on to a new waypoint.
 	 */
 	private boolean aimAtNextWaypoint() {
-		while (routeIndex < route.size()) {
-			boolean glide = routeGlides.contains(routeIndex);
-			Vector3f waypoint = route.get(routeIndex++);
+		// read once: the route is replaced from other threads (a plan arriving, a cast halting the walk), and a list read twice can be a short one the
+		// second time -- an index out of bounds that cost a bot its decision tick in the log of 16 October
+		List<Vector3f> current = route;
+		Set<Integer> glides = routeGlides;
+		while (routeIndex < current.size()) {
+			boolean glide = glides.contains(routeIndex);
+			Vector3f waypoint = current.get(routeIndex++);
 			// the first waypoint is the bot's own cell, and a route may pass close to where it already stands; a landing never is, however close
 			// across, since it is metres below
 			if (!glide && PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
