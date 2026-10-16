@@ -50,8 +50,12 @@ import com.aionemu.gameserver.utils.PositionUtil;
  */
 public class BotVendorManager {
 
-	/** How close the bot must stand, matching what the client enforces for talking to an npc. */
-	public static final float TRADE_RANGE = 5f;
+	/**
+	 * How close the bot must stand. Inside the engine's own limit ({@code TradeService} refuses past 10 m) with room to spare, and no tighter: at 5 m
+	 * a keeper behind a stall counter was out of reach of the nearest walkable ground, and two bots circled Pandaemonium's Vidarini 6.6 m away for ten
+	 * minutes, stepping aside and asking for a route twice a second.
+	 */
+	public static final float TRADE_RANGE = 8f;
 	/** Bag fill above which a bot stops farming and goes to sell. */
 	public static final float BAG_FULL_THRESHOLD = 0.9f;
 	/**

@@ -1,6 +1,7 @@
 # Walking into scenery: plan
 
-Status: milestones 0 and 1 built 16 October, with the first step of 2 (a plan asked for instead of a sidestep); the "after" measure is pending. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
+Status: milestones 0 and 1 built 16 October, 2 mostly (plans asked for instead of sidesteps, waiting for them standing), the at-home part of 3;
+measured on 800 bots, the last changes (last stretch, trade range) still to measure. Left: 3 for players in sight, 4. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
 ("into an obstacle, then teleported behind it"), which this replaces as the place the work is tracked.
 
 ## What is seen
@@ -70,6 +71,25 @@ minutes.
   under a metre counted as blocked, so a waypoint that close was walked round, not to. `isTheGoal` lets such a step through.
 - **Seen in the "before" log, for 4:** of 7031 steps aside over five hours, 938 were one bot (Rasalon) on the upper floor of the Verteron fortress,
   heading for a route that starts with a glide and is planned again every second. Also 218 steps aside headed for the spot the bot stood on.
+
+## The wide sample (16 October, evening)
+
+Every open world map with a mesh populated except the two housing maps (their 557 villagers never sleep and did not fit a 2560 MB heap): 24 maps,
+about 800 bots awake with nobody online. Half hours, same population:
+
+| | 21:25 | 22:22 |
+|---|---:|---:|
+| steps aside | 14689 (13422 awaiting a plan) | 2951 (2390 last stretch) |
+| no headway | 708 | 95 |
+| rescue teleports | 403 | 379 |
+| server CPU | 9.2 cores | 5.5 cores |
+
+- **Awaiting a plan:** on a map with glide links every plan is answered on another thread; a bot asked again on every call (the route not in hand
+  being empty), 16794 routes in half an hour, and stepped aside blind meanwhile. Now it waits, standing, and asks again only after 5 s.
+- **CPU:** `BotDay.restingSpot` ran up to 24 searches per spell of loitering; it is kept per bot and place, and searched from the place only.
+- **A rescue onto where the bot stands** no longer teleports: the bot was not stuck, its errand was, and it is forgotten instead.
+- **Last stretch:** a goal off the walkable ground (a keeper behind a counter, a creature on a rock) had a bot pacing beside it and planning twice a
+  second; once the mesh has planned from there, the bot stops as near as it gets for 10 s. Shops now trade within 8 m (the engine allows 10, it was 5).
 
 ## Risks
 

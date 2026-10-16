@@ -135,6 +135,11 @@ public class BotMoveController extends PlayerMoveController {
 	 * step aside blind -- 13422 of 14689 steps aside.
 	 */
 	private static final long PLAN_PATIENCE = 5000;
+	/** A destination found to be as near as the ground goes, where the bot stood when it was, and until when asking again is answered at once. */
+	private volatile float nearestForX = Float.NaN, nearestForY, nearestAtX, nearestAtY;
+	private volatile long nearestUntil;
+	/** How long "this is as near as it gets" holds for the same destination asked for from the same place. */
+	private static final long NEAREST_MEMORY = 10000;
 	/** The last destination the planner answered "no route" for, kept so the refusal can be given synchronously to whoever asks again. */
 	private volatile float noRouteX, noRouteY;
 	private volatile boolean hasNoRoute;
@@ -218,6 +223,10 @@ public class BotMoveController extends PlayerMoveController {
 		// metres from its goal rode that loop for five minutes without ever being rescued, because nothing above it was ever told anything was wrong.
 		if (System.currentTimeMillis() < noHeadwayUntil && PositionUtil.getDistance(noHeadwayX, noHeadwayY, x, y) < SAME_JOURNEY_TOLERANCE)
 			return false;
+		// as near as it gets, already found from here: standing still is the answer, and asking the planner again is the same answer twice a second
+		if (System.currentTimeMillis() < nearestUntil && PositionUtil.getDistance(nearestForX, nearestForY, x, y) < 1
+			&& PositionUtil.getDistance(nearestAtX, nearestAtY, owner.getX(), owner.getY()) < 1)
+			return true;
 		hasNoRoute = false; // somewhere else is being asked for, so the last refusal says nothing about it
 		BotRestManager.standUp(owner); // a seated bot would slide across the ground
 		// CM_MOVE does this for a real player: without it the bot stays blinking and untargetable for the full protection minute
@@ -625,6 +634,11 @@ public class BotMoveController extends PlayerMoveController {
 		// the way ahead is shut and the plan for this journey is on its way: a sidestep chosen now is chosen blind, and the plan will go round
 		if (awaitingPlan && NavmeshService.getInstance().hasMesh(owner.getWorldId()))
 			return waitForPlan();
+		// The mesh planned from here and the way is still shut: the goal stands off the ground a body walks -- a keeper behind a counter, a creature on
+		// a rock -- and this is as near as it gets. A sidestep only paced back and forth beside it, asking for a route twice a second: 2390 of 2951
+		// steps aside in half an hour with 800 bots, one bot 945 times at the same stall.
+		if (!onPlannedWaypoint && NavmeshService.getInstance().hasMesh(owner.getWorldId()) && isNearestFoundHere())
+			return asNearAsItGets();
 		Detour detour = BotGeoHelper.detourPointToward(owner, goalX, goalY, goalZ, detourSide);
 		if (detour == null) {
 			if (onPlannedWaypoint) {
@@ -694,6 +708,27 @@ public class BotMoveController extends PlayerMoveController {
 	 */
 	private boolean isTheGoal(Vector3f point) {
 		return PositionUtil.getDistance(point.getX(), point.getY(), goalX, goalY) < 0.1f;
+	}
+
+	/** @return true if the plan asked for round what is in the way was asked for from about here, for about this destination. */
+	private boolean isNearestFoundHere() {
+		return PositionUtil.getDistance(owner.getX(), owner.getY(), replannedAtX, replannedAtY) < REPLAN_DISTANCE
+			&& PositionUtil.getDistance(finalX, finalY, replannedForX, replannedForY) < REPLAN_DISTANCE;
+	}
+
+	/**
+	 * Ends the journey where the bot stands, as an arrival rather than a refusal: nothing is wrong with the bot, its goal is simply off the ground.
+	 *
+	 * @return true, the bot having done what moving could do.
+	 */
+	private boolean asNearAsItGets() {
+		nearestForX = finalX;
+		nearestForY = finalY;
+		nearestAtX = owner.getX();
+		nearestAtY = owner.getY();
+		nearestUntil = System.currentTimeMillis() + NEAREST_MEMORY;
+		hasGoal = false;
+		return waitForPlan();
 	}
 
 	/** @return true if a plan for about that destination was asked for recently enough to be still on its way. */
