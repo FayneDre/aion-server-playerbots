@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TeamType;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
@@ -15,6 +16,8 @@ import com.aionemu.gameserver.model.team.group.PlayerGroup;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
+import com.aionemu.gameserver.playerbot.world.BotLanding;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
@@ -103,11 +106,23 @@ public final class BotSquads {
 		return "Squad formed: " + leader.getName() + " leads " + names + ", camping where " + leader.getName() + " stands.";
 	}
 
+	/**
+	 * Puts the members round the leader, each on floor the leader's ground joins: a spot laid on a circle round it can be in a rock or in a pocket of its
+	 * own, and two members of the first squads landed in one and could reach nothing the squad fought.
+	 */
 	private static void bringOver(Player leader, List<Player> members) {
+		Vector3f leaderAt = new Vector3f(leader.getX(), leader.getY(), leader.getZ());
 		for (int i = 0; i < members.size(); i++) {
+			Player member = members.get(i);
 			double angle = 2 * Math.PI * i / members.size();
-			TeleportService.teleportTo(members.get(i), leader.getWorldId(), leader.getInstanceId(), leader.getX() + (float) Math.cos(angle) * FORMED_SPACING,
-				leader.getY() + (float) Math.sin(angle) * FORMED_SPACING, leader.getZ());
+			Vector3f spot = new Vector3f(leader.getX() + (float) Math.cos(angle) * FORMED_SPACING, leader.getY() + (float) Math.sin(angle) * FORMED_SPACING,
+				leader.getZ());
+			Vector3f ground = NavmeshService.getInstance().groundNear(leader.getWorldId(), spot.getX(), spot.getY(), spot.getZ());
+			if (ground != null) {
+				Vector3f joined = BotLanding.toWalkableGround(leader.getWorldId(), ground, leaderAt, member.getObjectId(), false);
+				spot = joined != null ? joined : ground;
+			}
+			TeleportService.teleportTo(member, leader.getWorldId(), leader.getInstanceId(), spot.getX(), spot.getY(), spot.getZ());
 		}
 	}
 

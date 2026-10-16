@@ -12,7 +12,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 
@@ -126,6 +128,13 @@ public final class BotInbox {
 		try {
 			int worldId = Integer.parseInt(words[2]);
 			float x = Float.parseFloat(words[3]), y = Float.parseFloat(words[4]), z = Float.parseFloat(words[5]);
+			// onto the floor the mesh has there, since coordinates read off spawn data or a map are seldom exactly on it
+			Vector3f ground = NavmeshService.getInstance().groundNear(worldId, x, y, z);
+			if (ground != null) {
+				x = ground.getX();
+				y = ground.getY();
+				z = ground.getZ();
+			}
 			TeleportService.teleportTo(bot, worldId, x, y, z);
 			ai.setAnchor(x, y, z);
 			return words[1] + " teleported to map " + worldId + " at " + x + " " + y + " " + z + ", which is now its camp";
