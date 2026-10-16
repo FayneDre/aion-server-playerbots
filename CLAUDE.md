@@ -57,6 +57,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command and what it does, plus the one number that decides who may run them.
 - [docs/engine-traps.md](docs/engine-traps.md) — what this engine does to a bot that no documentation warns about: questions it asks that a bot cannot see, actions anything cancels, and methods whose names promise one thing and answer another.
 - [docs/test-harness-plan.md](docs/test-harness-plan.md) — the tooling for test sessions: notes in the log, feedback zips, patch tags, debug on demand, bot-only squads, the command inbox.
+- [docs/patch-notes.md](docs/patch-notes.md) — every test patch, in French for the testers, newest first, by its git tag; `tag-patch.ps1` refuses a patch without its entry.
 - [docs/tester-feedback.md](docs/tester-feedback.md) — what a useful tester report holds, the commands to type during a session, and the template.
 - [docs/skill-glossary.md](docs/skill-glossary.md) — French skill names from guides and testers mapped to skill groups; `skill-lookup.ps1 -Name` reads it.
 - [docs/skill-traps.md](docs/skill-traps.md) — what the skill engine decides about buffs and areas that the obvious question gets wrong: one buff under two names, areas measured from the caster.

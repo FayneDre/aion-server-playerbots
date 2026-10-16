@@ -8,6 +8,8 @@
     tagged commit's when the server was built from a clean tree.
 
     Refuses a dirty tree: a build from uncommitted code has a revision ending in -DIRTY, which matches nothing anyone can look at afterwards.
+    Refuses too when docs/patch-notes.md has no entry for the tag, and says which heading it expects: a patch nobody wrote up is one a tester
+    cannot tell apart from the last.
 
 .PARAMETER Message
     What the patch is, for the tag's annotation. Defaults to the subject of the tagged commit.
@@ -34,6 +36,10 @@ try {
     $date = Get-Date -Format 'yyyy-MM-dd'
     $existing = @(git tag --list "patch-$date*")
     $tag = if ($existing.Count -eq 0) { "patch-$date" } else { "patch-$date-$($existing.Count + 1)" }
+    $notes = Join-Path $repoRoot 'docs\patch-notes.md'
+    if (-not (Select-String -Path $notes -Pattern "^## $tag( |$)" -Quiet)) {
+        throw "docs/patch-notes.md has no entry for this patch. Add a section headed '## $tag', commit it, and run this again."
+    }
     $revision = git rev-parse --short=7 HEAD # the length the jar's manifest uses (git-commit-id-maven-plugin's default)
     if (-not $Message) { $Message = git log -1 --format=%s }
 

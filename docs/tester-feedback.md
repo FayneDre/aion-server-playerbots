@@ -5,6 +5,7 @@ the tooling behind them is in [test-harness-plan.md](test-harness-plan.md).
 
 ## During the session
 
+0. **Before the session, [patch-notes.md](patch-notes.md)**: what the patch changed, so the session tests that, and what is known and not yet fixed.
 1. **At the start, `//bot version`.** It names the revision the server runs, which a patch note names too (`tools/tag-patch.ps1`). A report against
    "the 20h patch" cannot be checked out; one against `patch-2026-10-16` or `a0ba0bd` can.
 2. **`//bot debug combat` once, if the session is about combat.** Every cast and every fight given up is then in the log, until the server restarts.
