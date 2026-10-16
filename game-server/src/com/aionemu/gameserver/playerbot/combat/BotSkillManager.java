@@ -108,6 +108,18 @@ public class BotSkillManager {
 	 * 273 and 353 two each. Every other id holds one, which is what {@link #holdsItsCooldownSlot} relies on.
 	 */
 	private static final Set<Integer> COOLDOWN_IDS_HOLDING_SEVERAL = Set.of(1, 6, 273, 353);
+	/** Health under which a group's target is close enough to death that a spell with a cast time will not finish before it does. */
+	private static final int NEARLY_DEAD_PERCENT = 10;
+	/** How far apart two looks at a target's health are, at least, for the difference to be a rate rather than one blow. */
+	private static final long HEALTH_SAMPLE_MILLIS = 500;
+	/** What a cast is given beyond its own time to land before the target dies: the engine checks the target as the cast ends. */
+	private static final long CAST_DEATH_MARGIN_MILLIS = 300;
+	private static final int MAX_HEALTH_SAMPLES = 2000;
+	/** Per target object id, the last look at its health and how fast it was falling. */
+	private static final Map<Integer, HealthSample> targetHealth = new ConcurrentHashMap<>();
+
+	private record HealthSample(long at, long hp, double lossPerMilli) {
+	}
 	/** Casts of one skill in a row that did not go through, after which the skill is left alone for {@link #FAILED_CAST_PAUSE_MILLIS}. */
 	private static final int FAILED_CASTS_BEFORE_PAUSE = 3;
 	private static final long FAILED_CAST_PAUSE_MILLIS = 30_000;
@@ -380,7 +392,41 @@ public class BotSkillManager {
 		if (isSavingMana(bot))
 			return false; // the auto attack costs nothing, and no fight is lost by finishing it with the weapon
 		return cast(bot, target, skills(bot, BotSkillManager::isOffensive).stream()
-			.filter(template -> !alreadyAfflicts(target, template) && areaIsWorthIt(bot, target, template) && !takesTheTanksJob(bot, template)).toList());
+			.filter(template -> !alreadyAfflicts(target, template) && areaIsWorthIt(bot, target, template) && !takesTheTanksJob(bot, template)
+				&& !outlivesItsTarget(bot, target, template)).toList());
+	}
+
+	/**
+	 * Tells a cast that will end after its target in a group: five others are hitting it, and a spell with a cast time begun on a monster about to die is
+	 * cut short when it dies, its time spent and nothing landed. Two thirds of the casts a squad lost went that way. How soon the target dies is read
+	 * from how fast it has been losing health, since a fixed bar cannot see that a monster at forty percent under six attackers dies within the second.
+	 * Instant skills, and a bot alone, whose target dies only when it kills it, are left out.
+	 */
+	private static boolean outlivesItsTarget(Player bot, Creature target, SkillTemplate template) {
+		if (bot.getCurrentTeam() == null || template.getDuration() <= 0 || target.getLifeStats() == null)
+			return false;
+		return target.getLifeStats().getHpPercentage() <= NEARLY_DEAD_PERCENT || millisToLive(target) < template.getDuration() + CAST_DEATH_MARGIN_MILLIS;
+	}
+
+	/**
+	 * @return How long the target has left at the rate it has been losing health lately, in milliseconds, or a very long time when it has not been losing
+	 *         any. Each call is also a sample: the rate is the health lost between the last two looks at least {@value #HEALTH_SAMPLE_MILLIS} ms apart.
+	 */
+	static long millisToLive(Creature target) {
+		long now = System.currentTimeMillis();
+		long hp = target.getLifeStats().getCurrentHp();
+		if (targetHealth.size() > MAX_HEALTH_SAMPLES)
+			targetHealth.clear(); // monsters respawn under new ids, so old samples only take room
+		HealthSample last = targetHealth.get(target.getObjectId());
+		if (last == null || now - last.at() >= HEALTH_SAMPLE_MILLIS) {
+			double lossPerMilli = last == null ? 0 : Math.max(0, (last.hp() - hp) / (double) (now - last.at()));
+			// a monster that was hit in the last sample but not this one keeps the old rate: the group has not stopped hitting it, it is between blows
+			if (last != null && lossPerMilli == 0)
+				lossPerMilli = last.lossPerMilli();
+			last = new HealthSample(now, hp, lossPerMilli);
+			targetHealth.put(target.getObjectId(), last);
+		}
+		return last.lossPerMilli() <= 0 ? Long.MAX_VALUE : (long) (hp / last.lossPerMilli());
 	}
 
 	/**
@@ -795,14 +841,24 @@ public class BotSkillManager {
 		return false;
 	}
 
-	/** @return true if the target is within the skill's reach from where the bot stands, measured edge to edge as the engine measures it. */
+	/**
+	 * @return true if the engine will accept the cast at this distance, by its own rule ({@code FirstTargetRangeProperty} at the start of a cast): the
+	 *         weapon's reach added where the skill says so, the ground a walking caster covers added for a target not yet fighting it, and no range at
+	 *         all against a target that cannot move. A stricter rule here would leave the walk going under casts the engine had accepted, and the
+	 *         move would then fail them at their end.
+	 */
 	private static boolean isWithinCastRange(Player bot, Creature target, SkillTemplate template) {
 		Properties properties = template.getProperties();
 		if (target.equals(bot) || properties.getFirstTarget() == FirstTargetAttribute.ME)
 			return true;
-		float range = properties.getFirstTargetRange()
-			+ (properties.isAddWeaponRange() ? bot.getGameStats().getAttackRange().getCurrent() / 1000f : 0);
-		return PositionUtil.isInRange(bot, target, range, false);
+		if (target.getEffectController().isInAnyAbnormalState(AbnormalState.CANT_MOVE_STATE))
+			return true;
+		float range = properties.getFirstTargetRange();
+		if (properties.isAddWeaponRange())
+			range += bot.getGameStats().getAttackRange().getCurrent() / 1000f;
+		if (bot.getMoveController().isInMove() && !target.getAggroList().isHating(bot))
+			range += PositionUtil.calculateMaxCoveredDistance(bot, 50);
+		return PositionUtil.isInAttackRange(bot, target, range);
 	}
 
 	/**
