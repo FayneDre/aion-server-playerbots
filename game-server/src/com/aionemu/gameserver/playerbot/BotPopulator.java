@@ -97,9 +97,10 @@ public final class BotPopulator {
 			return;
 		}
 		for (String order : PlayerBotConfig.POPULATE.split(";")) {
+			// the race may be left out, and then each place names its own: the only answer that gets contested ground right, see factionFor
 			String[] parts = order.trim().split(":");
-			if (parts.length != 3) {
-				log.warn("Cannot read the populate setting '{}', expected <mapId>:<count>:<race>", order);
+			if (parts.length != 2 && parts.length != 3) {
+				log.warn("Cannot read the populate setting '{}', expected <mapId>:<count>[:<race>]", order);
 				continue;
 			}
 			try {
@@ -108,9 +109,9 @@ public final class BotPopulator {
 					log.info("Map {} already has bots living on it, leaving it alone", worldId);
 					continue;
 				}
-				log.info("Populating map {}: {}", worldId, populate(count, worldId, parts[2]));
+				log.info("Populating map {}: {}", worldId, populate(count, worldId, parts.length == 3 ? parts[2] : null));
 			} catch (NumberFormatException e) {
-				log.warn("Cannot read the populate setting '{}', expected <mapId>:<count>:<race>", order);
+				log.warn("Cannot read the populate setting '{}', expected <mapId>:<count>[:<race>]", order);
 			}
 		}
 	}
