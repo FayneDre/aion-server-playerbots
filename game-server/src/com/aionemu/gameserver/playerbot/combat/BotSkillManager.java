@@ -23,6 +23,7 @@ import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.effect.EffectTemplate;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.skillengine.effect.EffectType;
+import com.aionemu.gameserver.skillengine.effect.HostileUpEffect;
 import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
 import com.aionemu.gameserver.skillengine.effect.RideRobotEffect;
 import com.aionemu.gameserver.skillengine.model.ChargeSkillEntry;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.combat.playbook.ClassPlaybook;
+import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.skillengine.properties.AreaDirections;
 import com.aionemu.gameserver.skillengine.properties.FirstTargetAttribute;
@@ -368,7 +370,30 @@ public class BotSkillManager {
 		if (isSavingMana(bot))
 			return false; // the auto attack costs nothing, and no fight is lost by finishing it with the weapon
 		return cast(bot, target, skills(bot, BotSkillManager::isOffensive).stream()
-			.filter(template -> !alreadyAfflicts(target, template) && areaIsWorthIt(bot, target, template)).toList());
+			.filter(template -> !alreadyAfflicts(target, template) && areaIsWorthIt(bot, target, template) && !takesTheTanksJob(bot, template)).toList());
+	}
+
+	/**
+	 * Tells a taunt from an attack, for a bot that is not the group's tank: a skill whose only point is to make the enemy hate its caster pulls the enemy
+	 * off the tank, which is the one thing every other member is there not to do. A gladiator cast Taunt three times in four minutes of the first squad's
+	 * log. An attack that adds some hate to its damage is still an attack, and stays; a skill that lowers hate is not a taunt at all.
+	 */
+	private static boolean takesTheTanksJob(Player bot, SkillTemplate template) {
+		return bot.getCurrentTeam() != null && BotRole.of(bot) != BotRole.TANK && isTaunt(template);
+	}
+
+	/** @return true if the skill raises its target's hate for the caster and does nothing else that hurts. */
+	static boolean isTaunt(SkillTemplate template) {
+		if (template.getEffects() == null)
+			return false;
+		boolean raisesHate = false;
+		for (EffectTemplate effect : template.getEffects().getEffects()) {
+			if (effect instanceof DamageEffect)
+				return false;
+			if (effect instanceof HostileUpEffect && effect.getValue() > 0)
+				raisesHate = true;
+		}
+		return raisesHate;
 	}
 
 	/**
