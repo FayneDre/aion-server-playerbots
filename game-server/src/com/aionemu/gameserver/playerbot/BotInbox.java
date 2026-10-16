@@ -109,6 +109,8 @@ public final class BotInbox {
 			case "delete" -> name == null ? "Usage: delete <name>" : BotCommands.delete(name, null);
 			case "stop" -> name == null ? "Usage: stop <name>" : BotCommands.stopAttacking(name);
 			case "auto" -> name == null ? "Usage: auto <name>" : BotCommands.toggleAutonomy(name);
+			// one map, never the whole world: a file is one typo away from emptying it
+			case "clear" -> name == null ? "Usage: clear <map id or name>" : BotCommands.clear(null, argument);
 			default -> "Not taken from the inbox: " + words[0] + ". See docs/bot-commands.md, section Testing.";
 		};
 	}
