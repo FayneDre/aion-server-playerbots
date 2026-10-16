@@ -1334,6 +1334,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// module doing what it was written to do to a bot that had never been stuck.
 		Player leader = BotGroupManager.leaderToFollow(bot);
 		if (leader != null && PositionUtil.getDistance(bot, leader) <= STAY_WITH_THE_GROUP) {
+			// Waiting is for a leader in the air. One standing on the ground can be walked to from somewhere, and a bot that cannot is in a pocket, which
+			// waiting never ends: in the first squads a cleric and a ranger stood in one for minutes, 18 to 45 m from their leader, giving up every
+			// target the group fought. It is put on the nearest floor joined to the leader's, which keeps it with the group as the wait meant to.
+			if (!leader.isFlying()) {
+				Vector3f out = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()),
+					new Vector3f(leader.getX(), leader.getY(), leader.getZ()), bot.getObjectId(), false);
+				if (out != null) {
+					log.info("Bot {} could not move at {} {}, cut off from {}, and is put on walkable ground at {} {} {}", bot.getName(), Math.round(bot.getX()),
+						Math.round(bot.getY()), leader.getName(), Math.round(out.getX()), Math.round(out.getY()), Math.round(out.getZ()));
+					TeleportService.teleportTo(bot, bot.getWorldId(), out.getX(), out.getY(), out.getZ());
+					return;
+				}
+			}
 			log.info("Bot {} cannot move from {} {} but is {} m from {}, so it waits rather than being put back home", bot.getName(),
 				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(PositionUtil.getDistance(bot, leader)), leader.getName());
 			return;
