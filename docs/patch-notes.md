@@ -6,6 +6,22 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-16-2 — 16/10/2026, après-midi
+
+Défauts trouvés en faisant jouer une escouade de six bots sans joueur ; chiffres mesurés sur le même camp, cinq minutes chacun.
+
+- **Bots coincés près du groupe :** un bot coincé dans une poche du terrain à moins de 200 m de son chef n'était jamais secouru (la règle protégeait un chef parti sur un rebord en volant). Il est maintenant posé sur le sol relié à celui du chef, si le chef est au sol. Abandons de cible : de 21 en dix minutes à 0.
+- **Sorts lancés en marchant :** le bot arrête maintenant sa marche *avant* de commencer le sort, et non juste après. Un pas de marche glissé entre les deux faisait échouer le sort, relancé une ou deux secondes plus tard. Packs engagés : de 113 à 161 en cinq minutes.
+- **Sorts qui n'aboutissent jamais :** un sort commencé quatre fois de suite sans aboutir (interrompu par des coups, par la mort de la cible) est mis de côté 30 s. Un clerc relançait Main de la réincarnation chaque seconde pendant trois minutes.
+- Correction d'une erreur rare dans le déplacement (deux fils qui changent l'itinéraire en même temps).
+
+**Connu, pas encore corrigé**
+- Une partie des sorts longs (Fureur terrestre du clerc, Frappe de tempête du sorcier) est encore interrompue, environ un sur trois seulement par la mort de la cible. Cause du reste non trouvée.
+- Le placement contre un boss n'a pas pu être vérifié : le seul boss accessible du bon niveau à Eltnen se tient sur un terrain hors maillage.
+- Le templier qui « lâche l'affaire » : toujours en attente du journal de la séance.
+
+---
+
 ## patch-2026-10-16 — 16/10/2026
 
 Révision `b83ad00` (le serveur de test tournait sur `f9a5518`, identique côté serveur). Corrige les retours du 12/10 et du 14/10.
