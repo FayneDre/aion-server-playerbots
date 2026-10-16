@@ -585,7 +585,7 @@ public class BotMoveController extends PlayerMoveController {
 		// so the bot leaves a good plan to sidestep into geometry nobody planned for.
 		if (onPlannedWaypoint) {
 			Vector3f step = BotGeoHelper.clearOfSpawnedObstacles(owner, goalX, goalY, goalZ);
-			if (BotGeoHelper.isWorthMovingTo(owner, step)) {
+			if (BotGeoHelper.isWorthMovingTo(owner, step) || isTheGoal(step)) {
 				onDetour = false;
 				moveToReachablePoint(step.getX(), step.getY(), step.getZ());
 				return true;
@@ -593,7 +593,7 @@ public class BotMoveController extends PlayerMoveController {
 			// something spawned across the way: that genuinely is the reactive layer's problem, so fall through to it
 		}
 		Vector3f reachable = BotGeoHelper.reachablePointToward(owner, goalX, goalY, goalZ);
-		if (BotGeoHelper.isWorthMovingTo(owner, reachable)) {
+		if (BotGeoHelper.isWorthMovingTo(owner, reachable) || isTheGoal(reachable)) {
 			onDetour = false; // the way ahead is open again, so nothing is being walked around any more
 			moveToReachablePoint(reachable.getX(), reachable.getY(), reachable.getZ());
 			return true;
@@ -668,6 +668,15 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		aimAtNextWaypoint();
 		return true;
+	}
+
+	/**
+	 * @return true if the point is the one being walked to. A step under a metre is taken for being blocked, which is right of a probe stopped short
+	 *         and wrong of a goal that simply is that close: a waypoint 0.5 to 1 m away was walked round instead of to, and that was 129 of the 208
+	 *         steps aside in the first five minutes after the mesh began vetting them.
+	 */
+	private boolean isTheGoal(Vector3f point) {
+		return PositionUtil.getDistance(point.getX(), point.getY(), goalX, goalY) < 0.1f;
 	}
 
 	/** @return What kind of leg is being walked, for the log: which of them the sidesteps come from is what decides where to look next. */

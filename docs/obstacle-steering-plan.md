@@ -66,6 +66,8 @@ minutes.
   `BotGeoHelper.withinMesh` cutting every reactive leg and every sidestep down to it; the goal's last metre is left to the rays.
 - **2, first step:** `BotMoveController.planAroundObstacle`: an unplanned leg the way ahead of which is shut asks for a route once per place and
   destination before any sidestep, keeping the journey's avoidance.
+- **Found by the first five minutes after:** 169 of 208 steps aside were on planned legs, 129 of them towards a waypoint 0.5 to 1 m away: a step
+  under a metre counted as blocked, so a waypoint that close was walked round, not to. `isTheGoal` lets such a step through.
 - **Seen in the "before" log, for 4:** of 7031 steps aside over five hours, 938 were one bot (Rasalon) on the upper floor of the Verteron fortress,
   heading for a route that starts with a glide and is planned again every second. Also 218 steps aside headed for the spot the bot stood on.
 
