@@ -1686,9 +1686,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 		log.info("Bot {} spawned", getOwner().getName());
 	}
 
+	/**
+	 * Answers whoever has just got onto the bot's aggro list.
+	 * <p>
+	 * The event says hate, not hostility: {@code Effect.broadcastHate} puts the caster of a buff on its target's list as well, since a buff of the
+	 * "indirect" kind makes hate. So a chanter's Protectorate's Prayer on a mate fired this, the mate turned on the chanter, found it was no enemy and
+	 * dropped the fight, cancelling whatever walk it was on. Seen in the first squad's log, three mates at once on every prayer.
+	 */
 	@Override
 	protected void handleAttack(Creature attacker) {
-		if (autonomous && !isAttacking() && !attacker.equals(getOwner())) {
+		if (autonomous && !isAttacking() && !attacker.equals(getOwner()) && getOwner().isEnemy(attacker)) {
 			log.info("Bot {} retaliates against {}", getOwner().getName(), attacker.getName());
 			startAttacking(attacker);
 		}
