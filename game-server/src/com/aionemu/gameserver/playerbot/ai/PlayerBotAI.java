@@ -587,8 +587,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (errands.dressUp()) {
 				// dressing itself, which is five seconds of stillness the bot has to commit to rather than hope for
 			} else if (!isHealthyEnoughToFight() && !mustCatchUp(following) && !mustHoldTheLine(following)) {
-				if (isRecoveringFromDeath())
-					convalesce(); // not the farm ground: that is where it died, and the penalty makes it die again
+				// not the farm ground: that is where it died, and the penalty makes it die again. Except in a group, whose ground it is: the quiet spot is
+				// chosen round the bot's home, which is nowhere near the group, so a member sent there would leave the people it is meant to be with
+				if (isRecoveringFromDeath() && !following)
+					convalesce();
 				else if (!walkOffTheObelisk() && !healerTakesItsPlace()) // never sit down where it resurrected: that spot is shared by everyone who died in the region
 					recover();
 			} else if (following) {
