@@ -837,6 +837,14 @@ public class BotMoveController extends PlayerMoveController {
 			updateLastMove();
 			return;
 		}
+		// A body that is casting stands still, whoever set the walk going. A step taken under a cast trips its move listener and the engine fails the
+		// cast as it ends; with the walk ended before every cast, steps still landed under one cast in nine in a squad, none of them seen starting
+		// a walk -- the probe found the caster still and a few metres from its target each time. The walk resumes where it was once the cast is over.
+		if (owner.isCasting()) {
+			updateLastMove();
+			lastProgressTime = System.currentTimeMillis(); // standing to cast is not being stuck: a four second spell and a step made "no headway" otherwise
+			return;
+		}
 
 		float x = owner.getX();
 		float y = owner.getY();
