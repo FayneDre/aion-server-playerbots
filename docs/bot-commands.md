@@ -96,6 +96,16 @@ half a minute after startup — before that the command says so rather than prin
 a map short of its target for review after review is usually one where somebody is standing in the only place the missing inhabitants live, which is a
 refusal by design and not a fault. See [population.md](population.md).
 
+## Testing
+
+Made for test sessions, and for whoever reads their log afterwards; the plan is [test-harness-plan.md](test-harness-plan.md).
+
+| Command | What it does |
+|---|---|
+| `//bot note <text>` | Writes a note to the server log the moment something looks wrong: one `BOT NOTE #n` line with the text and where you stand, then one line per bot in your group (or within 30 m when you have none) with its class, role, health, mana, divine power, state, cast in progress, target, the target's health and whom the target is on. `tools/collect-feedback.ps1` cuts the minutes around each note out of a log. |
+| `//bot version` | The revision, branch and build date the server runs. A report names it, so the fix it is about can be found. |
+| `//bot debug [combat\|all\|off]` | Logs the detail of the bot module until the next restart: `combat` (or `on`) is every cast with its target and every fight started and given up, `all` is the whole module. `off` gives back what `logback.xml` set. |
+
 ## Two things worth knowing before handing this out
 
 `clear` and `delete` destroy characters, and `populate` writes to the database once per bot. They are open to everyone because that is what was asked

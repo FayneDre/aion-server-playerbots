@@ -7,6 +7,7 @@ import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 import com.aionemu.gameserver.playerbot.BotCommands;
+import com.aionemu.gameserver.playerbot.BotDiagnostics;
 import com.aionemu.gameserver.playerbot.BotPopulator;
 import com.aionemu.gameserver.utils.chathandlers.AdminCommand;
 
@@ -41,6 +42,9 @@ public class Bot extends AdminCommand {
 			  A line per map, or just the one asked for.
 			position [auto|standard|spread] - Reads or sets when grouped bots stand where their class belongs in a fight: against bosses, never, or always.
 			  Takes effect at once, until the next restart. "positioning on|off" is the same as auto|standard.
+			note <text> - Writes a note to the server log, with the state of every bot in your group (or near you). Type it the moment something looks wrong.
+			version - The revision the server runs, to name in a report.
+			debug [combat|all|off] - Logs every cast and fight decision of the bots, until the next restart.
 			fly <name> [height] - Flies the bot straight up, holds it there and lands it again. Default 25 m, capped at 60 and at its fly zone's ceiling.
 			flyto <name> - Flies the bot to where you stand, over whatever is in the way. Within 300 m and inside its own fly zone.
 			land <name> - Brings a flying bot down now.
@@ -90,6 +94,9 @@ public class Bot extends AdminCommand {
 			case "list" -> sendInfo(admin, BotCommands.listSpawnedBots());
 			case "pool" -> sendInfo(admin, BotCommands.describePool(argument(params, 1), admin));
 			case "position", "positioning" -> sendInfo(admin, BotCommands.positioning(argument(params, 1)));
+			case "note" -> sendInfo(admin, BotDiagnostics.note(argument(params, 1), admin));
+			case "version" -> sendInfo(admin, BotDiagnostics.version());
+			case "debug" -> sendInfo(admin, BotDiagnostics.debug(argument(params, 1)));
 			default -> sendInfo(admin);
 		}
 	}
