@@ -3,7 +3,9 @@ package com.aionemu.gameserver.playerbot.combat;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.aionemu.gameserver.controllers.attack.AttackStatus;
 import com.aionemu.gameserver.dataholders.DataManager;
@@ -106,6 +108,14 @@ public class BotSkillManager {
 	 * 273 and 353 two each. Every other id holds one, which is what {@link #holdsItsCooldownSlot} relies on.
 	 */
 	private static final Set<Integer> COOLDOWN_IDS_HOLDING_SEVERAL = Set.of(1, 6, 273, 353);
+	/** Casts of one skill in a row that did not go through, after which the skill is left alone for {@link #FAILED_CAST_PAUSE_MILLIS}. */
+	private static final int FAILED_CASTS_BEFORE_PAUSE = 3;
+	private static final long FAILED_CAST_PAUSE_MILLIS = 30_000;
+	/** Per bot and cooldown id: the last attempt, how many before it in a row did not go through, and until when the skill is left alone. */
+	private static final Map<Long, CastAttempt> castAttempts = new ConcurrentHashMap<>();
+
+	private record CastAttempt(long at, int failedInARow, long pausedUntil) {
+	}
 
 	/**
 	 * Effects whose whole purpose is to keep their bearer alive. Read from the data rather than from a curated list of skill ids, so a skill nobody
@@ -772,6 +782,7 @@ public class BotSkillManager {
 					halted ? ", stopping its walk for it" : "");
 				if (template.isCharge())
 					releaseWhenCharged(bot, skill);
+				noteAttempt(bot, template);
 				return true;
 			}
 		}
@@ -937,7 +948,8 @@ public class BotSkillManager {
 	 */
 	private static List<SkillTemplate> readyOfGroup(Player bot, String group) {
 		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId()))
-			.filter(template -> template != null && group.equals(template.getGroup()) && !bot.isSkillDisabled(template) && !isWaitingForTheEventItAnswers(bot, template))
+			.filter(template -> template != null && group.equals(template.getGroup()) && !bot.isSkillDisabled(template) && !isWaitingForTheEventItAnswers(bot, template)
+				&& !isPausedAfterFailedCasts(bot, template))
 			.sorted(HIGHEST_RANK_FIRST).toList();
 	}
 
@@ -966,6 +978,41 @@ public class BotSkillManager {
 		return true;
 	}
 
+	/**
+	 * Remembers a cast that was started, and tells from the last one whether that one went through.
+	 * <p>
+	 * A cast that is begun and then cut short (by a blow, with the cancel rate the data gives most spells, or by a step) sets no cooldown, so the skill is
+	 * offered again on the next tick, begun again, cut short again. A cleric under attack began Hand of Reincarnation every second for three minutes that
+	 * way, healing nobody. The sign is cheap: a skill with a cooldown that is offered again sooner than that cooldown did not go through last time. Skills
+	 * with none are left out, since being offered again is all they ever are.
+	 */
+	private static void noteAttempt(Player bot, SkillTemplate template) {
+		long cooldownMillis = template.getCooldown() * 100L; // the data counts cooldowns in tenths of a second
+		if (cooldownMillis <= 0)
+			return;
+		long now = System.currentTimeMillis();
+		long key = attemptKey(bot, template);
+		CastAttempt last = castAttempts.get(key);
+		int failed = last != null && now - last.at() < cooldownMillis ? last.failedInARow() + 1 : 0;
+		long pausedUntil = 0;
+		if (failed >= FAILED_CASTS_BEFORE_PAUSE) {
+			pausedUntil = now + FAILED_CAST_PAUSE_MILLIS;
+			failed = 0;
+			log.info("{} began {} {} times in a row without it going through, and leaves it alone for {} s", bot.getName(), template.getName(),
+				FAILED_CASTS_BEFORE_PAUSE + 1, FAILED_CAST_PAUSE_MILLIS / 1000);
+		}
+		castAttempts.put(key, new CastAttempt(now, failed, pausedUntil));
+	}
+
+	private static boolean isPausedAfterFailedCasts(Player bot, SkillTemplate template) {
+		CastAttempt last = castAttempts.get(attemptKey(bot, template));
+		return last != null && last.pausedUntil() > System.currentTimeMillis();
+	}
+
+	private static long attemptKey(Player bot, SkillTemplate template) {
+		return ((long) bot.getObjectId() << 32) | (template.getCooldownId() & 0xFFFFFFFFL);
+	}
+
 	/** @return The bot's usable skills of one kind, in the order it should try them. */
 	private static List<SkillTemplate> skills(Player bot, SkillFilter filter) {
 		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId())).filter(template -> {
@@ -981,6 +1028,8 @@ public class BotSkillManager {
 			if (bot.isSkillDisabled(template)) // cooldowns are keyed by cooldown id, not skill id, which this handles
 				return false;
 			if (isWaitingForTheEventItAnswers(bot, template))
+				return false;
+			if (isPausedAfterFailedCasts(bot, template))
 				return false;
 			return filter.matches(bot, template);
 		}).sorted(CHAIN_FIRST_THEN_STRONGEST).toList();
