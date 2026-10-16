@@ -127,6 +127,14 @@ public class BotMoveController extends PlayerMoveController {
 	 * navmesh was in the middle of solving for it.
 	 */
 	private volatile boolean awaitingPlan;
+	/** When the plan being awaited was asked for: past {@link #PLAN_PATIENCE} it is taken for lost and asked again. */
+	private volatile long planAskedAt;
+	/**
+	 * How long a plan asked for is waited on before the same journey asks again. Asking on every call instead, because the route not yet in hand is
+	 * an empty one, was 16794 routes in half an hour from 800 bots: the queue it filled is what kept the next bot waiting, and a waiting bot used to
+	 * step aside blind -- 13422 of 14689 steps aside.
+	 */
+	private static final long PLAN_PATIENCE = 5000;
 	/** The last destination the planner answered "no route" for, kept so the refusal can be given synchronously to whoever asks again. */
 	private volatile float noRouteX, noRouteY;
 	private volatile boolean hasNoRoute;
@@ -238,13 +246,14 @@ public class BotMoveController extends PlayerMoveController {
 			// the answer away and start the wait over
 			routeIndex = 0;
 			aimAtNextWaypoint();
-		} else if (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE) {
+		} else if (!isPlanComing(x, y) && (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE)) {
 			route = List.of();
 			routeGlides = Set.of();
 			routeIndex = 0;
 			plannedForX = x;
 			plannedForY = y;
 			journeyAvoidance = avoid;
+			planAskedAt = System.currentTimeMillis();
 			awaitingPlan = true; // before asking, so a plan that resolves synchronously clears it again inside the call below
 			// a long journey is planned on another thread, so the bot waits where it stands rather than setting off blind; a short one plans on this
 			// very call, in which case the result must be adopted right here or the first leg walks for nothing
@@ -610,9 +619,12 @@ public class BotMoveController extends PlayerMoveController {
 			if (!hasGoal)
 				return false; // the mesh proved there is no way, and said so
 			if (awaitingPlan)
-				return true; // a long plan, answered on another thread, which restarts the walk when it comes
+				return waitForPlan(); // a long plan, answered on another thread, which restarts the walk when it comes
 			return startNextLeg();
 		}
+		// the way ahead is shut and the plan for this journey is on its way: a sidestep chosen now is chosen blind, and the plan will go round
+		if (awaitingPlan && NavmeshService.getInstance().hasMesh(owner.getWorldId()))
+			return waitForPlan();
 		Detour detour = BotGeoHelper.detourPointToward(owner, goalX, goalY, goalZ, detourSide);
 		if (detour == null) {
 			if (onPlannedWaypoint) {
@@ -624,7 +636,7 @@ public class BotMoveController extends PlayerMoveController {
 				return true;
 			}
 			if (awaitingPlan)
-				return true; // the mesh is still working on this journey: what the probes see now is not the way it will be walked
+				return waitForPlan(); // the mesh is still working on this journey: what the probes see now is not the way it will be walked
 			// with the position: the reactive probes are blind below a metre, so when they give up the only way to tell a real dead end from a
 			// low obstacle they cannot see is to ask the mesh about this exact pair of points afterwards (NavmeshTool <mapId> path x1 y1 x2 y2)
 			log.info("Bot {} is walled in at {} and gives up moving towards {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
@@ -667,6 +679,7 @@ public class BotMoveController extends PlayerMoveController {
 		routeIndex = 0;
 		plannedForX = x;
 		plannedForY = y;
+		planAskedAt = System.currentTimeMillis();
 		awaitingPlan = true;
 		NavmeshService.getInstance().planRoute(owner, x, y, z, journeyAvoidance, planned -> offerRoute(planned, x, y));
 		adoptPendingRoute();
@@ -681,6 +694,28 @@ public class BotMoveController extends PlayerMoveController {
 	 */
 	private boolean isTheGoal(Vector3f point) {
 		return PositionUtil.getDistance(point.getX(), point.getY(), goalX, goalY) < 0.1f;
+	}
+
+	/** @return true if a plan for about that destination was asked for recently enough to be still on its way. */
+	private boolean isPlanComing(float x, float y) {
+		return awaitingPlan && System.currentTimeMillis() - planAskedAt < PLAN_PATIENCE
+			&& PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= REPLAN_DISTANCE;
+	}
+
+	/**
+	 * Stands still until the plan comes, keeping the journey. The body is stopped and said to be, which is what lets the plan restart the walk when it
+	 * arrives ({@link #offerRoute} restarts only a body that is not moving) and lets the ai ask again meanwhile: a body left marked as moving after its
+	 * leg ended was never asked about again by either.
+	 *
+	 * @return true, the bot being on its way.
+	 */
+	private boolean waitForPlan() {
+		onDetour = false;
+		lastProgressTime = System.currentTimeMillis(); // waiting for the planner is not failing to get anywhere
+		MoveTaskManager.getInstance().removeCreature(owner);
+		if (started.compareAndSet(true, false))
+			setAndSendStopMove(owner);
+		return true;
 	}
 
 	/** @return What kind of leg is being walked, for the log: which of them the sidesteps come from is what decides where to look next. */
