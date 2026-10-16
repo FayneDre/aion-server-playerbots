@@ -102,6 +102,8 @@ after a death (`bot-careers.md`) helps, but it deserves its own look.
 
 ## Open, reported 11 October: into an obstacle, then teleported behind it
 
+*Moved: measured on 16 October and planned in [obstacle-steering-plan.md](obstacle-steering-plan.md), which is where this is now tracked.*
+
 Reported from in game, and asked to be the next subject: bots walk into scenery (a rail, a balcony, a wall) and then appear on the other side of it, or
 back home. Not the obelisk traps above, which are fixed for a daeva by the glide-aware landing check.
 

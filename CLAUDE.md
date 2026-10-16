@@ -77,6 +77,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/group-positioning-plan.md](docs/group-positioning-plan.md) — plan for where each class stands in a group fight: in front, behind, back or in heal range, and out of the aggro of every other pack.
 - [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
 - [docs/navigation-stuck-plan.md](docs/navigation-stuck-plan.md) — why bots end up stuck and teleported home: the obelisk pockets found in the logs, and the milestones.
+- [docs/obstacle-steering-plan.md](docs/obstacle-steering-plan.md) — bots walking into walls and rails and stepping or teleporting through them: the measure, the cause (rays blind under a metre, detours that never ask the mesh) and the milestones.
 - [docs/navmesh-plan.md](docs/navmesh-plan.md) — design for real path planning, to replace reactive steering.
 - [docs/openworld-navigation-plan.md](docs/openworld-navigation-plan.md) — plan for open-world navigation: measuring it, not going back to what could not be reached, glide and portal links, flight, the rough grid in the mesh.
 - [docs/long-walk-planner.md](docs/long-walk-planner.md) — how a long route is planned: the rough route over stretches of ground per 4 m cell, the stretches it is refined in, and what each fault cost.
