@@ -34,7 +34,7 @@ try {
     $date = Get-Date -Format 'yyyy-MM-dd'
     $existing = @(git tag --list "patch-$date*")
     $tag = if ($existing.Count -eq 0) { "patch-$date" } else { "patch-$date-$($existing.Count + 1)" }
-    $revision = git rev-parse --short HEAD
+    $revision = git rev-parse --short=7 HEAD # the length the jar's manifest uses (git-commit-id-maven-plugin's default)
     if (-not $Message) { $Message = git log -1 --format=%s }
 
     git tag -a $tag -m $Message
