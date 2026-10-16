@@ -56,6 +56,9 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/bot-careers.md](docs/bot-careers.md) — how a bot gains levels, where it lives as it grows, and what keeps it out of trouble.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command and what it does, plus the one number that decides who may run them.
 - [docs/engine-traps.md](docs/engine-traps.md) — what this engine does to a bot that no documentation warns about: questions it asks that a bot cannot see, actions anything cancels, and methods whose names promise one thing and answer another.
+- [docs/test-harness-plan.md](docs/test-harness-plan.md) — the tooling for test sessions: notes in the log, feedback zips, patch tags, debug on demand, bot-only squads, the command inbox.
+- [docs/tester-feedback.md](docs/tester-feedback.md) — what a useful tester report holds, the commands to type during a session, and the template.
+- [docs/skill-glossary.md](docs/skill-glossary.md) — French skill names from guides and testers mapped to skill groups; `skill-lookup.ps1 -Name` reads it.
 - [docs/skill-traps.md](docs/skill-traps.md) — what the skill engine decides about buffs and areas that the obvious question gets wrong: one buff under two names, areas measured from the caster.
 - [docs/world-and-data-traps.md](docs/world-and-data-traps.md) — the other half: geometry two systems describe differently, objects handed over half built, and templates that rewrite themselves as you read them.
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
@@ -127,7 +130,7 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
 - A plan document opens with a **Status** line (not started, in progress with the milestone, or built and what is still unverified). A plan that has been
   built and is not kept up to date is worse than none: two of them said "not built" for a day after they were.
 - `tools/check-server-log.ps1` reads the game server log for errors, a log that has gone silent (a console clicked into pauses the whole server) and the
-  number of bots in the world; `start-server.ps1` runs it after startup. `tools/skill-lookup.ps1` finds skills by name, group, id or class, with their group,
+  number of bots in the world; `start-server.ps1` runs it after startup. `tools/skill-lookup.ps1` finds skills by name (French ones through the glossary), group, id or class, with their group,
   cooldown, reach and tier. Use them before reading the data by hand.
 - A class guide becomes rules by skill **group** (stable across levels), never by id, and every group a playbook names is checked against the data by a
   test (`TemplarPlaybookDataTest`), which also puts every skill template in the game through the playbook's rules.

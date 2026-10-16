@@ -13,7 +13,8 @@
     With -Class the class's skill tree is read as well, which is where the level and the stigma tier (1 regular, 2 and 3 advanced, 4 linked) live.
 
 .PARAMETER Name
-    A regular expression matched against the skill's name, case insensitive.
+    A regular expression matched against the skill's name, case insensitive. French names are looked up in docs/skill-glossary.md first, accents
+    ignored, and the skills of every group found there are listed too.
 
 .PARAMETER Group
     A regular expression matched against the skill's group.
@@ -32,6 +33,7 @@
 
 .EXAMPLE
     .\tools\skill-lookup.ps1 -Name 'provoking roar'
+    .\tools\skill-lookup.ps1 -Name 'peau de fer'
     .\tools\skill-lookup.ps1 -Class TEMPLAR -MaxLevel 30
     .\tools\skill-lookup.ps1 -Group 'KN_STONEBODY|KN_IRONBODY'
 #>
@@ -80,6 +82,26 @@ if ($Class) {
     }
 }
 
+# French names: the data has only the client's English ones, so a name from a guide or a report is looked up in the glossary, and the groups it gives
+# are listed alongside whatever the name matches in the data itself
+function Remove-Accents([string]$Text) {
+    $decomposed = $Text.Normalize([System.Text.NormalizationForm]::FormD)
+    return -join ($decomposed.ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' })
+}
+$glossaryGroups = @()
+$glossary = Join-Path (Split-Path -Parent $PSScriptRoot) 'docs\skill-glossary.md'
+if ($Name -and (Test-Path $glossary)) {
+    $wanted = Remove-Accents $Name
+    foreach ($row in Get-Content $glossary -Encoding UTF8) {
+        if ($row -notmatch '^\| ([^|]+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \|$' -or $row -match '^\| French') { continue }
+        $french, $english, $groupCell, $rowClass = $Matches[1].Trim(), $Matches[2].Trim(), $Matches[3], $Matches[4].Trim()
+        if ((Remove-Accents $french) -notmatch $wanted) { continue }
+        $groups = @([regex]::Matches($groupCell, '[A-Z]+_[A-Z0-9_]+') | ForEach-Object { $_.Value })
+        Write-Host "Glossary: $french = $english ($($groups -join ', '), $rowClass)" -ForegroundColor Cyan
+        $glossaryGroups += $groups
+    }
+}
+
 $results = New-Object System.Collections.Generic.List[object]
 $pending = $null
 $reader = [System.IO.StreamReader]::new($templates)
@@ -92,7 +114,7 @@ try {
             $skillName = Get-Attribute $line 'name'
             $skillGroup = Get-Attribute $line 'group'
             if ($Id -and [int]$skillId -ne $Id) { continue }
-            if ($Name -and $skillName -notmatch $Name) { continue }
+            if ($Name -and $skillName -notmatch $Name -and $glossaryGroups -notcontains $skillGroup) { continue }
             if ($Group -and ($skillGroup -notmatch $Group)) { continue }
             if ($Class -and -not $learned.ContainsKey($skillId)) { continue }
             if ($Class -and $MaxLevel -gt 0 -and $learned[$skillId].Level -gt $MaxLevel) { continue }
