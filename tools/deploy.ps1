@@ -70,6 +70,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if (-not $SkipBuild) {
+    # Allowed, since most deploys are a change being tried; but the jar's revision will end in -DIRTY, which no one can check out, so a build meant for a
+    # tester is made from a clean tree and tagged (tools/tag-patch.ps1).
+    if (git -C $repoRoot status --porcelain) {
+        Write-Host 'Uncommitted changes: this build will be revision -DIRTY. Commit first if it is going to a tester.' -ForegroundColor Yellow
+    }
     Write-Host 'Building...' -ForegroundColor Cyan
     Push-Location $repoRoot
     try {
