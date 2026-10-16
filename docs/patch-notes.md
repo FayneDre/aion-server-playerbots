@@ -6,40 +6,22 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
-## patch-2026-10-16-3 — 16/10/2026, soir
+## patch-2026-10-16-3 — 16/10/2026
 
-- **Sorts interrompus :** un bot ne fait plus aucun pas pendant qu'il incante (un seul pas faisait échouer le sort à la fin, sans rien dire). Il ne commence plus non plus un sort à incantation sur une cible de groupe qui va mourir avant la fin, estimé d'après la vitesse à laquelle elle perd ses PV. Sorts perdus par l'escouade : de 28 sur 162 (17 %) à 6 sur 178 (3 %), les six sur une cible morte entre-temps.
-
----
-
-## patch-2026-10-16-2 — 16/10/2026, après-midi
-
-Défauts trouvés en faisant jouer une escouade de six bots sans joueur ; chiffres mesurés sur le même camp, cinq minutes chacun.
-
-- **Bots coincés près du groupe :** un bot coincé dans une poche du terrain à moins de 200 m de son chef n'était jamais secouru (la règle protégeait un chef parti sur un rebord en volant). Il est maintenant posé sur le sol relié à celui du chef, si le chef est au sol. Abandons de cible : de 21 en dix minutes à 0.
-- **Sorts lancés en marchant :** le bot arrête maintenant sa marche *avant* de commencer le sort, et non juste après. Un pas de marche glissé entre les deux faisait échouer le sort, relancé une ou deux secondes plus tard. Packs engagés : de 113 à 161 en cinq minutes.
-- **Sorts qui n'aboutissent jamais :** un sort commencé quatre fois de suite sans aboutir (interrompu par des coups, par la mort de la cible) est mis de côté 30 s. Un clerc relançait Main de la réincarnation chaque seconde pendant trois minutes.
-- Correction d'une erreur rare dans le déplacement (deux fils qui changent l'itinéraire en même temps).
-
-**Connu, pas encore corrigé**
-- Une partie des sorts longs (Fureur terrestre du clerc, Frappe de tempête du sorcier) est encore interrompue, environ un sur trois seulement par la mort de la cible. Cause du reste non trouvée. *Corrigé dans patch-2026-10-16-3.*
-- Le placement contre un boss n'a pas pu être vérifié : le seul boss accessible du bon niveau à Eltnen se tient sur un terrain hors maillage.
-- Le templier qui « lâche l'affaire » : toujours en attente du journal de la séance.
-
----
-
-## patch-2026-10-16 — 16/10/2026
-
-Révision `b83ad00` (le serveur de test tournait sur `f9a5518`, identique côté serveur). Corrige les retours du 12/10 et du 14/10.
+Révision `18789a0`, celle que `//bot version` affiche. Corrige les retours du 12/10 et du 14/10, et ce qu'une escouade de six bots sans joueur a révélé
+en jouant (chiffres mesurés sur le même camp d'Eltnen). Les étiquettes intermédiaires du jour, `patch-2026-10-16` et `patch-2026-10-16-2`, sont
+comprises dans celle-ci.
 
 **Toutes les classes**
 - **Sorcier :** ne relance plus ses robes en boucle. Robe de flammes et Robe de froid s'annulaient l'une l'autre et vidaient sa mana ; il garde Robe de flammes.
 - **AoE centrées sur le lanceur (gladiateur et autres) :** ne partent que si la cible est dans la zone, hauteur comprise. En groupe, pas d'AoE qui toucherait un pack pas encore engagé.
+- **Sorts interrompus :** un bot ne fait plus aucun pas pendant qu'il incante (un seul pas faisait échouer le sort à la fin, sans rien dire), et ne commence plus un sort à incantation sur une cible de groupe qui va mourir avant la fin. Un sort qui échoue quatre fois de suite est mis de côté 30 s. Sorts perdus par l'escouade : de 17 % à 3 %.
 - **Résurrection en groupe :** un bot mort attend d'être ressuscité tant que le groupe combat, puis 1 minute (10 minutes au plus). Il part à l'obélisque tout de suite si personne du groupe n'est en vie. En solo, rien ne change.
+- **Après une mort, en groupe :** le bot récupère avec son groupe au lieu de partir vers un coin calme près de chez lui.
 - **Arme :** en groupe en instance, plus de rengainage entre les packs (sauf pour s'asseoir) ; en groupe dehors, rengainage après 60 s sans combat. Pas de changement d'équipement en instance.
+- **Bots coincés près du groupe :** un bot coincé dans une poche du terrain près de son chef n'était jamais secouru ; il est maintenant posé sur le sol relié à celui du chef. Abandons de cible : de 21 en dix minutes à 0.
 - **Buffs entre coéquipiers :** un bot ne « riposte » plus contre un coéquipier qui vient de le buffer (l'aède surtout), ce qui coupait son déplacement.
 - **Provocation :** en groupe, seul le tank provoque. Le gladiateur lançait Provocation et prenait l'aggro du templier.
-- **Après une mort, en groupe :** le bot récupère avec son groupe au lieu de partir vers un coin calme près de chez lui.
 
 **Templier**
 - Capture n'est plus utilisée sur la cible principale ni sur la cible au crâne : seulement pour le peel des autres monstres déjà en combat.
@@ -60,7 +42,8 @@ Révision `b83ad00` (le serveur de test tournait sur `f9a5518`, identique côté
 
 **Connu, pas encore corrigé**
 - Le templier qui « lâche l'affaire » : il faut le journal de la séance (ou l'heure et le nom du bot).
-- Le rôdeur abandonne des cibles qu'il ne parvient pas à atteindre : 13 abandons sur 13 relevés en escouade.
+- Le placement contre un boss n'a pas pu être vérifié : le seul boss accessible du bon niveau à Eltnen se tient sur un terrain hors maillage.
+- La résurrection en groupe n'a pas encore été vue en jeu : aucun bot n'est mort pendant les essais.
 
 ---
 
