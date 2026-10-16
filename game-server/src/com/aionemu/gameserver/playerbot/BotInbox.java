@@ -13,10 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.services.teleport.TeleportService;
+import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
  * {@code //bot} commands read from a file instead of typed in the chat, so that a test can be set up and run with no game client at all.
@@ -100,6 +102,7 @@ public final class BotInbox {
 			case "position", "positioning" -> BotCommands.positioning(argument);
 			case "list" -> BotCommands.listSpawnedBots();
 			case "create" -> words.length < 5 ? "Usage: create <name> <class> <level> <race>" : create(words);
+			case "attack" -> words.length < 3 ? "Usage: attack <name> <monster name>" : attack(words[1], String.join(" ", Arrays.copyOfRange(words, 2, words.length)));
 			case "teleport" -> words.length < 6 ? "Usage: teleport <name> <map> <x> <y> <z>" : teleport(words);
 			case "spawn" -> words.length < 4 || !words[2].equalsIgnoreCase("near") ? "Usage: spawn <name> near <spawned bot>" : spawnNear(words[1], words[3]);
 			case "despawn" -> name == null ? "Usage: despawn <name>" : BotCommands.despawn(name);
@@ -116,6 +119,29 @@ public final class BotInbox {
 		} catch (NumberFormatException e) {
 			return "Level must be a number";
 		}
+	}
+
+	/**
+	 * Sends a bot at the nearest monster of that name it can see, whatever its level: what a player does by clicking one, and the way to put a squad on a
+	 * boss its leader would never pick for itself.
+	 */
+	private static String attack(String name, String monsterName) {
+		Player bot = PlayerBotService.getInstance().findSpawnedBot(name);
+		if (bot == null)
+			return "No bot spawned with name " + name;
+		if (!(bot.getAi() instanceof PlayerBotAI ai))
+			return name + " has no bot AI attached";
+		Npc[] nearest = { null };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (!npc.isDead() && npc.getName().equalsIgnoreCase(monsterName)
+				&& (nearest[0] == null || PositionUtil.getDistance(bot, npc) < PositionUtil.getDistance(bot, nearest[0])))
+				nearest[0] = npc;
+		});
+		if (nearest[0] == null)
+			return name + " sees no living " + monsterName;
+		ai.startAttacking(nearest[0]);
+		return String.format("%s attacks %s (level %d, %s) at %.0f m", name, monsterName, nearest[0].getLevel(), nearest[0].getObjectTemplate().getRating(),
+			PositionUtil.getDistance(bot, nearest[0]));
 	}
 
 	/** Puts a spawned bot somewhere and makes that its camp, which is how a squad is taken to the ground a test is about. */
