@@ -21,6 +21,7 @@ import com.aionemu.gameserver.playerbot.world.BotDirector;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
+import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.world.World;
@@ -62,6 +63,7 @@ public class PlayerBotService {
 		runStandingOrders();
 		restoreRoster();
 		warmUpPlaces();
+		BotInbox.start();
 		// Last, and it used to be first. The director reviews what each region holds against what it should hold, and both of the steps above change
 		// that answer wholesale: populating a fresh installation builds a navmesh and creates thousands of characters across eighteen maps, which
 		// takes minutes. Started first, the director's opening review fired into a world a tenth of the way up and began correcting a figure that was
@@ -258,7 +260,8 @@ public class PlayerBotService {
 	 * @return false if the bot stays, which is never final.
 	 */
 	public Change sleep(Player bot) {
-		if (!(bot.getAi() instanceof PlayerBotAI ai) || ai.isOwned())
+		// a squad is somebody's test, and one member taken out of it is the test spoiled
+		if (!(bot.getAi() instanceof PlayerBotAI ai) || ai.isOwned() || BotSquads.isSquad(bot.getCurrentTeam()))
 			return Change.UNAVAILABLE;
 		if (bot.getKnownList().streamPlayers().anyMatch(other -> !other.isBot()))
 			return Change.SEEN;

@@ -1,6 +1,6 @@
 # Test harness: plan
 
-Status: in progress; steps 1 to 5 built, 6 and 7 next.
+Status: all seven steps built; a squad has not yet been watched fighting (see the end).
 
 Why: on 16 October a tester's feedback was fixed and shipped with every group rule unit tested and none seen in a fight, because a group fight needs a
 player in the group; and the one point left open, a templar that drops the fight, could not be looked at because the tester's log was on another

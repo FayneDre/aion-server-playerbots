@@ -31,6 +31,7 @@ import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
+import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.positioning.BotPosition;
 import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
@@ -552,7 +553,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// A bot crosses its level, and joins and leaves a group, while it is playing rather than while it is loading, so both are settled here rather
 		// than on the way in. Neither does anything until the answer actually changes.
 		pacing.reconcile();
-		day.moveOutIfOutgrown();
+		boolean inSquad = BotSquads.isSquad(getOwner().getCurrentTeam());
+		if (!inSquad) // a squad camps where it was formed, which is the point of forming it there
+			day.moveOutIfOutgrown();
 		boolean following = followTheGroup();
 		if (checkLanding && getOwner().isSpawned() && !getOwner().isDead()) {
 			checkLanding = false;
@@ -590,7 +593,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 					recover();
 			} else if (following) {
 				serveTheGroup(); // a member has no business picking its own fights, so the rest of this chain is not its to run
-			} else if (errands.runVendorTrip()) {
+			} else if (BotSquads.leads(getOwner()) && !BotSquads.isReady(getOwner(), MIN_ENGAGE_HP_PERCENT, MIN_ENGAGE_MP_PERCENT)) {
+				// A squad's leader pulls for the squad, so it waits for the squad, as a player leading a group waits for the healer's mana. Buffs and the
+				// rest of its upkeep can wait with it; standing still is what lets the others catch up and sit down.
+				stopMoving();
+			} else if (!inSquad && errands.runVendorTrip()) {
 				// bag is full and a shop is being walked to or worked, everything else waits
 			} else if (isRunningErrand()) {
 				// an operator sent it somewhere on purpose; let it arrive before it goes looking for its own fights
@@ -598,7 +605,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// buffs go up before a fight is picked, never during one, where the cast would cost a swing.
 				// the servant before the buffs, because it is the one of them that is still there in ten minutes and the class cannot fight without it
 				if (!callUpServant() && !boardRobot() && !BotPlaybooks.of(getOwner()).tend(getOwner()) && !BotSkillManager.tryBuffSelf(getOwner())
-					&& !BotSkillManager.tryChantMantra(getOwner()) && !day.pursue()) {
+					&& !BotSkillManager.tryChantMantra(getOwner()) && (inSquad || !day.pursue())) {
 					// Starting a fight is the one thing the death penalty forbids, and it used to forbid everything: the bot sat where it stood for
 					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Walking, going home,
 					// buffing and the errands above are all things a player does on the way back from a death, so none of them is gated here.

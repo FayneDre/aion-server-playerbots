@@ -51,7 +51,7 @@ public class BotGroupManager {
 	 * @return true if the bot left, in which case it is no longer in a group.
 	 */
 	public static boolean leaveIfLeaderless(Player bot) {
-		if (bot.getCurrentTeam() == null || hasPlayerMember(bot))
+		if (bot.getCurrentTeam() == null || hasPlayerMember(bot) || BotSquads.isSquad(bot.getCurrentTeam()))
 			return false;
 		if (bot.getPlayerGroup() == null)
 			return false; // an alliance is not ours to dissolve, and bots are never invited into one on purpose
@@ -131,7 +131,8 @@ public class BotGroupManager {
 	}
 
 	/**
-	 * @return The bot's group leader, or null when it is not in a group, leads it itself, or the leader is somewhere it cannot walk to.
+	 * @return The bot's group leader, or null when it is not in a group, leads it itself, or the leader is somewhere it cannot walk to. A bot leader
+	 *         is followed only in a squad ({@link BotSquads}).
 	 */
 	public static Player leaderToFollow(Player bot) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
@@ -140,7 +141,7 @@ public class BotGroupManager {
 		Player leader = team.getLeaderObject();
 		// A team keeps its leader field when that member leaves, and nothing replaces a leader a bot is not allowed to become — so the group of a
 		// player who has just walked out still names them, and bots went on following someone who was no longer in it.
-		if (leader == null || leader.equals(bot) || leader.isBot() || !team.hasMember(leader.getObjectId()))
+		if (leader == null || leader.equals(bot) || leader.isBot() && !BotSquads.isSquad(team) || !team.hasMember(leader.getObjectId()))
 			return null;
 		// another map is not a navigation problem but a travel one, and bots cannot travel yet
 		return leader.getWorldId() == bot.getWorldId() && leader.getInstanceId() == bot.getInstanceId() ? leader : null;

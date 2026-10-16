@@ -103,8 +103,15 @@ Made for test sessions, and for whoever reads their log afterwards; the plan is 
 | Command | What it does |
 |---|---|
 | `//bot note <text>` | Writes a note to the server log the moment something looks wrong: one `BOT NOTE #n` line with the text and where you stand, then one line per bot in your group (or within 30 m when you have none) with its class, role, health, mana, divine power, state, cast in progress, target, the target's health and whom the target is on. `tools/collect-feedback.ps1` cuts the minutes around each note out of a log. |
+| `//bot squad [form <leader> <member>... \| disband <name>]` | Bot-only groups, for watching a group fight with no player in it. `form` brings the members to the leader and groups them under it; the leader keeps playing on its own, pulling round the place it stood (its camp), and waits before each pull for every member to be alive and rested; the members follow and assist it as they would a player. A squad is never put to sleep by the director, nor dissolved for having no player. `disband` and any member's name ends it; alone, the command lists squads with each member's health and mana. Same race, six at most. |
 | `//bot version` | The revision, branch and build date the server runs. A report names it, so the fix it is about can be found. |
 | `//bot debug [combat\|all\|off]` | Logs the detail of the bot module until the next restart: `combat` (or `on`) is every cast with its target and every fight started and given up, `all` is the whole module. `off` gives back what `logback.xml` set. |
+
+**Without a game client.** The server reads `bot-commands.txt` in its `game-server` folder every three seconds and runs each line as the words after
+`//bot`, answering in the log as `BOT INBOX`. `tools/bot-command.ps1 '<command>', ...` appends the lines and prints the answers. There is no caller, so
+it takes only `squad`, `note`, `version`, `debug`, `position`, `list`, `create` (the bot then belongs to the world), `despawn`, `delete`, `stop`,
+`auto`, and two of its own: `spawn <name> near <bot>`, next to a spawned bot instead of a player, and `teleport <name> <map> <x> <y> <z>`, which
+also makes that place the bot's camp. Anyone who can write to the server's folder could already do anything to it, so the file opens nothing new.
 
 ## Two things worth knowing before handing this out
 

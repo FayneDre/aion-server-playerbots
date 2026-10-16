@@ -1,5 +1,6 @@
 package com.aionemu.gameserver.playerbot;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -28,6 +29,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.positioning.PositioningMode;
+import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.world.BotDirector;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
@@ -526,6 +528,39 @@ public final class BotCommands {
 			case STANDARD -> "bots go straight at what they fight, melee into contact and ranged classes to their reach.";
 			case SPREAD -> "bots take their places against everything: tank on the far side, melee behind, ranged back.";
 		} + " Fights are still sampled in the log either way.";
+	}
+
+	/**
+	 * Lists, forms or disbands squads: groups of bots under a bot leader, for watching a group fight without a player in it.
+	 *
+	 * @param words What followed "squad": nothing to list them, "form" and the leader's then the members' names, or "disband" and any member's name.
+	 */
+	public static String squad(String[] words) {
+		String usage = "Usage: //bot squad [form <leader> <member>... | disband <name>]";
+		if (words.length == 0)
+			return BotSquads.describe(List.copyOf(bots().spawnedBots()));
+		switch (words[0].toLowerCase()) {
+			case "form" -> {
+				if (words.length < 3)
+					return usage;
+				List<Player> squad = new ArrayList<>();
+				for (int i = 1; i < words.length; i++) {
+					Player bot = bots().findSpawnedBot(words[i]);
+					if (bot == null)
+						return "No bot spawned with name " + words[i];
+					squad.add(bot);
+				}
+				return BotSquads.form(squad.getFirst(), squad.subList(1, squad.size()));
+			}
+			case "disband" -> {
+				if (words.length < 2)
+					return usage;
+				return withBot(words[1], BotSquads::disband);
+			}
+			default -> {
+				return usage;
+			}
+		}
 	}
 
 	public static String despawnAll() {
