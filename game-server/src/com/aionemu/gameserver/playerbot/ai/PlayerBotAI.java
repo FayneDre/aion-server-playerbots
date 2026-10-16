@@ -1305,6 +1305,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * down at the far edge of its own village.
 	 */
 	private static final float STRANDED_AT_HOME = 40;
+	/** How near the ground a rescue would put a bot on it must stand for the rescue to be no move at all, in metres. */
+	private static final float ALREADY_THERE = 5;
 
 	/**
 	 * Puts a bot that cannot move at all back where it lives.
@@ -1377,15 +1379,21 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// went there: on a terrace it flew to, at the end of an errand, behind a rock. Rehousing it for that moves a resident across the map for
 		// having gone somewhere, which is what an escort landing on a ledge made it do -- three rescues in under a minute, and its home 1200 m away.
 		boolean atHome = PositionUtil.getDistance(bot.getX(), bot.getY(), home.getX(), home.getY()) < STRANDED_AT_HOME;
-		log.info("Bot {} could not move at all from {} {} and is put back home{}{}", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()),
-			atHome ? ", which is where it already was" : "", witnessed(bot));
 		day.forget(); // whatever it was doing was decided from a place it is no longer in
 		Vector3f moved = atHome ? day.recordStranding() : null;
 		if (moved != null) {
 			x = moved.getX();
 			y = moved.getY();
 			z = moved.getZ();
+		} else if (PositionUtil.getDistance(bot.getX(), bot.getY(), x, y) < ALREADY_THERE) {
+			// A lift onto the spot the bot stands on moves nothing and shows a body blinking: 136 of 403 rescues in half an hour were that. A bot standing
+			// at its own front door asking for somewhere the planner cannot find is not stuck, its destination is, and forgetting it was the cure.
+			log.info("Bot {} could not move at all from {} {}, where it lives, and is left there with its errand forgotten", bot.getName(),
+				Math.round(bot.getX()), Math.round(bot.getY()));
+			return;
 		}
+		log.info("Bot {} could not move at all from {} {} and is put back home{}{}", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()),
+			atHome && moved == null ? ", which is where it already was" : "", witnessed(bot));
 		TeleportService.teleportTo(bot, bot.getWorldId(), x, y, z);
 		setAnchor(x, y, z);
 	}

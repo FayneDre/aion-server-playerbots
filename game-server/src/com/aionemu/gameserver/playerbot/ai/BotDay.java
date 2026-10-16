@@ -11,7 +11,6 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
-import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.BotQuestGrounds;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -33,6 +32,8 @@ class BotDay {
 
 	/** How many spots to try before settling for the place itself. More than a handful, since a busy village has most of its corners taken. */
 	private static final int RESTING_SPOTS = 12;
+	/** The place {@link #restingSpot} was last worked out for, and its answer. */
+	private volatile Vector3f restingFor, restingSpot;
 	/** How far a bot's level may drift from its home's before it moves house. */
 	private static final int HOME_LEVEL_DRIFT = 2;
 	/** How close to somebody else a bot may stop. Bots pass through npcs, so nothing but this keeps one from halting inside a blacksmith. */
@@ -320,13 +321,21 @@ class BotDay {
 	 */
 	private Vector3f restingSpot(Vector3f place) {
 		Player bot = ai.getOwner();
+		// Kept, because the answer for one bot and one place is always the same: the attempts are drawn from the bot's id. Worked out afresh on every
+		// spell of loitering it was up to twelve route searches each time, and the biggest thing on the bots' threads with 800 of them awake.
+		Vector3f known = restingSpot;
+		if (known != null && restingFor != null && restingFor.equals(place) && !isCrowded(known))
+			return known;
 		// the ground the place actually covers, measured from its own occupants. A number invented for this was wrong in both directions at once: a
 		// formula gave Akarios 26 m where it measures 42, so its inhabitants stood at twice the density of the npcs the village was built with.
 		float spread = BotPlaces.reachAt(bot.getWorldId(), place);
 		// null rather than the centre of the place: everybody shares that point, and in a village it is the obelisk. The caller reads null as "no
-		// room here, go and work instead", which is the honest answer when a place is full.
-		return BotPlaces.spotAround(bot.getWorldId(), place, spread, RESTING_SPOTS, bot.getObjectId(), ground -> isCrowded(ground)
-			|| !NavmeshService.getInstance().canReach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), ground.getX(), ground.getY(), ground.getZ()));
+		// room here, go and work instead", which is the honest answer when a place is full. Only joined to the place, not searched for again from
+		// where the bot stands as well: spotAround already asks that of the place, and a bot that cannot walk to its own home is the rescue's business.
+		Vector3f found = BotPlaces.spotAround(bot.getWorldId(), place, spread, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
+		restingFor = place;
+		restingSpot = found;
+		return found;
 	}
 
 	/**
