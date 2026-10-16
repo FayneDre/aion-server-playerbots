@@ -772,11 +772,17 @@ public class BotSkillManager {
 			return false;
 		for (SkillTemplate template : candidates) {
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
+			if (skill == null)
+				continue;
+			// A cast roots its caster, and the walk has to end before the cast begins, not after. Ended after, a step of the walk could still land
+			// in between, on the movement thread: the cast's move listener then noted that the caster moved, and the engine cut the cast short at its
+			// end. Every cast a bot began while walking failed that way, and was begun again a second or two later -- seen in the first squads as a
+			// cleric's Earth's Wrath cast twice for every one that went through. Only when the target is in reach, or a bot closing in on one would be
+			// stopped on every try of a spell that cannot reach yet.
+			boolean halted = (template.getDuration() > 0 || template.isCharge()) && isWithinCastRange(bot, target, template)
+				&& bot.getMoveController() instanceof BotMoveController walking && walking.isInMove() && walking.haltForCast();
 			// useNoAnimationSkill validates mp, cooldown, range and target itself, and skips the client hit time checks a bot cannot satisfy
-			if (skill != null && skill.useNoAnimationSkill()) {
-				// a cast roots its caster, and the walk it began in has to end without the stop that cancels it
-				boolean halted = (template.getDuration() > 0 || template.isCharge()) && bot.getMoveController() instanceof BotMoveController walking
-					&& walking.isInMove() && walking.haltForCast();
+			if (skill.useNoAnimationSkill()) {
 				// the sequence a class casts in, read from the log to compare a rotation with the guide's: enable DEBUG for this class to see it
 				log.debug("{} casts {} rank {} (group {}) at {}{}", bot.getName(), template.getName(), template.getLvl(), template.getGroup(), target.getName(),
 					halted ? ", stopping its walk for it" : "");
@@ -787,6 +793,16 @@ public class BotSkillManager {
 			}
 		}
 		return false;
+	}
+
+	/** @return true if the target is within the skill's reach from where the bot stands, measured edge to edge as the engine measures it. */
+	private static boolean isWithinCastRange(Player bot, Creature target, SkillTemplate template) {
+		Properties properties = template.getProperties();
+		if (target.equals(bot) || properties.getFirstTarget() == FirstTargetAttribute.ME)
+			return true;
+		float range = properties.getFirstTargetRange()
+			+ (properties.isAddWeaponRange() ? bot.getGameStats().getAttackRange().getCurrent() / 1000f : 0);
+		return PositionUtil.isInRange(bot, target, range, false);
 	}
 
 	/**
