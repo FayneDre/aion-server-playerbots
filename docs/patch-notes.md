@@ -6,6 +6,12 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-16-3 — 16/10/2026, soir
+
+- **Sorts interrompus :** un bot ne fait plus aucun pas pendant qu'il incante (un seul pas faisait échouer le sort à la fin, sans rien dire). Il ne commence plus non plus un sort à incantation sur une cible de groupe qui va mourir avant la fin, estimé d'après la vitesse à laquelle elle perd ses PV. Sorts perdus par l'escouade : de 28 sur 162 (17 %) à 6 sur 178 (3 %), les six sur une cible morte entre-temps.
+
+---
+
 ## patch-2026-10-16-2 — 16/10/2026, après-midi
 
 Défauts trouvés en faisant jouer une escouade de six bots sans joueur ; chiffres mesurés sur le même camp, cinq minutes chacun.
@@ -16,7 +22,7 @@ Défauts trouvés en faisant jouer une escouade de six bots sans joueur ; chiffr
 - Correction d'une erreur rare dans le déplacement (deux fils qui changent l'itinéraire en même temps).
 
 **Connu, pas encore corrigé**
-- Une partie des sorts longs (Fureur terrestre du clerc, Frappe de tempête du sorcier) est encore interrompue, environ un sur trois seulement par la mort de la cible. Cause du reste non trouvée.
+- Une partie des sorts longs (Fureur terrestre du clerc, Frappe de tempête du sorcier) est encore interrompue, environ un sur trois seulement par la mort de la cible. Cause du reste non trouvée. *Corrigé dans patch-2026-10-16-3.*
 - Le placement contre un boss n'a pas pu être vérifié : le seul boss accessible du bon niveau à Eltnen se tient sur un terrain hors maillage.
 - Le templier qui « lâche l'affaire » : toujours en attente du journal de la séance.
 

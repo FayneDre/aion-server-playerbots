@@ -49,3 +49,12 @@ A buff with a one second cooldown, as the ranger's Strong Shots and Aiming have,
 these that is ready" casts the one that is already on, every second, until something else changes the answer; seen in the log as 35 casts of one buff in eight
 minutes, with the unit test passing because it took the buff out of the ready set. Ask whether it is on as well as whether it is ready, and test with both.
 
+
+## One step under a cast fails it at its end
+
+A skill whose data says `<move_casting allow="false" />` is checked as it ends, not as it starts: `Skill.useSkill` attaches a `StartMovingListener`,
+any `onMove()` of the caster sets it, and `PlayerMovedCondition` then fails the cast in `endCast`, time spent and nothing landed. Nothing tells the
+caster why. For a bot the step can come from its own walk on the movement thread, a moment after the decision to cast: ending the walk after the cast
+began, then before it, then only within the engine's range rule, each left some steps landing under casts. What holds is the step itself refusing to
+move a body that is casting (`BotMoveController.moveToDestination`). Measured with a probe on `PlayerController.cancelCurrentSkill` in a squad: casts
+lost went from 28 of 162 to 6 of 178, the six all to a target that died first.
