@@ -27,6 +27,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
+import com.aionemu.gameserver.playerbot.positioning.PositioningMode;
 import com.aionemu.gameserver.playerbot.world.BotDirector;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
@@ -503,21 +504,28 @@ public final class BotCommands {
 	}
 
 	/**
-	 * Reads or switches positioning for grouped bots, which is the one way to compare a fight with it and one without in the same session.
-	 * Not saved: the setting in {@code playerbot.properties} is what a restart goes back to.
+	 * Reads or sets when grouped bots take their places in a fight, which is also the way to compare a fight with positioning and one without in the
+	 * same session. Not saved: the setting in {@code playerbot.properties} is what a restart goes back to.
 	 *
-	 * @param setting "on", "off", or null to read it.
+	 * @param setting "auto", "standard", "spread", the older "on" and "off" (auto and standard), or null to read it.
 	 */
 	public static String positioning(String setting) {
 		if (setting != null) {
-			if (setting.equalsIgnoreCase("on"))
-				PlayerBotConfig.POSITIONING = true;
-			else if (setting.equalsIgnoreCase("off"))
-				PlayerBotConfig.POSITIONING = false;
-			else
-				return "Usage: //bot positioning [on|off]";
+			PositioningMode mode = switch (setting.toLowerCase()) {
+				case "auto", "on" -> PositioningMode.AUTO;
+				case "standard", "off" -> PositioningMode.STANDARD;
+				case "spread" -> PositioningMode.SPREAD;
+				default -> null;
+			};
+			if (mode == null)
+				return "Usage: //bot position [auto|standard|spread]";
+			PlayerBotConfig.POSITIONING = mode;
 		}
-		return "Positioning is " + (PlayerBotConfig.POSITIONING ? "on" : "off") + ". Fights are still sampled in the log either way.";
+		return "Positioning is " + PlayerBotConfig.POSITIONING.name().toLowerCase() + ": " + switch (PlayerBotConfig.POSITIONING) {
+			case AUTO -> "bots take their places against a boss, and go straight at anything else.";
+			case STANDARD -> "bots go straight at what they fight, melee into contact and ranged classes to their reach.";
+			case SPREAD -> "bots take their places against everything: tank on the far side, melee behind, ranged back.";
+		} + " Fights are still sampled in the log either way.";
 	}
 
 	public static String despawnAll() {

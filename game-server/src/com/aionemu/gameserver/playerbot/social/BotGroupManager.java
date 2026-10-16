@@ -7,12 +7,14 @@ import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
+import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 
@@ -184,16 +186,24 @@ public class BotGroupManager {
 	 * Whoever it is on, rather than the worst case, because the aggro list says who is most hated and not who can least afford it, and a rule that
 	 * ranked mates would be guessing at a group's intentions. First found is enough: the taunt is cheap and comes round again every swing.
 	 *
+	 * <p>
+	 * One that cannot act is not loose, whatever its aggro list says: asleep, stunned, paralysed or afraid it is hitting nobody, and a taunt would only
+	 * wake it. A templar pulled monsters out of a mate's sleep this way, reported by a tester.
+	 *
+	 * @param priority The enemies the group is fighting on purpose, the tank's own target and the skull, which have rules of their own and are never
+	 *          peeled. Nulls are ignored.
 	 * @return An npc whose chosen victim is a team mate other than this bot, or null when the tank already has them all.
 	 */
-	public static Creature enemyLooseOnAMate(Player bot) {
+	public static Creature enemyLooseOnAMate(Player bot, Creature... priority) {
+		List<Creature> excluded = Arrays.asList(priority); // asList, because List.of refuses the null of a group with no skull
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		if (team == null)
 			return null;
 		List<Player> members = team.getMembers();
 		Creature[] found = { null };
 		bot.getKnownList().forEachNpc(npc -> {
-			if (found[0] != null || !isWorthAssistingOn(bot, npc))
+			if (found[0] != null || excluded.contains(npc) || !isWorthAssistingOn(bot, npc)
+				|| npc.getEffectController().isInAnyAbnormalState(AbnormalState.CANT_ATTACK_STATE))
 				return;
 			// The one it is actually hitting, not merely one it holds a grudge against: a monster hates everything that has touched it, and a tank
 			// that answered every grudge would spend the fight taunting things already looking at it.
@@ -395,6 +405,29 @@ public class BotGroupManager {
 
 	private static boolean isNearEnoughToHelp(Player bot, Player member) {
 		return member.getWorldId() == bot.getWorldId() && PositionUtil.getDistance(bot, member) <= ASSIST_RADIUS;
+	}
+
+	/** @return true if any monster around the bot is fighting its group. */
+	public static boolean isGroupFighting(Player bot) {
+		boolean[] fighting = { false };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (!fighting[0] && isEngagedWithTheGroup(bot, npc))
+				fighting[0] = true;
+		});
+		return fighting[0];
+	}
+
+	/** @return true if somebody else in the bot's group is alive in the same map instance, and so could still come and raise it. */
+	public static boolean hasLivingMateOnTheMap(Player bot) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return false;
+		for (Player member : team.getMembers()) {
+			if (!member.equals(bot) && member.isSpawned() && !member.isDead() && member.getWorldId() == bot.getWorldId()
+				&& member.getInstanceId() == bot.getInstanceId())
+				return true;
+		}
+		return false;
 	}
 
 	/** @return true if the monster is fighting this group: hitting or hating the bot or any member, close enough to matter and in sight. */

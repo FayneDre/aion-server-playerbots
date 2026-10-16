@@ -178,6 +178,48 @@ class TemplarPlaybookTest {
 		assertEquals(CAPTURE, TemplarPlaybook.decide(grouped(false, true, EnumSet.of(CAPTURE, TAUNT))), "when it is not ready the others follow in their order");
 	}
 
+	/** A templar in a group, healthy, nothing in roar range, with the state of its own target and of a loose monster as given. */
+	private static Situation onTarget(boolean targetLoose, boolean bossTarget, boolean enemyLoose, boolean looseHeld, Set<Move> ready) {
+		return new Situation(40, 100, 0, false, true, false, enemyLoose, false, false, false, false, false, ready, looseHeld, targetLoose, bossTarget);
+	}
+
+	@Test
+	void tauntHoldsTheTemplarsOwnTargetWhenItTurnsToSomebodyElse() {
+		assertEquals(HOLD_TAUNT, TemplarPlaybook.decide(onTarget(true, false, false, false, EVERYTHING)));
+		assertEquals(TAUNT.group, HOLD_TAUNT.group, "the guide's Défi is the plain Taunt, aimed at the templar's own target");
+		assertNull(TemplarPlaybook.decide(onTarget(false, false, false, false, EVERYTHING)), "an ordinary monster still on the templar needs nothing");
+	}
+
+	@Test
+	void theTemplarsOwnTargetComesBeforeAnotherLooseMonster() {
+		assertEquals(HOLD_TAUNT, TemplarPlaybook.decide(onTarget(true, false, true, false, EVERYTHING)),
+			"the target is what the whole group is hitting; another loose monster is peeled next");
+		assertEquals(INCITE_RAGE, TemplarPlaybook.decide(onTarget(true, false, true, false, EnumSet.complementOf(EnumSet.of(HOLD_TAUNT, TAUNT)))),
+			"Taunt on cooldown: the peel carries on with what is ready");
+	}
+
+	@Test
+	void aBossIsTauntedWheneverTauntIsReady() {
+		assertEquals(HOLD_TAUNT, TemplarPlaybook.decide(onTarget(false, true, false, false, EVERYTHING)), "the margin is kept before it is lost");
+		assertEquals(INCITE_RAGE, TemplarPlaybook.decide(onTarget(false, true, true, false, EVERYTHING)), "a loose monster on a mate is more urgent than the margin");
+	}
+
+	@Test
+	void captureIsNeverAimedAtAMonsterHeldInPlace() {
+		assertEquals(TAUNT, TemplarPlaybook.decide(onTarget(false, false, true, true, EnumSet.of(CAPTURE, TAUNT))),
+			"Capture would drag a rooted monster out of its root");
+		assertNull(TemplarPlaybook.decide(onTarget(false, false, true, true, EnumSet.of(CAPTURE))));
+		assertEquals(CAPTURE, TemplarPlaybook.decide(onTarget(false, false, true, false, EnumSet.of(CAPTURE, TAUNT))));
+	}
+
+	@Test
+	void captureIsNotAMoveOnTheTemplarsOwnTarget() {
+		for (Move move : Move.values()) {
+			if (move.aim == TemplarPlaybook.Aim.TARGET)
+				assertNotEquals(CAPTURE.group, move.group, move + " would teleport the group's target away from the melee standing round it");
+		}
+	}
+
 	@Test
 	void theStigmasAreThoseTheGuideListsInTheOrderItListsThem() {
 		assertEquals(java.util.List.of("KN_HIGHPROVOKE", "KN_REFLECTSHIELD", "KN_THUNDERBLADE"), new TemplarPlaybook().preferredStigmas(false));

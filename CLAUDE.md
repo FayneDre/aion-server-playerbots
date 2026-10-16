@@ -56,6 +56,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/bot-careers.md](docs/bot-careers.md) — how a bot gains levels, where it lives as it grows, and what keeps it out of trouble.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command and what it does, plus the one number that decides who may run them.
 - [docs/engine-traps.md](docs/engine-traps.md) — what this engine does to a bot that no documentation warns about: questions it asks that a bot cannot see, actions anything cancels, and methods whose names promise one thing and answer another.
+- [docs/skill-traps.md](docs/skill-traps.md) — what the skill engine decides about buffs and areas that the obvious question gets wrong: one buff under two names, areas measured from the caster.
 - [docs/world-and-data-traps.md](docs/world-and-data-traps.md) — the other half: geometry two systems describe differently, objects handed over half built, and templates that rewrite themselves as you read them.
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
 - [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.

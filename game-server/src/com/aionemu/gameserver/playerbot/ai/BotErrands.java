@@ -133,6 +133,10 @@ class BotErrands {
 		Player bot = ai.getOwner();
 		if (BotEquipManager.isBusyDressing(bot))
 			return true;
+		// A group member dresses only once the weapon is away by itself, which the calm after a group's fights does, and never in an instance: what
+		// drops there seldom beats what it wears, and five seconds of standing still with the weapon away is five seconds the group goes without it.
+		if (bot.getCurrentTeam() != null && (bot.isInInstance() || bot.isInState(CreatureState.WEAPON_EQUIPPED)))
+			return false;
 		// A piece can score higher and still be unwearable for good — a mace a priest has no mastery for, a piece for the other race — and nothing
 		// short of trying says so. Without this the bot would stop and sheathe on every tick of its life for one such item sitting in its bag.
 		if (System.currentTimeMillis() < dressingIdleUntil || !BotEquipManager.hasUpgradeWaiting(bot))

@@ -134,29 +134,11 @@ summon must pace itself by `getAttackSpeed()`, exactly as the client does. The s
 
 **`Summon.setMode` clears the skill order queue** on any mode that is not `ATTACK`, so orders have to be queued after the mode is set.
 
-## Two buffs are the same buff when their effect ids collide, whatever their stack groups say
+## Skills have traps of their own
 
-**The stack group is not how the engine decides a buff is already up.** `EffectController.isConflicting` compares the *effect ids* of each template,
-within a target slot, and ends the weaker of two that collide — equal levels meaning the newcomer wins. The stack group never enters into it. So a bot
-that asks "is this buff up?" by stack group, which is the obvious way and the right way for telling two ranks of one skill apart, will believe a buff is
-missing that the engine considers present.
-
-**Where the data gives one effect two names, that belief costs an infinite loop.** The bot casts the buff; the engine ends the one already holding that
-effect id; the bot now finds *that* one missing and casts it back. Neither is ever up, and nothing in the log says so, because no one logs a buff.
-
-Both halves of it are in the live 4.8 data:
-
-| Skills | Stack groups | Shared effect |
-|---|---|---|
-| Bard, `Mvt. 2: Summer` / `Mvt. 3: Autumn` | `BA_SONGOFBRAVE` / `BA_SONGOFFIRM` | `statup` 944261 |
-| Ranger, `Transformation: White Tiger` / `Krall` | `RA_LIGHT_WHITETIGER` / `RA_LIGHT_KRALLSCOUT` | `shapechange` 175 |
-
-**A buff that cannot win its slot loops just as hard.** The ranger's Mau transformation carries the same `shapechange` 175 at `basiclvl` 160 against the
-others' 100, and `isConflicting` refuses a newcomer whose level is lower. With Mau up, White Tiger is refused for ever — so it never lands, never reads
-as up, and is recast for ever.
-
-**Upkeep rules read from cooldown versus duration will adopt transformations.** Those four polymorphs last 120 s on a 10 s cooldown, which is the exact
-signature of a buff worth keeping up. They have to be excluded by what they do — `EffectType.SHAPECHANGE` — not by how long they last.
+What the skill engine decides about a buff or an area, and how a bot that asks the obvious question gets the wrong answer, is in
+[skill-traps.md](skill-traps.md): buffs that are one buff under two names, buffs ready again before they are off, and areas whose range is measured
+from the caster.
 
 ## Moving a body from the server is its own subject
 
@@ -181,12 +163,6 @@ reply, `CM_REVIVE` with the skill kind, which ends in `PlayerReviveService.skill
 nothing ever answers, and the bot walks back from its obelisk as if nobody had come. `skillRevive` also writes the character into the audit log as a
 resurrection hack when the mark is not there, so a bot must be asked `getResStatus()` before it is made to reply. Not a patch of the engine: the bot's decision tick
 notices the mark and replies, in `PlayerBotAI.handleDeath`.
-
-## Ready again at once is not the same as not on
-
-A buff with a one second cooldown, as the ranger's Strong Shots and Aiming have, is ready every second for the whole of its minute. A rule that picks "the first of
-these that is ready" casts the one that is already on, every second, until something else changes the answer; seen in the log as 35 casts of one buff in eight
-minutes, with the unit test passing because it took the buff out of the ready set. Ask whether it is on as well as whether it is ready, and test with both.
 
 ## Two small ones in the same family
 

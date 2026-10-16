@@ -7,12 +7,15 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.controllers.attack.AggroTarget;
 import com.aionemu.gameserver.model.gameobjects.Creature;
+import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
+import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.skillengine.properties.Properties;
 import com.aionemu.gameserver.skillengine.properties.TargetRangeAttribute;
@@ -87,6 +90,8 @@ final class TemplarPlaybook implements ClassPlaybook {
 		BARRICADE_OF_STEEL("KN_REFLECTSHIELD", Aim.SELF, false),
 		UNWAVERING_DEVOTION("WA_STEADINESS", Aim.SELF, false),
 		PROVOKING_ROAR("KN_MASSIVEPROVOKE", Aim.SELF, true),
+		/** Taunt kept on the templar's own target, the guide's "Défi": what holds a boss that the group's damage would otherwise take away. */
+		HOLD_TAUNT("WA_PROVOKE", Aim.TARGET, true),
 		INCITE_RAGE("KN_HIGHPROVOKE", Aim.LOOSE_ENEMY, true),
 		CAPTURE("KN_STUNNINGSNACHER", Aim.LOOSE_ENEMY, true),
 		TAUNT("WA_PROVOKE", Aim.LOOSE_ENEMY, true),
@@ -118,9 +123,20 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * @param shockChainOpen Whether Remove Shock was the last skill it used, which is the only moment Refresh Spirit can follow it.
 	 * @param devotionUp Whether Unwavering Devotion's resistance is already on the templar.
 	 * @param barricadeUp Whether Barricade of Steel is already switched on. It is a toggle, and casting a toggle that is on switches it off.
+	 * @param looseHeld Whether the loose enemy is rooted or otherwise held where it stands. Capture would drag it out of that onto the templar.
+	 * @param targetLoose Whether the templar's own target is hitting somebody else.
+	 * @param bossTarget Whether the templar's own target is a boss, whose attention is kept on the templar whether or not it has wandered.
 	 */
 	record Situation(int level, int hpPercent, int dp, boolean armorUp, boolean inTeam, boolean enemyInRoarRange, boolean enemyLoose,
-		boolean controlled, boolean recentlyControlled, boolean shockChainOpen, boolean devotionUp, boolean barricadeUp, Set<Move> ready) {
+		boolean controlled, boolean recentlyControlled, boolean shockChainOpen, boolean devotionUp, boolean barricadeUp, Set<Move> ready,
+		boolean looseHeld, boolean targetLoose, boolean bossTarget) {
+
+		/** A situation with no loose target of the templar's own and no boss, which is what every rule but the hold on the target is decided in. */
+		Situation(int level, int hpPercent, int dp, boolean armorUp, boolean inTeam, boolean enemyInRoarRange, boolean enemyLoose, boolean controlled,
+			boolean recentlyControlled, boolean shockChainOpen, boolean devotionUp, boolean barricadeUp, Set<Move> ready) {
+			this(level, hpPercent, dp, armorUp, inTeam, enemyInRoarRange, enemyLoose, controlled, recentlyControlled, shockChainOpen, devotionUp, barricadeUp,
+				ready, false, false, false);
+		}
 	}
 
 	@Override
@@ -167,8 +183,9 @@ final class TemplarPlaybook implements ClassPlaybook {
 	@Override
 	public boolean act(Player bot, Creature target) {
 		BotMarks.markWeakestIfNone(bot);
-		Creature loose = BotGroupManager.enemyLooseOnAMate(bot);
-		Situation situation = situationOf(bot, loose != null);
+		// the skull is the group's target as much as the templar's own, which it is on almost always; when it is not, it is still not dragged away
+		Creature loose = BotGroupManager.enemyLooseOnAMate(bot, target, BotMarks.skulled(bot));
+		Situation situation = situationOf(bot, target, loose);
 		// The guide says a templar never needs to rest for mana. This is how that gets checked: a line whenever it is low in a fight, to be read over a long
 		// instance before anyone decides the rest rule may be skipped for a tank.
 		if (bot.getLifeStats().getMpPercentage() < BotSkillManager.MANA_RESERVE_PERCENT)
@@ -187,7 +204,7 @@ final class TemplarPlaybook implements ClassPlaybook {
 		return cast;
 	}
 
-	private static Situation situationOf(Player bot, boolean enemyLoose) {
+	private static Situation situationOf(Player bot, Creature target, Creature loose) {
 		Set<Move> ready = EnumSet.noneOf(Move.class);
 		for (Move move : Move.values()) {
 			if (BotSkillManager.isReady(bot, move.group))
@@ -199,9 +216,17 @@ final class TemplarPlaybook implements ClassPlaybook {
 		long lastControlledAt = bot.getAi() instanceof PlayerBotAI ai ? ai.lastControlledAt() : 0;
 		boolean controlled = BotSkillManager.isCrowdControlled(bot);
 		boolean recentlyControlled = !controlled && lastControlledAt != 0 && System.currentTimeMillis() - lastControlledAt <= RECENTLY_CONTROLLED_MILLIS;
+		boolean looseHeld = loose != null && loose.getEffectController().isInAnyAbnormalState(AbnormalState.CANT_MOVE_STATE);
+		boolean targetLoose = false, bossTarget = false;
+		if (inTeam && target instanceof Npc npc && !npc.isDead()) {
+			Creature victim = npc.getAggroList().getTarget(AggroTarget.MOST_HATED);
+			targetLoose = victim != null && !victim.equals(bot);
+			bossTarget = npc.isBoss();
+		}
 		return new Situation(bot.getLevel(), bot.getLifeStats().getHpPercentage(), bot.getCommonData().getDp(),
-			BotSkillManager.isUp(bot, Move.EMPYREAN_ARMOR.group), inTeam, enemyInRoarRange, enemyLoose, controlled, recentlyControlled,
-			BotSkillManager.isChainOpen(bot, SHOCK_CHAIN), BotSkillManager.isUp(bot, Move.UNWAVERING_DEVOTION.group), BotSkillManager.isUp(bot, Move.BARRICADE_OF_STEEL.group), ready);
+			BotSkillManager.isUp(bot, Move.EMPYREAN_ARMOR.group), inTeam, enemyInRoarRange, loose != null, controlled, recentlyControlled,
+			BotSkillManager.isChainOpen(bot, SHOCK_CHAIN), BotSkillManager.isUp(bot, Move.UNWAVERING_DEVOTION.group), BotSkillManager.isUp(bot, Move.BARRICADE_OF_STEEL.group), ready,
+			looseHeld, targetLoose, bossTarget);
 	}
 
 	/**
@@ -209,8 +234,12 @@ final class TemplarPlaybook implements ClassPlaybook {
 	 * <p>
 	 * Staying alive comes first, because a dead tank holds nothing. Hand of Healing is the last resort and so leads once it applies; Empyrean Armor
 	 * comes before Iron Skin because it heals as well as protects, and Iron Skin is what covers the stretch while Armor is on cooldown or has worn
-	 * off. Then the aggro: the roar whenever it is ready, since it is what keeps every monster in reach on the templar, and the single target
-	 * taunts only for a monster that has got loose, which is what the guide saves them for. Of the three, the slowest to come back goes first: Incite Rage (a stigma, a minute), then Capture, then Taunt, which is therefore the quickest to be ready again for the next one. Chastisement is damage and only ever uses what is left over.
+	 * off. Then the aggro: the roar whenever it is ready, since it is what keeps every monster in reach on the templar; then Taunt on its own target
+	 * when that has turned to somebody else, which nothing pulls (the guide's "Défi"); then the peel of another monster that has got loose. Of the three
+	 * peel moves, the slowest to come back goes first: Incite Rage (a stigma, a minute), then Capture, then Taunt. Capture is never aimed at the
+	 * templar's own target, which the group is already standing round and would watch teleported ten metres away, nor at a monster held in place,
+	 * which it would drag out of a root. Last, on a boss, Taunt whenever it is ready, so the margin is kept before it is lost. Chastisement is damage
+	 * and only ever uses what is left over.
 	 *
 	 * @return The move, or null when the generic order should carry on.
 	 */
@@ -237,14 +266,18 @@ final class TemplarPlaybook implements ClassPlaybook {
 		if (situation.inTeam()) {
 			if (ready.contains(Move.PROVOKING_ROAR) && situation.enemyInRoarRange())
 				return Move.PROVOKING_ROAR;
+			if (situation.targetLoose() && ready.contains(Move.HOLD_TAUNT))
+				return Move.HOLD_TAUNT;
 			if (situation.enemyLoose()) {
 				if (ready.contains(Move.INCITE_RAGE))
 					return Move.INCITE_RAGE;
-				if (ready.contains(Move.CAPTURE))
+				if (ready.contains(Move.CAPTURE) && !situation.looseHeld())
 					return Move.CAPTURE;
 				if (ready.contains(Move.TAUNT))
 					return Move.TAUNT;
 			}
+			if (situation.bossTarget() && ready.contains(Move.HOLD_TAUNT))
+				return Move.HOLD_TAUNT;
 		}
 		if (ready.contains(Move.EMPYREAN_CHASTISEMENT) && hasDp && situation.level() <= LAST_CHASTISEMENT_LEVEL)
 			return Move.EMPYREAN_CHASTISEMENT;

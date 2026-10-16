@@ -70,3 +70,14 @@ group is told to start. A mark the bot cannot see is left alone rather than take
 **Without a mark, the target is the same for every class** (the guide's "Classe 101"): the enemy fighting the group, meaning hitting a member or the bot itself,
 that has the least health in absolute terms. This replaced the earlier order of the tank's target, then the leader's, then anything fighting the group, so a
 leader's selection no longer steers the group; a mark does.
+
+## Dying, and the weapon, in a group
+
+Both reported by a tester farming an instance with bots, and both apply to every class.
+
+- **A dead bot waits to be raised.** Alone it still goes back to its obelisk after ten seconds. In a group it lies where it fell while the group is
+  fighting and for a minute after (`PlayerBotAI.reviveUnlessRaised`), up to ten minutes in all, so a cleric, a chanter or a player can raise it on the
+  spot. It goes at once when nobody else in the group is alive on its map instance.
+- **The weapon stays out.** Alone a bot puts it away 8 s after a fight. In a group that is 60 s, and in an instance never: putting it away and drawing it
+  again cost the tank its first seconds at every pack. Sitting down to rest still puts it away. A group member changes its gear only once the weapon is
+  away by itself, and never in an instance, where what drops seldom beats what it wears.

@@ -143,6 +143,19 @@ purpose: keeping the tank on a loose monster until it has its attention (3, need
    replaced, a human leader's included. So the core getter is `getBrandedTarget(13)`.
 5. **"Least HP" is absolute**, not a percentage.
 
+## The tests of 12 and 14 October: Capture and the boss
+
+Reported by a tester, and what changed:
+
+- **Capture on the group's own target.** A melee mate hit the target first, the target turned to it, counted as loose, and the templar pulled it ten
+  metres onto itself, away from everyone standing round it. The peel (`enemyLooseOnAMate`) now never looks at the templar's own target nor at the skull,
+  and Capture is only for another monster already fighting the group.
+- **Capture on a monster rooted or asleep.** A monster that cannot act (asleep, stunned, paralysed, afraid) is no longer loose at all, since it hits
+  nobody and a taunt would wake it; one that is rooted may still be taunted, but is never Captured out of its root.
+- **The templar loses a boss.** Nothing kept the templar's own target on it: its taunts were all saved for the peel. The guide's "Défi", the plain Taunt
+  (`WA_PROVOKE`), is now cast at its own target whenever that target hits somebody else (`HOLD_TAUNT`, before the peel), and on a boss whenever it is ready.
+  Provoking Roar is unchanged. Incite Rage and Capture stay the peel's.
+
 ## Courageous Shield and the skills that answer a block
 
 Reported by a tester: the templar used Courageous Shield (level 15, `KN_COUNTEROFFENSIVE`) whenever it was ready, when it can only be used in the few seconds

@@ -10,6 +10,7 @@ import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
+import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
@@ -37,9 +38,12 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.combat.playbook.ClassPlaybook;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
+import com.aionemu.gameserver.skillengine.properties.AreaDirections;
 import com.aionemu.gameserver.skillengine.properties.FirstTargetAttribute;
 import com.aionemu.gameserver.skillengine.properties.Properties;
+import com.aionemu.gameserver.skillengine.properties.TargetRangeAttribute;
 import com.aionemu.gameserver.skillengine.properties.TargetRelationAttribute;
+import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
  * Picks and casts skills for a bot. Player-typed counterpart of {@link com.aionemu.gameserver.ai.manager.SkillAttackManager}, which is built around
@@ -95,6 +99,11 @@ public class BotSkillManager {
 	private static final long COUNTER_WINDOW_MILLIS = 4_500;
 	/** Auras a bot keeps running. The engine ends the oldest past this many (see {@code EffectController}), so going further would only cycle them. */
 	private static final int MAX_MANTRAS = 3;
+	/**
+	 * Cooldown ids under which the engine lets more than one effect stand ({@code EffectController.checkEffectCooldownId}): 1 is "none", 6 holds ten,
+	 * 273 and 353 two each. Every other id holds one, which is what {@link #holdsItsCooldownSlot} relies on.
+	 */
+	private static final Set<Integer> COOLDOWN_IDS_HOLDING_SEVERAL = Set.of(1, 6, 273, 353);
 
 	/**
 	 * Effects whose whole purpose is to keep their bearer alive. Read from the data rather than from a curated list of skill ids, so a skill nobody
@@ -250,7 +259,28 @@ public class BotSkillManager {
 		} else if (target.getEffectController().hasAbnormalEffect(template.getSkillId())) {
 			return true;
 		}
-		return coversTheSameEffect(target, template);
+		return coversTheSameEffect(target, template) || holdsItsCooldownSlot(target, template);
+	}
+
+	/**
+	 * @return true when an effect already on the target came from a skill sharing this one's cooldown id, in the same slot.
+	 *         <p>
+	 *         The engine's third way of saying two buffs are one: {@code EffectController.checkEffectCooldownId} keeps a single effect per cooldown id
+	 *         and ends the older. A sorcerer's Robe of Flame and Robe of Cold share 1564 under two stack groups and no common effect id, so the bot
+	 *         saw one robe missing, cast it, which ended the other, missing in its turn ten seconds later: a robe every cooldown, reported as a
+	 *         sorcerer that never had mana. Whichever is up is kept; the order of {@link #skills} decides which goes up first.
+	 *         <p>
+	 *         The ids the engine lets hold more than one effect, and the no cooldown id, are left out, as it leaves them out.
+	 */
+	private static boolean holdsItsCooldownSlot(Creature target, SkillTemplate template) {
+		int cooldownId = template.getCooldownId();
+		if (COOLDOWN_IDS_HOLDING_SEVERAL.contains(cooldownId) || template.getTargetSlot() == SkillTargetSlot.NOSHOW)
+			return false;
+		for (Effect up : target.getEffectController().getAbnormalEffects()) {
+			if (up.getTargetSlot() == template.getTargetSlot() && up.getSkillTemplate().getCooldownId() == cooldownId)
+				return true;
+		}
+		return false;
 	}
 
 	/**
@@ -337,7 +367,62 @@ public class BotSkillManager {
 	public static boolean tryCastSkill(Player bot, Creature target) {
 		if (isSavingMana(bot))
 			return false; // the auto attack costs nothing, and no fight is lost by finishing it with the weapon
-		return cast(bot, target, skills(bot, BotSkillManager::isOffensive).stream().filter(template -> !alreadyAfflicts(target, template)).toList());
+		return cast(bot, target, skills(bot, BotSkillManager::isOffensive).stream()
+			.filter(template -> !alreadyAfflicts(target, template) && areaIsWorthIt(bot, target, template)).toList());
+	}
+
+	/**
+	 * Tells whether an area centred on the bot would land where it should: on its target, and in a group on nothing that is not already fighting.
+	 * <p>
+	 * The engine checks a skill's range against its first target, and for these the first target is the caster, so the check always passes and the
+	 * skill goes off on empty ground. A gladiator fired all fifteen of its own as it walked up, none of them reaching, which is what was reported.
+	 * In a group the same blast also wakes every pack it touches, which is the one thing a group fight must not do.
+	 * <p>
+	 * Skills aimed at a target or a point are left to the engine, which measures those properly.
+	 */
+	private static boolean areaIsWorthIt(Player bot, Creature target, SkillTemplate template) {
+		Properties properties = template.getProperties();
+		if (properties.getTargetType() != TargetRangeAttribute.AREA || properties.getFirstTarget() != FirstTargetAttribute.ME)
+			return true;
+		if (!isInsideArea(bot, target, properties))
+			return false;
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null)
+			return true;
+		List<Player> members = team.getMembers();
+		boolean[] wakesAPack = { false };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (!wakesAPack[0] && !npc.isDead() && bot.isEnemy(npc) && !npc.getAggroList().isHating(bot)
+				&& members.stream().noneMatch(member -> npc.getAggroList().isHating(member)) && isInsideArea(bot, npc, properties))
+				wakesAPack[0] = true;
+		});
+		return !wakesAPack[0];
+	}
+
+	/**
+	 * @return true if the creature stands where an area centred on the caster takes it, measured the way {@code TargetRangeProperty} does: the height
+	 *         first, which the engine holds to a metre when the data states none, then the range, cone or strip.
+	 */
+	private static boolean isInsideArea(Player caster, Creature creature, Properties properties) {
+		int altitude = properties.getEffectiveAltitude() != 0 ? properties.getEffectiveAltitude() : 1;
+		if (Math.abs(caster.getZ() - creature.getZ()) > altitude)
+			return false;
+		if (properties.getIneffectiveRange() > 0 && PositionUtil.isInRange(caster, creature, properties.getIneffectiveRange(), false))
+			return false;
+		if (properties.getEffectiveDist() > 0) {
+			if (properties.getEffectiveAngle() <= 0) // a bolt: a strip in front of the caster
+				return PositionUtil.isInsideAttackCylinder(caster, creature, properties.getEffectiveDist(), properties.getEffectiveRange() / 2f,
+					properties.getDirection());
+			if (properties.getEffectiveAngle() < 360) {
+				float halfAngle = properties.getEffectiveAngle() / 2f;
+				boolean inCone = properties.getDirection() == AreaDirections.BACK ? PositionUtil.isBehind(creature, caster, halfAngle)
+					: PositionUtil.isInFrontOf(creature, caster, halfAngle);
+				if (!inCone)
+					return false;
+			}
+			return PositionUtil.isInRange(caster, creature, properties.getEffectiveDist(), false);
+		}
+		return PositionUtil.isInRange(caster, creature, properties.getEffectiveRange(), false);
 	}
 
 	/**

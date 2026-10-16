@@ -76,6 +76,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long DRAW_AFTER_STAND_MILLIS = 1500;
 	/** How long the weapon stays drawn after a fight, so the bot does not sheathe it between two mobs of the same pull. */
 	private static final long SHEATHE_DELAY_MILLIS = 8000;
+	/**
+	 * The same for a bot in a group, which goes from one pack to the next: putting the weapon away and drawing it again cost the tank its first
+	 * seconds at every pack, reported by a tester as a templar dawdling between them. In an instance it is not put away at all.
+	 */
+	private static final long GROUP_SHEATHE_DELAY_MILLIS = 60_000;
 	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
 	private static final long UNREACHABLE_MILLIS = 10000;
 	/** How long a target given up on a second time, then a third and after, is left alone. */
@@ -154,6 +159,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final float FOLLOW_DISTANCE = 2f;
 	/** Roughly the time a player spends looking at the resurrection window. */
 	private static final int REVIVE_DELAY_MILLIS = 10000;
+	/**
+	 * How long a bot dead in a group still waits for a resurrection once the group has stopped fighting. A cleric's or a chanter's raise takes some
+	 * seconds to cast and is cast after the fight, and a player has to walk over first: ten seconds was never enough, and a tester could not raise a
+	 * single bot on the spot.
+	 */
+	private static final long RESURRECTION_WAIT_MILLIS = 60_000;
+	/** Longest a bot dead in a group waits, whatever the group does, so a mate who stays alive and never raises it does not keep it down for good. */
+	private static final long LONGEST_RESURRECTION_WAIT_MILLIS = 600_000;
+	/** How often a bot waiting for a resurrection looks again at whether its group is still fighting. */
+	private static final long RESURRECTION_LOOK_MILLIS = 5_000;
 	/** How long a player takes to click "accept" once a resurrection has been cast on them. */
 	private static final int ACCEPT_RESURRECTION_DELAY_MILLIS = 2000;
 	/**
@@ -204,6 +219,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private ScheduledFuture<?> reviveTask;
 	/** Whether the pending revival is the acceptance of a resurrection somebody cast, rather than the walk back from the obelisk. */
 	private boolean resurrectionPending;
+	/** When the bot last died, and when its group was last seen fighting since, for how long it waits to be raised. */
+	private long diedAt, groupLastFoughtAt;
 	/**
 	 * True while a decision tick is actually running, as opposed to merely scheduled.
 	 * <p>
@@ -840,7 +857,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private boolean takeStation(Creature target) {
 		Player bot = getOwner();
 		boolean healer = BotStations.handlesHealer(bot);
-		if (!PlayerBotConfig.POSITIONING || !(BotStations.handles(bot) || healer) || BotStations.isWellPlaced(bot, target) || BotStations.isHeldByEnemy(bot, target))
+		if (!PlayerBotConfig.POSITIONING.placesAgainst(target) || !(BotStations.handles(bot) || healer) || BotStations.isWellPlaced(bot, target) || BotStations.isHeldByEnemy(bot, target))
 			return false;
 		// a healer that is attacking with its spare mana still heals first when somebody is in danger, and a walk would take the tick the heal needs
 		if (healer && BotGroupManager.mostHurtMember(bot, HEALER_DANGER_PERCENT, true) != null)
@@ -874,7 +891,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Creature fight = BotGroupManager.targetToAssist(bot);
 		if (fight == null)
 			return false;
-		boolean positioned = PlayerBotConfig.POSITIONING && BotStations.handlesHealer(bot);
+		boolean positioned = PlayerBotConfig.POSITIONING.placesAgainst(fight) && BotStations.handlesHealer(bot);
 		if (positioned) {
 			BotStations.sample(bot, fight);
 			if (!BotStations.isWellPlaced(bot, fight) && walkToHealerStation(fight))
@@ -899,10 +916,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean healerTakesItsPlace() {
 		Player bot = getOwner();
-		if (!PlayerBotConfig.POSITIONING || !BotStations.handlesHealer(bot))
+		if (!BotStations.handlesHealer(bot))
 			return false;
 		Creature fight = BotGroupManager.targetToAssist(bot);
-		if (fight == null || BotStations.isWellPlaced(bot, fight) || BotGroupManager.mostHurtMember(bot, HEALER_DANGER_PERCENT, true) != null)
+		if (fight == null || !PlayerBotConfig.POSITIONING.placesAgainst(fight) || BotStations.isWellPlaced(bot, fight) || BotGroupManager.mostHurtMember(bot, HEALER_DANGER_PERCENT, true) != null)
 			return false;
 		return walkToHealerStation(fight);
 	}
@@ -934,7 +951,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** @return true if this is a ranged class standing where it should against the target, which then waits for something to cast rather than close in. */
 	private boolean holdsStation(Creature target) {
 		Player bot = getOwner();
-		return PlayerBotConfig.POSITIONING && BotStations.handles(bot) && BotPosition.of(bot) == BotPosition.RANGED && BotStations.isWellPlaced(bot, target);
+		return PlayerBotConfig.POSITIONING.placesAgainst(target) && BotStations.handles(bot) && BotPosition.of(bot) == BotPosition.RANGED && BotStations.isWellPlaced(bot, target);
 	}
 
 	/**
@@ -1085,7 +1102,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private Vector3f approachPoint(Creature target) {
 		Player bot = getOwner();
-		if (PlayerBotConfig.POSITIONING && BotStations.handlesTank(bot)) {
+		if (PlayerBotConfig.POSITIONING.placesAgainst(target) && BotStations.handlesTank(bot)) {
 			Vector3f spot = BotStations.spotFor(bot, target);
 			if (spot != null)
 				return spot;
@@ -1120,7 +1137,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (moveController.isInMove() && moveController.isHeadingTo(goal.getX(), goal.getY(), RETARGET_STEP))
 			return true; // already on its way, and the goal has not moved enough to be worth a new route
 		lastChaseRoute = now;
-		if (PlayerBotConfig.POSITIONING && BotStations.handlesTank(getOwner()))
+		if (PlayerBotConfig.POSITIONING.placesAgainst(target) && BotStations.handlesTank(getOwner()))
 			moveController.avoid(BotStations.avoidanceFor(getOwner(), target));
 		return tryMoveTo(moveController, goal.getX(), goal.getY(), goal.getZ());
 	}
@@ -1360,8 +1377,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void sheathWhenCalm() {
 		if (isAttacking() || posture.isAnimating())
 			return;
+		boolean grouped = getOwner().getCurrentTeam() != null;
+		if (grouped && getOwner().isInInstance())
+			return; // a group in an instance is never more than a corridor from its next pack; sitting down to rest still puts the weapon away
 		if (combatEndedAt != 0) {
-			if (System.currentTimeMillis() - combatEndedAt < SHEATHE_DELAY_MILLIS)
+			if (System.currentTimeMillis() - combatEndedAt < (grouped ? GROUP_SHEATHE_DELAY_MILLIS : SHEATHE_DELAY_MILLIS))
 				return;
 			combatEndedAt = 0;
 		} else if (!getOwner().isInState(CreatureState.WEAPON_EQUIPPED)) {
@@ -1691,7 +1711,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				return;
 			}
 			// nobody will ever click the resurrection window for a bot, so without this it lies dead forever
-			reviveTask = BotScheduler.getInstance().schedule(this::revive, REVIVE_DELAY_MILLIS);
+			diedAt = groupLastFoughtAt = System.currentTimeMillis();
+			reviveTask = BotScheduler.getInstance().schedule(this::reviveUnlessRaised, REVIVE_DELAY_MILLIS);
 		}
 		Player bot = getOwner();
 		// whatever it was fighting just won, so leave it alone for a while instead of walking straight back into it
@@ -1718,6 +1739,38 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private void revive() {
 		bringBack(false);
+	}
+
+	/**
+	 * Goes back to the obelisk, unless the group may still raise the bot where it lies: then it looks again in a moment.
+	 * <p>
+	 * A bot alone goes at once, as before. One in a group waits while the group is fighting and for {@value #RESURRECTION_WAIT_MILLIS} ms after, as a
+	 * player waits for the cleric before releasing; it goes sooner when nobody in the group is left standing on its map to raise it.
+	 */
+	private void reviveUnlessRaised() {
+		long wait = resurrectionWaitLeft();
+		synchronized (combatLock) {
+			// A resurrection taken in the meantime has replaced this task with its own, and a bot leaving the world has dropped it: either way this run is
+			// stale, and going to the obelisk now would throw away the raise the tick has just accepted.
+			if (reviveTask == null || resurrectionPending)
+				return;
+			if (wait > 0) {
+				reviveTask = BotScheduler.getInstance().schedule(this::reviveUnlessRaised, Math.min(wait, RESURRECTION_LOOK_MILLIS));
+				return;
+			}
+		}
+		revive();
+	}
+
+	/** @return How much longer the bot waits to be raised, in milliseconds; 0 or less to go back now. */
+	private long resurrectionWaitLeft() {
+		Player bot = getOwner();
+		if (!BotGroupManager.hasLivingMateOnTheMap(bot))
+			return 0;
+		long now = System.currentTimeMillis();
+		if (BotGroupManager.isGroupFighting(bot))
+			groupLastFoughtAt = now;
+		return Math.min(groupLastFoughtAt + RESURRECTION_WAIT_MILLIS, diedAt + LONGEST_RESURRECTION_WAIT_MILLIS) - now;
 	}
 
 	/**

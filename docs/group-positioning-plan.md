@@ -1,6 +1,6 @@
 # Group positioning: plan
 
-Status: milestones 1 to 5 built and unit tested, none yet watched in game; the before and after figures of milestone 2 are still to be taken (`//bot positioning on|off`). Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
+Status: milestones 1 to 5 built and unit tested, none yet watched in game; since the second group tests it applies to bosses only by default (`//bot position auto|standard|spread`, see the last section). The before and after figures of milestone 2 are still to be taken. Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
 Where the module stands today is in [group-roles.md](group-roles.md) and [navigation-prototype.md](navigation-prototype.md); this file is the distance
 between that and what it describes. Step 0, the measuring, is done and its figures are below.
 
@@ -146,3 +146,20 @@ avmesh.ps1 -Dungeons`; a server needs to run it once
 - **The mark** the group follows was brand id 14, typed `/Brand 15` and drawn as a shield with a 1; the skull is `/Brand 14`, brand id 13, and the code now uses it (see [group-roles.md](group-roles.md)).
 
 Not yet seen in a group again: all of the above is unit tested only in the parts that can be, and the loop changes are not.
+
+## What the second group tests showed (14 October)
+
+Farming an instance with a group: **placing every bot against every monster is not efficient at all.** Each walk round an enemy is time not spent
+hitting it, and the walks regularly pulled other packs. A normal monster or an elite dies before any of it pays off; only a boss, or a few specific
+monsters, last long enough for cleaves and facing to matter.
+
+So the placing is now decided per target, by `PositioningMode` (`gameserver.playerbot.positioning`, `//bot position`):
+
+| Mode | Placing |
+|---|---|
+| `AUTO`, the default | Against a boss only: `Npc.isBoss()`, a hero or legendary rating. Straight at anything else. |
+| `STANDARD` | Never: melee walks into contact by the shortest way, ranged classes close to their reach, the healer stays in the formation. What bots did before this plan. |
+| `SPREAD` | Always, as milestones 2 to 5 describe. |
+
+Considered and left out for now: also placing against an elite that has a cone among its skills (233 monster skills are cones). The tester's point was
+precisely that ordinary elites do not need it; to be added if a specific monster is shown to.

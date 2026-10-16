@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.configs.main;
 
 import com.aionemu.commons.configuration.Property;
+import com.aionemu.gameserver.playerbot.positioning.PositioningMode;
 
 /**
  * Settings for the playerbot system.
@@ -23,11 +24,11 @@ public class PlayerBotConfig {
 	public static String POPULATE;
 
 	/**
-	 * Whether bots in a group stand where their class belongs in a fight: melee behind the enemy, ranged back from it. Off, they walk to the enemy as they
-	 * always did, which is what the positioning figures logged every few minutes are compared against.
+	 * When bots in a group stand where their class belongs in a fight (melee behind the enemy, ranged back from it): against bosses only, never, or always.
+	 * Otherwise they walk to the enemy as they always did, which is what the positioning figures logged every few minutes are compared against.
 	 */
-	@Property(key = "gameserver.playerbot.positioning", defaultValue = "true")
-	public static volatile boolean POSITIONING;
+	@Property(key = "gameserver.playerbot.positioning", defaultValue = "AUTO")
+	public static volatile PositioningMode POSITIONING;
 
 	/**
 	 * Whether a bot going to another place of its own accord flies there when the trip is long enough and the ground allows it. Off, bots fly only to
