@@ -71,7 +71,7 @@ Draupnir Cave reached 3 %, Esoterrace 2 %, Steel Rake 45 %, Eternal Bastion 35 %
 
 ## Stairs modelled as ramps
 
-The Miren Chamber and its two barracks were cut off at their first room by a staircase whose collision is a single face at about 61 degrees, over the 45 the generator allows. `MapSlopes` allows 62 on those three maps and 45 everywhere else (a slope for every dungeon was measured: Rentus 78 to 83, Udas 91 to 93, but Lower Udas 68 to 55 with more searches giving up). Miren Barracks 0 to 100 %.
+The Miren Chamber and its two barracks were cut off at their first room by a staircase whose collision is a single face at about 61 degrees, over the 45 the generator allows. `MapSlopes` allows 62 on those three maps and 45 everywhere else (a slope for every dungeon was measured: Rentus 78 to 83, Udas 91 to 93, but Lower Udas 68 to 55 with more searches giving up). Miren Barracks 0 to 100 %. Reshanta's bases are the same trap in the open world, and for buildings only: Teminon's stairs are faces of about 57 degrees (`bu_ab_lightsp_castle_*`), so `MapSlopes.buildingDegrees` gives the map's `bu_` models 62 and leaves its rock at 45 (17 October: routes between Teminon's civilians 29 of 34 to 34 of 34, Primum's 34 of 34).
 
 ## The batch, 11 October
 

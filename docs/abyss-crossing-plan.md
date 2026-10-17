@@ -79,6 +79,9 @@ in the air or killed by the void.
   refused, 6 rescues (0.4 against 1), 36 crossings planned, 8 flown, none refused, no void death. **70 of the 102 are inside Teminon and 22 inside
   Primum**: their ground is dozens of small floors a few metres apart, joined by glides only, and a 13 m walk there runs out of the 2 s budget. Outside
   the bases, about 0.7 per bot-hour, the tenth asked for. A route past 1.2 km still runs out of the budget; residents work within 250 m.
+- **The bases' ground** (after the measure): Teminon's stairs are building faces of about 57 degrees, read as walls; the map's buildings now walk up to
+  62 (`MapSlopes.buildingDegrees`) and the mesh and flight links were written again (19510 links). Routes between the bases' civilians: Teminon 29 of 34
+  to 34 of 34, Primum 34 of 34. The director wakes each side for its share of the field (it woke 26 Elyos and 3 Asmodians), swapping two a review.
 - **Seen on the way:** a bot teleported by the inbox to another map stays out of the world ("despawned objects cannot move"); the test used a bot already
   on Reshanta.
 
