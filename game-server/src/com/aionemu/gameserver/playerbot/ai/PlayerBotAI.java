@@ -289,7 +289,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile boolean openingSpent;
 	/** Whether this fight's approach has been tried. Separate from the opening, so hiding does not cost the bot its burst as well. */
 	private volatile boolean approachSpent;
-	/** Whether a melee class has already cast from afar in this fight, its pull. Past it, it walks in; see {@link #closesInRatherThanCasting}. */
+	/** Whether this fight has been opened, from afar or in reach. Past that a melee class walks in; see {@link #closesInRatherThanCasting}. */
 	private volatile boolean pulledFromAfar;
 	/**
 	 * Set when sent somewhere by command rather than by its own decision, so the tick that runs a second later does not immediately hijack the trip
@@ -816,6 +816,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// walking to the place its class fights from, which is behind the enemy for melee and back from it for the rest; nothing is swung on the way
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
 			chaseStartTime = 0;
+			pulledFromAfar = true; // the fight is opened in reach, so a target that steps back is followed, not shot at
 			stopMoving();
 			if (useBestSkill(target) || BotAttackManager.autoAttack(bot, target)) {
 				lastBlow = System.currentTimeMillis();
