@@ -84,7 +84,8 @@ final class BotConvalescence {
 		BindPointPosition bind = bot.getBindPoint();
 		if (bind == null || bind.getMapId() != bot.getWorldId())
 			return null;
-		if (PositionUtil.getDistance(bot.getX(), bot.getY(), bind.getX(), bind.getY()) > MAX_DISTANCE)
+		// in three dimensions: a resident of Reshanta's upper layer taken home after reviving stands over Primum's obelisk and 1100 m above it
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), bind.getX(), bind.getY(), bind.getZ()) > MAX_DISTANCE)
 			return null;
 		// A member of a group waits with its group: the leader's heels are the place, and a bot raised where it fell by a resurrection is nowhere near its
 		// obelisk's quiet ground, so sending it there would walk it away from the people who have just raised it.

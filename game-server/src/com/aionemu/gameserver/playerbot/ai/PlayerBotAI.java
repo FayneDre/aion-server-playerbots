@@ -174,6 +174,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long RESURRECTION_LOOK_MILLIS = 5_000;
 	/** How long a player takes to click "accept" once a resurrection has been cast on them. */
 	private static final int ACCEPT_RESURRECTION_DELAY_MILLIS = 2000;
+	/** How far in height a revived bot's home may be from the obelisk and still be walked or flown back to: Reshanta's layers are 1200 m apart. */
+	private static final float ANOTHER_LAYER = 300;
+	private static final long TAKEN_HOME_DELAY_MILLIS = 3000;
 	/**
 	 * How far from its bind point a bot gets before it is willing to sit down.
 	 * <p>
@@ -1731,7 +1734,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** @return true if a target is further from the bot's anchor than it follows anything, which is a fight it would break off as soon as it chased. */
 	private boolean isOffLeash(Creature target) {
-		return PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE;
+		// never something that is hitting the bot: on a walk the anchor is the walk's end, and a naga sorcerer casting from beyond it was left alone
+		// while it went on casting, which is how most of the deaths of Reshanta's upper layer began (21 of 26 in half an hour were a fight the bot did
+		// not pick)
+		return PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE && !getOwner().equals(target.getTarget());
 	}
 
 	private boolean isIgnored(Creature target) {
@@ -1921,6 +1927,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 				setAnchor(home.getX(), home.getY(), home.getZ());
 			setStateIfNot(AIState.IDLE);
 			log.info("Bot {} revived at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
+			// Home on another layer of the map, which no walk and no flight joins to the obelisk: taken there as a player takes the base's teleporter.
+			// Reshanta's upper layer has no obelisk of its own, and its residents came back in Teminon, 1300 m below, asked for routes home that do
+			// not exist and were rescued a dozen seconds later: 47 refused routes and 22 of 23 rescues of its 22 residents in half an hour.
+			// A few seconds later, once the move to the obelisk has settled: a teleport on top of the revival's own one is not one the engine expects.
+			if (home != null && Math.abs(home.getZ() - bot.getZ()) > ANOTHER_LAYER) {
+				BotScheduler.getInstance().schedule(() -> {
+					if (!bot.isSpawned() || bot.isDead() || Math.abs(home.getZ() - bot.getZ()) <= ANOTHER_LAYER)
+						return;
+					log.info("Bot {} lives {} m above or below where it revived and is taken home", bot.getName(), Math.round(Math.abs(home.getZ() - bot.getZ())));
+					TeleportService.teleportTo(bot, bot.getWorldId(), home.getX(), home.getY(), home.getZ());
+				}, TAKEN_HOME_DELAY_MILLIS);
+			}
 		} finally {
 			// cleared last, so the decision tick cannot mistake the bot for freshly dead while it is being brought back
 			synchronized (combatLock) {
