@@ -90,6 +90,12 @@ in the air or killed by the void.
   level gap. Refused routes on the map: 336 to 41 a half hour. Still open: the upper layer's deaths (about one a bot a half hour before the level
   bonus, not measured since), long upper-layer journeys that still run out of the 5 s budget, and the squad crossing (one squad flew three crossings
   and was killed on landing by level 65 Balaur elites, which led to the live dangers).
+- **Later that night:** live dangers are kept from landings only (kept from the walk too, a 900 m journey planned offline in 0.7 s gave up after
+  7.5 s among 726 of them); a start stretch the body could not walk onto is dropped from the plan; a revived bot is taken home once recovered. Upper
+  layer, 25 residents awake, 30 min: 35 refused routes, 1 rescue, 61 crossings flown, none refused, 40 deaths, 36 of them four bots of classes with
+  no playbook (spirit master, aethertech, bard, gunner), most to ranx destructors; the other 21 died 4 times. Offline, 17 of 20 random upper-layer
+  journeys of 300 m to 1 km are planned, in 0.15 to 3.3 s. The squad crossed twice by air, together, and arrived; it is killed by level 65 Balaur
+  met on foot, which the Abyss is.
 - **Seen on the way:** a bot teleported by the inbox to another map stays out of the world ("despawned objects cannot move"); the test used a bot already
   on Reshanta.
 
