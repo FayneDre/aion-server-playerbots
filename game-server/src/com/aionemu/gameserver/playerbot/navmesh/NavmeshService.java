@@ -48,6 +48,9 @@ public class NavmeshService {
 	private final Map<GlideLink, Boolean> siegeLandings = new ConcurrentHashMap<>();
 	/** How near a creature the bot cannot fight a landing may be, in metres. */
 	private static final float DANGER_RADIUS = 40;
+	/** How long the creatures a bot cannot fight are remembered for, per map, side and level. */
+	private static final long DANGERS_KEPT_MILLIS = 5000;
+	private final Map<String, Dangers> dangerCache = new ConcurrentHashMap<>();
 
 	public static NavmeshService getInstance() {
 		return SingletonHolder.INSTANCE;
@@ -115,17 +118,27 @@ public class NavmeshService {
 	 *         level gap above it. Asked of the living world rather than of the spawn data, because the worst of them are not in it: a squad of level 40
 	 *         flew onto Reshanta's upper layer beside dread remnants of level 65, Balaur elites a fortress puts there, and died to a man.
 	 */
-	private static List<Vector3f> dangersFor(Player bot) {
+	private List<Vector3f> dangersFor(Player bot) {
 		WorldMap map = World.getInstance().getWorldMap(bot.getWorldId());
 		if (map == null || !map.isFlightAllowed() || bot.getPosition() == null || bot.getPosition().getWorldMapInstance() == null)
 			return List.of();
+		// a walk over every npc of the map, asked by every route of every bot: remembered a few seconds per map, side and level, which is what it turns on
+		String key = bot.getWorldId() + ":" + bot.getPosition().getInstanceId() + ":" + bot.getRace() + ":" + bot.getLevel();
+		Dangers known = dangerCache.get(key);
+		long now = System.currentTimeMillis();
+		if (known != null && now - known.at() < DANGERS_KEPT_MILLIS)
+			return known.spots();
 		List<Vector3f> found = new ArrayList<>();
 		bot.getPosition().getWorldMapInstance().forEachNpc(npc -> {
 			if (npc.isSpawned() && !npc.isDead() && npc.getLevel() > bot.getLevel() + BotTargetSelector.MAX_LEVEL_GAP && bot.isEnemy(npc)
 				&& TribeRelationService.isAggressive(npc, bot))
 				found.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
 		});
+		dangerCache.put(key, new Dangers(now, List.copyOf(found)));
 		return found;
+	}
+
+	private record Dangers(long at, List<Vector3f> spots) {
 	}
 
 	/**

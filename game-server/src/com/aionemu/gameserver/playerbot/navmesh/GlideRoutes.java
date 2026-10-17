@@ -130,19 +130,23 @@ final class GlideRoutes {
 		float startZ, float goalX, float goalY, float goalZ) {
 		Map<GlideLink, Double> cost = new HashMap<>();
 		Map<GlideLink, GlideLink> cameFrom = new HashMap<>();
-		java.util.PriorityQueue<GlideLink> pending = new java.util.PriorityQueue<>(Comparator.comparingDouble(cost::get));
+		// entries carry the cost they were queued at and a cheaper one is queued again: the stale one is skipped when it comes out
+		java.util.PriorityQueue<Queued> pending = new java.util.PriorityQueue<>(Comparator.comparingDouble(Queued::cost));
 		for (GlideLink link : mesh.glidesFrom(start)) {
 			if (blocked.contains(link) || !air.mayLand(link))
 				continue;
-			cost.put(link, distance(startX, startY, startZ, link.fromX(), link.fromY(), link.fromZ()) + FlightLinks.length(link));
-			pending.add(link);
+			double through = distance(startX, startY, startZ, link.fromX(), link.fromY(), link.fromZ()) + FlightLinks.length(link);
+			if (through < cost.getOrDefault(link, Double.MAX_VALUE)) {
+				cost.put(link, through);
+				pending.add(new Queued(link, through));
+			}
 		}
 		Set<GlideLink> done = new HashSet<>();
 		Map<Integer, GlideLink> bestInto = new HashMap<>();
 		Map<Integer, Double> bestTotal = new HashMap<>();
 		Set<Integer> goalSet = new HashSet<>(goals);
 		while (!pending.isEmpty()) {
-			GlideLink link = pending.poll();
+			GlideLink link = pending.poll().link();
 			if (!done.add(link))
 				continue;
 			double here = cost.get(link);
@@ -160,8 +164,7 @@ final class GlideRoutes {
 				if (through < cost.getOrDefault(next, Double.MAX_VALUE)) {
 					cost.put(next, through);
 					cameFrom.put(next, link);
-					pending.remove(next);
-					pending.add(next);
+					pending.add(new Queued(next, through));
 				}
 			}
 		}
@@ -176,6 +179,9 @@ final class GlideRoutes {
 			chains.add(chain);
 		}
 		return chains;
+	}
+
+	private record Queued(GlideLink link, double cost) {
 	}
 
 	private static double distance(float ax, float ay, float az, float bx, float by, float bz) {
