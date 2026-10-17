@@ -21,7 +21,7 @@
 
 .PARAMETER TimeoutSeconds
     How long to wait for the server to exit before giving up. Must exceed the configured shutdown delay, and the time to save every bot: about
-    840 awake took 194 s on 17 October.
+    840 awake took 194 s on 17 October, 864 took 510 s the same evening.
 
 .PARAMETER Force
     Kill the process if the graceful shutdown times out. Data saved by the hook up to that point is kept, the rest is lost.
@@ -30,7 +30,7 @@
     .\tools\stop-server.ps1
 #>
 param(
-    [int]$TimeoutSeconds = 420,
+    [int]$TimeoutSeconds = 900,
     [string]$ServerRoot = $env:AION_SERVER_HOME,
     [switch]$Force
 )
