@@ -735,6 +735,19 @@ public class BotMoveController extends PlayerMoveController {
 	 * @return true, the bot having done what moving could do.
 	 */
 	private boolean asNearAsItGets() {
+		// Twice from the same spot for the same goal is not an arrival but a refusal. Stopped as near as it gets, a bot sent to sell stood out of a keeper's
+		// trade range for good, re-arriving every ten seconds: the errand never ended and nothing else was ever done, 22 bots frozen at shops for 40
+		// minutes. Refused, the caller hears it and gives the goal up, as it does for a goal with no route.
+		if (PositionUtil.getDistance(nearestForX, nearestForY, finalX, finalY) < 1 && PositionUtil.getDistance(nearestAtX, nearestAtY, owner.getX(), owner.getY()) < 1) {
+			log.info("Bot {} is still as near as it gets to {} and gives it up", owner.getName(), String.format("%.1f %.1f", finalX, finalY));
+			nearestForX = Float.NaN;
+			blocked = true;
+			noHeadwayX = finalX;
+			noHeadwayY = finalY;
+			noHeadwayUntil = System.currentTimeMillis() + NO_HEADWAY_MEMORY;
+			stop();
+			return false;
+		}
 		nearestForX = finalX;
 		nearestForY = finalY;
 		nearestAtX = owner.getX();
@@ -916,6 +929,7 @@ public class BotMoveController extends PlayerMoveController {
 		hasNoRoute = false;
 		noHeadwayUntil = 0;
 		nearestUntil = 0;
+		nearestForX = Float.NaN;
 		gaveUpCount = 0;
 		onDetour = false;
 	}

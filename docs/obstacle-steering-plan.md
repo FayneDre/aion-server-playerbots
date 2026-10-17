@@ -108,6 +108,8 @@ about 800 bots awake with nobody online. Half hours, same population:
   calls `forgetRefusals`. The Gelkmaros shops (14 of 76 no headway) were the measure: a route planned again partway kept the old waypoint's
   distance as its baseline and gave up 5 s later on ground the mesh and `blockers` both call open; each new planned waypoint, off a detour, is
   a new baseline. The Verteron fortress steps aside are props spawned in the way, which the mesh is right not to know.
+- **Found by the review (17 October):** "as near as it gets" was an arrival for ever: a bot sent to sell stood out of a keeper's trade range,
+  re-arriving every ten seconds, and did nothing else (22 bots for 40 minutes). The second time from the same spot for the same goal is a refusal.
 - **Left:** milestone 3 watched with a player in game.
 ## Risks
 
