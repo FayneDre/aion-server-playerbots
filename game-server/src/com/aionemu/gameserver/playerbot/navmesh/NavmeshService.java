@@ -63,11 +63,20 @@ public class NavmeshService {
 		// only a daeva has wings: anyone else is given no glide, and the planner answers as though the links were not there
 		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
 		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid,
-			link -> canGlide && (link.flight() ? BotFlight.crossing(bot, new Vector3f(link.fromX(), link.fromY(), link.fromZ()),
-				new Vector3f(link.toX(), link.toY(), link.toZ())) != null : isAirClear(bot, link)));
+			link -> canGlide && isLinkClear(bot, link));
 		if (route.isEmpty() && route.gaveUp())
 			log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		return route;
+	}
+
+	/** @return Whether a link can be taken now: a crossing flown at one of its heights, or a glide down a clear line. A refusal is logged at debug, the one way to see which link of a plan was turned down. */
+	private static boolean isLinkClear(Player bot, GlideLink link) {
+		boolean clear = link.flight() ? BotFlight.crossing(bot, new Vector3f(link.fromX(), link.fromY(), link.fromZ()), new Vector3f(link.toX(), link.toY(), link.toZ())) != null
+			: isAirClear(bot, link);
+		if (!clear && log.isDebugEnabled())
+			log.debug("Bot {} finds the air blocked on the {} {} {} {} -> {} {} {}", bot.getName(), link.flight() ? "crossing" : "glide", Math.round(link.fromX()),
+				Math.round(link.fromY()), Math.round(link.fromZ()), Math.round(link.toX()), Math.round(link.toY()), Math.round(link.toZ()));
+		return clear;
 	}
 
 	/**
