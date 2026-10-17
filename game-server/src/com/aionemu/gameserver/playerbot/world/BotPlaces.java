@@ -58,6 +58,8 @@ public class BotPlaces {
 	 * How far above a place's own floor counts as standing on top of something rather than in it. A step is less; a plinth is more.
 	 */
 	public static final float STANDS_ON_A_STRUCTURE = 1.5f;
+	/** How long one look for a spot round a place may take, all its attempts together. */
+	private static final long SPOT_BUDGET_MILLIS = 1500;
 
 	/**
 	 * @return Somewhere to stand near a place, or null when nothing around it will do.
@@ -75,7 +77,10 @@ public class BotPlaces {
 	 */
 	public static Vector3f spotAround(int worldId, Vector3f place, float spread, int attempts, int seed, Predicate<Vector3f> refused) {
 		NavmeshService navmesh = NavmeshService.getInstance();
-		for (int attempt = 0; attempt < attempts; attempt++) {
+		// a budget for the whole look: each attempt asks for a route, and round Primum's obelisk every one of them ran out of its own 3.6 s, so a bot
+		// waiting out its sickness there held its thread for four and a half minutes, and the server's shutdown waited for it twice in a row
+		long deadline = System.currentTimeMillis() + SPOT_BUDGET_MILLIS;
+		for (int attempt = 0; attempt < attempts && System.currentTimeMillis() < deadline; attempt++) {
 			double angle = seed < 0 ? Math.random() * Math.PI * 2
 				: Math.PI * 2 * Math.floorMod(Integer.hashCode(seed * 0x9E3779B9) + attempt * 37, 360) / 360;
 			// never the first third: the obelisk, the well and the campfire are what stands in the middle of a place
@@ -544,15 +549,18 @@ public class BotPlaces {
 		if (mesh.regionsAt(worldId, home.getX(), home.getY()).length == 0)
 			return all.isEmpty() ? null : all.get(0); // no mesh here, or a home with no ground to judge by: nothing can be said against the nearest
 		for (Vector3f obelisk : all) {
+			// another layer of the map is not walked back from, and asking costs a search that runs out of its budget: four seconds a bot of
+			// Reshanta's upper layer on every start, two minutes added to the server's for 22 of them
+			if (Math.abs(obelisk.z - home.getZ()) > SAME_LAYER)
+				continue;
 			// A bot is bound as it enters the world and a map's bots share their villages, so most asks repeat: remembered per obelisk and ten metres of
 			// home, and only proofs are kept. A search that ran out of budget says nothing, and keeping it would bar an obelisk for good.
 			String key = worldId + ":" + Math.round(obelisk.x) + ":" + Math.round(obelisk.y) + ":" + Math.round(home.getX() / 10) + ":" + Math.round(home.getY() / 10);
 			Boolean known = walkableBack.get(key);
 			if (known == null) {
 				NavmeshService.Reach reach = mesh.reach(worldId, obelisk.x, obelisk.y, obelisk.z, home.getX(), home.getY(), home.getZ());
-				if (reach == NavmeshService.Reach.UNKNOWN)
-					return obelisk;
-				known = reach == NavmeshService.Reach.YES;
+				// undecided is accepted, as it always was, and now remembered too: it was asked again for every bot of the same home on every start
+				known = reach != NavmeshService.Reach.NO;
 				walkableBack.put(key, known);
 			}
 			if (known)
