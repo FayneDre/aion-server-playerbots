@@ -214,8 +214,14 @@ final class GlideRoutes {
 					undecided |= walk.gaveUp();
 					// proved out of reach from where the hop before landed, it is left out of the next round's chains like a blocked one: on Reshanta every
 					// chain of the first round shared that hop, and every one of them stopped at it until the budget ran out
-					if (!walk.gaveUp())
+					// and where the links are flights, one the walk ran out of room to reach as well, for the rest of this plan: from Reshanta's upper layer
+					// the take-off 4 m away and 7.5 m up on the floor above was walked at, and given up on, once for every chain that began there
+					if (!walk.gaveUp() || mesh.hasFlights())
 						blocked.add(link);
+					// the first walk, from where the body stands: refused or given up, the body is most likely not on that stretch at all but on the floor
+					// below or above it, and every other take-off of it would cost the same two seconds to find out. They are all left out
+					if (hop == 0 && mesh.hasFlights())
+						blocked.addAll(mesh.glidesFrom(from));
 					if (DEBUG)
 						System.out.printf("glide:   link %.1f %.1f %.1f -> %.1f %.1f %.1f: walk from %.1f %.1f %.1f is empty (gave up %b)%n", link.fromX(), link.fromY(), link.fromZ(),
 							link.toX(), link.toY(), link.toZ(), x, y, z, walk.gaveUp());
