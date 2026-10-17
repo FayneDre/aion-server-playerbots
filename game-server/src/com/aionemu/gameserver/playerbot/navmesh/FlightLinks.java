@@ -36,6 +36,8 @@ final class FlightLinks {
 	 * rather than refused at every height by the server.
 	 */
 	static final float OPEN_SKY = 20;
+	/** The lowest a crossing's level run is flown above the higher of its ends, which is {@code BotFlight}'s lowest cruising height. */
+	static final float LOWEST_RUN = 15;
 	/** How many crossings a pair of islands keeps in each direction, and how far apart their take-offs must be. */
 	private static final int PER_PAIR = 3;
 	private static final float SPACING = 40;
@@ -127,7 +129,7 @@ final class FlightLinks {
 					if (!isEdge(field, x, y, z, step + BotPathFinder.STEP_TOLERANCE) || !hasOpenSky(field, x, y, z))
 						continue;
 					long key = (long) region << 40 | (long) (y / SAMPLE_CELLS) << 20 | x / SAMPLE_CELLS;
-					samples.putIfAbsent(key, new float[] { (x + 0.5f) * step, (y + 0.5f) * step, z, region });
+					samples.putIfAbsent(key, new float[] { (x + 0.5f) * step, (y + 0.5f) * step, z, region, x, y });
 				}
 			}
 		}
@@ -146,6 +148,11 @@ final class FlightLinks {
 						continue;
 					for (float[] to : near) {
 						if (to[3] == from[3] || Math.abs(to[2] - from[2]) > MAX_RISE || Math.hypot(to[0] - from[0], to[1] - from[1]) > MAX_ACROSS)
+							continue;
+						// both ends open up to the lowest height the run is flown at: a landing a hundred metres under the edge of the island it is left
+						// from is under that island, and the descent onto it would go through it
+						float run = Math.max(from[2], to[2]) + LOWEST_RUN;
+						if (!isOpenUpTo(field, (int) from[4], (int) from[5], from[2], run) || !isOpenUpTo(field, (int) to[4], (int) to[5], to[2], run))
 							continue;
 						offer(candidates.computeIfAbsent((long) from[3] << 32 | (long) to[3], pair -> new ArrayList<>()),
 							new GlideLink(from[0], from[1], from[2], to[0], to[1], to[2], (int) from[3], (int) to[3], true));
@@ -198,9 +205,14 @@ final class FlightLinks {
 
 	/** @return true if nothing stands above the ground in this column within {@link #OPEN_SKY}: no floor, no roof, no rock. */
 	static boolean hasOpenSky(Heightfield field, int x, int y, float z) {
+		return isOpenUpTo(field, x, y, z, z + OPEN_SKY);
+	}
+
+	/** @return true if nothing stands above the ground in this column up to a height. */
+	static boolean isOpenUpTo(Heightfield field, int x, int y, float z, float top) {
 		for (int surface = field.columnStart(x, y); surface < field.columnEnd(x, y); surface++) {
 			float other = field.surfaceAt(surface);
-			if (other > z + BotPathFinder.STEP_TOLERANCE && other <= z + OPEN_SKY)
+			if (other > z + BotPathFinder.STEP_TOLERANCE && other <= top)
 				return false;
 		}
 		return true;

@@ -23,6 +23,8 @@ final class GlideRoutes {
 	private static final int LINKS_TRIED = 6;
 	/** How many chains of stretches are followed to a goal before the journey is given up. */
 	private static final int CHAINS_TRIED = 8;
+	/** How many times the chains are worked out again from one start, leaving out the links found blocked. */
+	private static final int RECHAINS = 4;
 	/**
 	 * How long, in milliseconds, one plan may spend trying chains before it gives up. Every chain tried is several walking searches, and a goal no chain reaches would otherwise try them all:
 	 * the generator's own check of random journeys went from seconds to an hour on one map for want of this.
@@ -59,16 +61,24 @@ final class GlideRoutes {
 		long deadline = System.currentTimeMillis() + BUDGET_MILLIS;
 		if (DEBUG)
 			System.out.printf("glide: starts %s goals %s%n", starts, goals);
+		// links found blocked are left out and the chains worked out again: a chain whose one link for a hop is blocked was the fewest hops and not the only
+		// way, and the next fewest was never tried. From the Elyos island of Reshanta it was the only chain offered, and its one crossing went under an overhang
+		Set<GlideLink> blocked = new HashSet<>();
 		for (int start : starts) {
-			List<List<Integer>> chains = chainsFrom(mesh, start, goals);
-			undecided |= chains.size() > CHAINS_TRIED;
-			for (List<Integer> chain : chains.subList(0, Math.min(CHAINS_TRIED, chains.size()))) {
-				if (System.currentTimeMillis() > deadline)
-					return new BotPathFinder.Route(List.of(), true);
-				BotPathFinder.Route route = follow(mesh, chain, startX, startY, startZ, goalX, goalY, goalZ, avoid, air, deadline);
-				if (!route.isEmpty())
-					return route;
-				undecided |= route.gaveUp();
+			for (int round = 0; round < RECHAINS; round++) {
+				int blockedBefore = blocked.size();
+				List<List<Integer>> chains = chainsFrom(mesh, start, goals, blocked);
+				undecided |= chains.size() > CHAINS_TRIED;
+				for (List<Integer> chain : chains.subList(0, Math.min(CHAINS_TRIED, chains.size()))) {
+					if (System.currentTimeMillis() > deadline)
+						return new BotPathFinder.Route(List.of(), true);
+					BotPathFinder.Route route = follow(mesh, chain, startX, startY, startZ, goalX, goalY, goalZ, avoid, air, deadline, blocked);
+					if (!route.isEmpty())
+						return route;
+					undecided |= route.gaveUp();
+				}
+				if (blocked.size() == blockedBefore)
+					break; // nothing new was found blocked, so the same chains would come back
 			}
 		}
 		if (DEBUG && !undecided)
@@ -81,13 +91,15 @@ final class GlideRoutes {
 	 *         fewest glides to its goal. Each goal is a stretch that touches the goal's 4 m cell, which says only that the goal may be on it, so several are offered and the walk to the
 	 *         goal itself decides. Taken fewest glides first, the floor below the goal came before the goal's own and the budget ran out on it.
 	 */
-	private static List<List<Integer>> chainsFrom(Navmesh mesh, int start, List<Integer> goals) {
+	private static List<List<Integer>> chainsFrom(Navmesh mesh, int start, List<Integer> goals, Set<GlideLink> blocked) {
 		Map<Integer, Integer> cameFrom = new HashMap<>();
 		ArrayDeque<Integer> pending = new ArrayDeque<>();
 		cameFrom.put(start, 0);
 		pending.add(start);
 		while (!pending.isEmpty()) {
 			for (GlideLink link : mesh.glidesFrom(pending.poll())) {
+				if (blocked.contains(link))
+					continue;
 				if (cameFrom.putIfAbsent(link.toRegion(), link.fromRegion()) == null)
 					pending.add(link.toRegion());
 			}
@@ -106,7 +118,7 @@ final class GlideRoutes {
 
 	/** Walks each stretch of the chain to the edge it is left from, and glides down to the next. */
 	private static BotPathFinder.Route follow(Navmesh mesh, List<Integer> chain, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid,
-		AirTest air, long deadline) {
+		AirTest air, long deadline, Set<GlideLink> blocked) {
 		List<Vector3f> waypoints = new ArrayList<>();
 		Set<Integer> glides = new HashSet<>(), flights = new HashSet<>();
 		float x = startX, y = startY, z = startZ;
@@ -124,8 +136,12 @@ final class GlideRoutes {
 			for (GlideLink link : choices.subList(0, Math.min(LINKS_TRIED, choices.size()))) {
 				if (System.currentTimeMillis() > deadline)
 					return new BotPathFinder.Route(List.of(), true);
-				if (!air.isClear(link))
+				if (blocked.contains(link))
 					continue;
+				if (!air.isClear(link)) {
+					blocked.add(link);
+					continue;
+				}
 				BotPathFinder.Route walk = BotPathFinder.findWalkingPath(mesh, x, y, z, link.fromX(), link.fromY(), link.fromZ(), avoid);
 				if (walk.isEmpty()) {
 					undecided |= walk.gaveUp();
