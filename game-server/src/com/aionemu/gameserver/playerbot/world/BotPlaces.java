@@ -932,7 +932,10 @@ public class BotPlaces {
 		boolean threatens(Race race) {
 			if (race == null)
 				return threatens(Race.ELYOS) || threatens(Race.ASMODIANS);
-			TribeClass people = race == Race.ELYOS ? TribeClass.PC : TribeClass.PC_DARK;
+			TribeClass people = race == Race.ELYOS ? TribeClass.PC : TribeClass.PC_DARK, guards = race == Race.ELYOS ? TribeClass.GUARD : TribeClass.GUARD_DARK;
+			// its own guards, which the engine makes friends in code rather than in the relations data: Teminon's and Primum's would have emptied both
+			if (DataManager.TRIBE_RELATIONS_DATA.getBaseTribe(tribe) == guards)
+				return false;
 			return !DataManager.TRIBE_RELATIONS_DATA.isFriendlyRelation(tribe, people) && !DataManager.TRIBE_RELATIONS_DATA.isSupportRelation(tribe, people)
 				&& !DataManager.TRIBE_RELATIONS_DATA.isNoneRelation(tribe, people);
 		}
