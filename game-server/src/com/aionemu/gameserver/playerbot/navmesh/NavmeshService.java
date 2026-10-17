@@ -22,7 +22,11 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.utils.PositionUtil;
+import com.aionemu.gameserver.world.World;
+import com.aionemu.gameserver.world.WorldMap;
 import com.aionemu.gameserver.world.geo.GeoService;
+import com.aionemu.gameserver.services.TribeRelationService;
+import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
@@ -42,6 +46,12 @@ public class NavmeshService {
 	private final Set<Integer> missing = ConcurrentHashMap.newKeySet();
 	/** Per link, whether it comes down on siege ground; see {@link #mayLand}. */
 	private final Map<GlideLink, Boolean> siegeLandings = new ConcurrentHashMap<>();
+	/** How near a creature the bot cannot fight a landing may be, and the walk is kept from going, in metres. */
+	private static final float DANGER_RADIUS = 40;
+	/** How far above or below the bot such a creature still counts for the walk: the avoidance is drawn on the plan, and Reshanta's layers are stacked. */
+	private static final float DANGER_LAYER = 150;
+	/** What a metre near one costs the walk, as a multiple of its length. */
+	private static final float DANGER_COST = 15;
 
 	public static NavmeshService getInstance() {
 		return SingletonHolder.INSTANCE;
@@ -69,7 +79,19 @@ public class NavmeshService {
 
 		// only a daeva has wings: anyone else is given no glide, and the planner answers as though the links were not there
 		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
-		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid, new GlideRoutes.AirTest() {
+		List<Vector3f> dangers = dangersFor(bot);
+		Avoidance around = avoid;
+		if (!dangers.isEmpty()) {
+			float botZ = bot.getZ();
+			around = (x, y) -> {
+				for (Vector3f danger : dangers) {
+					if (Math.abs(danger.z - botZ) < DANGER_LAYER && PositionUtil.getDistance(x, y, danger.x, danger.y) < DANGER_RADIUS)
+						return Math.max(DANGER_COST, avoid.extra(x, y));
+				}
+				return avoid.extra(x, y);
+			};
+		}
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, around, new GlideRoutes.AirTest() {
 
 			@Override
 			public boolean isClear(GlideLink link) {
@@ -78,12 +100,31 @@ public class NavmeshService {
 
 			@Override
 			public boolean mayLand(GlideLink link) {
-				return NavmeshService.this.mayLand(bot, link);
+				return NavmeshService.this.mayLand(bot, link) && dangers.stream()
+					.noneMatch(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, link.toX(), link.toY(), link.toZ()) < DANGER_RADIUS);
 			}
 		});
 		if (route.isEmpty() && route.gaveUp())
 			log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		return route;
+	}
+
+	/**
+	 * @return Where the creatures a bot cannot fight stand right now, on a map flown everywhere: alive, aggressive towards it and more than a fight's
+	 *         level gap above it. Asked of the living world rather than of the spawn data, because the worst of them are not in it: a squad of level 40
+	 *         flew onto Reshanta's upper layer beside dread remnants of level 65, Balaur elites a fortress puts there, and died to a man.
+	 */
+	private static List<Vector3f> dangersFor(Player bot) {
+		WorldMap map = World.getInstance().getWorldMap(bot.getWorldId());
+		if (map == null || !map.isFlightAllowed() || bot.getPosition() == null || bot.getPosition().getWorldMapInstance() == null)
+			return List.of();
+		List<Vector3f> found = new ArrayList<>();
+		bot.getPosition().getWorldMapInstance().forEachNpc(npc -> {
+			if (npc.isSpawned() && !npc.isDead() && npc.getLevel() > bot.getLevel() + BotTargetSelector.MAX_LEVEL_GAP && bot.isEnemy(npc)
+				&& TribeRelationService.isAggressive(npc, bot))
+				found.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
+		});
+		return found;
 	}
 
 	/**
