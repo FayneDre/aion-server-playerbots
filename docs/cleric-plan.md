@@ -162,6 +162,9 @@ template through `claimsSkill` and checks every group named exists). What each o
 - Area heals have `first_target="ME"` and a range: the engine heals the members **within it of the caster** (Splendor of Recovery 1 m), not the whole party.
 - A one second cooldown buff is "ready" every second (the ranger's lesson): Penance, Prayer of Focus and Blessed Shield need an "already on" test.
 - The chanter's buff shares an effect id with Blessing of Guardianship: use `coversTheSameEffect`, or two bots cast at each other for ever.
+- A cleanse is aimed only at what the engine would remove: the debuff slot and level, a debuff category (an assassin's rune is none), no sanctuary and
+  no day-long effect (`BotSkillManager.isCleansable`). The power cannot be read beforehand, so an effect still there once a cleanse has landed is
+  left alone until it ends. A tester saw the cleric cleanse an undispellable rune until it wore off (14 October).
 - Cast time: a heal of 3 s on a tank at 40 % can land late. The cleric's mana, not its timing, is what the guide rations.
 
 ## Where this stands

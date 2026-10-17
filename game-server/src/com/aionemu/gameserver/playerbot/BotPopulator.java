@@ -188,9 +188,12 @@ public final class BotPopulator {
 			// 53 of its 84 inhabitants came out at exactly 10 or exactly 19 with a hollow in between. A place outside the band says nothing about
 			// what level lives there — it is a stretch of beach or a boss's lair, not a home — so it gets a level from the region at large instead of
 			// being pinned to the nearest bound.
+			//
+			// Under the floor is not always a beach: a region can be two regions, and Theobomos's northern half fights at 20 to 30 under a band of 45
+			// to 49. A place there keeps its own level when enough of the region lives at it (BotPlaces.isLivedAt).
 			int floor = BotPlaces.bottomLevelOf(worldId), ceiling = BotPlaces.topLevelOf(worldId);
-			int level = home.level() < floor || home.level() > ceiling ? Rnd.get(floor, ceiling)
-				: Math.clamp(home.level() + Rnd.get(-1, 1), floor, ceiling);
+			boolean ownLevel = home.level() >= floor && home.level() <= ceiling || home.level() < floor && BotPlaces.isLivedAt(worldId, home.level());
+			int level = ownLevel ? Math.clamp(home.level() + Rnd.get(-1, 1), Math.min(floor, home.level()), ceiling) : Rnd.get(floor, ceiling);
 			PlayerClass playerClass = classFor(level);
 			try {
 				Race race = chosen != null ? chosen : factionFor(worldId, home);

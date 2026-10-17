@@ -119,6 +119,9 @@ public class BotPlaces {
 	private static final int FLOOR_PERCENTILE = 25;
 	/** The ninth tenth, which is the top of what a region offers. Above it are the world bosses and the leftovers. */
 	private static final int CEILING_PERCENTILE = 90;
+	/** The share of a region's monsters, in percent, within {@link #LIVED_AT_SPREAD} levels of a level under its floor that makes it a part of the region. */
+	private static final int LIVED_AT_PERCENT = 10;
+	private static final int LIVED_AT_SPREAD = 3;
 	/** No character leaves its starting valley before this, so no region beyond them holds anybody under it. */
 	private static final int ASCENSION_LEVEL = 10;
 	/**
@@ -142,6 +145,7 @@ public class BotPlaces {
 	 */
 	private static final Map<Integer, CompletableFuture<Places>> placesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, int[]> bandByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Integer>> levelsByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
 	/** Whether a bot living near a spot can walk back from an obelisk, by obelisk and by ten metres of home: only proofs, never a search that gave up. */
@@ -299,17 +303,9 @@ public class BotPlaces {
 	 */
 	private static int[] bandOf(int worldId) {
 		return bandByMap.computeIfAbsent(worldId, id -> {
-			List<Integer> levels = new ArrayList<>();
-			for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(id)) {
-				NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
-				if (template == null || isTownsfolk(template) || template.getLevel() <= 0 || BotTargetSelector.needsAGroup(template))
-					continue;
-				for (int i = 0; i < group.getSpawnTemplates().size(); i++)
-					levels.add((int) template.getLevel());
-			}
+			List<Integer> levels = levelsOf(id);
 			if (levels.isEmpty())
 				return new int[] { 1, 1 };
-			levels.sort(null);
 			int ceiling = Math.max(1, percentile(levels, CEILING_PERCENTILE));
 			int floor = Math.max(1, percentile(levels, FLOOR_PERCENTILE));
 			// A region above the ascension is reached by ascending, so nobody under ten lives there — the two starting valleys, whose ceiling is
@@ -318,6 +314,40 @@ public class BotPlaces {
 				floor = Math.max(floor, ASCENSION_LEVEL);
 			return new int[] { Math.min(floor, ceiling), ceiling };
 		});
+	}
+
+	/** @return The level of every monster one character can fight in the region, one entry per spawn, sorted. */
+	private static List<Integer> levelsOf(int worldId) {
+		return levelsByMap.computeIfAbsent(worldId, id -> {
+			List<Integer> levels = new ArrayList<>();
+			for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(id)) {
+				NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
+				if (template == null || isTownsfolk(template) || template.getLevel() <= 0 || BotTargetSelector.needsAGroup(template))
+					continue;
+				for (int i = 0; i < group.getSpawnTemplates().size(); i++)
+					levels.add((int) template.getLevel());
+			}
+			levels.sort(null);
+			return List.copyOf(levels);
+		});
+	}
+
+	/**
+	 * @return true if a level under the region's floor is a part of the region nonetheless: enough of what lives there fights at about that level.
+	 *         <p>
+	 *         The floor is the quarter mark, which is right for a region of one band with a few strays at its gate and wrong for a region of two. A
+	 *         fifth of Theobomos's monsters, its whole northern half, are 20 to 30 under a band of 45 to 49, so every village up there was given
+	 *         characters of 45 to 49, as a tester reported; Brusthonin, its mirror, is the same. A stray is a handful of monsters, a part is a share.
+	 *         Never under the ascension in a region above it, which is the rule the floor itself keeps.
+	 */
+	public static boolean isLivedAt(int worldId, int level) {
+		if (level < ASCENSION_LEVEL && topLevelOf(worldId) >= ASCENSION_LEVEL)
+			return false;
+		List<Integer> levels = levelsOf(worldId);
+		if (levels.isEmpty())
+			return false;
+		long near = levels.stream().filter(other -> Math.abs(other - level) <= LIVED_AT_SPREAD).count();
+		return near * 100 >= (long) levels.size() * LIVED_AT_PERCENT;
 	}
 
 	private static int percentile(List<Integer> sorted, int percent) {

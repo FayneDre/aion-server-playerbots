@@ -119,9 +119,9 @@ public class BotGearFit {
 			case CLERIC, PRIEST -> Set.of(ItemGroup.MACE); // mace and shield outlives a staff, and surviving is the job
 			case CHANTER -> Set.of(ItemGroup.STAFF);
 			case BARD, ARTIST -> Set.of(ItemGroup.HARP); // no choice at all
-			// Two pistols is how this class is played and it cannot be done here: only the assassin carries the dual wield effect in this build, so
-			// the engine quietly moves a second gun back to the main hand. The cannon is the other thing it is meant to hold, and it works.
-			case GUNNER -> Set.of(ItemGroup.CANNON);
+			// Two pistols, which is how the class is played. It held a cannon on the belief that only the assassin could hold two weapons in this
+			// build, and the skill tree says otherwise: the gunner learns pistol mastery at 9 and P_EQUIP_DUAL (skill 55) at 10, as a scout does.
+			case GUNNER -> Set.of(ItemGroup.GUN);
 			case RIDER -> Set.of(ItemGroup.KEYBLADE); // the key is what the class climbs into its machine with
 			case ENGINEER -> Set.of(ItemGroup.GUN);
 			case WARRIOR -> Set.of(ItemGroup.SWORD, ItemGroup.MACE);

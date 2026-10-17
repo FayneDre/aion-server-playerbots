@@ -30,6 +30,7 @@ import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
 import com.aionemu.gameserver.skillengine.effect.RideRobotEffect;
 import com.aionemu.gameserver.skillengine.properties.Properties.CastState;
 import com.aionemu.gameserver.skillengine.model.ChargeSkillEntry;
+import com.aionemu.gameserver.skillengine.model.DispelCategoryType;
 import com.aionemu.gameserver.skillengine.model.Effect;
 import com.aionemu.gameserver.skillengine.model.ChargedSkill;
 import com.aionemu.gameserver.skillengine.model.HitType;
@@ -118,6 +119,20 @@ public class BotSkillManager {
 	private static final int MAX_HEALTH_SAMPLES = 2000;
 	/** Per target object id, the last look at its health and how fast it was falling. */
 	private static final Map<Integer, HealthSample> targetHealth = new ConcurrentHashMap<>();
+	/** Cleanses cast, by creature and effect: when to look whether the effect survived it. See {@link #hasResistedACleanse}. */
+	private static final Map<Long, CleanseTry> cleanseTries = new ConcurrentHashMap<>();
+
+	private record CleanseTry(long lookAfter) {
+	}
+
+	/** How long after a cleanse's cast ends the effect it aimed at is given to be gone. */
+	private static final long CLEANSE_LANDING_MILLIS = 1500;
+	/** How long a resisted cleanse is remembered against an effect that states no end. */
+	private static final long RESISTED_CLEANSE_MEMORY_MILLIS = 60_000;
+	/** The engine leaves an effect this long alone whatever dispels it, see {@code EffectController.isDispellable}. */
+	private static final int UNDISPELLABLE_DURATION_MILLIS = 86_400_000;
+	/** High enough for any cleanse: what is written down is every effect it could have reached, and the level is the playbook's own question. */
+	private static final int MAX_DISPEL_LEVEL = Integer.MAX_VALUE;
 
 	private record HealthSample(long at, long hp, double lossPerMilli) {
 	}
@@ -818,6 +833,8 @@ public class BotSkillManager {
 		if (bot.isCasting())
 			return false;
 		for (SkillTemplate template : candidates) {
+			if (sendsItRunning(bot, template))
+				continue;
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			if (skill == null)
 				continue;
@@ -841,10 +858,21 @@ public class BotSkillManager {
 				if (template.isCharge())
 					releaseWhenCharged(bot, skill);
 				noteAttempt(bot, template);
+				if (template.hasAnyEffect(EffectType.DISPELDEBUFF, EffectType.DISPELDEBUFFMENTAL, EffectType.DISPELDEBUFFPHYSICAL))
+					noteCleanse(target, template, MAX_DISPEL_LEVEL);
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Tells a fear in a group or in an instance, which is never cast there. A frightened monster runs where nobody can follow and drags in every pack it
+	 * passes, so a spirit master's Fear Shriek emptied the group's control over a room of elites, as a tester reported. Alone in the open it is still the
+	 * class's way out of a fight, and stays.
+	 */
+	private static boolean sendsItRunning(Player bot, SkillTemplate template) {
+		return (bot.getCurrentTeam() != null || bot.isInInstance()) && template.hasAnyEffect(EffectType.FEAR);
 	}
 
 	/**
@@ -969,11 +997,53 @@ public class BotSkillManager {
 	 *         Whether it is then strong enough to be removed is the engine's to decide, so this says "worth trying", not "will work".
 	 */
 	public static boolean hasDispellableDebuff(Creature creature, int dispelLevel) {
+		long now = System.currentTimeMillis();
 		for (Effect effect : creature.getEffectController().getAbnormalEffects()) {
-			if (effect.getTargetSlot() == SkillTargetSlot.DEBUFF && effect.getReqDispelLevel() <= dispelLevel)
+			if (isCleansable(effect, dispelLevel) && !hasResistedACleanse(creature, effect, now))
 				return true;
 		}
 		return false;
+	}
+
+	/**
+	 * @return true if a debuff dispel could reach the effect, by the rules {@code EffectController} applies that can be read beforehand: the slot, the
+	 *         level, the category a debuff dispel takes (an assassin's rune is not one of them), and the effects it never touches. Only the level was
+	 *         asked at first, and a cleric cleansed an undispellable rune every time its cleanse came back until the rune wore off, as a tester reported.
+	 */
+	private static boolean isCleansable(Effect effect, int dispelLevel) {
+		if (effect.getTargetSlot() != SkillTargetSlot.DEBUFF || effect.getReqDispelLevel() > dispelLevel)
+			return false;
+		DispelCategoryType category = effect.getDispelCategory();
+		if (category != DispelCategoryType.ALL && category != DispelCategoryType.DEBUFF_MENTAL && category != DispelCategoryType.DEBUFF_PHYSICAL)
+			return false;
+		return !effect.isSanctuaryEffect() && effect.getDesignatedDispelEffect() == null && effect.getDuration() < UNDISPELLABLE_DURATION_MILLIS;
+	}
+
+	/**
+	 * @return true if a cleanse already went off at this effect and it is still there. The one rule that cannot be read beforehand is the power: the
+	 *         engine takes a cleanse's power off what the effect resists with and removes it only once that is used up, so the only way to know is to
+	 *         have tried. Asked again, the answer is the same until the effect ends.
+	 */
+	private static boolean hasResistedACleanse(Creature creature, Effect effect, long now) {
+		CleanseTry tried = cleanseTries.get(cleanseKey(creature, effect));
+		if (tried == null || now < tried.lookAfter())
+			return false;
+		return effect.getEndTime() > 0 ? now < effect.getEndTime() : now < tried.lookAfter() + RESISTED_CLEANSE_MEMORY_MILLIS;
+	}
+
+	/** Writes down every effect a cleanse cast at the creature could reach, so that the ones still there once it has landed are left alone. */
+	private static void noteCleanse(Creature target, SkillTemplate template, int dispelLevel) {
+		if (cleanseTries.size() > MAX_HEALTH_SAMPLES)
+			cleanseTries.clear(); // keyed by creature and effect, both of which come and go
+		long lookAfter = System.currentTimeMillis() + Math.max(0, template.getDuration()) + CLEANSE_LANDING_MILLIS;
+		for (Effect effect : target.getEffectController().getAbnormalEffects()) {
+			if (isCleansable(effect, dispelLevel))
+				cleanseTries.put(cleanseKey(target, effect), new CleanseTry(lookAfter));
+		}
+	}
+
+	private static long cleanseKey(Creature creature, Effect effect) {
+		return (long) creature.getObjectId() << 32 | effect.getSkillId() & 0xffffffffL;
 	}
 
 	/** @return true if the bot has used a skill of that chain category and nothing since, which is what the next link of the chain asks for. */

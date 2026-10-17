@@ -177,6 +177,11 @@ because something already hitting the master is a fact where the master's target
 It walks in a straight line with ground sampling, and does **not** pathfind. A servant never navigates: it goes where its master has just walked, and
 the master does the planning. Where that is not enough the engine's own leash releases it and the bot calls up another at its next pause.
 
+## Never in a group or an instance
+
+A fear (`EffectType.FEAR`, the spirit master's Fear Shriek among them) is never cast in a group or an instance (`BotSkillManager.sendsItRunning`): a
+frightened monster runs where nobody follows and pulls every pack it passes. Alone in the open it is still the class's way out of a fight.
+
 ## Procs, and what is left unlabelled
 
 A proc arms something that fires later, so its own effects say nothing about which way it points. What decides is the blow that sets it off: `ProvokerEffect` installs an observer on the bearer's **attacks** for `NMLATK` and `BACKATK`, and on the bearer being **hit** for everything else. That single line is mirrored rather than guessed at, which took 29 more abilities off the unlabelled pile — 20 offensive, 9 defensive. It needed one accessor in the engine, `EffectTemplate.getHitType()`, over a field that was already there.

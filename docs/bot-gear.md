@@ -135,7 +135,9 @@ of the same level as an equal. `BotGearFit` now answers both questions on both p
   match; that is intended, since almost nothing a player reaches is in one.
 - **Weapons**: `weaponsOfTrade` only. Dressing keeps a fallback — a class too low to have earned its own weapon
   goes out with something rather than empty-handed, because no weapon means no weapon skills — but looting has
-  none, so nothing a bot picks up can displace the weapon of its trade.
+  none, so nothing a bot picks up can displace the weapon of its trade. The gunner's is two pistols: it held a cannon on
+  the belief that only the assassin could hold two weapons, which the skill tree contradicts (P_EQUIP_DUAL at 10); a
+  gunner of 30 made on 17 October came out with a pistol in each hand.
 
 **Uniformity is the risk this creates.** Choosing the single best piece for a stat puts a whole region in the
 same boots. The existing trick holds: sort so the right answers come first, then pick at random *among the

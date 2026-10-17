@@ -28,6 +28,10 @@ temporary.
 **Its pace.** `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` stat, so `BotPacing` sets it per character with no core patch — the same
 door `EnchantEffect` uses. Set to **1%**, which is what a measurement gave and not what two guesses did.
 
+**Its level at birth** is its home's, within the region's band (the quarter mark and the ninth tenth of its monsters). A home under the floor keeps
+its own level when a tenth of the region fights within three levels of it (`BotPlaces.isLivedAt`): Theobomos and Brusthonin are two regions in one,
+20 to 26 in the north under a band of 45 to 49, and every northern village was given characters of 45 to 49 until 17 October.
+
 **Its address.** A bot outgrows where it lives. Poeta reads as Akarios 3 and its camps at 5, 6 and 7 — the valley steepens as you walk away from the
 village — so when a bot's level drifts more than two from its home's, it moves to a place that fits. Only the home moves; everything written against
 the home or the anchor follows by itself. Without this a bot reached seven while still keeping house on ground worth three, which is what it looked
