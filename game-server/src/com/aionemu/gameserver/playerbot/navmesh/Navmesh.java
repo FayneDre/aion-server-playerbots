@@ -120,6 +120,8 @@ public class Navmesh {
 
 	/** The glide links by the region they leave from. Filled once, while the mesh is opened, and only read afterwards. */
 	private final Map<Integer, List<GlideLink>> glides = new HashMap<>();
+	/** Whether any link is a flight, worked out on first use: see {@link #hasFlights}. */
+	private volatile Boolean flights;
 	private final long dataStart;
 
 	/**
@@ -214,6 +216,14 @@ public class Navmesh {
 	/** @return Every link of the map, glides and flights, grouped by the stretch they leave. */
 	Collection<List<GlideLink>> allGlides() {
 		return glides.values();
+	}
+
+	/** @return true if some of the map's links are flights, which only a map flown everywhere has. */
+	boolean hasFlights() {
+		Boolean known = flights;
+		if (known == null)
+			flights = known = glides.values().stream().anyMatch(links -> links.stream().anyMatch(GlideLink::flight));
+		return known;
 	}
 
 	/** @return true if the map has any glide link at all, so the planner knows whether there is anything else to try. */

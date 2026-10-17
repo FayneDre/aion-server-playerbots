@@ -30,6 +30,8 @@ final class GlideRoutes {
 	 * the generator's own check of random journeys went from seconds to an hour on one map for want of this.
 	 */
 	private static final long BUDGET_MILLIS = 2000;
+	/** The same where the links are flights: a crossing of Reshanta's upper layer lands beside a walk of 700 m, which takes three seconds on its own. */
+	private static final long FLIGHT_BUDGET_MILLIS = 5000;
 	/** How many metres across one metre of height counts for, when telling which floor round the body is its own: floors stacked in a tower are close across and far apart in height. */
 	private static final float HEIGHT_WEIGHT = 4;
 	private static final boolean DEBUG = Boolean.getBoolean("navmesh.glideDebug");
@@ -58,7 +60,8 @@ final class GlideRoutes {
 		// a proof that no glide gets there only when every chain was followed to its end and every walk in it proved its own way shut: a chain left untried, or a walk that
 		// ran out of room, proves nothing. Answering "gave up" for any failed chain turned the routes up to Verteron's plateau, proved shut before the links, into undecided ones
 		boolean undecided = false;
-		long deadline = System.currentTimeMillis() + BUDGET_MILLIS;
+		boolean flown = mesh.hasFlights();
+		long deadline = System.currentTimeMillis() + (flown ? FLIGHT_BUDGET_MILLIS : BUDGET_MILLIS);
 		if (DEBUG)
 			System.out.printf("glide: starts %s goals %s%n", starts, goals);
 		// links found blocked are left out and the chains worked out again: a chain whose one link for a hop is blocked was the fewest hops and not the only
@@ -67,7 +70,8 @@ final class GlideRoutes {
 		for (int start : starts) {
 			for (int round = 0; round < RECHAINS; round++) {
 				int blockedBefore = blocked.size();
-				List<List<Integer>> chains = chainsFrom(mesh, start, goals, blocked, air);
+				List<List<Integer>> chains = flown ? shortestChains(mesh, start, goals, blocked, air, startX, startY, startZ, goalX, goalY, goalZ)
+					: chainsFrom(mesh, start, goals, blocked, air);
 				undecided |= chains.size() > CHAINS_TRIED;
 				for (List<Integer> chain : chains.subList(0, Math.min(CHAINS_TRIED, chains.size()))) {
 					if (System.currentTimeMillis() > deadline)
@@ -116,12 +120,75 @@ final class GlideRoutes {
 		return chains;
 	}
 
+	/**
+	 * @return The chains that lead from {@code start} to the goals, the shortest first, by the distance a body covers: the walks between links counted
+	 *         straight, the links by their length. For a map whose links are flights, where fewest hops is the wrong measure: from an island of Reshanta's
+	 *         upper layer the one crossing straight onto the large island landed 700 m from the goal, a walk of 2100 m, while the islands near the goal
+	 *         were never tried.
+	 */
+	private static List<List<Integer>> shortestChains(Navmesh mesh, int start, List<Integer> goals, Set<GlideLink> blocked, AirTest air, float startX, float startY,
+		float startZ, float goalX, float goalY, float goalZ) {
+		Map<GlideLink, Double> cost = new HashMap<>();
+		Map<GlideLink, GlideLink> cameFrom = new HashMap<>();
+		java.util.PriorityQueue<GlideLink> pending = new java.util.PriorityQueue<>(Comparator.comparingDouble(cost::get));
+		for (GlideLink link : mesh.glidesFrom(start)) {
+			if (blocked.contains(link) || !air.mayLand(link))
+				continue;
+			cost.put(link, distance(startX, startY, startZ, link.fromX(), link.fromY(), link.fromZ()) + FlightLinks.length(link));
+			pending.add(link);
+		}
+		Set<GlideLink> done = new HashSet<>();
+		Map<Integer, GlideLink> bestInto = new HashMap<>();
+		Map<Integer, Double> bestTotal = new HashMap<>();
+		Set<Integer> goalSet = new HashSet<>(goals);
+		while (!pending.isEmpty()) {
+			GlideLink link = pending.poll();
+			if (!done.add(link))
+				continue;
+			double here = cost.get(link);
+			if (goalSet.contains(link.toRegion())) {
+				double total = here + distance(link.toX(), link.toY(), link.toZ(), goalX, goalY, goalZ);
+				if (total < bestTotal.getOrDefault(link.toRegion(), Double.MAX_VALUE)) {
+					bestTotal.put(link.toRegion(), total);
+					bestInto.put(link.toRegion(), link);
+				}
+			}
+			for (GlideLink next : mesh.glidesFrom(link.toRegion())) {
+				if (next.toRegion() == start || blocked.contains(next) || done.contains(next) || !air.mayLand(next))
+					continue;
+				double through = here + distance(link.toX(), link.toY(), link.toZ(), next.fromX(), next.fromY(), next.fromZ()) + FlightLinks.length(next);
+				if (through < cost.getOrDefault(next, Double.MAX_VALUE)) {
+					cost.put(next, through);
+					cameFrom.put(next, link);
+					pending.remove(next);
+					pending.add(next);
+				}
+			}
+		}
+		List<Integer> reached = new ArrayList<>(bestInto.keySet());
+		reached.sort(Comparator.comparingDouble(bestTotal::get));
+		List<List<Integer>> chains = new ArrayList<>();
+		for (int goal : reached) {
+			List<Integer> chain = new ArrayList<>();
+			for (GlideLink step = bestInto.get(goal); step != null; step = cameFrom.get(step))
+				chain.add(0, step.toRegion());
+			chain.add(0, start);
+			chains.add(chain);
+		}
+		return chains;
+	}
+
+	private static double distance(float ax, float ay, float az, float bx, float by, float bz) {
+		return Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
+	}
+
 	/** Walks each stretch of the chain to the edge it is left from, and glides down to the next. */
 	private static BotPathFinder.Route follow(Navmesh mesh, List<Integer> chain, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid,
 		AirTest air, long deadline, Set<GlideLink> blocked) {
 		List<Vector3f> waypoints = new ArrayList<>();
 		Set<Integer> glides = new HashSet<>(), flights = new HashSet<>();
 		float x = startX, y = startY, z = startZ;
+		GlideLink lastTaken = null;
 		for (int hop = 0; hop + 1 < chain.size(); hop++) {
 			int from = chain.get(hop), to = chain.get(hop + 1);
 			final float nearX = x, nearY = y;
@@ -157,6 +224,7 @@ final class GlideRoutes {
 				append(waypoints, walk.waypoints());
 				waypoints.add(new Vector3f(link.toX(), link.toY(), link.toZ()));
 				(link.flight() ? flights : glides).add(waypoints.size() - 1);
+				lastTaken = link;
 				x = link.toX();
 				y = link.toY();
 				z = link.toZ();
@@ -173,6 +241,9 @@ final class GlideRoutes {
 		if (last.isEmpty()) {
 			if (DEBUG)
 				System.out.printf("glide: chain %s ends at %.0f %.0f %.0f and cannot walk to the goal (gave up %b)%n", chain, x, y, z, last.gaveUp());
+			// where the links are flights, the landing that leaves too long a walk is left out of the next chains: another island lands nearer
+			if (lastTaken != null && mesh.hasFlights())
+				blocked.add(lastTaken);
 			return new BotPathFinder.Route(List.of(), last.gaveUp());
 		}
 		append(waypoints, last.waypoints());
