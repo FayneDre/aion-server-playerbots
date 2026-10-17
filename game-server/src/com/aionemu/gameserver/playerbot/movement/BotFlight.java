@@ -17,6 +17,7 @@ import com.aionemu.gameserver.model.templates.zone.ZoneClassName;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.model.templates.zone.ZoneType;
+import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
@@ -186,6 +187,13 @@ public class BotFlight {
 	 */
 	private boolean landing;
 	private ScheduledFuture<?> task;
+
+	/**
+	 * Where the journey this flight is a crossing of goes on to, once landed, or null for a flight that is the whole journey. A route is planned to the far side
+	 * of the islands and flown a crossing at a time, and nothing else picks it up again: a bot sent somewhere by a command, or with its autonomy off, has no
+	 * decision tick that would ask for the rest.
+	 */
+	private volatile Vector3f thenGoTo;
 
 	private BotFlight(Player bot, List<Vector3f> legs, int hoverAfter, Player escorted) {
 		this.bot = bot;
@@ -385,14 +393,18 @@ public class BotFlight {
 	 *
 	 * @return Null when the bot has taken off, or why it stayed on the ground: no clear height left, or not the points for it yet, which is a wait and not a refusal.
 	 */
-	public static String flyCrossing(Player bot, Vector3f landing) {
+	public static String flyCrossing(Player bot, Vector3f landing, Vector3f thenGoTo) {
 		Vector3f from = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
 		List<Vector3f> legs = crossing(bot, from, landing);
 		if (legs == null)
 			return bot.getName() + " finds every height to " + Math.round(landing.getX()) + " " + Math.round(landing.getY()) + " blocked";
 		String answer = begin(bot, legs, -1, null, "across to " + Math.round(landing.getX()) + " " + Math.round(landing.getY()) + " " + Math.round(landing.getZ())
 			+ ", " + Math.round(PositionUtil.getDistance(from.getX(), from.getY(), landing.getX(), landing.getY())) + " m");
-		return isInTheAir(bot) ? null : answer;
+		BotFlight flight = inTheAir.get(bot.getObjectId());
+		if (flight == null)
+			return answer;
+		flight.thenGoTo = thenGoTo;
+		return null;
 	}
 
 	/** @return Whether nothing stands between two points of the air, asked from the first of them. See {@link #airIsClear}. */
@@ -857,6 +869,9 @@ public class BotFlight {
 		inTheAir.remove(bot.getObjectId());
 		if (bot.isFlying())
 			bot.getFlyController().endFly(true);
+		Vector3f next = thenGoTo;
+		if (cutShort == null && next != null && bot.getMoveController() instanceof BotMoveController walker)
+			BotScheduler.getInstance().execute(() -> walker.moveToPoint(next.getX(), next.getY(), next.getZ()));
 		if (cutShort != null)
 			log.info("Bot {}'s flight ended because {}", bot.getName(), cutShort);
 		else

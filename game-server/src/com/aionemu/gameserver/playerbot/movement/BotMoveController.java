@@ -710,7 +710,7 @@ public class BotMoveController extends PlayerMoveController {
 		Vector3f landing = new Vector3f(goalX, goalY, goalZ);
 		if (BotFlight.mustWaitToCross(owner, landing))
 			return waitForPlan();
-		String refusal = BotFlight.flyCrossing(owner, landing);
+		String refusal = BotFlight.flyCrossing(owner, landing, new Vector3f(finalX, finalY, finalZ));
 		if (refusal == null) {
 			hasGoal = false; // the flight has the body; the journey goes on from the landing with a plan of its own
 			return true;
