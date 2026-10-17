@@ -236,7 +236,7 @@ public class BotPlaces {
 			double bestDistance = -1;
 			for (Settlement candidate : remaining) {
 				double nearestTaken = spread.stream()
-					.mapToDouble(taken -> PositionUtil.getDistance(taken.centre().x, taken.centre().y, candidate.centre().x, candidate.centre().y)).min()
+					.mapToDouble(taken -> taken.centre().distance(candidate.centre())).min() // in three dimensions: Reshanta's upper layer stands over its lower one
 					.orElse(Double.MAX_VALUE);
 				if (nearestTaken > bestDistance) {
 					bestDistance = nearestTaken;
