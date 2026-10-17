@@ -282,6 +282,8 @@ public final class BotCommands {
 	 */
 	public static String sell(String characterName) {
 		return withBotAi(characterName, (bot, ai) -> {
+			if (ai.isOwned())
+				return characterName + " belongs to a player, and nothing in its bag is sold but by them";
 			if (!BotVendorManager.hasJunk(bot))
 				return characterName + " has nothing worth selling";
 			return ai.forceSellTrip() ? characterName + " is heading to sell" : "No shop found on " + characterName + "'s map";

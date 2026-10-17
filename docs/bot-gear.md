@@ -152,7 +152,8 @@ answers that tie*.
 ## Characters that belong to a player
 
 The gear of a bot somebody owns, meaning a companion made with `//bot create` or a character made in game and spawned as a bot (`PlayerBotAI.isOwned`),
-is its owner's. `//bot regear` skips it by name and under `all`, and the stigma fitting on entering the world leaves its sockets alone. What it may do by
-itself is the one thing a player would: put on a piece it has found **when that piece is better than what it wears** (`BotErrands.dressUp`). The piece goes
-on as it is. `BotEquipManager.wear` does not enchant it or socket manastones into it for a bot that is owned, which is what the world's own inhabitants get
-and a player's character does not. Looting and selling are unchanged.
+is its owner's, and so is its bag. `//bot regear` skips it by name and under `all`, and the stigma fitting on entering the world leaves its sockets
+alone. It does not dress itself (`BotErrands.dressUp`), sell (`runVendorTrip`, `//bot sell`) or buy flasks: on 16 October a companion chanter of 65
+sold the 15 to 20 orange and yellow pieces of cloth and plate its owner kept in its bag for other characters, because selling took anything the class
+can never wear; dressing could also put on, identify and bind to itself pieces its owner had stored. It still loots, and drinks its own flasks in a fight.
+`BotEquipManager.wear` never enchants or sockets a piece on an owned bot, for any path that would put one on.

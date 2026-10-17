@@ -130,6 +130,11 @@ class BotErrands {
 	 * @return true if the bot is busy dressing, in which case it does nothing else this tick.
 	 */
 	boolean dressUp() {
+		// Never a player's own character: its bag is its owner's, and everything below touches it. Dressing put the owner's stored pieces on in
+		// place of what they had chosen, read the unidentified ones (which rolls their bonuses), and said yes to binding, which turns a piece that
+		// could be traded into one that never can.
+		if (ai.isOwned())
+			return false;
 		Player bot = ai.getOwner();
 		if (BotEquipManager.isBusyDressing(bot))
 			return true;
@@ -157,6 +162,8 @@ class BotErrands {
 	 * @return false if there is nothing worth selling, or the bot's map has no shop to walk to.
 	 */
 	boolean forceSellTrip() {
+		if (ai.isOwned())
+			return false; // see runVendorTrip: a companion's bag is never sold from, even on demand
 		Player bot = ai.getOwner();
 		if (!BotVendorManager.hasJunk(bot))
 			return false;
@@ -179,6 +186,11 @@ class BotErrands {
 	 * @return true while a trip is starting or under way, so nothing else is decided this tick.
 	 */
 	boolean runVendorTrip() {
+		// Never a player's own character. A full bag sent it to sell everything its class can never wear, whatever the quality: a chanter of 65 sold
+		// the 15 to 20 orange and yellow pieces of cloth and plate its owner kept in its bag for other characters, as reported from in game. What a
+		// companion carries is its owner's to keep, sell or throw away, and the kinah its flasks would cost is theirs too.
+		if (ai.isOwned())
+			return false;
 		Player bot = ai.getOwner();
 		if (vendorDestination == null) {
 			// a full bag alone is not enough: one full of gear, quest items or anything rare never empties and would loop forever. An operator who

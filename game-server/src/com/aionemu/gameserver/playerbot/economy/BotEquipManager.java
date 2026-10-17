@@ -96,8 +96,8 @@ public class BotEquipManager {
 		// The one place everything a bot puts on goes through, which is why the enchanting hangs here rather than in the dressing: a piece created
 		// for a new character and a piece looted an hour later both deserve to be in the state its owner would have got it into, and hanging it off
 		// the creation would have left every looted replacement at +0 — a visible downgrade from the gear it was replacing.
-		// Not for a player's own character. It may put on a piece it found when that piece is better than what it wears, which is the dressing, but it is
-		// never enchanted or socketed: that is the owner's to do. A bot being created has no ai yet, so it is not taken for owned here.
+		// Not for a player's own character, which is never enchanted or socketed: that is the owner's to do. It does not dress itself either (see
+		// BotErrands.dressUp); this guard is for any other path that would. A bot being created has no ai yet, so it is not taken for owned here.
 		if (!(bot.getAi() instanceof PlayerBotAI ai && ai.isOwned())) {
 			BotGearRefiner.refine(bot, worn);
 			BotGearRefiner.socket(bot, worn);
