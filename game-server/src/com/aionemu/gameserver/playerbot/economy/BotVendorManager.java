@@ -56,6 +56,8 @@ public class BotVendorManager {
 	 * minutes, stepping aside and asking for a route twice a second.
 	 */
 	public static final float TRADE_RANGE = 8f;
+	/** How far above or below a bot a shop may be and still be gone to: a flight link climbs 200 m, and Reshanta's layers are 1200 m apart. */
+	private static final float SHOP_HEIGHT_REACH = 300f;
 	/** Bag fill above which a bot stops farming and goes to sell. */
 	public static final float BAG_FULL_THRESHOLD = 0.9f;
 	/**
@@ -120,7 +122,10 @@ public class BotVendorManager {
 		// ever because it is closest as the crow flies. Nearest first, so the cheap case — a bot in town, with a shop it can reach in front of it —
 		// still asks the mesh once.
 		vendors.removeIf(isIgnored);
-		vendors.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y)));
+		// a shop on another layer is not a shop: Reshanta's upper layer has none outside its fortresses, and its residents set out for Teminon's,
+		// 1200 m below, and were refused, 210 of the 304 refused routes of 22 bots in half an hour. Nothing joins the layers that a route could find.
+		vendors.removeIf(spot -> Math.abs(spot.z - bot.getZ()) > SHOP_HEIGHT_REACH);
+		vendors.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y, spot.z)));
 		int probed = 0;
 		for (Vector3f spot : vendors) {
 			if (probed++ == VENDORS_PROBED)

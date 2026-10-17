@@ -135,6 +135,8 @@ public class BotPlaces {
 	 * region, this decides which part of it, and the whole point is that a character of seven does not keep house on ground worth three.
 	 */
 	private static final int HOME_LEVEL_TOLERANCE = 2;
+	/** How far apart in height two homes may be and still be on the same layer of a map: Reshanta's are 1200 m apart. */
+	private static final float SAME_LAYER = 300;
 
 	/**
 	 * How far a resident of a place no walker reaches may be from the rest of the world, in metres.
@@ -429,14 +431,20 @@ public class BotPlaces {
 	 *         and spends its days beating creatures five levels beneath it in the middle of a beginners' village. Poeta reads as Akarios 3 and its
 	 *         camps at 5, 6 and 7 — the valley steepens as you walk away from the village, so growing up means moving out.
 	 */
-	public static Vector3f homeForLevel(int worldId, int level, Race race, int pick) {
-		List<Vector3f> suitable = new ArrayList<>();
+	public static Vector3f homeForLevel(int worldId, int level, Race race, Vector3f near, int pick) {
+		List<Vector3f> suitable = new ArrayList<>(), sameLayer = new ArrayList<>();
 		for (Settlement place : homes(worldId)) {
 			// its own side's, on contested ground: the Elyos residents of Reshanta were otherwise free to move into Primum
-			if (Math.abs(place.level() - level) <= HOME_LEVEL_TOLERANCE && (place.race() == null || place.race() == race))
+			if (Math.abs(place.level() - level) <= HOME_LEVEL_TOLERANCE && (place.race() == null || place.race() == race)) {
 				suitable.add(place.centre());
+				if (near != null && Math.abs(place.centre().z - near.z) <= SAME_LAYER)
+					sameLayer.add(place.centre());
+			}
 		}
-		return suitable.isEmpty() ? null : suitable.get(Math.floorMod(pick, suitable.size()));
+		// on the layer it lives on where there is one: a resident of Reshanta's upper layer who died three times at home moved to the lower island,
+		// 1200 m below, and the upper layer lost its people one death at a time
+		List<Vector3f> chosen = sameLayer.isEmpty() ? suitable : sameLayer;
+		return chosen.isEmpty() ? null : chosen.get(Math.floorMod(pick, chosen.size()));
 	}
 
 	/** @return The faction of the place at that spot, or null when it is nobody's or no place of the map stands there. */
