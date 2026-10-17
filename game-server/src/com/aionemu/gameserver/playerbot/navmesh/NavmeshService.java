@@ -50,8 +50,12 @@ public class NavmeshService {
 	private static final float DANGER_RADIUS = 40;
 	/** How far above or below the bot such a creature still counts for the walk: the avoidance is drawn on the plan, and Reshanta's layers are stacked. */
 	private static final float DANGER_LAYER = 150;
-	/** What a metre near one costs the walk, as a multiple of its length. */
-	private static final float DANGER_COST = 15;
+	/**
+	 * What a metre near one costs the walk, as a multiple of its length. A preference and not a wall: at 15 the search explored everything cheaper than
+	 * a fifteen-fold detour round each of the 726 creatures of Reshanta's upper layer and gave up after seven seconds on a journey it planned in three
+	 * without them. The landings are what is refused outright.
+	 */
+	private static final float DANGER_COST = 3;
 
 	public static NavmeshService getInstance() {
 		return SingletonHolder.INSTANCE;
