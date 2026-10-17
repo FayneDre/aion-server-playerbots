@@ -182,6 +182,11 @@ the master does the planning. Where that is not enough the engine's own leash re
 A fear (`EffectType.FEAR`, the spirit master's Fear Shriek among them) is never cast in a group or an instance (`BotSkillManager.sendsItRunning`): a
 frightened monster runs where nobody follows and pulls every pack it passes. Alone in the open it is still the class's way out of a fight.
 
+Nor is an attack on an area of enemies of 20 m or more, around the caster or around its target (`isWideAreaAmongOthers`): at that size it reaches
+packs nobody engaged, which a tester asked to be banned outright. Both rules sit in `cast`, so a playbook's own choice obeys them too. A smaller area
+around the target is refused in a group when it would take in an enemy the group is not fighting (`wakesAPackAround`), as one around the caster
+already was. The templar's Provoking Roar reaches 8 m.
+
 ## Procs, and what is left unlabelled
 
 A proc arms something that fires later, so its own effects say nothing about which way it points. What decides is the blow that sets it off: `ProvokerEffect` installs an observer on the bearer's **attacks** for `NMLATK` and `BACKATK`, and on the bearer being **hit** for everything else. That single line is mirrored rather than guessed at, which took 29 more abilities off the unlabelled pile — 20 offensive, 9 defensive. It needed one accessor in the engine, `EffectTemplate.getHitType()`, over a field that was already there.

@@ -125,6 +125,8 @@ public class BotSkillManager {
 	private record CleanseTry(long lookAfter) {
 	}
 
+	/** An area of enemies this wide or wider is never attacked in a group or an instance, see {@link #isWideAreaAmongOthers}. */
+	private static final int WIDE_AREA = 20;
 	/** How long after a cleanse's cast ends the effect it aimed at is given to be gone. */
 	private static final long CLEANSE_LANDING_MILLIS = 1500;
 	/** How long a resisted cleanse is remembered against an effect that states no end. */
@@ -479,8 +481,10 @@ public class BotSkillManager {
 	 */
 	private static boolean areaIsWorthIt(Player bot, Creature target, SkillTemplate template) {
 		Properties properties = template.getProperties();
-		if (properties.getTargetType() != TargetRangeAttribute.AREA || properties.getFirstTarget() != FirstTargetAttribute.ME)
+		if (properties.getTargetType() != TargetRangeAttribute.AREA)
 			return true;
+		if (properties.getFirstTarget() != FirstTargetAttribute.ME)
+			return !wakesAPackAround(bot, target, properties.getEffectiveRange());
 		if (!isInsideArea(bot, target, properties))
 			return false;
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
@@ -494,6 +498,25 @@ public class BotSkillManager {
 				wakesAPack[0] = true;
 		});
 		return !wakesAPack[0];
+	}
+
+	/**
+	 * @return true if an area around the target, in a group, would take in an enemy nobody in the group is fighting yet. The engine measures these from
+	 *         the target, which is why they were left to it; it measures whether they land, not what else they land on, and in a group the second is
+	 *         the question. Alone, a bot that wakes a pack has only itself to answer to, and the fight is its own.
+	 */
+	private static boolean wakesAPackAround(Player bot, Creature target, float reach) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		if (team == null || reach <= 0)
+			return false;
+		List<Player> members = team.getMembers();
+		boolean[] wakes = { false };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (!wakes[0] && !npc.equals(target) && !npc.isDead() && bot.isEnemy(npc) && !npc.getAggroList().isHating(bot)
+				&& members.stream().noneMatch(member -> npc.getAggroList().isHating(member)) && PositionUtil.isInRange(target, npc, reach, false))
+				wakes[0] = true;
+		});
+		return wakes[0];
 	}
 
 	/**
@@ -833,7 +856,7 @@ public class BotSkillManager {
 		if (bot.isCasting())
 			return false;
 		for (SkillTemplate template : candidates) {
-			if (sendsItRunning(bot, template))
+			if (sendsItRunning(bot, template) || isWideAreaAmongOthers(bot, template))
 				continue;
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			if (skill == null)
@@ -873,6 +896,17 @@ public class BotSkillManager {
 	 */
 	private static boolean sendsItRunning(Player bot, SkillTemplate template) {
 		return (bot.getCurrentTeam() != null || bot.isInInstance()) && template.hasAnyEffect(EffectType.FEAR);
+	}
+
+	/**
+	 * Tells an attack on an area of {@value #WIDE_AREA} m or more in a group or an instance, which is never cast there, around the caster or around its
+	 * target alike. At that size it reaches packs nobody has engaged yet, and a damage dealer pulling a whole room of elites with one was what a tester
+	 * asked to be banned outright. The templar's Provoking Roar, the one area its guide wants in a group, reaches 8 m.
+	 */
+	private static boolean isWideAreaAmongOthers(Player bot, SkillTemplate template) {
+		Properties properties = template.getProperties();
+		return properties != null && (bot.getCurrentTeam() != null || bot.isInInstance()) && properties.getTargetType() == TargetRangeAttribute.AREA
+			&& properties.getTargetRelation() == TargetRelationAttribute.ENEMY && properties.getEffectiveRange() >= WIDE_AREA;
 	}
 
 	/**

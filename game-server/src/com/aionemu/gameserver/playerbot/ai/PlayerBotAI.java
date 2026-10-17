@@ -40,6 +40,7 @@ import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.playerbot.world.BotLanding;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
+import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
@@ -288,6 +289,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile boolean openingSpent;
 	/** Whether this fight's approach has been tried. Separate from the opening, so hiding does not cost the bot its burst as well. */
 	private volatile boolean approachSpent;
+	/** Whether a melee class has already cast from afar in this fight, its pull. Past it, it walks in; see {@link #closesInRatherThanCasting}. */
+	private volatile boolean pulledFromAfar;
 	/**
 	 * Set when sent somewhere by command rather than by its own decision, so the tick that runs a second later does not immediately hijack the trip
 	 * for whatever mob happens to be findable along the way. Self defence still overrides it: this only holds off the bot picking its own fights.
@@ -647,6 +650,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		combatEndedAt = 0; // fighting again, so the pending sheathe is off
 		openingSpent = false;
 		approachSpent = false;
+		pulledFromAfar = false;
 		lastBlow = System.currentTimeMillis(); // a fight that has just started has landed nothing yet, and that is not a stalled one
 		BotTargetRegistry.forceClaim(target, getOwner()); // retaliation and commands are not negotiable
 		boolean gettingUp = posture.standUp(); // canAttack() is false while resting
@@ -817,7 +821,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 				lastBlow = System.currentTimeMillis();
 				giveUpsInARow = 0;
 			}
+		} else if (closesInRatherThanCasting(target)) {
+			// a melee class past its pull walks in: its weapon and its chains are where its damage is
 		} else if (castFromAfar(target)) {
+			pulledFromAfar = true;
 			lastBlow = System.currentTimeMillis();
 			giveUpsInARow = 0;
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
@@ -1011,6 +1018,24 @@ public class PlayerBotAI extends AITemplate<Player> {
 			attackTask.cancel(false);
 			attackTask = null;
 		}
+	}
+
+	/**
+	 * Walks a melee class in to its target instead of casting at it from where it stands, once the fight has been opened.
+	 * <p>
+	 * Anything in the book that reaches was cast before closing, which suits a caster and not a chanter: alone, it stood back and threw the few spells it
+	 * has that reach, and seldom swung the staff its damage is in, as a tester reported. One cast from afar is kept, the pull, and so is casting at a
+	 * target that runs or that cannot be walked to; everything else is done in reach.
+	 *
+	 * @return true if the bot set off towards the target.
+	 */
+	private boolean closesInRatherThanCasting(Creature target) {
+		BotPosition position = BotPosition.of(getOwner());
+		if (!pulledFromAfar || position != BotPosition.FRONT && position != BotPosition.BEHIND)
+			return false;
+		if (target.getEffectController().isAbnormalSet(AbnormalState.FEAR) || target.getAi().isInState(AIState.RETURNING))
+			return false; // running away: what reaches is what catches it
+		return chase(target);
 	}
 
 	/**
