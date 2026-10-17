@@ -1,6 +1,6 @@
 # Crossing open air: plan
 
-Status: milestones 1 to 4 built 17 October and one crossing watched end to end on Reshanta; 5 (the Abyss lived in) and 6 not started. Milestone 5 of [flight-plan.md](flight-plan.md), the one the Abyss and RvR wait on
+Status: milestones 1 to 4 built 17 October and one crossing watched end to end on Reshanta; 5 in progress (populated and measured, the two bases' own ground still refuses routes, no squad crossing yet); 6 not started. Milestone 5 of [flight-plan.md](flight-plan.md), the one the Abyss and RvR wait on
 ([roadmap.md](roadmap.md)).
 
 ## What is seen
@@ -69,6 +69,16 @@ in the air or killed by the void.
 - **4:** `BotMoveController.flyAcross` hands the crossing to `BotFlight.flyCrossing`, waits on the edge while short of points or inside the take-off
   cooldown, and the flight, once landed, asks for the rest of the journey itself (a bot sent by command has no decision tick to do it). Watched: Naronwyn,
   sent by `goto` from the Elyos island to 1250 850, walked 54 s to the edge, flew 56 m across and 191 m down in 25 s for 24 fp, and walked on to arrive.
+- **5 (in progress):** the mainland of a map flown everywhere is every set of islands a flight joins both ways holding 5 places or more
+  (`BotPlaces.mainlandsByAir`, `NavmeshService.joinedByFlight`): Reshanta keeps 120 of its 134 places in five sets, against 18 on one island. The east
+  side (Teminon and 80 islands) meets the rest only through fortress 1131. Nobody lives in a fortress's zone and no link lands in one
+  (`BotPlaces.isSiegeGround`, FORT zones only: an artifact's zone is where its effect reaches, and one of Reshanta's is the whole map), nor on an island
+  only the other faction's people live on (`ownerOfGround`, asked through `AirTest.mayLand`). Rehousing keeps a resident on its own side's places: the
+  director had moved nine Elyos residents into Primum. Populated to 86 (60 Elyos, 26 Asmodian), about 30 awake.
+- **Measured (30 min, ~30 awake, 15 bot-hours):** 102 "has no route" (6.8 per bot-hour against 8.5), 32 grounds given up (2.1 against 5), 12 trips
+  refused, 6 rescues (0.4 against 1), 36 crossings planned, 8 flown, none refused, no void death. **70 of the 102 are inside Teminon and 22 inside
+  Primum**: their ground is dozens of small floors a few metres apart, joined by glides only, and a 13 m walk there runs out of the 2 s budget. Outside
+  the bases, about 0.7 per bot-hour, the tenth asked for. A route past 1.2 km still runs out of the budget; residents work within 250 m.
 - **Seen on the way:** a bot teleported by the inbox to another map stays out of the world ("despawned objects cannot move"); the test used a bot already
   on Reshanta.
 
