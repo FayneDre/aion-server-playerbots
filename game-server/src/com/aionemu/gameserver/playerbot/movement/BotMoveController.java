@@ -256,6 +256,9 @@ public class BotMoveController extends PlayerMoveController {
 			routeIndex = 0;
 			aimAtNextWaypoint();
 		} else if (!isPlanComing(x, y) && (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE)) {
+			// said on the route's line: a bot handed the same route every second was the one fault the log could not explain without it
+			String why = route.isEmpty() ? "" : ", the destination having moved";
+			float fromX = owner.getX(), fromY = owner.getY();
 			route = List.of();
 			routeGlides = Set.of();
 			routeIndex = 0;
@@ -266,7 +269,7 @@ public class BotMoveController extends PlayerMoveController {
 			awaitingPlan = true; // before asking, so a plan that resolves synchronously clears it again inside the call below
 			// a long journey is planned on another thread, so the bot waits where it stands rather than setting off blind; a short one plans on this
 			// very call, in which case the result must be adopted right here or the first leg walks for nothing
-			NavmeshService.getInstance().planRoute(owner, x, y, z, avoid, planned -> offerRoute(planned, x, y));
+			NavmeshService.getInstance().planRoute(owner, x, y, z, avoid, planned -> offerRoute(planned, x, y, fromX, fromY, why));
 			adoptPendingRoute();
 			aimAtNextWaypoint();
 		} else if (routeIndex >= route.size()) {
@@ -459,7 +462,7 @@ public class BotMoveController extends PlayerMoveController {
 	 * Takes a route planned elsewhere, if the bot is still going where it was asked to. Stored rather than applied: the movement thread picks it up
 	 * at the end of the current leg, which keeps a background thread from rewriting the destination mid-stride.
 	 */
-	private void offerRoute(BotPathFinder.Route answer, float forX, float forY) {
+	private void offerRoute(BotPathFinder.Route answer, float forX, float forY, float fromX, float fromY, String why) {
 		if (!hasGoal || forX != finalX || forY != finalY)
 			return; // an answer to a journey that is over, or to an older one
 		awaitingPlan = false; // answered, whether or not it found a way: either way the bot stops waiting
@@ -525,7 +528,8 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		pendingGlides = answer.glides();
 		pendingRoute = planned;
-		log.info("Bot {} has a route of {} waypoints to {}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY));
+		log.info("Bot {} has a route of {} waypoints to {} from {}{}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY),
+			String.format("%.1f %.1f", fromX, fromY), why);
 		if (!answer.glides().isEmpty()) {
 			// logged so that a glide in game can be gone and watched
 			Vector3f landing = planned.get(answer.glides().iterator().next());
@@ -695,7 +699,8 @@ public class BotMoveController extends PlayerMoveController {
 		plannedForY = y;
 		planAskedAt = System.currentTimeMillis();
 		awaitingPlan = true;
-		NavmeshService.getInstance().planRoute(owner, x, y, z, journeyAvoidance, planned -> offerRoute(planned, x, y));
+		float fromX = replannedAtX, fromY = replannedAtY;
+		NavmeshService.getInstance().planRoute(owner, x, y, z, journeyAvoidance, planned -> offerRoute(planned, x, y, fromX, fromY, ", round an obstacle"));
 		adoptPendingRoute();
 		aimAtNextWaypoint();
 		return true;

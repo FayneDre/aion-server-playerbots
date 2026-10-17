@@ -1,7 +1,7 @@
 # Walking into scenery: plan
 
-Status: milestones 0 and 1 built 16 October, 2 mostly (plans asked for instead of sidesteps, waiting for them standing), the at-home part of 3;
-measured on 800 bots (steps aside 14689 -> 514 per half hour). Left: the route loop below, rescue teleports, 3 for players in sight, 4. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
+Status: milestones 0 and 1 built 16 October, 2 mostly, the at-home part of 3; the route loop and most rescue teleports fixed 17 October (steps aside
+14689 -> 444, rescues 403 -> 111 per half hour on 800 bots). Left: 3 for players in sight, 4. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
 ("into an obstacle, then teleported behind it"), which this replaces as the place the work is tracked.
 
 ## What is seen
@@ -77,14 +77,14 @@ minutes.
 Every open world map with a mesh populated except the two housing maps (their 557 villagers never sleep and did not fit a 2560 MB heap): 24 maps,
 about 800 bots awake with nobody online. Half hours, same population:
 
-| | 21:25 | 22:22 | 23:14 |
-|---|---:|---:|---:|
-| steps aside | 14689 (13422 awaiting a plan) | 2951 (2390 last stretch) | 514 (511 planned, something spawned) |
-| no headway | 708 | 95 | 83 |
-| walled in | 12 | 11 | 0 |
-| rescue teleports | 403 | 379 | 388 (none seen by a player) |
-| routes planned | 16794 | 37461 | 45625 |
-| server CPU | 9.2 cores | 5.5 cores | 5.9 cores |
+| | 21:25 | 22:22 | 23:14 | 17 Oct 09:50 |
+|---|---:|---:|---:|---:|
+| steps aside | 14689 (13422 awaiting a plan) | 2951 (2390 last stretch) | 514 (511 planned, something spawned) | 444 (440 planned, something spawned) |
+| no headway | 708 | 95 | 83 | 76 |
+| walled in | 12 | 11 | 0 | 0 |
+| rescue teleports | 403 | 379 | 388 (none seen by a player) | 111 (none seen) |
+| routes planned | 16794 | 37461 | 45625 | 22616 |
+| server CPU | 9.2 cores | 5.5 cores | 5.9 cores | 3.7 cores |
 
 - **Awaiting a plan:** on a map with glide links every plan is answered on another thread; a bot asked again on every call (the route not in hand
   being empty), 16794 routes in half an hour, and stepped aside blind meanwhile. Now it waits, standing, and asks again only after 5 s.
@@ -93,10 +93,14 @@ about 800 bots awake with nobody online. Half hours, same population:
 - **Last stretch:** a goal off the walkable ground (a keeper behind a counter, a creature on a rock) had a bot pacing beside it and planning twice a
   second; once the mesh has planned from there, the bot stops as near as it gets for 10 s. Shops now trade within 8 m (the engine allows 10, it was 5).
 
-- **Left after 23:14:** a few bots are handed the same route every second and never walk it (Xanimric 1442 times in half an hour, the top 20 bots
-  38% of all routes), the pattern first seen on Rasalon; something discards the route before it is walked, to be found with a temporary probe on
-  `stop()`. Rescue teleports have not moved (388): next to look at, with 3.
-
+- **The route loop (17 October):** a probe on `stop()` and `haltForCast()` named the caller: `BotSkillManager.cast` halted the walk for a buff
+  before the engine refused it, so the route was thrown away on every tick (one bot about 600 times in ten minutes for one Stone Skin cast). The
+  walk is halted now only for a cast `Skill.canUseSkill` accepts. The route's log line names where the bot asked from and why it planned again.
+  Most routes planned by one bot in the half hour: 1442 before, 45 after.
+- **Rescues (17 October):** 1046 of 1352 over two hours came within half a minute of a refused route to a farming ground. Farming only moves the
+  anchor and was never given up, so the hunt was refused until the anti-stuck rescue teleported a bot that was not stuck.
+  `BotDay.anchorRefused` gives the ground up on the first refusal and brings the anchor home, as loitering and wandering already did.
+- **Left:** 3 (no rescue while a player is in sight; 55 "put back home" and 33 "walkable ground" are left per half hour) and 4.
 ## Risks
 
 - **More planning.** Milestone 2 asks for more routes; short ones are cheap, but chasing many targets at once is the case to watch (CPU, and the

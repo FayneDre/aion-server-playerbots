@@ -28,6 +28,7 @@ import com.aionemu.gameserver.skillengine.effect.EffectType;
 import com.aionemu.gameserver.skillengine.effect.HostileUpEffect;
 import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
 import com.aionemu.gameserver.skillengine.effect.RideRobotEffect;
+import com.aionemu.gameserver.skillengine.properties.Properties.CastState;
 import com.aionemu.gameserver.skillengine.model.ChargeSkillEntry;
 import com.aionemu.gameserver.skillengine.model.Effect;
 import com.aionemu.gameserver.skillengine.model.ChargedSkill;
@@ -825,8 +826,13 @@ public class BotSkillManager {
 			// end. Every cast a bot began while walking failed that way, and was begun again a second or two later -- seen in the first squads as a
 			// cleric's Earth's Wrath cast twice for every one that went through. Only when the target is in reach, or a bot closing in on one would be
 			// stopped on every try of a spell that cannot reach yet.
-			boolean halted = (template.getDuration() > 0 || template.isCharge()) && isWithinCastRange(bot, target, template)
-				&& bot.getMoveController() instanceof BotMoveController walking && walking.isInMove() && walking.haltForCast();
+			boolean mustHalt = (template.getDuration() > 0 || template.isCharge()) && isWithinCastRange(bot, target, template)
+				&& bot.getMoveController() instanceof BotMoveController walking && walking.isInMove();
+			// And only for a cast the engine will take. Halted first and refused after, a buff the bot could not cast threw its route away on every
+			// tick: one bot was stopped about six hundred times in ten minutes for one Stone Skin, and planned its walk anew each time, never getting far.
+			if (mustHalt && !skill.canUseSkill(CastState.CAST_START))
+				continue;
+			boolean halted = mustHalt && ((BotMoveController) bot.getMoveController()).haltForCast();
 			// useNoAnimationSkill validates mp, cooldown, range and target itself, and skips the client hit time checks a bot cannot satisfy
 			if (skill.useNoAnimationSkill()) {
 				// the sequence a class casts in, read from the log to compare a rotation with the guide's: enable DEBUG for this class to see it
