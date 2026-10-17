@@ -17,6 +17,7 @@ import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
@@ -109,6 +110,9 @@ public final class BotInbox {
 			case "delete" -> name == null ? "Usage: delete <name>" : BotCommands.delete(name, null);
 			case "stop" -> name == null ? "Usage: stop <name>" : BotCommands.stopAttacking(name);
 			case "auto" -> name == null ? "Usage: auto <name>" : BotCommands.toggleAutonomy(name);
+			case "fly" -> name == null ? "Usage: fly <name> [height]" : BotCommands.fly(name, words.length > 2 ? words[2] : null);
+			case "land" -> name == null ? "Usage: land <name>" : BotCommands.land(name);
+			case "flyto" -> words.length < 5 ? "Usage: flyto <name> <x> <y> <z>" : flyTo(words);
 			// one map, never the whole world: a file is one typo away from emptying it
 			case "clear" -> name == null ? "Usage: clear <map id or name>" : BotCommands.clear(null, argument);
 			default -> "Not taken from the inbox: " + words[0] + ". See docs/bot-commands.md, section Testing.";
@@ -168,6 +172,18 @@ public final class BotInbox {
 			return words[1] + " teleported to map " + worldId + " at " + x + " " + y + " " + z + ", which is now its camp";
 		} catch (NumberFormatException e) {
 			return "Map and coordinates must be numbers";
+		}
+	}
+
+	/** Flies a bot to a point given by its coordinates, the inbox's stand-in for where a commander would stand. */
+	private static String flyTo(String[] words) {
+		Player bot = PlayerBotService.getInstance().findSpawnedBot(words[1]);
+		if (bot == null)
+			return "No bot spawned with name " + words[1];
+		try {
+			return BotFlight.flyTo(bot, new Vector3f(Float.parseFloat(words[2]), Float.parseFloat(words[3]), Float.parseFloat(words[4])));
+		} catch (NumberFormatException e) {
+			return "Coordinates must be numbers";
 		}
 	}
 

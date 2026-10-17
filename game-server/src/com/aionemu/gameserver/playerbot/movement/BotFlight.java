@@ -22,6 +22,8 @@ import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.utils.ThreadPoolManager;
+import com.aionemu.gameserver.world.World;
+import com.aionemu.gameserver.world.WorldMap;
 import com.aionemu.gameserver.world.geo.GeoService;
 import com.aionemu.gameserver.world.zone.ZoneInstance;
 
@@ -54,6 +56,8 @@ public class BotFlight {
 	private static final float MIN_CRUISE_ABOVE = 12;
 	/** As high as a climb will take a bot, whatever is asked for. */
 	private static final float MAX_HEIGHT = 60;
+	/** How far above a map's death level a flight keeps: under Reshanta the void kills below z 500, and nothing falls server side to save a bot. */
+	private static final float ABOVE_THE_VOID = 100;
 	/** How long the up-and-back cycle holds its height, which is what makes one command a whole flight nobody has to finish by hand. */
 	private static final long HOVER_MILLIS = 4000;
 	/** How far a journey may go. Flight is for a terrace over a wall, not for crossing a region, which is what the director's teleport is for. */
@@ -534,8 +538,16 @@ public class BotFlight {
 		return met == null || PositionUtil.getDistance(met.getX(), met.getY(), met.getZ(), to.getX(), to.getY(), to.getZ()) < 1;
 	}
 
-	/** @return Whether a point is inside one of the fly zones the bot is standing in, which is the only air it is allowed to fly through. */
+	/**
+	 * @return Whether a point is inside one of the fly zones the bot is standing in, which is the only air it is allowed to fly through.
+	 *         <p>
+	 *         On a map that allows flight everywhere, the Abyss, there are no fly zones to read: the map flag puts every body in one on entry
+	 *         ({@code WorldMapInstance.addObject}). Asked of the zones alone, every take-off there was refused. The map is then one zone, with a floor
+	 *         {@link #ABOVE_THE_VOID} over the height below which a body dies.
+	 */
 	private static boolean insideAFlyZone(Player bot, Vector3f point) {
+		if (fliesEverywhere(bot))
+			return point.getZ() >= floorOf(bot);
 		for (ZoneInstance zone : bot.findZones()) {
 			if (zone.getZoneTemplate().getZoneType() == ZoneClassName.FLY && zone.isInsideCoordinate(point.getX(), point.getY(), point.getZ()))
 				return true;
@@ -551,6 +563,8 @@ public class BotFlight {
 	 *         ({@code PlayerController.onLeaveFlyArea}) and writes the bot into the audit log as a suspected hack.
 	 */
 	private static float ceilingFor(Player bot, float wanted) {
+		if (fliesEverywhere(bot))
+			return Math.max(bot.getZ(), wanted); // no zone, so no top: the height asked for, which every caller already caps
 		float best = bot.getZ();
 		for (ZoneInstance zone : bot.findZones()) {
 			if (zone.getZoneTemplate().getZoneType() != ZoneClassName.FLY)
@@ -571,6 +585,18 @@ public class BotFlight {
 			best = Math.max(best, inside - CEILING_CLEARANCE);
 		}
 		return best;
+	}
+
+	/** @return true if the bot's map allows flight on the whole of it, which is what the Abyss does instead of drawing fly zones. */
+	static boolean fliesEverywhere(Player bot) {
+		WorldMap map = World.getInstance().getWorldMap(bot.getWorldId());
+		return map != null && map.isFlightAllowed();
+	}
+
+	/** @return The lowest a flight may go: the map's death level and a margin over it, or no floor at all on a map with none. */
+	static float floorOf(Player bot) {
+		WorldMap map = World.getInstance().getWorldMap(bot.getWorldId());
+		return map == null || map.getDeathLevel() <= 0 ? -Float.MAX_VALUE : map.getDeathLevel() + ABOVE_THE_VOID;
 	}
 
 	private void step() {
