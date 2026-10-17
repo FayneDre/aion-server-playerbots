@@ -1,6 +1,6 @@
 # Crossing open air: plan
 
-Status: not started; written 2026-10-17 from the measures below. Milestone 5 of [flight-plan.md](flight-plan.md), the one the Abyss and RvR wait on
+Status: milestones 1 to 4 built 17 October and one crossing watched end to end on Reshanta; 5 (the Abyss lived in) and 6 not started. Milestone 5 of [flight-plan.md](flight-plan.md), the one the Abyss and RvR wait on
 ([roadmap.md](roadmap.md)).
 
 ## What is seen
@@ -51,6 +51,26 @@ populated so thinly because there is little a resident can do on one island.
 
 Done when: on Reshanta, a resident reaches a hunting ground on another island by air, routes refused fall to a tenth of 0's, and no bot is ever left
 in the air or killed by the void.
+
+## Built so far (17 October)
+
+- **1:** `BotFlight.fliesEverywhere` reads `WorldMap.isFlightAllowed`, and on such a map `insideAFlyZone` is any point above `floorOf` (death level plus
+  100 m) and `ceilingFor` is the height asked for. Only the Abyss, Panesterra, Azoturan and test maps carry the flag. A take-off on Reshanta flew 25 m
+  up and back in 13 s for 13 fp.
+- **2:** `FlightLinks` samples the edges of islands of 2000 surfaces or more, one per 4 m square, and pairs them across up to 180 m and 200 m of height,
+  three a pair and direction, 40 m apart. Both ends must be **open up to the lowest run** (15 m above the higher end): the first two files had links
+  landing under an overhang and under the island they left, and every height was blocked in game. `NavmeshTool 400010000 flights`: 20926 links, 36 s,
+  needs the server stopped (about 3 GB of heap). The obelisk audit passes both of Reshanta's obelisks; a route between them, 3 km apart, still runs out
+  of the 2 s budget.
+- **3:** a flight link is a `GlideLink` with `flight` set, chained by `GlideRoutes` like a glide and named in `Route.flights`. The planner's air test asks
+  `BotFlight.crossing` (a climb, a level run and a descent at 15, 25 or 45 m above the higher end), and **links found blocked are left out and the
+  chains worked out again** (up to 4 rounds): the fewest-hop chain was the only one offered, and one blocked crossing made the whole journey a proof of
+  "no route".
+- **4:** `BotMoveController.flyAcross` hands the crossing to `BotFlight.flyCrossing`, waits on the edge while short of points or inside the take-off
+  cooldown, and the flight, once landed, asks for the rest of the journey itself (a bot sent by command has no decision tick to do it). Watched: Naronwyn,
+  sent by `goto` from the Elyos island to 1250 850, walked 54 s to the edge, flew 56 m across and 191 m down in 25 s for 24 fp, and walked on to arrive.
+- **Seen on the way:** a bot teleported by the inbox to another map stays out of the world ("despawned objects cannot move"); the test used a bot already
+  on Reshanta.
 
 ## Risks
 
