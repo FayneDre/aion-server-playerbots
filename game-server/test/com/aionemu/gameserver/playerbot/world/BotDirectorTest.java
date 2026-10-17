@@ -120,6 +120,22 @@ class BotDirectorTest {
 		assertTrue(difference.toSleep().get(0) <= 3);
 	}
 
+	/** A ground of the plan nobody works is given the sleeper who lives at it: not one of the 22 residents of Reshanta's upper layer was woken in two hours. */
+	@Test
+	void aGroundNobodyWorksTakesTheSleeperWhoLivesThere() {
+		Vector3f below = new Vector3f(3000f, 900f, 1546f), above = new Vector3f(3050f, 950f, 2900f);
+		List<BotRoster.Resident> residents = new ArrayList<>();
+		residents.add(new BotRoster.Resident(1, "Bot1", 400010000, below, Race.ELYOS));
+		residents.add(new BotRoster.Resident(2, "Bot2", 400010000, below, Race.ELYOS));
+		residents.add(new BotRoster.Resident(3, "Bot3", 400010000, above, Race.ELYOS));
+		List<Settlement> plan = List.of(new Settlement(below, 20f, 4, 20, Race.ELYOS), new Settlement(above, 20f, 4, 40, Race.ELYOS));
+
+		Difference difference = BotDirector.sort(awake(1, 2), SETTLEMENTS, post -> null, residents, Map.of(), plan);
+
+		assertEquals(List.of(3), difference.toWake().stream().map(BotRoster.Resident::playerId).toList(), "the one who lives above is woken");
+		assertEquals(1, difference.toSleep().size(), "for one of the two below: " + difference.toSleep());
+	}
+
 	/** On contested ground a post is one side's: ten Elyos residents of Reshanta were moved into Primum, the Asmodian base. */
 	@Test
 	void aSleeperIsNeverMovedIntoTheOtherFactionsVillage() {

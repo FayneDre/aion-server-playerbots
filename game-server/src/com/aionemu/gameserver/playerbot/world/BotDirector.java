@@ -294,36 +294,42 @@ public class BotDirector {
 		// village's own sleeper by the next one.
 		int reserved = Math.min(stillShort.values().stream().mapToInt(Integer::intValue).sum(), asleepInField.size());
 		int fieldWoken = Math.max(0, Math.min(hunters - awakeInField.size(), asleepInField.size() - reserved));
-		// Each side in the share of the countryside its grounds are: on contested ground the field is one list for both, and taken in the pool's order
-		// Reshanta woke 26 Elyos and 3 Asmodians for grounds a third of which are Asmodian. On a faction's own ground every one is one side, and the
-		// order is the pool's as it always was.
-		Map<Integer, Race> raceById = new HashMap<>();
-		residents.forEach(resident -> raceById.put(resident.playerId(), resident.race()));
-		Map<Race, Integer> share = new EnumMap<>(Race.class), have = new EnumMap<>(Race.class);
-		fieldPlan.forEach(ground -> {
-			if (ground.race() != null)
-				share.merge(ground.race(), 1, Integer::sum);
-		});
-		awakeInField.forEach(id -> {
-			if (raceById.get(id) != null)
-				have.merge(raceById.get(id), 1, Integer::sum);
-		});
+		// Each hunter awake works the ground of the plan nearest its home, and a ground nobody works is given the sleeper of its side who lives nearest
+		// it. Taken in the pool's order, the field put its people wherever the pool listed them first: Reshanta woke 26 Elyos and 3 Asmodians for
+		// grounds a third of which are Asmodian, and not one of the 22 residents of its upper layer in two hours. The side follows, since a ground has one.
+		Map<Integer, BotRoster.Resident> byId = new HashMap<>();
+		residents.forEach(resident -> byId.put(resident.playerId(), resident));
+		int[] cover = new int[fieldPlan.size()];
+		Map<Integer, Integer> groundOf = new HashMap<>();
+		for (int id : awakeInField) {
+			int ground = groundFor(fieldPlan, cover, byId.get(id));
+			if (ground >= 0) {
+				cover[ground]++;
+				groundOf.put(id, ground);
+			}
+		}
 		List<BotRoster.Resident> sleepers = new ArrayList<>(asleepInField);
 		List<Integer> wakers = new ArrayList<>(awakeInField);
 		List<BotRoster.Resident> fieldWakes = new ArrayList<>();
-		for (int i = 0; i < fieldWoken; i++)
-			fieldWakes.add(takeFor(sleepers, share, have, BotRoster.Resident::race, true));
+		for (int i = 0; i < fieldWoken; i++) {
+			BotRoster.Resident woken = wakeFor(fieldPlan, cover, sleepers, false);
+			if (woken != null)
+				fieldWakes.add(woken);
+		}
 		for (int i = hunters; i < awakeInField.size(); i++)
-			toSleep.add(takeFor(wakers, share, have, raceById::get, false));
-		// and a side over its share swaps with one under it, a few a review, when the totals are right and nothing above moved anybody
-		for (int swap = 0; swap < SWAPS_PER_REVIEW && fieldWoken == 0 && awakeInField.size() <= hunters
-			&& sleepers.size() > reserved; swap++) {
-			Race over = mostOver(share, have, wakers, raceById::get), under = mostUnder(share, have, sleepers, BotRoster.Resident::race);
-			if (over == null || under == null || over == under || have.getOrDefault(over, 0) - share.getOrDefault(over, 0) < 1
-				|| share.getOrDefault(under, 0) - have.getOrDefault(under, 0) < 1)
+			toSleep.add(sleepFrom(wakers, groundOf, cover, 1));
+		// and once the totals are right, a few a review move from a ground worked twice to one nobody works
+		for (int swap = 0; swap < SWAPS_PER_REVIEW && fieldWoken == 0 && awakeInField.size() <= hunters && sleepers.size() > reserved; swap++) {
+			BotRoster.Resident woken = wakeFor(fieldPlan, cover, sleepers, true);
+			if (woken == null)
 				break;
-			toSleep.add(takeFor(wakers, share, have, raceById::get, false));
-			fieldWakes.add(takeFor(sleepers, share, have, BotRoster.Resident::race, true));
+			Integer slept = sleepFrom(wakers, groundOf, cover, 2);
+			if (slept == null) {
+				sleepers.add(woken); // nobody works a ground twice: the empty one waits for a hunter to leave
+				break;
+			}
+			fieldWakes.add(woken);
+			toSleep.add(slept);
 		}
 		toWake.addAll(fieldWakes);
 		// A village post that nobody lives at is filled by moving somebody in, because the alternative is that it is never filled at all. The
@@ -398,51 +404,86 @@ public class BotDirector {
 		return new Difference(awake, toWake, toSleep, rehoused, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
 	}
 
+	/** How far a sleeper may live from a ground nobody works and still be woken for it: past this it would work somewhere else. */
+	private static final float WORKS_FROM = 400;
+
 	/**
-	 * Takes one out of a list for the side furthest from its share: the furthest under it to wake, the furthest over it to put to sleep, and counts it.
-	 * Within a side the first is woken and the last put to sleep, which is the order a one-sided map always had.
+	 * @return The ground of the plan a hunter works, which is the nearest of its side's, a ground already worked counting as 500 m further so that two
+	 *         hunters of one camp spread over the two grounds near it; -1 when the plan holds none of its side's.
 	 */
-	private static <T> T takeFor(List<T> from, Map<Race, Integer> share, Map<Race, Integer> have, Function<T, Race> raceOf, boolean waking) {
-		Race side = waking ? mostUnder(share, have, from, raceOf) : mostOver(share, have, from, raceOf);
-		int at = -1;
-		for (int i = 0; i < from.size(); i++) {
-			if (side == null || raceOf.apply(from.get(i)) == side) {
-				at = i;
-				if (waking)
-					break;
-			}
-		}
-		T taken = from.remove(at < 0 ? (waking ? 0 : from.size() - 1) : at);
-		Race race = raceOf.apply(taken);
-		if (race != null)
-			have.merge(race, waking ? 1 : -1, Integer::sum);
-		return taken;
-	}
-
-	/** @return Of the sides somebody in the list belongs to, the one furthest under its share, or null when nobody in it has a side. */
-	private static <T> Race mostUnder(Map<Race, Integer> share, Map<Race, Integer> have, List<T> from, Function<T, Race> raceOf) {
-		return furthest(share, have, from, raceOf, 1);
-	}
-
-	/** @return Of the sides somebody in the list belongs to, the one furthest over its share, or null when nobody in it has a side. */
-	private static <T> Race mostOver(Map<Race, Integer> share, Map<Race, Integer> have, List<T> from, Function<T, Race> raceOf) {
-		return furthest(share, have, from, raceOf, -1);
-	}
-
-	private static <T> Race furthest(Map<Race, Integer> share, Map<Race, Integer> have, List<T> from, Function<T, Race> raceOf, int sign) {
-		Race best = null;
-		int bestGap = Integer.MIN_VALUE;
-		for (T one : from) {
-			Race race = raceOf.apply(one);
-			if (race == null)
+	private static int groundFor(List<Settlement> plan, int[] cover, BotRoster.Resident hunter) {
+		int best = -1;
+		double bestCost = Double.MAX_VALUE;
+		for (int i = 0; i < plan.size(); i++) {
+			if (hunter == null || !hunter.belongsWith(plan.get(i).race()))
 				continue;
-			int gap = sign * (share.getOrDefault(race, 0) - have.getOrDefault(race, 0));
-			if (gap > bestGap) {
-				bestGap = gap;
-				best = race;
+			double cost = hunter.home().distance(plan.get(i).centre()) + 500 * cover[i];
+			if (cost < bestCost) {
+				bestCost = cost;
+				best = i;
 			}
 		}
 		return best;
+	}
+
+	/**
+	 * Wakes the sleeper of its side who lives nearest the first ground nobody works, or the least worked one when every ground is, and counts it.
+	 *
+	 * @param onlyEmpty Whether to wake only for a ground nobody works, and only somebody who lives within {@link #WORKS_FROM} of it: a swap.
+	 * @return The sleeper, taken out of the list, or null when none will do.
+	 */
+	private static BotRoster.Resident wakeFor(List<Settlement> plan, int[] cover, List<BotRoster.Resident> sleepers, boolean onlyEmpty) {
+		Integer[] order = new Integer[plan.size()];
+		for (int i = 0; i < order.length; i++)
+			order[i] = i;
+		java.util.Arrays.sort(order, (one, other) -> Integer.compare(cover[one], cover[other])); // stable: the plan's own spread among equals
+		for (int ground : order) {
+			if (onlyEmpty && cover[ground] > 0)
+				break;
+			Settlement place = plan.get(ground);
+			BotRoster.Resident nearest = null;
+			double nearestDistance = Double.MAX_VALUE;
+			for (BotRoster.Resident sleeper : sleepers) {
+				double distance = sleeper.home().distance(place.centre());
+				if (sleeper.belongsWith(place.race()) && distance < nearestDistance) {
+					nearest = sleeper;
+					nearestDistance = distance;
+				}
+			}
+			if (nearest == null || onlyEmpty && nearestDistance > WORKS_FROM)
+				continue;
+			sleepers.remove(nearest);
+			cover[ground]++;
+			return nearest;
+		}
+		if (onlyEmpty || sleepers.isEmpty())
+			return null;
+		return sleepers.remove(0); // nobody of any ground's side is asleep: the pool's order, as it always was
+	}
+
+	/**
+	 * Puts to sleep the last hunter on the most worked ground, if that ground is worked at least {@code atLeast} times, and counts it.
+	 *
+	 * @return Its id, taken out of the list; null when no ground is worked that often.
+	 */
+	private static Integer sleepFrom(List<Integer> wakers, Map<Integer, Integer> groundOf, int[] cover, int atLeast) {
+		Integer chosen = null;
+		int most = atLeast - 1;
+		for (int i = wakers.size() - 1; i >= 0; i--) {
+			Integer ground = groundOf.get(wakers.get(i));
+			int worked = ground == null ? Integer.MAX_VALUE : cover[ground];
+			if (worked > most) {
+				most = worked;
+				chosen = wakers.get(i);
+			}
+		}
+		if (chosen == null)
+			return atLeast <= 1 && !wakers.isEmpty() ? wakers.remove(wakers.size() - 1) : null;
+		wakers.remove(chosen);
+		Integer ground = groundOf.remove(chosen);
+		if (ground != null)
+			cover[ground]--;
+		return chosen;
 	}
 
 	/** @return The last of the spare residents who may live at a place of that faction, or null when none may. */
