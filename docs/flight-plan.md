@@ -124,8 +124,8 @@ all: a gliding body loses height continuously, and holding a place beside a flyi
 reason to descend for a long time.
 
 **5. Volume navigation, and only then the Abyss.** Reshanta's islands need a route through open air over a gap with no ground under it, which is the
-only case the straight line plus ray cannot answer, and it also needs Reshanta's mesh, which exists since 2026-10-09 (98 MB, 14 s to write, under 3 GB of heap). Budget the crossing itself separately; see
-[roadmap.md](roadmap.md).
+only case the straight line plus ray cannot answer, and it also needs Reshanta's mesh, which exists since 2026-10-09 (98 MB, 14 s to write, under 3 GB of heap). Planned in
+[abyss-crossing-plan.md](abyss-crossing-plan.md).
 
 ## Traps to expect, named in advance
 

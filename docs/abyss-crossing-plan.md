@@ -1,0 +1,66 @@
+# Crossing open air: plan
+
+Status: not started; written 2026-10-17 from the measures below. Milestone 5 of [flight-plan.md](flight-plan.md), the one the Abyss and RvR wait on
+([roadmap.md](roadmap.md)).
+
+## What is seen
+
+Reshanta (400010000) is an archipelago. Its mesh holds **16210 islands** of walkable ground (`NavmeshTool 400010000 components`): about fifteen
+large ones, of 450000 to 600000 cells (some 350 m across), a ring that joins a few of them round the centre, and hundreds of crumbs. The gaps between
+large islands are tens to a few hundred metres of air, with nothing to walk on.
+
+What that does to the ten residents populated there (17 October, about two hours, one awake at a time): 17 "has no route", 10 hunting grounds given up
+as unreachable, 4 wandering trips refused, 2 rescues. The obelisk audit fails both of Reshanta's obelisks, which stand on separate islands. The map is
+populated so thinly because there is little a resident can do on one island.
+
+## Why, from the code
+
+- **The route search only walks and glides.** A glide link is one way, downward, and at most 20 cells (10 m) out from an edge (`GlideLinks.REACH_CELLS`):
+  it frees a fortress terrace, not a gap of 150 m between two islands at the same height.
+- **Flight exists but cannot be planned.** `BotFlight` flies a terrace hop (`flyTo`, straight line) and an ambient trip (`cruiseOrWhyNot`: climb,
+  level run, descent), both capped at 300 m (`MAX_JOURNEY`) and both asked only when the mesh has proved there is no walk. Neither is part of a route:
+  a destination two islands away, or one whose straight line crosses a third, has no answer.
+- **The bot's fly checks know fly zones only.** `insideAFlyZone`, `ceilingFor` and `staysInAFlyZone` read `ZoneType.FLY` zones, and Reshanta has none:
+  the Abyss allows flight on the whole map by a map flag (`world_maps.xml` flags `FLY`, `WorldMap.isFlightAllowed`, which puts every player in a FLY zone
+  on entry). Asked today, every take-off on Reshanta is refused as "not standing in a fly zone".
+- **The void kills.** `death_level="500"`: a body below z 500 dies. Islands stand around z 1500 to 3000; a flight must never dip that low, and a bot
+  out of flight points must never be left in the air (nothing falls server side, see [flight-plan.md](flight-plan.md)).
+
+## Milestones, in verifiable order
+
+0. **The measure.** The figures above, per half hour with the Abyss populated wider, and the obelisk audit. Judged again after 4.
+1. **Flight on a map that allows it everywhere.** `BotFlight` reads the map flag as one fly zone the height of the map: a take-off, a run and a
+   landing are allowed anywhere on Reshanta; the ceiling is `MAX_HEIGHT` above the higher end, and no point of a flight goes under the death level plus
+   a margin. Verifiable: `//bot flyto` on Reshanta flies, and fly-zone maps behave as before (their unit tests and a flight in Eltnen).
+2. **Flight links, written offline.** `NavmeshTool <map> flights` pairs the large islands (a size threshold like the glide rules) whose edges come
+   within a flight's reach, and keeps a few links a pair: a take-off cell on one edge, a landing cell on the other, both ways. Written to its own file
+   beside the mesh and the glide links, read on the next start, like them. Verifiable offline: how many pairs, the file's weight, and the obelisk audit
+   counting links as edges (both Reshanta obelisks should reach the large islands).
+3. **Routes that fly.** The route search takes a flight link as an edge like a glide, costed by its time in the air plus the take-off and the landing,
+   and a hop never longer than a flight's points pay for with a reserve. Only for a daeva on a map that allows flight. Verifiable offline:
+   `NavmeshTool 400010000 path` between two islands returns a route with a flight leg; across three islands, two.
+4. **Flying the leg.** On reaching a take-off waypoint the move controller hands the body to `BotFlight`, which flies the link as a cruise (climb,
+   level run, descent), each stretch asked of the game's geometry first, the way `cruiseOrWhyNot` does; blocked at every height, the link is refused for
+   that bot and the route planned again without it. Short of points, the bot waits on the edge until it has them. Landed, the route goes on.
+   Verifiable in game: a bot sent across (inbox `teleport` and an errand), the log naming the take-off, the landing and the points spent.
+5. **The Abyss lived in.** Reshanta populated wider (residents on each large island), measured against 0: routes refused, grounds given up, rescues,
+   bots in the air at once, and a squad crossing. Fortress and artifact zones (sieges) are left out of the landings; a crossing into the other
+   faction's ground is refused until wild PvP is a decision rather than an accident.
+6. **Gliding on the way down** (left out of milestone 4 of [flight-plan.md](flight-plan.md) for this): a long descent glides and costs half the points.
+   Only if the measure of 5 shows hops short of points.
+
+Done when: on Reshanta, a resident reaches a hunting ground on another island by air, routes refused fall to a tenth of 0's, and no bot is ever left
+in the air or killed by the void.
+
+## Risks
+
+- **Memory.** Building Reshanta's ground takes about 3 GB of heap, and the server holds 2.8 GB on a machine with 2.5 GB free while it runs: milestone
+  2 needs the server stopped, once per map.
+- **The geometry, not the mesh, decides whether air is clear**, and only the server can ask it. A link written offline is a candidate; every flight
+  asks again, and a link that is never clear costs a refusal, not a crash into a rock.
+- **PvP.** The Abyss is the other faction's ground too, with guards and fortresses. A route through it can land a bot in a fight it did not choose;
+  the landings are filtered, and `retreatIfLosing` is what is left.
+- **Load.** A route with flight links is planned on another thread, as glides are. Longer graphs mean longer searches; the time budget of the long
+  walk (1.5 s) holds, and a search that runs out says "gave up", not "no route".
+- **The audit log.** A flight faster than `FLY_SPEED`, or a take-off inside its cooldown, is written up as a hack; the existing guards in
+  `BotFlight` apply unchanged.
