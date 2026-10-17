@@ -1668,7 +1668,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean retreatIfLosing() {
 		Player bot = getOwner();
-		if (bot.isDead() || !bot.isSpawned() || isRecoveringFromDeath())
+		// never in a group, as the rule always said and the code never asked: a squad's templar leader left at full health from the two attackers its
+		// guide tells it to leave alone, and its five members died without a tank
+		if (bot.isDead() || !bot.isSpawned() || isRecoveringFromDeath() || bot.getCurrentTeam() != null)
 			return false;
 		// Ignored ones do not count: they are what the bot has already decided to leave, and counting them again would re-decide the same retreat on
 		// every tick -- seen in the log as one bot breaking off from the same two attackers four times in as many seconds. Once everything on it is
@@ -1931,9 +1933,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// Reshanta's upper layer has no obelisk of its own, and its residents came back in Teminon, 1300 m below, asked for routes home that do
 			// not exist and were rescued a dozen seconds later: 47 refused routes and 22 of 23 rescues of its 22 residents in half an hour.
 			// A few seconds later, once the move to the obelisk has settled: a teleport on top of the revival's own one is not one the engine expects.
-			if (home != null && Math.abs(home.getZ() - bot.getZ()) > ANOTHER_LAYER) {
+			// not in a group, whose members come back to it: a squad member taken home was left hundreds of metres from a leader waiting for it
+			if (home != null && bot.getCurrentTeam() == null && Math.abs(home.getZ() - bot.getZ()) > ANOTHER_LAYER) {
 				BotScheduler.getInstance().schedule(() -> {
-					if (!bot.isSpawned() || bot.isDead() || Math.abs(home.getZ() - bot.getZ()) <= ANOTHER_LAYER)
+					if (!bot.isSpawned() || bot.isDead() || bot.getCurrentTeam() != null || Math.abs(home.getZ() - bot.getZ()) <= ANOTHER_LAYER)
 						return;
 					log.info("Bot {} lives {} m above or below where it revived and is taken home", bot.getName(), Math.round(Math.abs(home.getZ() - bot.getZ())));
 					TeleportService.teleportTo(bot, bot.getWorldId(), home.getX(), home.getY(), home.getZ());
