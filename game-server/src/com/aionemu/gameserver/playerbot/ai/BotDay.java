@@ -129,7 +129,7 @@ class BotDay {
 		if (++deathsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned())
 			return;
 		Player bot = ai.getOwner();
-		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getObjectId() + (int) now);
+		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getRace(), bot.getObjectId() + (int) now);
 		if (elsewhere == null || BotPlaces.isSamePlace(elsewhere, home()))
 			return; // nowhere else on this map suits it; the region's ceiling is what stops it growing into trouble
 		log.info("Bot {} has died {} times at {} {} and moves to {} {}", bot.getName(), deathsAtHome, Math.round(home().getX()),
@@ -157,7 +157,7 @@ class BotDay {
 		if (++strandingsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned() || home() == null)
 			return null;
 		Player bot = ai.getOwner();
-		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getObjectId() + (int) now);
+		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getRace(), bot.getObjectId() + (int) now);
 		if (elsewhere == null || BotPlaces.isSamePlace(elsewhere, home()))
 			return null;
 		log.info("Bot {} had to be freed {} times at {} {} and moves to {} {}", bot.getName(), strandingsAtHome, Math.round(home().getX()),
@@ -204,7 +204,7 @@ class BotDay {
 			return false;
 		if (Math.abs(BotPlaces.levelAt(bot.getWorldId(), where) - bot.getLevel()) <= HOME_LEVEL_DRIFT)
 			return false;
-		Vector3f better = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getObjectId());
+		Vector3f better = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getRace(), bot.getObjectId());
 		if (better == null || BotPlaces.isSamePlace(better, where))
 			return false; // the region has nowhere better; the ceiling in BotPacing is what stops it growing further
 		log.info("Bot {} has outgrown its home at level {} and moves to {} {}", bot.getName(), bot.getLevel(), Math.round(better.getX()),

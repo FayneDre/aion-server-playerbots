@@ -86,6 +86,17 @@ class BotDirectorTest {
 			assertNotEquals(mover.playerId(), waking.playerId(), "and it is not woken to be told about it");
 	}
 
+	/** On contested ground a post is one side's: ten Elyos residents of Reshanta were moved into Primum, the Asmodian base. */
+	@Test
+	void aSleeperIsNeverMovedIntoTheOtherFactionsVillage() {
+		List<BotRoster.Resident> residents = new ArrayList<>();
+		residents.add(new BotRoster.Resident(1, "Bot1", 400010000, GROUND_A, Race.ELYOS));
+		residents.add(new BotRoster.Resident(2, "Bot2", 400010000, GROUND_B, Race.ELYOS));
+		Difference difference = BotDirector.sort(awake(), SETTLEMENTS, post -> Race.ASMODIANS, residents, villages(VILLAGE, 1), field(GROUND_A));
+
+		assertTrue(difference.rehoused().isEmpty(), "the Asmodian post stays empty rather than take an Elyos: " + difference.rehoused());
+	}
+
 	/**
 	 * The way back out, which was missing: the countryside wakes only its own sleepers, so a bot given a village post stayed a villager for ever.
 	 * Verteron settled at 44 residents holding 25 posts while its countryside, wanting 59, held 40 and had no sleeper left at all.
@@ -149,11 +160,11 @@ class BotDirectorTest {
 
 	private static Difference sort(IntPredicate isAwake, List<BotRoster.Resident> residents, Map<Vector3f, Integer> villages,
 		List<Settlement> fieldPlan) {
-		return BotDirector.sort(isAwake, SETTLEMENTS, residents, villages, fieldPlan);
+		return BotDirector.sort(isAwake, SETTLEMENTS, post -> null, residents, villages, fieldPlan);
 	}
 
 	private static BotRoster.Resident resident(int id, Vector3f home) {
-		return new BotRoster.Resident(id, "Bot" + id, 210030000, home);
+		return new BotRoster.Resident(id, "Bot" + id, 210030000, home, null);
 	}
 
 	private static IntPredicate awake(int... ids) {

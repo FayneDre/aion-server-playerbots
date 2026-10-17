@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.commons.database.DatabaseFactory;
 import com.aionemu.gameserver.dao.PlayerDAO;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.dao.ServerVariablesDAO;
 
 /**
@@ -51,8 +52,16 @@ public class BotRoster {
 	 * No level, and not by oversight. There is no level column — a character's level is derived from its experience, and {@code old_level} is written
 	 * only on a real client's logout, so it reads zero for every bot ever created. Nor is one needed: the level band of a region is already settled by
 	 * the home the character was given, so a home is the stronger answer to the same question.
+	 * <p>
+	 * The faction, because a home on contested ground is one side's: moved house without it, ten Elyos residents of Reshanta were given homes in
+	 * Primum, the Asmodian base. Null when it is not known, which means any.
 	 */
-	public record Resident(int playerId, String name, int worldId, Vector3f home) {
+	public record Resident(int playerId, String name, int worldId, Vector3f home, Race race) {
+
+		/** @return true if this resident may live at a place of that faction: a place nobody's, or its own. */
+		public boolean belongsWith(Race place) {
+			return place == null || race == null || place == race;
+		}
 	}
 
 	private BotRoster() {
@@ -160,7 +169,7 @@ public class BotRoster {
 	public static List<Resident> pool() {
 		List<Resident> residents = new ArrayList<>();
 		try (Connection con = DatabaseFactory.getConnection();
-				 PreparedStatement stmt = con.prepareStatement("SELECT p.`id`, p.`name`, p.`world_id`, b.`home_x`, b.`home_y`, b.`home_z` "
+				 PreparedStatement stmt = con.prepareStatement("SELECT p.`id`, p.`name`, p.`world_id`, b.`home_x`, b.`home_y`, b.`home_z`, p.`race` "
 					 + "FROM `playerbot_characters` b JOIN `players` p ON p.`id` = b.`player_id` "
 					 + "WHERE b.`resident` = 1 AND b.`owner_id` = 0 AND p.`account_id` >= ?")) {
 			stmt.setInt(1, PlayerBotCreationService.BOT_ACCOUNT_ID_BASE);
@@ -170,13 +179,21 @@ public class BotRoster {
 					// A resident with no home has nowhere to be woken to, so it is not part of the pool. It can still be spawned by hand.
 					if (x == 0 && y == 0)
 						continue;
-					residents.add(new Resident(rs.getInt(1), rs.getString(2), rs.getInt(3), new Vector3f(x, y, z)));
+					residents.add(new Resident(rs.getInt(1), rs.getString(2), rs.getInt(3), new Vector3f(x, y, z), raceOf(rs.getString(7))));
 				}
 			}
 		} catch (SQLException e) {
 			log.error("Could not read the pool of the world's own inhabitants", e);
 		}
 		return residents;
+	}
+
+	private static Race raceOf(String stored) {
+		try {
+			return stored == null ? null : Race.valueOf(stored);
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
 	}
 
 	/**

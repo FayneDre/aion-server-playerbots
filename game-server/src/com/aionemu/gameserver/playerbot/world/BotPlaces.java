@@ -429,13 +429,23 @@ public class BotPlaces {
 	 *         and spends its days beating creatures five levels beneath it in the middle of a beginners' village. Poeta reads as Akarios 3 and its
 	 *         camps at 5, 6 and 7 — the valley steepens as you walk away from the village, so growing up means moving out.
 	 */
-	public static Vector3f homeForLevel(int worldId, int level, int pick) {
+	public static Vector3f homeForLevel(int worldId, int level, Race race, int pick) {
 		List<Vector3f> suitable = new ArrayList<>();
 		for (Settlement place : homes(worldId)) {
-			if (Math.abs(place.level() - level) <= HOME_LEVEL_TOLERANCE)
+			// its own side's, on contested ground: the Elyos residents of Reshanta were otherwise free to move into Primum
+			if (Math.abs(place.level() - level) <= HOME_LEVEL_TOLERANCE && (place.race() == null || place.race() == race))
 				suitable.add(place.centre());
 		}
 		return suitable.isEmpty() ? null : suitable.get(Math.floorMod(pick, suitable.size()));
+	}
+
+	/** @return The faction of the place at that spot, or null when it is nobody's or no place of the map stands there. */
+	public static Race raceOfPlace(int worldId, Vector3f spot) {
+		for (Settlement place : homes(worldId)) {
+			if (isSamePlace(place.centre(), spot))
+				return place.race();
+		}
+		return null;
 	}
 
 	/**

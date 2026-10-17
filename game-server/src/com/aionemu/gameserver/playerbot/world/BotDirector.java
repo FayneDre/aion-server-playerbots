@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.function.UnaryOperator;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
@@ -167,8 +169,8 @@ public class BotDirector {
 			List<Settlement> fieldPlan = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline));
 			int hunters = fieldPlan.size();
 
-			Difference difference = sort(id -> bots.spawnedBot(id) != null, home -> BotPlaces.settlementAt(worldId, home), residents, villages,
-				fieldPlan);
+			Difference difference = sort(id -> bots.spawnedBot(id) != null, home -> BotPlaces.settlementAt(worldId, home),
+				post -> BotPlaces.raceOfPlace(worldId, post), residents, villages, fieldPlan);
 			int wanted = villages.values().stream().mapToInt(count -> count).sum() + hunters;
 			report.add(String.format("map %d: %d awake of %d, wants %d%s — villages %d/%d awake, %d asleep; field %d/%d awake, %d asleep", worldId,
 				difference.awake(), residents.size(), villages.values().stream().mapToInt(count -> count).sum() + hunters,
@@ -232,7 +234,7 @@ public class BotDirector {
 	 * Per place and not per map total, because a map total is satisfied by a crowd in one valley. Each place is compared with what it should hold, and
 	 * only the places that disagree produce any work.
 	 */
-	static Difference sort(IntPredicate isAwake, UnaryOperator<Vector3f> settlementAt, List<BotRoster.Resident> residents,
+	static Difference sort(IntPredicate isAwake, UnaryOperator<Vector3f> settlementAt, Function<Vector3f, Race> raceOf, List<BotRoster.Resident> residents,
 		Map<Vector3f, Integer> villages, List<Settlement> fieldPlan) {
 		int hunters = fieldPlan.size();
 		Map<Vector3f, List<BotRoster.Resident>> asleepInVillage = new LinkedHashMap<>();
@@ -325,9 +327,13 @@ public class BotDirector {
 		// all, so the next review drafted the same bots over again.
 		List<BotRoster.Resident> rehoused = new ArrayList<>();
 		for (Map.Entry<Vector3f, Integer> village : stillShort.entrySet()) {
-			for (int i = 0; i < village.getValue() && !spare.isEmpty(); i++) {
-				BotRoster.Resident mover = spare.remove(spare.size() - 1);
-				rehoused.add(new BotRoster.Resident(mover.playerId(), mover.name(), mover.worldId(), village.getKey()));
+			Race side = raceOf.apply(village.getKey());
+			for (int i = 0; i < village.getValue(); i++) {
+				BotRoster.Resident mover = lastOfSide(spare, side);
+				if (mover == null)
+					break;
+				spare.remove(mover);
+				rehoused.add(new BotRoster.Resident(mover.playerId(), mover.name(), mover.worldId(), village.getKey(), mover.race()));
 			}
 		}
 		// And the way back out of a village, which was missing and is what made the move into one a door that only opened once. A sleeper given a
@@ -343,16 +349,32 @@ public class BotDirector {
 			for (BotRoster.Resident villager : spareVillagers) {
 				if (fieldShort <= 0 || !spare.contains(villager))
 					continue; // already spent on a short village post, which is the nearer need
-				fieldShort--;
 				// round the plan rather than all to the nearest ground: the plan is already spread over the region, which is the whole reason a
-				// countryside is described as a list of grounds rather than as a number.
-				Vector3f home = fieldPlan.get(ground++ % fieldPlan.size()).centre();
-				rehoused.add(new BotRoster.Resident(villager.playerId(), villager.name(), villager.worldId(), home));
+				// countryside is described as a list of grounds rather than as a number. Its own side's ground, on contested ground.
+				Settlement field = null;
+				for (int tried = 0; tried < fieldPlan.size() && field == null; tried++) {
+					Settlement next = fieldPlan.get(ground++ % fieldPlan.size());
+					if (villager.belongsWith(next.race()))
+						field = next;
+				}
+				if (field == null)
+					continue;
+				fieldShort--;
+				rehoused.add(new BotRoster.Resident(villager.playerId(), villager.name(), villager.worldId(), field.centre(), villager.race()));
 			}
 		}
 		int villagersAwake = awakeInVillage.values().stream().mapToInt(List::size).sum();
 		int villagersAsleep = asleepInVillage.values().stream().mapToInt(List::size).sum();
 		return new Difference(awake, toWake, toSleep, rehoused, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
+	}
+
+	/** @return The last of the spare residents who may live at a place of that faction, or null when none may. */
+	private static BotRoster.Resident lastOfSide(List<BotRoster.Resident> spare, Race side) {
+		for (int i = spare.size() - 1; i >= 0; i--) {
+			if (spare.get(i).belongsWith(side))
+				return spare.get(i);
+		}
+		return null;
 	}
 
 	/**
@@ -397,9 +419,19 @@ public class BotDirector {
 			return; // nowhere to send anybody, so leaving them where they are is the lesser harm
 		int ground = 0, moved = 0;
 		for (BotRoster.Resident resident : residents) {
-			if (BotPlaces.isAPlace(worldId, resident.home()))
+			// a home at the other side's place is no home either, which is how the residents already moved into the wrong base find their way out
+			if (BotPlaces.isAPlace(worldId, resident.home()) && resident.belongsWith(BotPlaces.raceOfPlace(worldId, resident.home())))
 				continue;
-			BotRoster.setHome(resident.name(), countryside.get(ground++ % countryside.size()).centre());
+			// its own side's ground: round the whole countryside, ten Elyos residents of Reshanta were moved into Primum, the Asmodian base
+			Settlement field = null;
+			for (int tried = 0; tried < countryside.size() && field == null; tried++) {
+				Settlement next = countryside.get(ground++ % countryside.size());
+				if (resident.belongsWith(next.race()))
+					field = next;
+			}
+			if (field == null)
+				continue;
+			BotRoster.setHome(resident.name(), field.centre());
 			moved++;
 		}
 		if (moved > 0)
