@@ -113,6 +113,7 @@ public final class BotInbox {
 			case "fly" -> name == null ? "Usage: fly <name> [height]" : BotCommands.fly(name, words.length > 2 ? words[2] : null);
 			case "land" -> name == null ? "Usage: land <name>" : BotCommands.land(name);
 			case "flyto" -> words.length < 5 ? "Usage: flyto <name> <x> <y> <z>" : flyTo(words);
+			case "goto" -> words.length < 5 ? "Usage: goto <name> <x> <y> <z>" : goTo(words);
 			// one map, never the whole world: a file is one typo away from emptying it
 			case "clear" -> name == null ? "Usage: clear <map id or name>" : BotCommands.clear(null, argument);
 			default -> "Not taken from the inbox: " + words[0] + ". See docs/bot-commands.md, section Testing.";
@@ -172,6 +173,22 @@ public final class BotInbox {
 			return words[1] + " teleported to map " + worldId + " at " + x + " " + y + " " + z + ", which is now its camp";
 		} catch (NumberFormatException e) {
 			return "Map and coordinates must be numbers";
+		}
+	}
+
+	/** Sends a bot to a point given by its coordinates and makes it its camp, the inbox's {@code //bot come}: the way to send one across the islands of the Abyss. */
+	private static String goTo(String[] words) {
+		Player bot = PlayerBotService.getInstance().findSpawnedBot(words[1]);
+		if (bot == null)
+			return "No bot spawned with name " + words[1];
+		if (!(bot.getAi() instanceof PlayerBotAI ai))
+			return words[1] + " has no bot AI attached";
+		try {
+			float x = Float.parseFloat(words[2]), y = Float.parseFloat(words[3]), z = Float.parseFloat(words[4]);
+			ai.setAnchor(x, y, z);
+			return ai.walkTo(x, y, z) ? words[1] + " is on its way" : words[1] + " is refused the way there";
+		} catch (NumberFormatException e) {
+			return "Coordinates must be numbers";
 		}
 	}
 

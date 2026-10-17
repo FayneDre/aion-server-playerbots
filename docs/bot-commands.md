@@ -112,7 +112,8 @@ Made for test sessions, and for whoever reads their log afterwards; the plan is 
 it takes only `squad`, `note`, `version`, `debug`, `position`, `list`, `create` (the bot then belongs to the world), `despawn`, `delete`, `stop`,
 `auto`, `fly <name> [height]`, `land <name>`, `clear <map>` (one map only: with no caller there is nobody to stand on a map, and a global clear from a file is one typo away), and three of its own: `attack <name> <monster name>`, at the nearest monster of that name the bot sees whatever its level (a squad leader picks no
 boss by itself), `spawn <name> near <bot>`, next to a spawned bot instead of a player, `teleport <name> <map> <x> <y> <z>`, which
-also makes that place the bot's camp, and `flyto <name> <x> <y> <z>`, `//bot flyto` aimed at coordinates instead of at the commander. A `note` from the inbox describes every bot in a squad, since there is no caller to stand next to. Anyone who can write to the server's folder could already do anything to it, so the file opens nothing new.
+also makes that place the bot's camp, `flyto <name> <x> <y> <z>`, `//bot flyto` aimed at coordinates instead of at the commander, and `goto <name> <x> <y> <z>`, `//bot come` to
+coordinates, which crosses the Abyss by its flight links. A `note` from the inbox describes every bot in a squad, since there is no caller to stand next to. Anyone who can write to the server's folder could already do anything to it, so the file opens nothing new.
 
 ## Two things worth knowing before handing this out
 
