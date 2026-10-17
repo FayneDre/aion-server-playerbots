@@ -82,11 +82,23 @@ public class NavmeshService {
 		List<Vector3f> dangers = dangersFor(bot);
 		Avoidance around = avoid;
 		if (!dangers.isEmpty()) {
+			// bucketed by the radius, so each point the search weighs looks at nine cells and not at every danger of the map: asked of them all, the
+			// search ran out of its budget on journeys it planned in under a second without them
 			float botZ = bot.getZ();
-			around = (x, y) -> {
-				for (Vector3f danger : dangers) {
-					if (Math.abs(danger.z - botZ) < DANGER_LAYER && PositionUtil.getDistance(x, y, danger.x, danger.y) < DANGER_RADIUS)
-						return Math.max(DANGER_COST, avoid.extra(x, y));
+			Map<Long, List<Vector3f>> near = new HashMap<>();
+			for (Vector3f danger : dangers) {
+				if (Math.abs(danger.z - botZ) < DANGER_LAYER)
+					near.computeIfAbsent(dangerCell(danger.x, danger.y), cell -> new ArrayList<>()).add(danger);
+			}
+			around = near.isEmpty() ? avoid : (x, y) -> {
+				int cellX = (int) (x / DANGER_RADIUS), cellY = (int) (y / DANGER_RADIUS);
+				for (int dy = -1; dy <= 1; dy++) {
+					for (int dx = -1; dx <= 1; dx++) {
+						for (Vector3f danger : near.getOrDefault((long) (cellY + dy) << 32 | (cellX + dx) & 0xffffffffL, List.of())) {
+							if (PositionUtil.getDistance(x, y, danger.x, danger.y) < DANGER_RADIUS)
+								return Math.max(DANGER_COST, avoid.extra(x, y));
+						}
+					}
 				}
 				return avoid.extra(x, y);
 			};
@@ -125,6 +137,10 @@ public class NavmeshService {
 				found.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
 		});
 		return found;
+	}
+
+	private static long dangerCell(float x, float y) {
+		return (long) (int) (y / DANGER_RADIUS) << 32 | (int) (x / DANGER_RADIUS) & 0xffffffffL;
 	}
 
 	/**
