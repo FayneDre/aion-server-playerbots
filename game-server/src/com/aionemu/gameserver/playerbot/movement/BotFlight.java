@@ -346,6 +346,55 @@ public class BotFlight {
 		return bot.getName() + ": " + why;
 	}
 
+	/**
+	 * Works out a crossing between two islands as a climb, a level run and a descent, each stretch asked of the game's geometry from its own start, at the lowest
+	 * of the cruising heights whose air is clear. The planner asks it of a flight link before using one, and the flight flies the legs it returns, so the route that
+	 * was planned is the one that is flown.
+	 *
+	 * @return The legs from the take-off, ending on the landing, or null when every height meets something or would go under the map's floor.
+	 */
+	public static List<Vector3f> crossing(Player bot, Vector3f from, Vector3f to) {
+		float base = Math.max(from.getZ(), to.getZ());
+		Vector3f start = new Vector3f(from.getX(), from.getY(), from.getZ() + LANDING_CLEARANCE);
+		Vector3f approach = new Vector3f(to.getX(), to.getY(), to.getZ() + LANDING_CLEARANCE);
+		for (float above : CRUISE_ABOVE) {
+			float cruise = base + above;
+			Vector3f up = new Vector3f(from.getX(), from.getY(), cruise), across = new Vector3f(to.getX(), to.getY(), cruise);
+			if (!insideAFlyZone(bot, up) || !insideAFlyZone(bot, across) || !insideAFlyZone(bot, approach))
+				continue;
+			if (clearBetween(bot, start, up) && clearBetween(bot, up, across) && clearBetween(bot, across, approach))
+				return List.of(up, across, approach, to);
+		}
+		return null;
+	}
+
+	/**
+	 * @return true if the bot can fly this crossing once it has waited: it has not the points for it yet, or took off too recently. A crossing it could never fly,
+	 *         every height blocked, is not a wait.
+	 */
+	public static boolean mustWaitToCross(Player bot, Vector3f landing) {
+		List<Vector3f> legs = crossing(bot, new Vector3f(bot.getX(), bot.getY(), bot.getZ()), landing);
+		if (legs == null)
+			return false;
+		return bot.getFlyReuseTime() > System.currentTimeMillis() || bot.getLifeStats().getCurrentFp() < fpFor(bot, legs, false);
+	}
+
+	/**
+	 * Flies a crossing a route planned, from the take-off where the bot stands to the landing on the other island. The route goes on from there: the bot's next
+	 * call for a route plans it again from where it landed.
+	 *
+	 * @return Null when the bot has taken off, or why it stayed on the ground: no clear height left, or not the points for it yet, which is a wait and not a refusal.
+	 */
+	public static String flyCrossing(Player bot, Vector3f landing) {
+		Vector3f from = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
+		List<Vector3f> legs = crossing(bot, from, landing);
+		if (legs == null)
+			return bot.getName() + " finds every height to " + Math.round(landing.getX()) + " " + Math.round(landing.getY()) + " blocked";
+		String answer = begin(bot, legs, -1, null, "across to " + Math.round(landing.getX()) + " " + Math.round(landing.getY()) + " " + Math.round(landing.getZ())
+			+ ", " + Math.round(PositionUtil.getDistance(from.getX(), from.getY(), landing.getX(), landing.getY())) + " m");
+		return isInTheAir(bot) ? null : answer;
+	}
+
 	/** @return Whether nothing stands between two points of the air, asked from the first of them. See {@link #airIsClear}. */
 	private static boolean clearBetween(Player bot, Vector3f from, Vector3f to) {
 		Vector3f met = GeoService.getInstance().getClosestCollision(bot, from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ(), false,

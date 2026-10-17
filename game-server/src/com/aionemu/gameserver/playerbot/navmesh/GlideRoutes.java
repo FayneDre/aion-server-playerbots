@@ -108,7 +108,7 @@ final class GlideRoutes {
 	private static BotPathFinder.Route follow(Navmesh mesh, List<Integer> chain, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid,
 		AirTest air, long deadline) {
 		List<Vector3f> waypoints = new ArrayList<>();
-		Set<Integer> glides = new HashSet<>();
+		Set<Integer> glides = new HashSet<>(), flights = new HashSet<>();
 		float x = startX, y = startY, z = startZ;
 		for (int hop = 0; hop + 1 < chain.size(); hop++) {
 			int from = chain.get(hop), to = chain.get(hop + 1);
@@ -136,7 +136,7 @@ final class GlideRoutes {
 				}
 				append(waypoints, walk.waypoints());
 				waypoints.add(new Vector3f(link.toX(), link.toY(), link.toZ()));
-				glides.add(waypoints.size() - 1);
+				(link.flight() ? flights : glides).add(waypoints.size() - 1);
 				x = link.toX();
 				y = link.toY();
 				z = link.toZ();
@@ -156,7 +156,7 @@ final class GlideRoutes {
 			return new BotPathFinder.Route(List.of(), last.gaveUp());
 		}
 		append(waypoints, last.waypoints());
-		return new BotPathFinder.Route(waypoints, false, glides);
+		return new BotPathFinder.Route(waypoints, false, glides, flights);
 	}
 
 	/** @return How far the nearest edge a glide leaves this stretch from is, a metre of height counting as {@link #HEIGHT_WEIGHT} across; infinite when none leaves it. */

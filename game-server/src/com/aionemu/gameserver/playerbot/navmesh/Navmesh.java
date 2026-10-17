@@ -199,6 +199,9 @@ public class Navmesh {
 			header.capacity() + coarseBytes + directory.capacity());
 		for (GlideLink link : GlideLinks.read(mapId))
 			mesh.glides.computeIfAbsent(link.fromRegion(), region -> new ArrayList<>()).add(link);
+		// the crossings by air between islands, chained by the planner like the glides and flown rather than glided by the body
+		for (GlideLink link : FlightLinks.read(mapId))
+			mesh.glides.computeIfAbsent(link.fromRegion(), region -> new ArrayList<>()).add(link);
 		return mesh;
 	}
 

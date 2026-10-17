@@ -20,6 +20,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.geo.GeoService;
 import com.aionemu.gameserver.playerbot.BotScheduler;
+import com.aionemu.gameserver.playerbot.movement.BotFlight;
 
 /**
  * Serves generated maps to the bots that need them.
@@ -62,7 +63,8 @@ public class NavmeshService {
 		// only a daeva has wings: anyone else is given no glide, and the planner answers as though the links were not there
 		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
 		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid,
-			link -> canGlide && isAirClear(bot, link));
+			link -> canGlide && (link.flight() ? BotFlight.crossing(bot, new Vector3f(link.fromX(), link.fromY(), link.fromZ()),
+				new Vector3f(link.toX(), link.toY(), link.toZ())) != null : isAirClear(bot, link)));
 		if (route.isEmpty() && route.gaveUp())
 			log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		return route;

@@ -93,8 +93,12 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile List<Vector3f> pendingRoute;
 	/** The indexes of {@link #route}, and of {@link #pendingRoute}, whose waypoint is reached by gliding down from the one before. */
 	private volatile Set<Integer> routeGlides = Set.of(), pendingGlides = Set.of();
+	/** The indexes of {@link #route}, and of {@link #pendingRoute}, whose waypoint is reached by flying across from the one before: an island's edge to another's. */
+	private volatile Set<Integer> routeFlights = Set.of(), pendingFlights = Set.of();
 	/** Whether the point being gone to is a glide's landing: the leg is flown, wings out, and not walked off the edge. */
 	private volatile boolean aimIsGlide;
+	/** Whether the waypoint aimed at is the landing of a crossing by air, which {@link BotFlight} flies. */
+	private volatile boolean aimIsFlight;
 	/**
 	 * True while this controller glides the body down to a landing. Walked as any other leg, a glide went off the edge and down through the air at a run, no wings:
 	 * the bots of the Ardus Shrine camp, in Verteron, jumped into the void that way to go and farm below it.
@@ -261,6 +265,7 @@ public class BotMoveController extends PlayerMoveController {
 			float fromX = owner.getX(), fromY = owner.getY();
 			route = List.of();
 			routeGlides = Set.of();
+			routeFlights = Set.of();
 			routeIndex = 0;
 			plannedForX = x;
 			plannedForY = y;
@@ -527,6 +532,7 @@ public class BotMoveController extends PlayerMoveController {
 			return;
 		}
 		pendingGlides = answer.glides();
+		pendingFlights = answer.flights();
 		pendingRoute = planned;
 		log.info("Bot {} has a route of {} waypoints to {} from {}{}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY),
 			String.format("%.1f %.1f", fromX, fromY), why);
@@ -534,6 +540,11 @@ public class BotMoveController extends PlayerMoveController {
 			// logged so that a glide in game can be gone and watched
 			Vector3f landing = planned.get(answer.glides().iterator().next());
 			log.info("Bot {} plans {} glide(s), the first landing at {}", owner.getName(), answer.glides().size(),
+				String.format("%.1f %.1f %.1f", landing.getX(), landing.getY(), landing.getZ()));
+		}
+		if (!answer.flights().isEmpty()) {
+			Vector3f landing = planned.get(answer.flights().iterator().next());
+			log.info("Bot {} plans {} crossing(s) by air, the first landing at {}", owner.getName(), answer.flights().size(),
 				String.format("%.1f %.1f %.1f", landing.getX(), landing.getY(), landing.getZ()));
 		}
 		// A bot that waited for this plan is standing still, so nothing will come back to pick it up: no leg is running, so continueToGoal is never
@@ -556,6 +567,7 @@ public class BotMoveController extends PlayerMoveController {
 		pendingRoute = null;
 		route = planned;
 		routeGlides = pendingGlides;
+		routeFlights = pendingFlights;
 		return true;
 	}
 
@@ -572,22 +584,23 @@ public class BotMoveController extends PlayerMoveController {
 		// read once: the route is replaced from other threads (a plan arriving, a cast halting the walk), and a list read twice can be a short one the
 		// second time -- an index out of bounds that cost a bot its decision tick in the log of 16 October
 		List<Vector3f> current = route;
-		Set<Integer> glides = routeGlides;
+		Set<Integer> glides = routeGlides, flights = routeFlights;
 		// the index too: two threads stepping it at once walked it past the end of a two waypoint route
 		int index = routeIndex;
 		while (index < current.size()) {
-			boolean glide = glides.contains(index);
+			boolean glide = glides.contains(index), flight = flights.contains(index);
 			Vector3f waypoint = current.get(index++);
 			routeIndex = index;
 			// the first waypoint is the bot's own cell, and a route may pass close to where it already stands; a landing never is, however close
 			// across, since it is metres below
-			if (!glide && PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
+			if (!glide && !flight && PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
 				continue;
 			goalX = waypoint.getX();
 			goalY = waypoint.getY();
 			goalZ = waypoint.getZ();
 			onPlannedWaypoint = true;
 			aimIsGlide = glide;
+			aimIsFlight = flight;
 			// Headway is measured to the waypoint aimed at, so a new one is a new baseline. Kept from the last, a route planned again partway -- a shop
 			// keeper's spot moving with the bot, a chased target -- measured a waypoint 24 m off against the 2 m the bot had got to the old one, and
 			// gave up five seconds later: the no headway the log kept naming at the Gelkmaros shops, on ground the mesh and the geometry both call open.
@@ -599,6 +612,7 @@ public class BotMoveController extends PlayerMoveController {
 			return true;
 		}
 		aimIsGlide = false;
+		aimIsFlight = false;
 		boolean changed = goalX != finalX || goalY != finalY;
 		goalX = finalX;
 		goalY = finalY;
@@ -609,6 +623,8 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	private boolean startNextLeg() {
+		if (aimIsFlight)
+			return flyAcross();
 		if (aimIsGlide && !gliding)
 			return glideDown();
 		if (gliding)
@@ -681,6 +697,31 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	/**
+	 * Flies the crossing the route reached the edge of: the waypoint aimed at is the landing on the other island, and the bot stands at the take-off.
+	 * <p>
+	 * The flight owns the body until it lands, and the journey is handed back as over: the next call for a route plans it again from the island the bot landed on,
+	 * which is cheaper and surer than carrying the rest of a plan through a flight. Short of points, or inside the ten seconds between two take-offs, the bot waits
+	 * where it stands with the route kept, and asks again. A crossing whose every height meets something is refused, and the planner, which asks the same
+	 * question of a link before using it, will not choose it again from here.
+	 *
+	 * @return true if the bot took off or is waiting to.
+	 */
+	private boolean flyAcross() {
+		Vector3f landing = new Vector3f(goalX, goalY, goalZ);
+		if (BotFlight.mustWaitToCross(owner, landing))
+			return waitForPlan();
+		String refusal = BotFlight.flyCrossing(owner, landing);
+		if (refusal == null) {
+			hasGoal = false; // the flight has the body; the journey goes on from the landing with a plan of its own
+			return true;
+		}
+		log.info("Bot {} does not fly across: {}", owner.getName(), refusal);
+		blocked = true;
+		hasGoal = false;
+		return false;
+	}
+
+	/**
 	 * Asks the mesh for a route round whatever stops a leg it did not plan: the last stretch to a creature that moved, or a stretch walked while a long
 	 * plan is still being searched for. A sidestep chosen without the mesh is what walked bots into rails and through them; a route goes round.
 	 * <p>
@@ -702,6 +743,7 @@ public class BotMoveController extends PlayerMoveController {
 		replannedForY = y;
 		route = List.of();
 		routeGlides = Set.of();
+		routeFlights = Set.of();
 		routeIndex = 0;
 		plannedForX = x;
 		plannedForY = y;
@@ -870,6 +912,7 @@ public class BotMoveController extends PlayerMoveController {
 	private void land() {
 		gliding = false;
 		aimIsGlide = false;
+		aimIsFlight = false;
 		flying = false;
 		glideTurns.clear();
 		// the time spent in the air is not time spent making no headway on the ground
@@ -888,6 +931,7 @@ public class BotMoveController extends PlayerMoveController {
 			return;
 		gliding = false;
 		aimIsGlide = false;
+		aimIsFlight = false;
 		glideTurns.clear();
 		endFlight();
 	}
@@ -943,8 +987,10 @@ public class BotMoveController extends PlayerMoveController {
 		hasGoal = false;
 		route = List.of();
 		routeGlides = Set.of();
+		routeFlights = Set.of();
 		pendingRoute = null;
 		aimIsGlide = false;
+		aimIsFlight = false;
 		routeIndex = 0;
 		MoveTaskManager.getInstance().removeCreature(owner);
 		if (started.compareAndSet(true, false)) {
@@ -968,8 +1014,10 @@ public class BotMoveController extends PlayerMoveController {
 		hasGoal = false;
 		route = List.of();
 		routeGlides = Set.of();
+		routeFlights = Set.of();
 		pendingRoute = null;
 		aimIsGlide = false;
+		aimIsFlight = false;
 		routeIndex = 0;
 		MoveTaskManager.getInstance().removeCreature(owner);
 		if (!started.compareAndSet(true, false))
