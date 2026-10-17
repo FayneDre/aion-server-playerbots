@@ -1179,7 +1179,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 		Creature target = BotTargetSelector.findTargetWithin(getOwner(), BotTargetSelector.HOME_RADIUS, this::isIgnored);
 		if (target == null || PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > BotTargetSelector.HOME_RADIUS) {
-			returnToAnchor(); // camp is empty, or the only mobs left belong to someone else's patch
+			// camp is empty, or the only mobs left belong to someone else's patch
+			if (!returnToAnchor())
+				day.anchorRefused();
 			return;
 		}
 		if (posture.standUp())

@@ -362,6 +362,26 @@ class BotDay {
 	}
 
 	/**
+	 * Gives up a hunting ground the bot was refused the walk to, and brings the anchor back home.
+	 * <p>
+	 * Loitering and wandering give up on the first refusal; farming never did, because it only moves the anchor and the hunt walks there. The hunt
+	 * was refused tick after tick until the anti-stuck rescue teleported a bot that was not stuck: 1046 of 1352 rescues over two hours with 800 bots
+	 * came within half a minute of a refused route to a farming ground. The anchor goes home with it, or the next draw that finds no ground would
+	 * leave the bot hunting from the one it was just refused.
+	 */
+	void anchorRefused() {
+		if (occupation != Occupation.FARMING || occupationDestination == null)
+			return;
+		log.info("Bot {} cannot get to its hunting ground at {} {}, and does something else", ai.getOwner().getName(),
+			Math.round(occupationDestination.getX()), Math.round(occupationDestination.getY()));
+		unreachable.add(occupationDestination);
+		forget();
+		Vector3f where = home();
+		if (where != null)
+			ai.setAnchor(where.getX(), where.getY(), where.getZ());
+	}
+
+	/**
 	 * Drops what the bot was doing when the place it was doing it in turns out to be unreachable, so something else is drawn on the next tick.
 	 * <p>
 	 * Without this a bot keeps asking for the same impossible journey for as long as the occupation lasts — several minutes of planning a route that
