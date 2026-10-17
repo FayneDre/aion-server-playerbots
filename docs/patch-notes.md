@@ -6,6 +6,36 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-17-2 — 17/10/2026
+
+Révision `1ce4571`, celle que `//bot version` affiche. Corrige le retour du 16/10 sur les compagnons et les anciens retours du 06/10, du 09/10, du
+14/10 et du 15/10 encore ouverts. Vérifié avec une escouade de six bots de niveau 40 en Heiron, sans joueur : 71 combats en dix minutes, aucune peur ni
+grande AoE lancée.
+
+**Compagnons (bots qui appartiennent à un joueur)**
+- **Ne touchent plus à leur sac.** Un compagnon vendait au marchand, sac plein, tout l'équipement que sa classe ne peut pas porter, orange et jaune compris : un aède de 65 a ainsi perdu 15 à 20 pièces de tissu et de plaque gardées pour des rerolls. Il ne vend plus, n'achète plus de potions, ne s'habille plus avec ce qu'il y a dans son sac, n'identifie plus et ne lie plus rien (« les compagnons continuent de changer d'équipement »). `//bot sell` le refuse. Il continue de ramasser son butin et de boire ses potions en combat.
+- Les objets déjà vendus sont perdus : la liste de rachat du marchand disparaît à la déconnexion, il faut les recréer avec `//add`.
+
+**En groupe et en donjon**
+- **Plus aucune peur.** Un monstre effrayé s'enfuit et attire tout ce qu'il croise ; le Fear Shriek du spiritualiste n'est plus lancé en groupe ni en instance. Seul en monde ouvert, il reste autorisé.
+- **Plus d'AoE de 20 m ou plus**, qu'elle soit centrée sur le bot ou sur sa cible (Divine Grasp du templier, sorts de zone du spiritualiste…). Une AoE plus petite autour de la cible n'est lancée que si elle ne touche aucun monstre que le groupe ne combat pas déjà. Le cri du templier (8 m) reste.
+
+**Classes**
+- **Pistolero :** deux pistolets au lieu du canon. Le canon venait d'une erreur : le pistolero apprend bien le maniement à deux armes au niveau 10. Les pistoleros déjà créés gardent leur canon jusqu'à un `//bot regear`.
+- **Aède, gladiateur, templier, assassin :** après un premier sort à distance pour attirer la cible, ils vont au contact au lieu de rester à distance. Un sort à distance ne sert plus que si la cible fuit ou si la poursuite échoue.
+- **Clerc :** ne tente plus de dissiper un débuff que le moteur ne retirera pas (rune d'assassin, mauvaise catégorie, effet très long). Un débuff encore là après un nettoyage réussi est laissé jusqu'à sa fin, au lieu d'être visé en boucle.
+- **Rôdeur :** rien à corriger. Focused Shots renforce les 5 prochaines attaques, d'où sa relance fréquente en combat ; Viser et Esquive ne tournent plus en boucle depuis le 10/10.
+
+**Niveaux des régions**
+- **Théobomos et Brusthonin :** la bande de niveau 20 à 30 au centre de la carte recevait des bots de 45 à 49. Un lieu garde maintenant son propre niveau quand une part réelle des monstres de la région est à ce niveau. Les deux cartes ont été repeuplées : 23 et 21 bots de 20 à 30 dans ces zones.
+- Pas encore de bots de niveau 50 pour les instances de Théobomos et la Poeta sombre.
+
+**À vérifier en jeu**
+- Le clerc face à un débuff qu'il ne peut pas retirer (rune d'assassin) : l'escouade de test n'a rencontré aucun débuff dissipable.
+- La peur et les grandes AoE en donjon, avec un joueur dans le groupe.
+
+---
+
 ## patch-2026-10-17 — 17/10/2026
 
 Révision `2f9cec8`, celle que `//bot version` affiche. Les bots qui rentrent dans le décor, glissent le long des murs, traversent une rambarde « en deux
