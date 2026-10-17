@@ -601,7 +601,9 @@ public class BotPlaces {
 		for (Settlement ground : huntingGrounds(worldId)) {
 			if (!isFitFor(ground.level(), level))
 				continue;
-			if (PositionUtil.getDistance(from.x, from.y, ground.centre().x, ground.centre().y) > WANDERING_RANGE)
+			// measured in three dimensions: on Reshanta a hunting ground of the upper layer stands 1300 m over Teminon and 50 m from it across, and
+			// Teminon's residents were sent to it and refused a route every time, 50 of 96 refusals in half an hour
+			if (PositionUtil.getDistance(from.x, from.y, from.z, ground.centre().x, ground.centre().y, ground.centre().z) > WANDERING_RANGE)
 				continue;
 			within.add(ground.centre());
 		}
@@ -627,7 +629,7 @@ public class BotPlaces {
 				continue;
 			if (!isFitFor(place.level(), level))
 				continue;
-			if (PositionUtil.getDistance(from.x, from.y, place.centre().x, place.centre().y) > WANDERING_RANGE)
+			if (PositionUtil.getDistance(from.x, from.y, from.z, place.centre().x, place.centre().y, place.centre().z) > WANDERING_RANGE) // see groundToWork
 				continue;
 			within.add(place.centre());
 		}

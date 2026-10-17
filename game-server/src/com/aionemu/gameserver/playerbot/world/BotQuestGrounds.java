@@ -87,7 +87,7 @@ public class BotQuestGrounds {
 		}
 		List<Vector3f> within = new ArrayList<>();
 		for (Vector3f ground : grounds) {
-			if (PositionUtil.getDistance(from.x, from.y, ground.x, ground.y) <= range)
+			if (PositionUtil.getDistance(from.x, from.y, from.z, ground.x, ground.y, ground.z) <= range) // in three dimensions, see BotPlaces.groundToWork
 				within.add(ground);
 		}
 		return within.isEmpty() ? null : within.get(Math.floorMod(pick, within.size()));
