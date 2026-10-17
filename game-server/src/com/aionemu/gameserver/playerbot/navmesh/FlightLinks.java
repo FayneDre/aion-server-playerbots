@@ -26,9 +26,16 @@ final class FlightLinks {
 	static final int MIN_ISLAND_SURFACES = 2000;
 	/**
 	 * The longest crossing, across and up or down. One flight holds 60 points at one a second, and a crossing is flown as a climb, a level run and a descent at
-	 * about 12 m/s: 180 m across and 120 up or down leave a margin for the take-off and the landing.
+	 * about 12 m/s: 180 m across and 200 up or down cost about 41 of them, the take-off and the margin included. 120 up or down was too little: from the
+	 * Elyos island of Reshanta the island beside it is 184 m lower, and the only way left went down a cliff under an overhang.
 	 */
-	static final float MAX_ACROSS = 180, MAX_RISE = 120;
+	static final float MAX_ACROSS = 180, MAX_RISE = 200;
+	/**
+	 * How much open sky a take-off and a landing need above the ground: a flight climbs out of one and comes down into the other, straight up and down. A
+	 * ledge under an overhang is ground the floors call an edge and the air calls a ceiling; the heightfield holds the tops of what is above, so it is seen here
+	 * rather than refused at every height by the server.
+	 */
+	static final float OPEN_SKY = 20;
 	/** How many crossings a pair of islands keeps in each direction, and how far apart their take-offs must be. */
 	private static final int PER_PAIR = 3;
 	private static final float SPACING = 40;
@@ -117,7 +124,7 @@ final class FlightLinks {
 					if (!field.isWalkable(surface) || region == 0 || sizes[region] < MIN_ISLAND_SURFACES)
 						continue;
 					float z = field.surfaceAt(surface);
-					if (!isEdge(field, x, y, z, step + BotPathFinder.STEP_TOLERANCE))
+					if (!isEdge(field, x, y, z, step + BotPathFinder.STEP_TOLERANCE) || !hasOpenSky(field, x, y, z))
 						continue;
 					long key = (long) region << 40 | (long) (y / SAMPLE_CELLS) << 20 | x / SAMPLE_CELLS;
 					samples.putIfAbsent(key, new float[] { (x + 0.5f) * step, (y + 0.5f) * step, z, region });
@@ -187,6 +194,16 @@ final class FlightLinks {
 
 	private static long bucketOf(float x, float y) {
 		return (long) (int) (y / MAX_ACROSS) << 32 | (int) (x / MAX_ACROSS) & 0xffffffffL;
+	}
+
+	/** @return true if nothing stands above the ground in this column within {@link #OPEN_SKY}: no floor, no roof, no rock. */
+	static boolean hasOpenSky(Heightfield field, int x, int y, float z) {
+		for (int surface = field.columnStart(x, y); surface < field.columnEnd(x, y); surface++) {
+			float other = field.surfaceAt(surface);
+			if (other > z + BotPathFinder.STEP_TOLERANCE && other <= z + OPEN_SKY)
+				return false;
+		}
+		return true;
 	}
 
 	/** @return true if one of the four neighbouring columns holds no walkable ground within a step of the height: the open side of an island. */

@@ -18,6 +18,11 @@ class FlightLinksTest {
 
 	/** West island on cells 0-49, east island on cells 90-127, a rock of 4 by 4 cells in the middle of the gap. */
 	private Heightfield field() {
+		return field(false);
+	}
+
+	/** @param overhang whether rock juts out five metres above the east island's first six columns, over its edge */
+	private Heightfield field(boolean overhang) {
 		int[] offsets = new int[SIZE * SIZE + 1];
 		List<Float> heights = new ArrayList<>();
 		BitSet walkable = new BitSet();
@@ -29,6 +34,8 @@ class FlightLinksTest {
 					walkable.set(heights.size());
 					heights.add(HEIGHT);
 				}
+				if (overhang && x >= 90 && x < 96)
+					heights.add(HEIGHT + 5); // the top of a rock nobody stands on
 			}
 		}
 		offsets[SIZE * SIZE] = heights.size();
@@ -65,6 +72,19 @@ class FlightLinksTest {
 		for (GlideLink one : eastward)
 			for (GlideLink other : eastward)
 				assertTrue(one == other || Math.hypot(one.fromX() - other.fromX(), one.fromY() - other.fromY()) >= 40, "take-offs apart: " + eastward);
+	}
+
+	@Test
+	void nothingLandsUnderAnOverhang() {
+		Heightfield field = field(true);
+
+		List<GlideLink> links = FlightLinks.find(field, field.regions(BotPathFinder.STEP_TOLERANCE));
+
+		assertTrue(links.stream().anyMatch(link -> link.toX() > 45), "the east island is still reached, past the rock: " + links);
+		for (GlideLink link : links) {
+			assertFalse(link.toX() > 44 && link.toX() < 48, "nothing comes down under the rock: " + link);
+			assertFalse(link.fromX() > 44 && link.fromX() < 48, "nothing climbs out from under it: " + link);
+		}
 	}
 
 	@Test
