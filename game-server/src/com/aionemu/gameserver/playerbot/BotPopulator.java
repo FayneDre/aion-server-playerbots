@@ -44,6 +44,8 @@ public final class BotPopulator {
 	private static final int SETTLING_ATTEMPTS = 8;
 	/** The setting that means "work it out": every open world map of both races, each taking as many inhabitants as its own civilians call for. */
 	private static final String AUTOMATIC = "auto";
+	/** The highest level a resident is made at, the game's cap. */
+	private static final int MAX_RESIDENT_LEVEL = 65;
 
 	private BotPopulator() {
 	}
@@ -194,6 +196,8 @@ public final class BotPopulator {
 			int floor = BotPlaces.bottomLevelOf(worldId), ceiling = BotPlaces.topLevelOf(worldId);
 			boolean ownLevel = home.level() >= floor && home.level() <= ceiling || home.level() < floor && BotPlaces.isLivedAt(worldId, home.level());
 			int level = ownLevel ? Math.clamp(home.level() + Rnd.get(-1, 1), Math.min(floor, home.level()), ceiling) : Rnd.get(floor, ceiling);
+			// and above it in the Abyss, whose creatures hit harder than their level says: see BotPlaces.levelBonusOf
+			level = Math.min(level + BotPlaces.levelBonusOf(worldId), MAX_RESIDENT_LEVEL);
 			PlayerClass playerClass = classFor(level);
 			try {
 				Race race = chosen != null ? chosen : factionFor(worldId, home);

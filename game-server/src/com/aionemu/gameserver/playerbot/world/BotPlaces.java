@@ -16,6 +16,7 @@ import java.util.function.Predicate;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
+import com.aionemu.gameserver.model.TribeClass;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.templates.zone.ZoneClassName;
 import com.aionemu.gameserver.model.templates.zone.ZoneInfo;
@@ -132,6 +133,10 @@ public class BotPlaces {
 	private static final int LIVED_AT_PERCENT = 10;
 	/** How many places a set of islands joined by air must hold to be lived on, on a map flown everywhere: a few camps are somewhere to spend a life. */
 	private static final int MAINLAND_PLACES = 5;
+	/** How many levels above its place a resident of the Abyss is made: see {@link #levelBonusOf}. */
+	private static final int ABYSS_LEVEL_BONUS = 3;
+	/** How far from any elite a place of the Abyss must be to be lived at. */
+	private static final float ELITE_CLEARANCE = 50;
 	private static final int LIVED_AT_SPREAD = 5; // 3 missed the Theobomos village rated 20 among monsters of 20 to 24
 	/** No character leaves its starting valley before this, so no region beyond them holds anybody under it. */
 	private static final int ASCENSION_LEVEL = 10;
@@ -437,6 +442,7 @@ public class BotPlaces {
 	 *         camps at 5, 6 and 7 — the valley steepens as you walk away from the village, so growing up means moving out.
 	 */
 	public static Vector3f homeForLevel(int worldId, int level, Race race, Vector3f near, int pick) {
+		level -= levelBonusOf(worldId); // a resident of the Abyss is made above its place, see levelBonusOf
 		List<Vector3f> suitable = new ArrayList<>(), sameLayer = new ArrayList<>();
 		for (Settlement place : homes(worldId)) {
 			// its own side's, on contested ground: the Elyos residents of Reshanta were otherwise free to move into Primum
@@ -708,6 +714,10 @@ public class BotPlaces {
 			// a fort changes side with every siege, and its guards with it: nobody lives in one, see isSiegeGround
 			settlements = outOfTheSieges(id, settlements);
 			grounds = outOfTheSieges(id, grounds);
+			// nor beside an elite: on Reshanta's upper layer the residents who lived next to one died five times in half an hour
+			List<Elite> elites = elitesOf(id);
+			settlements = awayFromElites(id, settlements, elites);
+			grounds = awayFromElites(id, grounds, elites);
 		}
 		long began = System.currentTimeMillis();
 		Places onTheGrid = new Places(onTheMainland(id, settlements, mainland), onTheMainland(id, grounds, mainland));
@@ -904,6 +914,62 @@ public class BotPlaces {
 			log.info("Map {}: {} island(s) joined by air hold {} place(s)", worldId, joined.size(), places);
 		}
 		return mainland;
+	}
+
+	/**
+	 * @return How many levels above the place it lives at a resident of this map is made, and is taken to be when its home is judged: the Abyss's
+	 *         creatures hit harder than the open world's of the same level, and its upper layer's residents, made at their places' level, died about
+	 *         once per half hour each.
+	 */
+	public static int levelBonusOf(int worldId) {
+		return isFlownEverywhere(worldId) ? ABYSS_LEVEL_BONUS : 0;
+	}
+
+	/** One creature of an elite rank or above, where it stands and which tribe it fights for. */
+	private record Elite(Vector3f spot, TribeClass tribe) {
+
+		/** @return Whether it is a danger to residents of a place of that faction: not one of its civilians, guards or allies; either faction for nobody's. */
+		boolean threatens(Race race) {
+			if (race == null)
+				return threatens(Race.ELYOS) || threatens(Race.ASMODIANS);
+			TribeClass people = race == Race.ELYOS ? TribeClass.PC : TribeClass.PC_DARK;
+			return !DataManager.TRIBE_RELATIONS_DATA.isFriendlyRelation(tribe, people) && !DataManager.TRIBE_RELATIONS_DATA.isSupportRelation(tribe, people)
+				&& !DataManager.TRIBE_RELATIONS_DATA.isNoneRelation(tribe, people);
+		}
+	}
+
+	/**
+	 * @return The creatures of an elite rank or above a map holds, civilians left out. Rank alone is not danger: Teminon's and Primum's guards are
+	 *         elites and heroes, and a rule by rank would have emptied both bases.
+	 */
+	private static List<Elite> elitesOf(int worldId) {
+		List<Elite> elites = new ArrayList<>();
+		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
+			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
+			if (template == null || template.getLevel() <= 1 || template.getRating() == null || isTownsfolk(template))
+				continue;
+			switch (template.getRating()) {
+				case ELITE, HERO, LEGENDARY -> group.getSpawnTemplates()
+					.forEach(spawn -> elites.add(new Elite(new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()), template.getTribe())));
+				default -> {
+				}
+			}
+		}
+		return elites;
+	}
+
+	private static List<Settlement> awayFromElites(int worldId, List<Settlement> places, List<Elite> elites) {
+		List<Settlement> kept = new ArrayList<>();
+		for (Settlement place : places) {
+			Vector3f near = elites.stream().filter(elite -> elite.spot().distance(place.centre()) < ELITE_CLEARANCE && elite.threatens(place.race()))
+				.map(Elite::spot).findFirst().orElse(null);
+			if (near == null)
+				kept.add(place);
+			else
+				log.info("Map {}: {} {} {} has an elite {} m away, so its {} townsfolk get no residents", worldId, place.centre().getX(), place.centre().getY(),
+					place.centre().getZ(), Math.round(near.distance(place.centre())), place.townsfolk());
+		}
+		return kept;
 	}
 
 	private static List<Settlement> outOfTheSieges(int worldId, List<Settlement> places) {

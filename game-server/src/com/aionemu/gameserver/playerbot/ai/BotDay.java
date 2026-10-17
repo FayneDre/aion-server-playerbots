@@ -202,7 +202,7 @@ class BotDay {
 		// and departures in the same breath, half a minute apart, with the village count never moving off 11 of 25.
 		if (BotPlaces.isSettlement(bot.getWorldId(), where))
 			return false;
-		if (Math.abs(BotPlaces.levelAt(bot.getWorldId(), where) - bot.getLevel()) <= HOME_LEVEL_DRIFT)
+		if (Math.abs(BotPlaces.levelAt(bot.getWorldId(), where) + BotPlaces.levelBonusOf(bot.getWorldId()) - bot.getLevel()) <= HOME_LEVEL_DRIFT)
 			return false;
 		Vector3f better = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getRace(), where, bot.getObjectId());
 		if (better == null || BotPlaces.isSamePlace(better, where))
