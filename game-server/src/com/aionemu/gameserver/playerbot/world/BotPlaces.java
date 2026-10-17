@@ -6,6 +6,8 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -13,6 +15,7 @@ import java.util.function.Predicate;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
+import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.templates.zone.ZoneClassName;
 import com.aionemu.gameserver.model.templates.zone.ZoneInfo;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
@@ -148,6 +151,8 @@ public class BotPlaces {
 	private static final Map<Integer, List<Integer>> levelsByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
+	/** Per map, the faction whose settlements alone stand on a stretch of ground, by stretch; a stretch with both or neither is nobody's. */
+	private static final Map<Integer, Map<Integer, Race>> ownersByMap = new ConcurrentHashMap<>();
 	/** Whether a bot living near a spot can walk back from an obelisk, by obelisk and by ten metres of home: only proofs, never a search that gave up. */
 	private static final Map<String, Boolean> walkableBack = new ConcurrentHashMap<>();
 
@@ -665,7 +670,16 @@ public class BotPlaces {
 				votes.merge(region, 1, Integer::sum);
 		if (votes.isEmpty())
 			return new Places(settlements, grounds); // no mesh for this map, so nothing has been shown to be cut off
-		int mainland = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
+		ownersByMap.put(id, ownersOfGround(id, settlements));
+		// on a map flown everywhere, the mainland is every island a flight goes to and comes back from: Reshanta is sixteen thousand of them, and the one
+		// the most places stand on held 18 of its 134, so its residents all lived on one island and Teminon had none
+		int winner = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
+		Set<Integer> mainland = NavmeshService.getInstance().joinedByFlight(id, winner, link -> !isSiegeGround(id, link.toX(), link.toY(), link.toZ()));
+		if (isFlownEverywhere(id)) {
+			// a fort changes side with every siege, and its guards with it: nobody lives in one, see isSiegeGround
+			settlements = outOfTheSieges(id, settlements);
+			grounds = outOfTheSieges(id, grounds);
+		}
 		long began = System.currentTimeMillis();
 		Places onTheGrid = new Places(onTheMainland(id, settlements, mainland), onTheMainland(id, grounds, mainland));
 		Places beforeFlight = offThePockets(id, onTheGrid);
@@ -792,12 +806,73 @@ public class BotPlaces {
 		return inside;
 	}
 
-	private static List<Settlement> onTheMainland(int worldId, List<Settlement> places, int mainland) {
+	/**
+	 * @return The faction a stretch of ground belongs to, or null when it is nobody's or the map's places have not been worked out yet.
+	 *         <p>
+	 *         Asked by a route about to land on that stretch: on contested ground an island holding only the other faction's people is their base, with
+	 *         their guards, and a crossing into it is a fight the bot did not choose. Teminon is Elyos and Primum Asmodian and the islands between them
+	 *         are nobody's. Never works the places out itself, which a route planner has no business setting off.
+	 */
+	public static Race ownerOfGround(int worldId, int region) {
+		Map<Integer, Race> owners = ownersByMap.get(worldId);
+		return owners == null ? null : owners.get(region);
+	}
+
+	/** @return Each stretch of ground some faction's settlements stand on, outside the sieges, mapped to that faction; null where both factions do. */
+	private static Map<Integer, Race> ownersOfGround(int worldId, List<Settlement> settlements) {
+		Map<Integer, Race> owners = new HashMap<>();
+		for (Settlement place : settlements) {
+			if (place.race() == null || isSiegeGround(worldId, place.centre().getX(), place.centre().getY(), place.centre().getZ()))
+				continue;
+			for (int region : NavmeshService.getInstance().regionsAt(worldId, place.centre().getX(), place.centre().getY()))
+				owners.merge(region, place.race(), (one, other) -> one == other ? one : null);
+		}
+		owners.values().removeIf(Objects::isNull);
+		return owners;
+	}
+
+	/**
+	 * @return true if a spot is inside a fortress or an artifact's zone, read from the zone data like {@link #flyZonesOf}.
+	 *         <p>
+	 *         Ground a siege is fought over changes hands, and its guards with it: a fort is Balaur, then Elyos, then Asmodian, and nothing a bot
+	 *         can tell from the spawn data says whose it is today. So nobody lives in one and no crossing lands in one. Reshanta has 21 such zones.
+	 */
+	public static boolean isSiegeGround(int worldId, float x, float y, float z) {
+		List<ZoneInfo> zones = DataManager.ZONE_DATA.getZones().get(worldId);
+		if (zones == null)
+			return false;
+		for (ZoneInfo zone : zones) {
+			ZoneClassName type = zone.getZoneTemplate().getZoneType();
+			if ((type == ZoneClassName.FORT || type == ZoneClassName.ARTIFACT) && zone.getArea().isInside3D(x, y, z))
+				return true;
+		}
+		return false;
+	}
+
+	/** @return true if the map allows flight everywhere, which is how the Abyss works, rather than in zones drawn on it. */
+	private static boolean isFlownEverywhere(int worldId) {
+		WorldMapTemplate map = DataManager.WORLD_MAPS_DATA.getTemplate(worldId);
+		return map != null && map.isFly();
+	}
+
+	private static List<Settlement> outOfTheSieges(int worldId, List<Settlement> places) {
+		List<Settlement> kept = new ArrayList<>();
+		for (Settlement place : places) {
+			if (!isSiegeGround(worldId, place.centre().getX(), place.centre().getY(), place.centre().getZ()))
+				kept.add(place);
+			else
+				log.info("Map {}: {} {} {} is siege ground, so its {} townsfolk get no residents", worldId, place.centre().getX(), place.centre().getY(),
+					place.centre().getZ(), place.townsfolk());
+		}
+		return kept;
+	}
+
+	private static List<Settlement> onTheMainland(int worldId, List<Settlement> places, Set<Integer> mainland) {
 		List<Settlement> joined = new ArrayList<>();
 		for (Settlement place : places) {
 			boolean onIt = false;
 			for (int region : NavmeshService.getInstance().regionsAt(worldId, place.centre().getX(), place.centre().getY()))
-				onIt |= region == mainland;
+				onIt |= mainland.contains(region);
 			if (onIt)
 				joined.add(place);
 			else

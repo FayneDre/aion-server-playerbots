@@ -3,11 +3,14 @@ package com.aionemu.gameserver.playerbot.navmesh;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -16,11 +19,13 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
 import com.aionemu.gameserver.geoEngine.collision.IgnoreProperties;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.geo.GeoService;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
+import com.aionemu.gameserver.playerbot.world.BotPlaces;
 
 /**
  * Serves generated maps to the bots that need them.
@@ -35,6 +40,8 @@ public class NavmeshService {
 	private final Map<Integer, Navmesh> open = new ConcurrentHashMap<>();
 	/** Maps we already know have no file, so a bot walking there does not retry on every step. */
 	private final Set<Integer> missing = ConcurrentHashMap.newKeySet();
+	/** Per link, whether it comes down on siege ground; see {@link #mayLand}. */
+	private final Map<GlideLink, Boolean> siegeLandings = new ConcurrentHashMap<>();
 
 	public static NavmeshService getInstance() {
 		return SingletonHolder.INSTANCE;
@@ -62,11 +69,33 @@ public class NavmeshService {
 
 		// only a daeva has wings: anyone else is given no glide, and the planner answers as though the links were not there
 		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
-		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid,
-			link -> canGlide && isLinkClear(bot, link));
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid, new GlideRoutes.AirTest() {
+
+			@Override
+			public boolean isClear(GlideLink link) {
+				return canGlide && isLinkClear(bot, link);
+			}
+
+			@Override
+			public boolean mayLand(GlideLink link) {
+				return NavmeshService.this.mayLand(bot, link);
+			}
+		});
 		if (route.isEmpty() && route.gaveUp())
 			log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		return route;
+	}
+
+	/**
+	 * @return false for a link that comes down inside a fortress or an artifact's zone, or on ground only the other faction's people live on: a crossing
+	 *         into either is a fight the bot did not choose, refused until wild PvP is a decision rather than an accident. The siege half is remembered
+	 *         per link, since the chains ask it of every link they look at.
+	 */
+	private boolean mayLand(Player bot, GlideLink link) {
+		if (siegeLandings.computeIfAbsent(link, l -> BotPlaces.isSiegeGround(bot.getWorldId(), l.toX(), l.toY(), l.toZ())))
+			return false;
+		Race owner = BotPlaces.ownerOfGround(bot.getWorldId(), link.toRegion());
+		return owner == null || owner == bot.getRace();
 	}
 
 	/** @return Whether a link can be taken now: a crossing flown at one of its heights, or a glide down a clear line. A refusal is logged at debug, the one way to see which link of a plan was turned down. */
@@ -275,6 +304,42 @@ public class NavmeshService {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * @return The stretches of ground a flight goes to from {@code region} and comes back from, {@code region} included: the ground a resident of it can
+	 *         live on, since it can both get there and get home. Only the flight links count, which exist only on a map flown everywhere; anywhere else
+	 *         this is {@code region} alone.
+	 * @param landing Whether a link's landing is somewhere to come down at all; a link it refuses is left out both ways.
+	 */
+	public Set<Integer> joinedByFlight(int worldId, int region, Predicate<GlideLink> landing) {
+		Navmesh mesh = get(worldId);
+		Map<Integer, List<Integer>> forward = new HashMap<>(), backward = new HashMap<>();
+		if (mesh != null) {
+			for (List<GlideLink> links : mesh.allGlides()) {
+				for (GlideLink link : links) {
+					if (!link.flight() || !landing.test(link))
+						continue;
+					forward.computeIfAbsent(link.fromRegion(), from -> new ArrayList<>()).add(link.toRegion());
+					backward.computeIfAbsent(link.toRegion(), to -> new ArrayList<>()).add(link.fromRegion());
+				}
+			}
+		}
+		Set<Integer> joined = reached(region, forward);
+		joined.retainAll(reached(region, backward));
+		return joined;
+	}
+
+	private static Set<Integer> reached(int start, Map<Integer, List<Integer>> edges) {
+		Set<Integer> seen = new HashSet<>(Set.of(start));
+		ArrayDeque<Integer> pending = new ArrayDeque<>(seen);
+		while (!pending.isEmpty()) {
+			for (int next : edges.getOrDefault(pending.poll(), List.of())) {
+				if (seen.add(next))
+					pending.add(next);
+			}
+		}
+		return seen;
 	}
 
 	/**

@@ -114,10 +114,22 @@ public final class BotInbox {
 			case "land" -> name == null ? "Usage: land <name>" : BotCommands.land(name);
 			case "flyto" -> words.length < 5 ? "Usage: flyto <name> <x> <y> <z>" : flyTo(words);
 			case "goto" -> words.length < 5 ? "Usage: goto <name> <x> <y> <z>" : goTo(words);
+			case "populate" -> words.length < 3 ? "Usage: populate <map> <count> [race]" : populate(words);
+			case "number" -> name == null ? "Usage: number <map>" : BotCommands.count(argument, null);
+			case "pool" -> BotCommands.describePool(argument, null);
 			// one map, never the whole world: a file is one typo away from emptying it
 			case "clear" -> name == null ? "Usage: clear <map id or name>" : BotCommands.clear(null, argument);
 			default -> "Not taken from the inbox: " + words[0] + ". See docs/bot-commands.md, section Testing.";
 		};
+	}
+
+	/** {@code //bot populate} for a map named rather than stood on: the count is required, since 0 there means as many as the map asks for. */
+	private static String populate(String[] words) {
+		try {
+			return BotPopulator.populate(Integer.parseInt(words[2]), Integer.parseInt(words[1]), words.length > 3 ? words[3] : null);
+		} catch (NumberFormatException e) {
+			return "Usage: populate <map id> <count> [race]";
+		}
 	}
 
 	private static String create(String[] words) {

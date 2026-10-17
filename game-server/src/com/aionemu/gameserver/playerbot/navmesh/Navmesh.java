@@ -9,6 +9,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,6 +209,11 @@ public class Navmesh {
 	/** @return The ways down from a stretch of ground to lower ones, as {@link GlideLinks} found them; empty for a map that has none. */
 	List<GlideLink> glidesFrom(int region) {
 		return glides.getOrDefault(region, List.of());
+	}
+
+	/** @return Every link of the map, glides and flights, grouped by the stretch they leave. */
+	Collection<List<GlideLink>> allGlides() {
+		return glides.values();
 	}
 
 	/** @return true if the map has any glide link at all, so the planner knows whether there is anything else to try. */

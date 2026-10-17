@@ -67,7 +67,7 @@ final class GlideRoutes {
 		for (int start : starts) {
 			for (int round = 0; round < RECHAINS; round++) {
 				int blockedBefore = blocked.size();
-				List<List<Integer>> chains = chainsFrom(mesh, start, goals, blocked);
+				List<List<Integer>> chains = chainsFrom(mesh, start, goals, blocked, air);
 				undecided |= chains.size() > CHAINS_TRIED;
 				for (List<Integer> chain : chains.subList(0, Math.min(CHAINS_TRIED, chains.size()))) {
 					if (System.currentTimeMillis() > deadline)
@@ -91,14 +91,14 @@ final class GlideRoutes {
 	 *         fewest glides to its goal. Each goal is a stretch that touches the goal's 4 m cell, which says only that the goal may be on it, so several are offered and the walk to the
 	 *         goal itself decides. Taken fewest glides first, the floor below the goal came before the goal's own and the budget ran out on it.
 	 */
-	private static List<List<Integer>> chainsFrom(Navmesh mesh, int start, List<Integer> goals, Set<GlideLink> blocked) {
+	private static List<List<Integer>> chainsFrom(Navmesh mesh, int start, List<Integer> goals, Set<GlideLink> blocked, AirTest air) {
 		Map<Integer, Integer> cameFrom = new HashMap<>();
 		ArrayDeque<Integer> pending = new ArrayDeque<>();
 		cameFrom.put(start, 0);
 		pending.add(start);
 		while (!pending.isEmpty()) {
 			for (GlideLink link : mesh.glidesFrom(pending.poll())) {
-				if (blocked.contains(link))
+				if (blocked.contains(link) || !air.mayLand(link))
 					continue;
 				if (cameFrom.putIfAbsent(link.toRegion(), link.fromRegion()) == null)
 					pending.add(link.toRegion());
@@ -211,12 +211,20 @@ final class GlideRoutes {
 		return regions;
 	}
 
-	/** Whether the air along a glide is clear. */
+	/** Whether the air along a glide is clear, and whether its landing is somewhere this body may come down. */
 	@FunctionalInterface
 	interface AirTest {
 
 		AirTest ALWAYS = link -> true;
 
 		boolean isClear(GlideLink link);
+
+		/**
+		 * @return false for a landing the body must never come down at, whatever the air: asked of every link while the chains are worked out, so it must be
+		 *         cheap, and a link it refuses is never part of a chain rather than found blocked one round at a time.
+		 */
+		default boolean mayLand(GlideLink link) {
+			return true;
+		}
 	}
 }
