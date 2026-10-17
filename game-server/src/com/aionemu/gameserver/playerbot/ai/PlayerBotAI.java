@@ -176,7 +176,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final int ACCEPT_RESURRECTION_DELAY_MILLIS = 2000;
 	/** How far in height a revived bot's home may be from the obelisk and still be walked or flown back to: Reshanta's layers are 1200 m apart. */
 	private static final float ANOTHER_LAYER = 300;
-	private static final long TAKEN_HOME_DELAY_MILLIS = 3000;
+	/** How often a bot revived on another layer looks at whether it is well enough to be taken home, and how many times before it goes anyway. */
+	private static final long TAKEN_HOME_DELAY_MILLIS = 5000;
+	private static final int TAKEN_HOME_LOOKS = 120;
 	/**
 	 * How far from its bind point a bot gets before it is willing to sit down.
 	 * <p>
@@ -1932,16 +1934,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// Home on another layer of the map, which no walk and no flight joins to the obelisk: taken there as a player takes the base's teleporter.
 			// Reshanta's upper layer has no obelisk of its own, and its residents came back in Teminon, 1300 m below, asked for routes home that do
 			// not exist and were rescued a dozen seconds later: 47 refused routes and 22 of 23 rescues of its 22 residents in half an hour.
-			// A few seconds later, once the move to the obelisk has settled: a teleport on top of the revival's own one is not one the engine expects.
-			// not in a group, whose members come back to it: a squad member taken home was left hundreds of metres from a leader waiting for it
-			if (home != null && bot.getCurrentTeam() == null && Math.abs(home.getZ() - bot.getZ()) > ANOTHER_LAYER) {
-				BotScheduler.getInstance().schedule(() -> {
-					if (!bot.isSpawned() || bot.isDead() || bot.getCurrentTeam() != null || Math.abs(home.getZ() - bot.getZ()) <= ANOTHER_LAYER)
-						return;
-					log.info("Bot {} lives {} m above or below where it revived and is taken home", bot.getName(), Math.round(Math.abs(home.getZ() - bot.getZ())));
-					TeleportService.teleportTo(bot, bot.getWorldId(), home.getX(), home.getY(), home.getZ());
-				}, TAKEN_HOME_DELAY_MILLIS);
-			}
+			// Not in a group, whose members come back to it: a squad member taken home was left hundreds of metres from a leader waiting for it.
+			if (home != null && bot.getCurrentTeam() == null && Math.abs(home.getZ() - bot.getZ()) > ANOTHER_LAYER)
+				BotScheduler.getInstance().schedule(() -> takeHomeWhenRecovered(home, TAKEN_HOME_LOOKS), TAKEN_HOME_DELAY_MILLIS);
 		} finally {
 			// cleared last, so the decision tick cannot mistake the bot for freshly dead while it is being brought back
 			synchronized (combatLock) {
@@ -1949,6 +1944,22 @@ public class PlayerBotAI extends AITemplate<Player> {
 				resurrectionPending = false;
 			}
 		}
+	}
+
+	/**
+	 * Takes a bot revived on another layer of the map home, once it has waited out its sickness and healed: taken there at once, still sick, a resident
+	 * of Reshanta's upper layer died again at home within thirty seconds of every revival, five times running. Looked at again until then.
+	 */
+	private void takeHomeWhenRecovered(Vector3f home, int looksLeft) {
+		Player bot = getOwner();
+		if (!bot.isSpawned() || bot.isDead() || bot.getCurrentTeam() != null || Math.abs(home.getZ() - bot.getZ()) <= ANOTHER_LAYER)
+			return;
+		if ((isRecoveringFromDeath() || !isHealthyEnoughToFight()) && looksLeft > 0) {
+			BotScheduler.getInstance().schedule(() -> takeHomeWhenRecovered(home, looksLeft - 1), TAKEN_HOME_DELAY_MILLIS);
+			return;
+		}
+		log.info("Bot {} lives {} m above or below where it revived and is taken home", bot.getName(), Math.round(Math.abs(home.getZ() - bot.getZ())));
+		TeleportService.teleportTo(bot, bot.getWorldId(), home.getX(), home.getY(), home.getZ());
 	}
 
 	@Override
