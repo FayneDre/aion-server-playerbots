@@ -17,6 +17,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
+import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
@@ -1332,6 +1333,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 		float y = ground != null ? ground.getY() : home.getY();
 		float z = ground != null ? ground.getZ() : home.getZ();
 
+		// A body blinking across the ground in front of somebody is the fault itself, not its cure, so a bot a player can see is not lifted: it drops
+		// its errand and picks another, and the rescue waits for nobody to be looking. Except in a player's group, where staying stuck is worse than
+		// being seen: the player is waiting for it, and a member left behind is a member lost.
+		if (!isInAPlayersGroup(bot) && isSeenByAPlayer(bot)) {
+			log.info("Bot {} could not move at all from {} {}, but a player has it in sight, so it does something else rather than being lifted", bot.getName(),
+				Math.round(bot.getX()), Math.round(bot.getY()));
+			day.forget();
+			return;
+		}
+
 		// A bot in somebody's group is where it is for a reason, and a lift home is the one thing that cannot be allowed to happen to it: the whole
 		// point of following somebody is being with them. It waits instead -- for the player to land, to come back, or for its own flight points.
 		// Reported from in game as a bot that followed into the air, landed, and was gone: not a flight fault at all, but the oldest rescue in the
@@ -1351,6 +1362,17 @@ public class PlayerBotAI extends AITemplate<Player> {
 					return;
 				}
 			}
+			if (!leader.isFlying()) {
+				// No floor joined to the leader's near the bot: waiting would never end, so it goes to the leader, onto the ground under their feet
+				Vector3f beside = NavmeshService.getInstance().groundNear(bot.getWorldId(), leader.getX(), leader.getY(), leader.getZ());
+				float toX = beside != null ? beside.getX() : leader.getX(), toY = beside != null ? beside.getY() : leader.getY();
+				float toZ = beside != null ? beside.getZ() : leader.getZ();
+				log.info("Bot {} could not move at {} {}, cut off from {}, and is put beside them at {} {} {}{}", bot.getName(), Math.round(bot.getX()),
+					Math.round(bot.getY()), leader.getName(), Math.round(toX), Math.round(toY), Math.round(toZ), witnessed(bot));
+				TeleportService.teleportTo(bot, bot.getWorldId(), toX, toY, toZ);
+				return;
+			}
+			// a leader in the air lands somewhere, and the bot follows it there; lifting it now would only put it under them
 			log.info("Bot {} cannot move from {} {} but is {} m from {}, so it waits rather than being put back home", bot.getName(),
 				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(PositionUtil.getDistance(bot, leader)), leader.getName());
 			return;
@@ -1405,7 +1427,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 *         a teleport nobody sees is a fault in the log, one somebody sees is a fault in the game.
 	 */
 	private static String witnessed(Player bot) {
-		return bot.getKnownList().streamPlayers().anyMatch(other -> !other.isBot()) ? " (seen by a player)" : "";
+		return isSeenByAPlayer(bot) ? " (seen by a player)" : "";
+	}
+
+	/** @return true if a real player has the bot in sight, the same question {@link com.aionemu.gameserver.playerbot.PlayerBotService#sleep} asks. */
+	private static boolean isSeenByAPlayer(Player bot) {
+		return bot.getKnownList().streamPlayers().anyMatch(other -> !other.isBot());
+	}
+
+	/** @return true if the bot's group has a real player in it, as opposed to a squad of bots or no group at all. */
+	private static boolean isInAPlayersGroup(Player bot) {
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		return team != null && team.getMembers().stream().anyMatch(member -> !member.isBot());
 	}
 
 	/**

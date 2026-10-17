@@ -1,7 +1,7 @@
 # Walking into scenery: plan
 
 Status: milestones 0 and 1 built 16 October, 2 mostly, the at-home part of 3; the route loop and most rescue teleports fixed 17 October (steps aside
-14689 -> 444, rescues 403 -> 111 per half hour on 800 bots). Left: 3 for players in sight, 4. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
+14689 -> 444, rescues 403 -> 111 per half hour on 800 bots). 3 built 17 October, unverified with a player online. Left: 4. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
 ("into an obstacle, then teleported behind it"), which this replaces as the place the work is tracked.
 
 ## What is seen
@@ -100,7 +100,10 @@ about 800 bots awake with nobody online. Half hours, same population:
 - **Rescues (17 October):** 1046 of 1352 over two hours came within half a minute of a refused route to a farming ground. Farming only moves the
   anchor and was never given up, so the hunt was refused until the anti-stuck rescue teleported a bot that was not stuck.
   `BotDay.anchorRefused` gives the ground up on the first refusal and brings the anchor home, as loitering and wandering already did.
-- **Left:** 3 (no rescue while a player is in sight; 55 "put back home" and 33 "walkable ground" are left per half hour) and 4.
+- **3 (17 October):** a bot a real player has in sight is not lifted: it drops its errand and the rescue waits for nobody to be looking. A bot in a
+  player's group is always lifted, seen or not, since staying stuck behind them is worse; when no floor joined to the leader's is near it, it is put
+  beside the leader instead of waiting for ever (it still waits for a leader in the air). Not yet watched with a player online.
+- **Left:** 4.
 ## Risks
 
 - **More planning.** Milestone 2 asks for more routes; short ones are cheap, but chasing many targets at once is the case to watch (CPU, and the
