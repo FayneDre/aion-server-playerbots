@@ -79,6 +79,7 @@ public class NavmeshService {
 
 		// only a daeva has wings: anyone else is given no glide, and the planner answers as though the links were not there
 		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
+		long began = System.currentTimeMillis();
 		List<Vector3f> dangers = dangersFor(bot);
 		Avoidance around = avoid;
 		if (!dangers.isEmpty()) {
@@ -116,8 +117,14 @@ public class NavmeshService {
 					.noneMatch(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, link.toX(), link.toY(), link.toZ()) < DANGER_RADIUS);
 			}
 		});
-		if (route.isEmpty() && route.gaveUp())
-			log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
+		if (route.isEmpty() && route.gaveUp()) {
+			// in the log on a map flown everywhere, where the creatures kept away from are a cost the search pays and the one way to tell it was
+			if (!dangers.isEmpty())
+				log.info("Path search for {} gave up short of {} {} after {} ms, keeping away from {} creature(s)", bot.getName(), Math.round(goalX),
+					Math.round(goalY), System.currentTimeMillis() - began, dangers.size());
+			else
+				log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
+		}
 		return route;
 	}
 
