@@ -46,16 +46,8 @@ public class NavmeshService {
 	private final Set<Integer> missing = ConcurrentHashMap.newKeySet();
 	/** Per link, whether it comes down on siege ground; see {@link #mayLand}. */
 	private final Map<GlideLink, Boolean> siegeLandings = new ConcurrentHashMap<>();
-	/** How near a creature the bot cannot fight a landing may be, and the walk is kept from going, in metres. */
+	/** How near a creature the bot cannot fight a landing may be, in metres. */
 	private static final float DANGER_RADIUS = 40;
-	/** How far above or below the bot such a creature still counts for the walk: the avoidance is drawn on the plan, and Reshanta's layers are stacked. */
-	private static final float DANGER_LAYER = 150;
-	/**
-	 * What a metre near one costs the walk, as a multiple of its length. A preference and not a wall: at 15 the search explored everything cheaper than
-	 * a fifteen-fold detour round each of the 726 creatures of Reshanta's upper layer and gave up after seven seconds on a journey it planned in three
-	 * without them. The landings are what is refused outright.
-	 */
-	private static final float DANGER_COST = 3;
 
 	public static NavmeshService getInstance() {
 		return SingletonHolder.INSTANCE;
@@ -85,30 +77,10 @@ public class NavmeshService {
 		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
 		long began = System.currentTimeMillis();
 		List<Vector3f> dangers = dangersFor(bot);
-		Avoidance around = avoid;
-		if (!dangers.isEmpty()) {
-			// bucketed by the radius, so each point the search weighs looks at nine cells and not at every danger of the map: asked of them all, the
-			// search ran out of its budget on journeys it planned in under a second without them
-			float botZ = bot.getZ();
-			Map<Long, List<Vector3f>> near = new HashMap<>();
-			for (Vector3f danger : dangers) {
-				if (Math.abs(danger.z - botZ) < DANGER_LAYER)
-					near.computeIfAbsent(dangerCell(danger.x, danger.y), cell -> new ArrayList<>()).add(danger);
-			}
-			around = near.isEmpty() ? avoid : (x, y) -> {
-				int cellX = (int) (x / DANGER_RADIUS), cellY = (int) (y / DANGER_RADIUS);
-				for (int dy = -1; dy <= 1; dy++) {
-					for (int dx = -1; dx <= 1; dx++) {
-						for (Vector3f danger : near.getOrDefault((long) (cellY + dy) << 32 | (cellX + dx) & 0xffffffffL, List.of())) {
-							if (PositionUtil.getDistance(x, y, danger.x, danger.y) < DANGER_RADIUS)
-								return Math.max(DANGER_COST, avoid.extra(x, y));
-						}
-					}
-				}
-				return avoid.extra(x, y);
-			};
-		}
-		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, around, new GlideRoutes.AirTest() {
+		// landings only: kept away from on foot as well, even at three times the cost, the search gave up after seven seconds on a journey of 900 m it
+		// planned in under one without them. The Abyss is dangerous to walk, and a bot meets what it meets; it does not fly down into it
+		Map<GlideLink, Boolean> landings = new HashMap<>();
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid, new GlideRoutes.AirTest() {
 
 			@Override
 			public boolean isClear(GlideLink link) {
@@ -117,8 +89,8 @@ public class NavmeshService {
 
 			@Override
 			public boolean mayLand(GlideLink link) {
-				return NavmeshService.this.mayLand(bot, link) && dangers.stream()
-					.noneMatch(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, link.toX(), link.toY(), link.toZ()) < DANGER_RADIUS);
+				return landings.computeIfAbsent(link, l -> NavmeshService.this.mayLand(bot, l) && dangers.stream()
+					.noneMatch(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, l.toX(), l.toY(), l.toZ()) < DANGER_RADIUS));
 			}
 		});
 		if (route.isEmpty() && !route.gaveUp() && !dangers.isEmpty()) {
@@ -154,10 +126,6 @@ public class NavmeshService {
 				found.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
 		});
 		return found;
-	}
-
-	private static long dangerCell(float x, float y) {
-		return (long) (int) (y / DANGER_RADIUS) << 32 | (int) (x / DANGER_RADIUS) & 0xffffffffL;
 	}
 
 	/**
