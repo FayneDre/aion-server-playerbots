@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.VisibleObject;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -255,7 +256,15 @@ class BotErrands {
 		float x = vendor != null ? vendor.getX() : vendorDestination.x;
 		float y = vendor != null ? vendor.getY() : vendorDestination.y;
 		float z = vendor != null ? vendor.getZ() : vendorDestination.z;
-		if (vendor != null) {
+		// The walkable ground nearest the keeper's feet, at its own height, when it is within trading reach of it. A point on the line between bot
+		// and keeper is at the bot's height: in Teminon the keepers stand a floor below the deck, the bot came within three metres across and seven
+		// above, out of reach, and then aimed at the keeper's feet and was refused, 89 of the base's 93 refused routes in half an hour.
+		Vector3f besideKeeper = vendor == null ? null : NavmeshService.getInstance().groundNear(bot.getWorldId(), x, y, z);
+		if (besideKeeper != null && PositionUtil.getDistance(besideKeeper.x, besideKeeper.y, besideKeeper.z, x, y, z) < BotVendorManager.TRADE_RANGE - 1) {
+			x = besideKeeper.x;
+			y = besideKeeper.y;
+			z = besideKeeper.z;
+		} else if (vendor != null) {
 			// Stop short of the keeper rather than aiming at its feet. Shop keepers stand on counters, podiums and shop fronts, and the mesh does not
 			// always carry a polygon under one: the route to the exact spot is then refused although the bot only ever needed to be near it. Trading
 			// happens anywhere inside TRADE_RANGE, so the destination is a point on the line between them, just inside it.
