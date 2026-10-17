@@ -121,6 +121,12 @@ public class NavmeshService {
 					.noneMatch(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, link.toX(), link.toY(), link.toZ()) < DANGER_RADIUS);
 			}
 		});
+		if (route.isEmpty() && !route.gaveUp() && !dangers.isEmpty()) {
+			// a proof that may be the creatures' doing rather than the ground's: how many stand round the goal tells the two apart
+			long nearGoal = dangers.stream().filter(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, goalX, goalY, goalZ) < DANGER_RADIUS * 3).count();
+			log.info("Path search for {} found no way to {} {}, keeping away from {} creature(s), {} of them within {} m of it", bot.getName(),
+				Math.round(goalX), Math.round(goalY), dangers.size(), nearGoal, Math.round(DANGER_RADIUS * 3));
+		}
 		if (route.isEmpty() && route.gaveUp()) {
 			// in the log on a map flown everywhere, where the creatures kept away from are a cost the search pays and the one way to tell it was
 			if (!dangers.isEmpty())
