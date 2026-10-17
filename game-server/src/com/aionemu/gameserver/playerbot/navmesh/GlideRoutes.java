@@ -145,6 +145,10 @@ final class GlideRoutes {
 				BotPathFinder.Route walk = BotPathFinder.findWalkingPath(mesh, x, y, z, link.fromX(), link.fromY(), link.fromZ(), avoid);
 				if (walk.isEmpty()) {
 					undecided |= walk.gaveUp();
+					// proved out of reach from where the hop before landed, it is left out of the next round's chains like a blocked one: on Reshanta every
+					// chain of the first round shared that hop, and every one of them stopped at it until the budget ran out
+					if (!walk.gaveUp())
+						blocked.add(link);
 					if (DEBUG)
 						System.out.printf("glide:   link %.1f %.1f %.1f -> %.1f %.1f %.1f: walk from %.1f %.1f %.1f is empty (gave up %b)%n", link.fromX(), link.fromY(), link.fromZ(),
 							link.toX(), link.toY(), link.toZ(), x, y, z, walk.gaveUp());

@@ -307,12 +307,12 @@ public class NavmeshService {
 	}
 
 	/**
-	 * @return The stretches of ground a flight goes to from {@code region} and comes back from, {@code region} included: the ground a resident of it can
-	 *         live on, since it can both get there and get home. Only the flight links count, which exist only on a map flown everywhere; anywhere else
-	 *         this is {@code region} alone.
+	 * @return For each of the stretches given, in their order, the stretches a flight goes to from it and comes back from, itself included: the ground a
+	 *         resident of it can live on, since it can both get there and get home. A stretch already inside an earlier one's set is skipped, so the sets
+	 *         never overlap. Only the flight links count, which exist only on a map flown everywhere; anywhere else each set is its stretch alone.
 	 * @param landing Whether a link's landing is somewhere to come down at all; a link it refuses is left out both ways.
 	 */
-	public Set<Integer> joinedByFlight(int worldId, int region, Predicate<GlideLink> landing) {
+	public List<Set<Integer>> joinedByFlight(int worldId, List<Integer> regions, Predicate<GlideLink> landing) {
 		Navmesh mesh = get(worldId);
 		Map<Integer, List<Integer>> forward = new HashMap<>(), backward = new HashMap<>();
 		if (mesh != null) {
@@ -325,9 +325,17 @@ public class NavmeshService {
 				}
 			}
 		}
-		Set<Integer> joined = reached(region, forward);
-		joined.retainAll(reached(region, backward));
-		return joined;
+		List<Set<Integer>> sets = new ArrayList<>();
+		Set<Integer> taken = new HashSet<>();
+		for (int region : regions) {
+			if (taken.contains(region))
+				continue;
+			Set<Integer> joined = reached(region, forward);
+			joined.retainAll(reached(region, backward));
+			taken.addAll(joined);
+			sets.add(joined);
+		}
+		return sets;
 	}
 
 	private static Set<Integer> reached(int start, Map<Integer, List<Integer>> edges) {

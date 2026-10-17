@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -124,6 +125,8 @@ public class BotPlaces {
 	private static final int CEILING_PERCENTILE = 90;
 	/** The share of a region's monsters, in percent, within {@link #LIVED_AT_SPREAD} levels of a level under its floor that makes it a part of the region. */
 	private static final int LIVED_AT_PERCENT = 10;
+	/** How many places a set of islands joined by air must hold to be lived on, on a map flown everywhere: a few camps are somewhere to spend a life. */
+	private static final int MAINLAND_PLACES = 5;
 	private static final int LIVED_AT_SPREAD = 5; // 3 missed the Theobomos village rated 20 among monsters of 20 to 24
 	/** No character leaves its starting valley before this, so no region beyond them holds anybody under it. */
 	private static final int ASCENSION_LEVEL = 10;
@@ -671,10 +674,8 @@ public class BotPlaces {
 		if (votes.isEmpty())
 			return new Places(settlements, grounds); // no mesh for this map, so nothing has been shown to be cut off
 		ownersByMap.put(id, ownersOfGround(id, settlements));
-		// on a map flown everywhere, the mainland is every island a flight goes to and comes back from: Reshanta is sixteen thousand of them, and the one
-		// the most places stand on held 18 of its 134, so its residents all lived on one island and Teminon had none
 		int winner = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
-		Set<Integer> mainland = NavmeshService.getInstance().joinedByFlight(id, winner, link -> !isSiegeGround(id, link.toX(), link.toY(), link.toZ()));
+		Set<Integer> mainland = isFlownEverywhere(id) ? mainlandsByAir(id, votes) : Set.of(winner);
 		if (isFlownEverywhere(id)) {
 			// a fort changes side with every siege, and its guards with it: nobody lives in one, see isSiegeGround
 			settlements = outOfTheSieges(id, settlements);
@@ -854,6 +855,27 @@ public class BotPlaces {
 	private static boolean isFlownEverywhere(int worldId) {
 		WorldMapTemplate map = DataManager.WORLD_MAPS_DATA.getTemplate(worldId);
 		return map != null && map.isFly();
+	}
+
+	/**
+	 * @return On a map flown everywhere, every island of every set a flight joins both ways that holds at least {@value #MAINLAND_PLACES} places.
+	 *         <p>
+	 *         One mainland was the rule for ground that is walked, and on Reshanta it was wrong twice. The island the most places stand on held 18 of the
+	 *         134, so every resident lived on it and Teminon had none; and joined by air, the east side, Teminon and eighty islands round it, still meets
+	 *         the rest only through a fortress, where nothing lands. So each set that is somewhere to live is one: a resident of it can reach the places
+	 *         of its set and get home from them, which is all the mainland ever promised.
+	 */
+	private static Set<Integer> mainlandsByAir(int worldId, Map<Integer, Integer> votes) {
+		List<Integer> byVotes = votes.entrySet().stream().sorted(Map.Entry.<Integer, Integer> comparingByValue().reversed()).map(Map.Entry::getKey).toList();
+		Set<Integer> mainland = new HashSet<>();
+		for (Set<Integer> joined : NavmeshService.getInstance().joinedByFlight(worldId, byVotes, link -> !isSiegeGround(worldId, link.toX(), link.toY(), link.toZ()))) {
+			int places = joined.stream().mapToInt(region -> votes.getOrDefault(region, 0)).sum();
+			if (places < MAINLAND_PLACES)
+				continue;
+			mainland.addAll(joined);
+			log.info("Map {}: {} island(s) joined by air hold {} place(s)", worldId, joined.size(), places);
+		}
+		return mainland;
 	}
 
 	private static List<Settlement> outOfTheSieges(int worldId, List<Settlement> places) {
