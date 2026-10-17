@@ -87,7 +87,7 @@ public class NavmeshService {
 	}
 
 	/**
-	 * @return false for a link that comes down inside a fortress or an artifact's zone, or on ground only the other faction's people live on: a crossing
+	 * @return false for a link that comes down inside a fortress's zone, or on ground only the other faction's people live on: a crossing
 	 *         into either is a fight the bot did not choose, refused until wild PvP is a decision rather than an accident. The siege half is remembered
 	 *         per link, since the chains ask it of every link they look at.
 	 */

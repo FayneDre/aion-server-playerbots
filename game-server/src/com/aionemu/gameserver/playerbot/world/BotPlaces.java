@@ -832,18 +832,19 @@ public class BotPlaces {
 	}
 
 	/**
-	 * @return true if a spot is inside a fortress or an artifact's zone, read from the zone data like {@link #flyZonesOf}.
+	 * @return true if a spot is inside a fortress's zone, read from the zone data like {@link #flyZonesOf}.
 	 *         <p>
 	 *         Ground a siege is fought over changes hands, and its guards with it: a fort is Balaur, then Elyos, then Asmodian, and nothing a bot
-	 *         can tell from the spawn data says whose it is today. So nobody lives in one and no crossing lands in one. Reshanta has 21 such zones.
+	 *         can tell from the spawn data says whose it is today. So nobody lives in one and no crossing lands in one. Reshanta has 9 such zones.
+	 *         Not the artifacts' zones: those are where an artifact's effect reaches, and one of Reshanta's is the whole map, which made every one of its
+	 *         134 places siege ground.
 	 */
 	public static boolean isSiegeGround(int worldId, float x, float y, float z) {
 		List<ZoneInfo> zones = DataManager.ZONE_DATA.getZones().get(worldId);
 		if (zones == null)
 			return false;
 		for (ZoneInfo zone : zones) {
-			ZoneClassName type = zone.getZoneTemplate().getZoneType();
-			if ((type == ZoneClassName.FORT || type == ZoneClassName.ARTIFACT) && zone.getArea().isInside3D(x, y, z))
+			if (zone.getZoneTemplate().getZoneType() == ZoneClassName.FORT && zone.getArea().isInside3D(x, y, z))
 				return true;
 		}
 		return false;
