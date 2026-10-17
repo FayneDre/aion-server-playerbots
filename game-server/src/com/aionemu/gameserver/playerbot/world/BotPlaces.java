@@ -121,7 +121,7 @@ public class BotPlaces {
 	private static final int CEILING_PERCENTILE = 90;
 	/** The share of a region's monsters, in percent, within {@link #LIVED_AT_SPREAD} levels of a level under its floor that makes it a part of the region. */
 	private static final int LIVED_AT_PERCENT = 10;
-	private static final int LIVED_AT_SPREAD = 3;
+	private static final int LIVED_AT_SPREAD = 5; // 3 missed the Theobomos village rated 20 among monsters of 20 to 24
 	/** No character leaves its starting valley before this, so no region beyond them holds anybody under it. */
 	private static final int ASCENSION_LEVEL = 10;
 	/**

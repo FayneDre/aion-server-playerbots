@@ -29,8 +29,8 @@ temporary.
 door `EnchantEffect` uses. Set to **1%**, which is what a measurement gave and not what two guesses did.
 
 **Its level at birth** is its home's, within the region's band (the quarter mark and the ninth tenth of its monsters). A home under the floor keeps
-its own level when a tenth of the region fights within three levels of it (`BotPlaces.isLivedAt`): Theobomos and Brusthonin are two regions in one,
-20 to 26 in the north under a band of 45 to 49, and every northern village was given characters of 45 to 49 until 17 October.
+its own level when a tenth of the region fights within five levels of it (`BotPlaces.isLivedAt`): Theobomos and Brusthonin are two regions in one,
+20 to 27 in a band across the middle under a band of 45 to 49, and every northern village was given characters of 45 to 49 until 17 October.
 
 **Its address.** A bot outgrows where it lives. Poeta reads as Akarios 3 and its camps at 5, 6 and 7 — the valley steepens as you walk away from the
 village — so when a bot's level drifts more than two from its home's, it moves to a place that fits. Only the home moves; everything written against
