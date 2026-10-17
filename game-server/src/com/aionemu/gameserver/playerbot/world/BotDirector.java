@@ -85,6 +85,8 @@ public class BotDirector {
 	 * minute.
 	 */
 	private static final int DEAD_BAND = 1;
+	/** How many hunters of the side over its share are swapped for sleepers of the side under it in one review, so a region rebalances without churning. */
+	private static final int SWAPS_PER_REVIEW = 2;
 
 	private static final BotDirector INSTANCE = new BotDirector();
 
@@ -292,16 +294,44 @@ public class BotDirector {
 		// village's own sleeper by the next one.
 		int reserved = Math.min(stillShort.values().stream().mapToInt(Integer::intValue).sum(), asleepInField.size());
 		int fieldWoken = Math.max(0, Math.min(hunters - awakeInField.size(), asleepInField.size() - reserved));
+		// Each side in the share of the countryside its grounds are: on contested ground the field is one list for both, and taken in the pool's order
+		// Reshanta woke 26 Elyos and 3 Asmodians for grounds a third of which are Asmodian. On a faction's own ground every one is one side, and the
+		// order is the pool's as it always was.
+		Map<Integer, Race> raceById = new HashMap<>();
+		residents.forEach(resident -> raceById.put(resident.playerId(), resident.race()));
+		Map<Race, Integer> share = new EnumMap<>(Race.class), have = new EnumMap<>(Race.class);
+		fieldPlan.forEach(ground -> {
+			if (ground.race() != null)
+				share.merge(ground.race(), 1, Integer::sum);
+		});
+		awakeInField.forEach(id -> {
+			if (raceById.get(id) != null)
+				have.merge(raceById.get(id), 1, Integer::sum);
+		});
+		List<BotRoster.Resident> sleepers = new ArrayList<>(asleepInField);
+		List<Integer> wakers = new ArrayList<>(awakeInField);
+		List<BotRoster.Resident> fieldWakes = new ArrayList<>();
 		for (int i = 0; i < fieldWoken; i++)
-			toWake.add(asleepInField.get(i));
+			fieldWakes.add(takeFor(sleepers, share, have, BotRoster.Resident::race, true));
 		for (int i = hunters; i < awakeInField.size(); i++)
-			toSleep.add(awakeInField.get(i));
+			toSleep.add(takeFor(wakers, share, have, raceById::get, false));
+		// and a side over its share swaps with one under it, a few a review, when the totals are right and nothing above moved anybody
+		for (int swap = 0; swap < SWAPS_PER_REVIEW && fieldWoken == 0 && awakeInField.size() <= hunters
+			&& sleepers.size() > reserved; swap++) {
+			Race over = mostOver(share, have, wakers, raceById::get), under = mostUnder(share, have, sleepers, BotRoster.Resident::race);
+			if (over == null || under == null || over == under || have.getOrDefault(over, 0) - share.getOrDefault(over, 0) < 1
+				|| share.getOrDefault(under, 0) - have.getOrDefault(under, 0) < 1)
+				break;
+			toSleep.add(takeFor(wakers, share, have, raceById::get, false));
+			fieldWakes.add(takeFor(sleepers, share, have, BotRoster.Resident::race, true));
+		}
+		toWake.addAll(fieldWakes);
 		// A village post that nobody lives at is filled by moving somebody in, because the alternative is that it is never filled at all. The
 		// countryside was given this property from the start — "a hunting ground is interchangeable with another" — and villages were not, on the
 		// grounds that a village is a place rather than a slot. True of the place, false of the person: a resident can move house, and a region that
 		// cannot reach its own target because its people were settled against a plan that has since shifted is worse than one whose villager came
 		// from the next valley. Measured on Verteron: 25 village posts, 11 villagers, and 14 hunters asleep in a countryside already full.
-		List<BotRoster.Resident> spare = new ArrayList<>(asleepInField.subList(fieldWoken, asleepInField.size()));
+		List<BotRoster.Resident> spare = new ArrayList<>(sleepers);
 		// A village's own sleepers beyond the post it has to fill can move on too. Without this a bot settled at a village the plan has since
 		// shrunk is stranded there: the countryside only ever wakes its own sleepers, so it is never hunted with again, and no amount of shortage
 		// anywhere else can reach it.
@@ -366,6 +396,53 @@ public class BotDirector {
 		int villagersAwake = awakeInVillage.values().stream().mapToInt(List::size).sum();
 		int villagersAsleep = asleepInVillage.values().stream().mapToInt(List::size).sum();
 		return new Difference(awake, toWake, toSleep, rehoused, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
+	}
+
+	/**
+	 * Takes one out of a list for the side furthest from its share: the furthest under it to wake, the furthest over it to put to sleep, and counts it.
+	 * Within a side the first is woken and the last put to sleep, which is the order a one-sided map always had.
+	 */
+	private static <T> T takeFor(List<T> from, Map<Race, Integer> share, Map<Race, Integer> have, Function<T, Race> raceOf, boolean waking) {
+		Race side = waking ? mostUnder(share, have, from, raceOf) : mostOver(share, have, from, raceOf);
+		int at = -1;
+		for (int i = 0; i < from.size(); i++) {
+			if (side == null || raceOf.apply(from.get(i)) == side) {
+				at = i;
+				if (waking)
+					break;
+			}
+		}
+		T taken = from.remove(at < 0 ? (waking ? 0 : from.size() - 1) : at);
+		Race race = raceOf.apply(taken);
+		if (race != null)
+			have.merge(race, waking ? 1 : -1, Integer::sum);
+		return taken;
+	}
+
+	/** @return Of the sides somebody in the list belongs to, the one furthest under its share, or null when nobody in it has a side. */
+	private static <T> Race mostUnder(Map<Race, Integer> share, Map<Race, Integer> have, List<T> from, Function<T, Race> raceOf) {
+		return furthest(share, have, from, raceOf, 1);
+	}
+
+	/** @return Of the sides somebody in the list belongs to, the one furthest over its share, or null when nobody in it has a side. */
+	private static <T> Race mostOver(Map<Race, Integer> share, Map<Race, Integer> have, List<T> from, Function<T, Race> raceOf) {
+		return furthest(share, have, from, raceOf, -1);
+	}
+
+	private static <T> Race furthest(Map<Race, Integer> share, Map<Race, Integer> have, List<T> from, Function<T, Race> raceOf, int sign) {
+		Race best = null;
+		int bestGap = Integer.MIN_VALUE;
+		for (T one : from) {
+			Race race = raceOf.apply(one);
+			if (race == null)
+				continue;
+			int gap = sign * (share.getOrDefault(race, 0) - have.getOrDefault(race, 0));
+			if (gap > bestGap) {
+				bestGap = gap;
+				best = race;
+			}
+		}
+		return best;
 	}
 
 	/** @return The last of the spare residents who may live at a place of that faction, or null when none may. */

@@ -86,6 +86,40 @@ class BotDirectorTest {
 			assertNotEquals(mover.playerId(), waking.playerId(), "and it is not woken to be told about it");
 	}
 
+	/** On contested ground each side is woken in the share of the countryside its grounds are, not in the pool's order: Reshanta woke 26 Elyos and 3 Asmodians. */
+	@Test
+	void eachSideIsWokenForItsOwnShareOfTheField() {
+		List<BotRoster.Resident> residents = new ArrayList<>();
+		for (int id = 1; id <= 4; id++)
+			residents.add(new BotRoster.Resident(id, "Bot" + id, 400010000, GROUND_A, Race.ELYOS));
+		for (int id = 5; id <= 6; id++)
+			residents.add(new BotRoster.Resident(id, "Bot" + id, 400010000, GROUND_B, Race.ASMODIANS));
+		List<Settlement> plan = List.of(new Settlement(GROUND_A, 20f, 4, 20, Race.ELYOS), new Settlement(GROUND_A, 20f, 4, 20, Race.ELYOS),
+			new Settlement(GROUND_B, 20f, 4, 20, Race.ASMODIANS), new Settlement(GROUND_B, 20f, 4, 20, Race.ASMODIANS));
+
+		Difference difference = BotDirector.sort(awake(), SETTLEMENTS, post -> null, residents, Map.of(), plan);
+
+		assertEquals(2, difference.toWake().stream().filter(waking -> waking.race() == Race.ELYOS).count(), "two Elyos: " + difference.toWake());
+		assertEquals(2, difference.toWake().stream().filter(waking -> waking.race() == Race.ASMODIANS).count(), "two Asmodians: " + difference.toWake());
+	}
+
+	/** A side awake beyond its share is swapped for a sleeper of the side short of it, when the totals are already right. */
+	@Test
+	void aSideOverItsShareSwapsWithTheSideUnderIt() {
+		List<BotRoster.Resident> residents = new ArrayList<>();
+		for (int id = 1; id <= 3; id++)
+			residents.add(new BotRoster.Resident(id, "Bot" + id, 400010000, GROUND_A, Race.ELYOS));
+		residents.add(new BotRoster.Resident(4, "Bot4", 400010000, GROUND_B, Race.ASMODIANS));
+		List<Settlement> plan = List.of(new Settlement(GROUND_A, 20f, 4, 20, Race.ELYOS), new Settlement(GROUND_A, 20f, 4, 20, Race.ELYOS),
+			new Settlement(GROUND_B, 20f, 4, 20, Race.ASMODIANS));
+
+		Difference difference = BotDirector.sort(awake(1, 2, 3), SETTLEMENTS, post -> null, residents, Map.of(), plan);
+
+		assertEquals(List.of(4), difference.toWake().stream().map(BotRoster.Resident::playerId).toList(), "the Asmodian is woken");
+		assertEquals(1, difference.toSleep().size(), "one Elyos goes to sleep for it: " + difference.toSleep());
+		assertTrue(difference.toSleep().get(0) <= 3);
+	}
+
 	/** On contested ground a post is one side's: ten Elyos residents of Reshanta were moved into Primum, the Asmodian base. */
 	@Test
 	void aSleeperIsNeverMovedIntoTheOtherFactionsVillage() {
