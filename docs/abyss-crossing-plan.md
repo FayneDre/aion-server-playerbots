@@ -1,6 +1,6 @@
 # Crossing open air: plan
 
-Status: milestones 1 to 4 built 17 October and one crossing watched end to end on Reshanta; 5 in progress (populated and measured, the two bases' own ground still refuses routes, no squad crossing yet); 6 not started. Milestone 5 of [flight-plan.md](flight-plan.md), the one the Abyss and RvR wait on
+Status: milestones 1 to 4 built 17 October and one crossing watched end to end on Reshanta; 5 in progress (populated, bases and upper layer fixed and measured, squad crossing seen but not yet clean); 6 not started. Milestone 5 of [flight-plan.md](flight-plan.md), the one the Abyss and RvR wait on
 ([roadmap.md](roadmap.md)).
 
 ## What is seen
@@ -82,6 +82,14 @@ in the air or killed by the void.
 - **The bases' ground** (after the measure): Teminon's stairs are building faces of about 57 degrees, read as walls; the map's buildings now walk up to
   62 (`MapSlopes.buildingDegrees`) and the mesh and flight links were written again (19510 links). Routes between the bases' civilians: Teminon 29 of 34
   to 34 of 34, Primum 34 of 34. The director wakes each side for its share of the field (it woke 26 Elyos and 3 Asmodians), swapping two a review.
+- **The evening of 17 October:** places within a wander, shops and the death routine are measured in three dimensions (the upper layer stands over
+  the bases); no shop more than 300 m above or below; a bot revived on another layer than its home is taken home (not in a group); an attacker is
+  never beyond the camp; a spot search has a 1.5 s budget and obelisks on another layer are not searched (start 259 s to 132 s, stop 510 s to 3 s);
+  the director wakes hunters for the grounds nobody works, by side; Abyss residents are made 3 levels above their place and live nowhere near an
+  elite hostile to their side; chains of flights are ranked by distance; routes keep away from and never land beside a live creature above the
+  level gap. Refused routes on the map: 336 to 41 a half hour. Still open: the upper layer's deaths (about one a bot a half hour before the level
+  bonus, not measured since), long upper-layer journeys that still run out of the 5 s budget, and the squad crossing (one squad flew three crossings
+  and was killed on landing by level 65 Balaur elites, which led to the live dangers).
 - **Seen on the way:** a bot teleported by the inbox to another map stays out of the world ("despawned objects cannot move"); the test used a bot already
   on Reshanta.
 
