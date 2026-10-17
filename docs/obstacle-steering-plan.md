@@ -1,7 +1,7 @@
 # Walking into scenery: plan
 
 Status: milestones 0 and 1 built 16 October, 2 mostly, the at-home part of 3; the route loop and most rescue teleports fixed 17 October (steps aside
-14689 -> 444, rescues 403 -> 111 per half hour on 800 bots). 3 built 17 October, unverified with a player online. Left: 4. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
+14689 -> 444, rescues 403 -> 111 per half hour on 800 bots). 3 and 4 built 17 October (no headway 708 -> 15); 3 unverified with a player online. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
 ("into an obstacle, then teleported behind it"), which this replaces as the place the work is tracked.
 
 ## What is seen
@@ -77,14 +77,14 @@ minutes.
 Every open world map with a mesh populated except the two housing maps (their 557 villagers never sleep and did not fit a 2560 MB heap): 24 maps,
 about 800 bots awake with nobody online. Half hours, same population:
 
-| | 21:25 | 22:22 | 23:14 | 17 Oct 09:50 |
-|---|---:|---:|---:|---:|
-| steps aside | 14689 (13422 awaiting a plan) | 2951 (2390 last stretch) | 514 (511 planned, something spawned) | 444 (440 planned, something spawned) |
-| no headway | 708 | 95 | 83 | 76 |
-| walled in | 12 | 11 | 0 | 0 |
-| rescue teleports | 403 | 379 | 388 (none seen by a player) | 111 (none seen) |
-| routes planned | 16794 | 37461 | 45625 | 22616 |
-| server CPU | 9.2 cores | 5.5 cores | 5.9 cores | 3.7 cores |
+| | 21:25 | 22:22 | 23:14 | 17 Oct 09:50 | 10:55 |
+|---|---:|---:|---:|---:|---:|
+| steps aside | 14689 (13422 awaiting a plan) | 2951 (2390 last stretch) | 514 (511 planned, something spawned) | 444 (440 planned, something spawned) | 469 |
+| no headway | 708 | 95 | 83 | 76 | 15 |
+| walled in | 12 | 11 | 0 | 0 | 0 |
+| rescue teleports | 403 | 379 | 388 (none seen by a player) | 111 (none seen) | 79 |
+| routes planned | 16794 | 37461 | 45625 | 22616 | 23334 |
+| server CPU | 9.2 cores | 5.5 cores | 5.9 cores | 3.7 cores | 3.9 cores |
 
 - **Awaiting a plan:** on a map with glide links every plan is answered on another thread; a bot asked again on every call (the route not in hand
   being empty), 16794 routes in half an hour, and stepped aside blind meanwhile. Now it waits, standing, and asks again only after 5 s.
@@ -103,7 +103,12 @@ about 800 bots awake with nobody online. Half hours, same population:
 - **3 (17 October):** a bot a real player has in sight is not lifted: it drops its errand and the rescue waits for nobody to be looking. A bot in a
   player's group is always lifted, seen or not, since staying stuck behind them is worse; when no floor joined to the leader's is near it, it is put
   beside the leader instead of waiting for ever (it still waits for a leader in the air). Not yet watched with a player online.
-- **Left:** 4.
+- **4 (17 October):** neither hot spot of the 09:50 half hour was the mesh. The Sanctum one (147 of 226 "could not move") was one bot refused
+  everything at its own door, where `NavmeshTool path` plans in 20 ms: the move controller kept refusals earned elsewhere, so every rescue now
+  calls `forgetRefusals`. The Gelkmaros shops (14 of 76 no headway) were the measure: a route planned again partway kept the old waypoint's
+  distance as its baseline and gave up 5 s later on ground the mesh and `blockers` both call open; each new planned waypoint, off a detour, is
+  a new baseline. The Verteron fortress steps aside are props spawned in the way, which the mesh is right not to know.
+- **Left:** milestone 3 watched with a player in game.
 ## Risks
 
 - **More planning.** Milestone 2 asks for more routes; short ones are cheap, but chasing many targets at once is the case to watch (CPU, and the

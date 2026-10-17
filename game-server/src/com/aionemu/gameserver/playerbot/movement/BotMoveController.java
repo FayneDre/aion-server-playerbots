@@ -588,6 +588,14 @@ public class BotMoveController extends PlayerMoveController {
 			goalZ = waypoint.getZ();
 			onPlannedWaypoint = true;
 			aimIsGlide = glide;
+			// Headway is measured to the waypoint aimed at, so a new one is a new baseline. Kept from the last, a route planned again partway -- a shop
+			// keeper's spot moving with the bot, a chased target -- measured a waypoint 24 m off against the 2 m the bot had got to the old one, and
+			// gave up five seconds later: the no headway the log kept naming at the Gelkmaros shops, on ground the mesh and the geometry both call open.
+			// Not on a detour, where bouncing between two sidesteps is exactly what the measure exists to catch.
+			if (!onDetour) {
+				closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
+				lastProgressTime = System.currentTimeMillis();
+			}
 			return true;
 		}
 		aimIsGlide = false;
@@ -893,6 +901,23 @@ public class BotMoveController extends PlayerMoveController {
 			if (destinationChanged) // clients extrapolate between packets, so only resend when the destination actually moved
 				PacketSendUtility.broadcastToSightedPlayers(owner, new SM_MOVE(owner));
 		}
+	}
+
+	/**
+	 * Ends the journey and forgets every refusal it holds, for a bot the rescue has just moved or let off its errand.
+	 * <p>
+	 * The refusals were earned from somewhere else, or against an errand now forgotten. Kept, they turned down whatever the bot asked for next without
+	 * a single route being searched: one bot in the Sanctum was refused everything from its own front door, where the mesh plans routes in 20 ms,
+	 * and was let off its errand every twelve seconds for the whole half hour.
+	 */
+	public void forgetRefusals() {
+		stop();
+		blocked = false;
+		hasNoRoute = false;
+		noHeadwayUntil = 0;
+		nearestUntil = 0;
+		gaveUpCount = 0;
+		onDetour = false;
 	}
 
 	/**

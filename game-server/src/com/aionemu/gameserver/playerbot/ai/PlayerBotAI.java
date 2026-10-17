@@ -1340,6 +1340,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			log.info("Bot {} could not move at all from {} {}, but a player has it in sight, so it does something else rather than being lifted", bot.getName(),
 				Math.round(bot.getX()), Math.round(bot.getY()));
 			day.forget();
+			forgetRefusals();
 			return;
 		}
 
@@ -1358,6 +1359,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 				if (out != null) {
 					log.info("Bot {} could not move at {} {}, cut off from {}, and is put on walkable ground at {} {} {}{}", bot.getName(), Math.round(bot.getX()),
 						Math.round(bot.getY()), leader.getName(), Math.round(out.getX()), Math.round(out.getY()), Math.round(out.getZ()), witnessed(bot));
+					forgetRefusals(); // what was refused was refused from where it stood
 					TeleportService.teleportTo(bot, bot.getWorldId(), out.getX(), out.getY(), out.getZ());
 					return;
 				}
@@ -1369,6 +1371,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 				float toZ = beside != null ? beside.getZ() : leader.getZ();
 				log.info("Bot {} could not move at {} {}, cut off from {}, and is put beside them at {} {} {}{}", bot.getName(), Math.round(bot.getX()),
 					Math.round(bot.getY()), leader.getName(), Math.round(toX), Math.round(toY), Math.round(toZ), witnessed(bot));
+				forgetRefusals(); // what was refused was refused from where it stood
 				TeleportService.teleportTo(bot, bot.getWorldId(), toX, toY, toZ);
 				return;
 			}
@@ -1387,6 +1390,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			log.info("Bot {} could not move at {} {} {}, which the map does not join to its anchor, and is put on walkable ground at {} {} {}{}", bot.getName(),
 				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(bot.getZ()), Math.round(near.getX()), Math.round(near.getY()), Math.round(near.getZ()),
 				witnessed(bot));
+			forgetRefusals(); // what was refused was refused from where it stood
 			TeleportService.teleportTo(bot, bot.getWorldId(), near.getX(), near.getY(), near.getZ());
 			return;
 		}
@@ -1414,12 +1418,19 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// at its own front door asking for somewhere the planner cannot find is not stuck, its destination is, and forgetting it was the cure.
 			log.info("Bot {} could not move at all from {} {}, where it lives, and is left there with its errand forgotten", bot.getName(),
 				Math.round(bot.getX()), Math.round(bot.getY()));
+			forgetRefusals();
 			return;
 		}
 		log.info("Bot {} could not move at all from {} {} and is put back home{}{}", bot.getName(), Math.round(bot.getX()), Math.round(bot.getY()),
 			atHome && moved == null ? ", which is where it already was" : "", witnessed(bot));
+		forgetRefusals(); // what was refused was refused from where it stood
 		TeleportService.teleportTo(bot, bot.getWorldId(), x, y, z);
 		setAnchor(x, y, z);
+	}
+
+	private void forgetRefusals() {
+		if (getOwner().getMoveController() instanceof BotMoveController moveController)
+			moveController.forgetRefusals();
 	}
 
 	/**
