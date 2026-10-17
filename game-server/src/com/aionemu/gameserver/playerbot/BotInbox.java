@@ -117,6 +117,7 @@ public final class BotInbox {
 			case "populate" -> words.length < 3 ? "Usage: populate <map> <count> [race]" : populate(words);
 			case "number" -> name == null ? "Usage: number <map>" : BotCommands.count(argument, null);
 			case "pool" -> BotCommands.describePool(argument, null);
+			case "kind" -> name == null ? "Usage: kind <name> [resident|adventurer]" : BotCommands.setKind(name, words.length < 3 ? null : words[2].equalsIgnoreCase("resident"));
 			// one map, never the whole world: a file is one typo away from emptying it
 			case "clear" -> name == null ? "Usage: clear <map id or name>" : BotCommands.clear(null, argument);
 			default -> "Not taken from the inbox: " + words[0] + ". See docs/bot-commands.md, section Testing.";
