@@ -9,14 +9,14 @@ legions, RvR), then value per unit of effort inside each.
 
 ## Where things stand
 
-Last reviewed 2026-10-17 (patch `patch-2026-10-17-2`). **Built and running**: the population (pool, director, civic and field presence), combat with
+Last reviewed 2026-10-18 (patch `patch-2026-10-18`). **Built and running**: the population (pool, director, civic and field presence), combat with
 class skills, group roles, playbooks for the templar, chanter, ranger and cleric, the marking and target rules, group positioning, the death routine,
-gear and stigmas, flight (four milestones of five), navmesh planning on 24 open-world maps with glide links and a long-walk planner, 45 dungeon meshes,
+gear and stigmas, flight (five milestones, the fifth crossing the Abyss), navmesh planning on 24 open-world maps with glide links and a long-walk planner, 45 dungeon meshes,
 steering vetted by the mesh (steps aside 14689 -> 469 per half hour on 800 bots, rescue teleports 403 -> 79, none in a player's sight), the test
 harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with a bot-only squad** (level 24 in Eltnen, level 40 in Heiron): group fights,
 the cleric's heals, the chanter in melee, no fear and no wide area in a group. **Not watched in game**: group resurrection, the cleric facing a debuff it
 cannot remove, positioning against a boss, anything in a dungeon. **Not started**: bots in dungeons, wild PvP, the broker and shops, legions, speech,
-gathering, the Abyss and RvR.
+gathering, RvR.
 
 ## Dungeons and instances
 
@@ -85,11 +85,12 @@ Priority five. Bots forming and filling legions, which mostly falls out of group
 ## Flight, the Abyss, RvR
 
 **Bots fly** ([flight-plan.md](flight-plan.md)): take off and land, reach terraces, fly when the mesh proves there is no walk, follow a flying leader,
-glide down a planned glide link. **What is left is the fifth milestone**: a route through open air over a gap with no ground under it.
+glide down a planned glide link, and **cross the Abyss** by flight links between islands ([abyss-crossing-plan.md](abyss-crossing-plan.md)): Reshanta
+is lived on both its layers, refused routes 336 to 41 a half hour, no death in the void. Left: playbooks for the classes that die there (spirit master,
+aethertech, bard, gunner), and gliding on the way down (milestone 6, only if flights run short of points).
 
-That one milestone is what the **Abyss** waits on. Reshanta is a levelling region (834 civilians, more than Sanctum and Pandaemonium together, median
-monster 33) and its mesh exists (98 MB, built from placed meshes alone); its two obelisks stand on separate islands, so its obelisk audit fails until
-flight can cross. **RvR and sieges** wait on the same crossing; their supply line is designed (bots at the level cap become the elders the endgame needs,
+Reshanta is a levelling region (834 civilians, more than Sanctum and Pandaemonium together, median monster 33); both its obelisks now pass the audit
+through the flight links. **RvR and sieges** come next on it; their supply line is designed (bots at the level cap become the elders the endgame needs,
 [population.md](population.md)). Panesterra's four fields hold no civilians and have no mesh (no heightmap in the data).
 
 ## Gaps nobody had raised
