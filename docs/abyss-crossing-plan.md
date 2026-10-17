@@ -1,7 +1,6 @@
 # Crossing open air: plan
 
-Status: milestones 1 to 5 built 17 and 18 October (patch `patch-2026-10-18`): Reshanta crossed by air and lived on both layers, a squad crossed the upper layer; still open are the playbooks of the classes that die there and long journeys across the whole map; 6 not started.
-([roadmap.md](roadmap.md)).
+Status: milestones 1 to 5 built 17 and 18 October (patch `patch-2026-10-18`): Reshanta crossed by air and lived on both layers, a squad crossed the upper layer; still open are the playbooks of the classes that die there and long journeys across the whole map; 6 not started. See [roadmap.md](roadmap.md).
 
 ## What is seen
 
