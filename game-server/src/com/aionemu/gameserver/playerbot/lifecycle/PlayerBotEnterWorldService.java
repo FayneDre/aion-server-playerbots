@@ -4,10 +4,13 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.ai.event.AIEventType;
 import com.aionemu.gameserver.dataholders.DataManager;
+import com.aionemu.gameserver.dataholders.PlayerInitialData.LocationData;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
+import com.aionemu.gameserver.model.templates.portal.InstanceExit;
+import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.economy.BotStigmaFitter;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
@@ -50,6 +53,27 @@ public class PlayerBotEnterWorldService {
 	 * this way resumes exactly where it stood, and its ai anchors its camp there on the spawn event.
 	 */
 	public static void enterWorld(Player bot) {
+		enterWorld(bot, true, 0);
+	}
+
+	/**
+	 * Spawns a resident beside a player, to stay there: a recruit for the player's group. {@link #enterWorld(Player, Player)} does not do for this,
+	 * since it puts a resident that is far from home back at home, on whatever map it now stands on.
+	 *
+	 * @param homeWorldId The map the bot lives on, whose obelisk it is bound to.
+	 */
+	public static void enterWorldBeside(Player bot, Player nextTo, int homeWorldId) {
+		bot.setPosition(World.getInstance().createPosition(nextTo.getWorldId(), nextTo.getX() + 2, nextTo.getY(), nextTo.getZ(), nextTo.getHeading(),
+			nextTo.getInstanceId()));
+		enterWorld(bot, false, homeWorldId);
+	}
+
+	/**
+	 * @param backHome Whether a resident found far from home, or on top of something there, is put back at home first: right for a bot resuming its
+	 *          own life, wrong for one brought somewhere on purpose.
+	 * @param homeWorldId The map the bot lives on, when it is not put back there: one put back lives on the map it ends up on.
+	 */
+	private static void enterWorld(Player bot, boolean backHome, int homeWorldId) {
 		// before anything else: it is what makes the engine treat this character as present despite having no connection
 		bot.setBot();
 		// The engine keeps a second notion of being online, on the character rather than on the player, and this is the one most of it consults.
@@ -63,9 +87,12 @@ public class PlayerBotEnterWorldService {
 		// out, so a bot despawned mid fight came back standing in a town holding its weapon out -- and stayed that way, since the rule that puts one
 		// away only ran after a fight this life. Reported from in game as a songweaver whose harp should have been on its back.
 		BotAttackManager.leaveAttackMode(bot);
-		goHome(bot); // before the ground check, so a strayed resident is put back and then stood on solid ground there
-		stepOffStructures(bot); // and before that again: a position saved on top of something comes back on top of it
-		bindToNearestObelisk(bot);
+		if (backHome) {
+			leaveSavedInstance(bot); // first of all: everything after it reads the map the bot is on
+			goHome(bot); // before the ground check, so a strayed resident is put back and then stood on solid ground there
+			stepOffStructures(bot); // and before that again: a position saved on top of something comes back on top of it
+		}
+		bindToNearestObelisk(bot, backHome ? bot.getWorldId() : homeWorldId);
 		standOnGround(bot);
 		// Bots advance, because a character that cannot is not one. What keeps the low regions from emptying is the pace, not a ban: the drift
 		// upwards is arithmetic, so it is governed by arithmetic. Both brakes are set by BotPacing, which the ai owns and settles as it is built a
@@ -98,13 +125,36 @@ public class PlayerBotEnterWorldService {
 	 * lives on, which it then has to walk all the way back across. Done on entering the world, so bots made before this get one too, and redone each
 	 * time because a bind point is not saved with the character.
 	 */
-	private static void bindToNearestObelisk(Player bot) {
+	private static void bindToNearestObelisk(Player bot, int homeWorldId) {
 		Vector3f home = BotRoster.homeOf(bot.getName());
 		if (home == null)
 			return;
-		Vector3f obelisk = BotPlaces.nearestReachableObelisk(bot.getWorldId(), home);
+		Vector3f obelisk = BotPlaces.nearestReachableObelisk(homeWorldId, home);
 		if (obelisk != null)
-			bot.setBindPoint(new BindPointPosition(bot.getWorldId(), obelisk.getX(), obelisk.getY(), obelisk.getZ(), (byte) 0));
+			bot.setBindPoint(new BindPointPosition(homeWorldId, obelisk.getX(), obelisk.getY(), obelisk.getZ(), (byte) 0));
+	}
+
+	/**
+	 * Puts a bot saved inside an instance at that instance's exit.
+	 * <p>
+	 * An instance does not outlive a restart, and a bot that was in one with its player when the server stopped is saved on the instance's map. A
+	 * player logging in there is moved out by {@code InstanceService.onPlayerLogin}; a bot does not log in, so it came back on the map of a dungeon that
+	 * no longer exists, and the next line would have taken it "home", to its village's coordinates on the dungeon's map.
+	 */
+	private static void leaveSavedInstance(Player bot) {
+		WorldMapTemplate map = DataManager.WORLD_MAPS_DATA.getTemplate(bot.getWorldId());
+		if (map == null || !map.isInstance())
+			return;
+		int savedOn = bot.getWorldId();
+		InstanceExit exit = DataManager.INSTANCE_EXIT_DATA.getInstanceExit(savedOn, bot.getRace());
+		if (exit != null) {
+			bot.setPosition(World.getInstance().createPosition(exit.getExitWorld(), exit.getX(), exit.getY(), exit.getZ(), exit.getH(), 1));
+		} else {
+			LocationData start = DataManager.PLAYER_INITIAL_DATA.getSpawnLocation(bot.getRace());
+			bot.setPosition(World.getInstance().createPosition(start.getMapId(), start.getX(), start.getY(), start.getZ(), start.getHeading(), 1));
+		}
+		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} was saved inside map {} and starts at its exit, map {}", bot.getName(),
+			savedOn, bot.getWorldId());
 	}
 
 	/**

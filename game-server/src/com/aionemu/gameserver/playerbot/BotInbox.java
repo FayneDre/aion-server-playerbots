@@ -17,6 +17,7 @@ import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.lifecycle.BotMapChange;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -183,6 +184,7 @@ public final class BotInbox {
 				z = ground.getZ();
 			}
 			TeleportService.teleportTo(bot, worldId, x, y, z);
+			BotMapChange.arrive(bot);
 			ai.setAnchor(x, y, z);
 			return words[1] + " teleported to map " + worldId + " at " + x + " " + y + " " + z + ", which is now its camp";
 		} catch (NumberFormatException e) {

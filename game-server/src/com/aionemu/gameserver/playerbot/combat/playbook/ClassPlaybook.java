@@ -32,13 +32,24 @@ public interface ClassPlaybook {
 	boolean act(Player bot, Creature target);
 
 	/**
-	 * Gives the class its chance to act while it is <b>not</b> fighting: buffs, mending, resurrecting. Called ahead of the generic upkeep, alone and in a
-	 * group alike.
+	 * Gives the class its chance to look after itself and its group while it is <b>not</b> fighting: mending, cleansing, resurrecting. Called on every
+	 * tick out of a fight, alone and in a group alike. Buffs are not this: see {@link #prepare}.
 	 *
 	 * @return true if the bot did something, in which case it is busy for this tick. Same contract as {@link #act}: false means "nothing to say" and the bot
 	 *         must have been left as it was found.
 	 */
 	default boolean tend(Player bot) {
+		return false;
+	}
+
+	/**
+	 * Gives the class its chance to put up the buffs it opens a fight with, once a fight is coming: the target chosen, or the group's leader with an
+	 * enemy in its sights. Called ahead of the generic upkeep. Kept apart from {@link #tend} because the two were one, and a bot strolling round a
+	 * village cast its one minute buffs every minute for nobody.
+	 *
+	 * @return true if the bot cast something, in which case it is busy for this tick. Same contract as {@link #act}.
+	 */
+	default boolean prepare(Player bot) {
 		return false;
 	}
 

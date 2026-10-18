@@ -54,6 +54,11 @@ the geometry leads nowhere, and two callers abandon their errand for good on one
 had just stood up. It belongs in the decision tick, next to the same rule for casting — **"not yet" and "never" must not come back as the same
 answer.**
 
+**A map change ends on the client's word.** A teleport to another map takes the body out, gives it its new position, and leaves the spawn to
+`CM_LEVEL_READY`, the packet a client sends once the map is loaded. A bot sent to another map stayed out of the world for good, its every move refused
+as a despawned object's. `BotMapChange.arrive` is the server-side half of that packet, called after each teleport the module makes; the engine's
+own (an instance closing, an obelisk on another map) are caught by the decision tick, which finds the bot out of the world on two ticks running.
+
 ## State kept in two places drifts
 
 A flag cleared by hand on every way a journey can end will miss one — it missed the abandon path, and the bot stood still for good. Derive it from the thing that already knows (`BotMoveController.isTravelling()`).

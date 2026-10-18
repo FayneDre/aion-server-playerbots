@@ -74,6 +74,8 @@ public class BotFlight {
 	private static final int AMBIENT_PERCENT = 50;
 	/** How far above the landing spot a journey aims, so the last of it is a short drop onto the ground rather than a dive at it. */
 	private static final float LANDING_CLEARANCE = 3;
+	/** The stretch above a landing asked for a roof: from above a body's head, so its own floor is not one, to well over any storey. */
+	private static final float ROOF_FROM = 2.5f, ROOF_SEARCH = 30;
 	/** How far the one being followed must move before the bot is pointed somewhere new, so a leg is not re-announced every tick. */
 	private static final float RETARGET = 4;
 	/** How far behind and to the side the bot flies, so it is following rather than occupying the same piece of sky. */
@@ -328,6 +330,8 @@ public class BotFlight {
 			return bot.getName() + " is already there, " + Math.round(distance) + " m away";
 		if (distance > MAX_JOURNEY)
 			return bot.getName() + " is " + Math.round(distance) + " m away, past the longest flight";
+		if (isUnderARoof(bot, ground))
+			return bot.getName() + " would land under a roof at " + Math.round(ground.getX()) + " " + Math.round(ground.getY()) + ", and nobody flies indoors";
 		float base = Math.max(bot.getZ(), ground.getZ());
 		Vector3f start = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
 		Vector3f approach = new Vector3f(ground.getX(), ground.getY(), ground.getZ() + LANDING_CLEARANCE);
@@ -407,6 +411,16 @@ public class BotFlight {
 		return null;
 	}
 
+	/**
+	 * @return true if something solid stands over the landing within {@link #ROOF_SEARCH} metres: a room, a porch, an arcade. A flight checks the air along
+	 *         its own line and no further, and a line through a doorway or an arch is clear, so bots took off for places the walk could not reach and flew
+	 *         into the buildings of the Verteron citadel. A place nothing walks to and a roof covers is indoors, and indoors is reached by its door.
+	 */
+	private static boolean isUnderARoof(Player bot, Vector3f landing) {
+		return GeoService.getInstance().getClosestCollision(bot, landing.getX(), landing.getY(), landing.getZ() + ROOF_FROM, landing.getX(), landing.getY(),
+			landing.getZ() + ROOF_SEARCH, false, CollisionIntention.DEFAULT_COLLISIONS.getId(), IgnoreProperties.ANY_RACE) != null;
+	}
+
 	/** @return Whether nothing stands between two points of the air, asked from the first of them. See {@link #airIsClear}. */
 	private static boolean clearBetween(Player bot, Vector3f from, Vector3f to) {
 		Vector3f met = GeoService.getInstance().getClosestCollision(bot, from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ(), false,
@@ -451,6 +465,8 @@ public class BotFlight {
 			return bot.getName() + " is already there, " + Math.round(distance) + " m away";
 		if (distance > MAX_JOURNEY)
 			return bot.getName() + " is " + Math.round(distance) + " m away, and a flight is for a terrace over a wall, not for crossing a region";
+		if (isUnderARoof(bot, ground))
+			return bot.getName() + " would land under a roof at " + Math.round(ground.getX()) + " " + Math.round(ground.getY()) + ", and nobody flies indoors";
 
 		// Straight there or not at all. Flying over something was the other half of this and it is gone: the air along that path cannot be tested
 		// from here -- the engine's ray casts from the body's own position and nowhere else -- so it was flown on faith, and in a citadel full of

@@ -140,7 +140,8 @@ public class HeightfieldBuilder {
 		field.applyHeadroom();
 		field.block(noWalkColumns());
 		blockWalls(field);
-		field.erode(agentRadius);
+		// the steeper of the map's two slopes, as the path finder steps with (MapSlopes.tangent): a stair a route climbs is not an edge to shave
+		field.erode(agentRadius, BotPathFinder.STEP_TOLERANCE, (float) Math.tan(Math.acos(Math.min(slopeCosine, buildingCosine))));
 		return field;
 	}
 

@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.commons.database.DatabaseFactory;
 import com.aionemu.gameserver.dao.PlayerDAO;
+import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.dao.ServerVariablesDAO;
 
@@ -186,6 +188,48 @@ public class BotRoster {
 			log.error("Could not read the pool of the world's own inhabitants", e);
 		}
 		return residents;
+	}
+
+	/** A resident of the pool with what a recruiter asks of it: its class and its level. */
+	public record Sleeper(Resident resident, PlayerClass playerClass, int level) {
+	}
+
+	/**
+	 * @return The residents of the pool of that faction who are not in the world, with their class and level: the characters a group recruiting for an
+	 *         instance can be given. The level is derived from the experience, for the reason {@link Resident} gives. Empty when the query fails.
+	 */
+	public static List<Sleeper> sleepers(Race race) {
+		List<Sleeper> sleepers = new ArrayList<>();
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT p.`id`, p.`name`, p.`world_id`, b.`home_x`, b.`home_y`, b.`home_z`, p.`player_class`, p.`exp` "
+					 + "FROM `playerbot_characters` b JOIN `players` p ON p.`id` = b.`player_id` "
+					 + "WHERE b.`resident` = 1 AND b.`in_world` = 0 AND b.`owner_id` = 0 AND p.`account_id` >= ? AND p.`race` = ?")) {
+			stmt.setInt(1, PlayerBotCreationService.BOT_ACCOUNT_ID_BASE);
+			stmt.setString(2, race.name());
+			try (ResultSet rs = stmt.executeQuery()) {
+				while (rs.next()) {
+					float x = rs.getFloat(4), y = rs.getFloat(5), z = rs.getFloat(6);
+					if (x == 0 && y == 0)
+						continue; // nowhere to go back to afterwards, as in the pool
+					PlayerClass playerClass = playerClassOf(rs.getString(7));
+					if (playerClass == null)
+						continue; // one character the enum does not know is not a reason to recruit nobody
+					int level = DataManager.PLAYER_EXPERIENCE_TABLE.getLevelForExp(rs.getLong(8));
+					sleepers.add(new Sleeper(new Resident(rs.getInt(1), rs.getString(2), rs.getInt(3), new Vector3f(x, y, z), race), playerClass, level));
+				}
+			}
+		} catch (SQLException e) {
+			log.error("Could not read the sleeping residents of " + race, e);
+		}
+		return sleepers;
+	}
+
+	private static PlayerClass playerClassOf(String stored) {
+		try {
+			return stored == null ? null : PlayerClass.valueOf(stored);
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
 	}
 
 	private static Race raceOf(String stored) {

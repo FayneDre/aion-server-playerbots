@@ -289,9 +289,12 @@ final class ClericPlaybook implements ClassPlaybook {
 	@Override
 	public boolean tend(Player bot) {
 		Reading reading = readingOf(bot, null, false);
-		if (perform(bot, null, reading, decideRest(reading.situation())))
-			return true;
-		return upkeep(bot, reading.situation());
+		return perform(bot, null, reading, decideRest(reading.situation()));
+	}
+
+	@Override
+	public boolean prepare(Player bot) {
+		return upkeep(bot, readingOf(bot, null, false).situation());
 	}
 
 	@Override

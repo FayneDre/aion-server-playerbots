@@ -143,42 +143,64 @@ public class Heightfield {
 		}
 	}
 
+	/** The least difference in height between a surface and its neighbour's that makes the neighbour no footing for it, see {@link #hasEdgeNearby}. */
+	private static final float EDGE_HEIGHT = 1.2f;
+
 	/**
 	 * Shaves walkable ground back from every edge by the width of a body.
 	 * <p>
 	 * Without this the grid says a bot may stand on anything flat enough, including the top of a fallen tree trunk it reaches by a gentle branch, or
 	 * the half metre of ledge against a wall. A route then leads somewhere a body does not fit and does not belong. Eroding is what turns "this cell
 	 * is flat" into "a body fits here", and it is why narrow features disappear on their own rather than needing to be recognised.
+	 * <p>
+	 * Surface by surface, see {@link #hasEdgeNearby}. Measured on Verteron and Reshanta on 18 October against the meshes built by column: no route on foot
+	 * through a wall of the Verteron citadel or of Teminon's castle where there were several, and as many places reached or more (Teminon's npcs 99 of
+	 * 101 from its obelisk, against 97). A rule in the path finder refusing a diagonal step between two shut corners was tried first and dropped: on
+	 * walls a body's width thick there is no such step left to refuse, and it cost passages.
 	 */
-	void erode(int radius) {
-		BitSet footing = new BitSet(width * height);
-		for (int column = 0; column < width * height; column++) {
-			for (int i = offsets[column]; i < offsets[column + 1]; i++) {
-				if (walkable.get(i)) {
-					footing.set(column);
-					break;
+	void erode(int radius, float stepTolerance, float slopeTangent) {
+		BitSet before = (BitSet) walkable.clone(); // every surface judged against the ground as it was, not as the pass leaves it
+		BitSet eroded = new BitSet(surfaces.length);
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				int column = y * width + x;
+				for (int i = offsets[column]; i < offsets[column + 1]; i++) {
+					if (before.get(i) && hasEdgeNearby(before, x, y, surfaces[i], radius, stepTolerance, slopeTangent))
+						eroded.set(i);
 				}
 			}
 		}
-
-		BitSet eroded = new BitSet(width * height);
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				if (!footing.get(y * width + x))
-					continue;
-				if (hasEdgeNearby(footing, x, y, radius))
-					eroded.set(y * width + x);
-			}
-		}
-		block(eroded);
+		walkable.andNot(eroded);
 	}
 
-	private boolean hasEdgeNearby(BitSet footing, int x, int y, int radius) {
+	/**
+	 * @return true if, within the radius, a column has no walkable surface a body on this one could step to: an edge of this floor.
+	 *         <p>
+	 *         Asked surface by surface and at this surface's height. Asked of the column, as it was, a wall was no edge at all whenever anything else in its
+	 *         column was walkable -- the ground under a house's floor, the top of the wall, a roof -- which is nearly always: the floor beside a wall kept
+	 *         its full width, routes ran along walls closer than a body fits, and a thin wall at an angle was one cell thick, which a diagonal step went
+	 *         through. That was every bot seen walking into a house wall in the Verteron citadel and into the castle in Teminon. And eroding a column
+	 *         cleared every surface in it, the roof above a narrow alley with the alley.
+	 */
+	private boolean hasEdgeNearby(BitSet before, int x, int y, float z, int radius, float stepTolerance, float slopeTangent) {
 		for (int offsetY = -radius; offsetY <= radius; offsetY++) {
 			for (int offsetX = -radius; offsetX <= radius; offsetX++) {
+				if (offsetX == 0 && offsetY == 0)
+					continue;
 				int nextX = x + offsetX, nextY = y + offsetY;
-				if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height || !footing.get(nextY * width + nextX))
+				if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height)
 					return true; // off the map counts as an edge, which keeps bots off the very rim
+				// The path finder's own step, as far up or down as the slope allows over the distance, but never under EDGE_HEIGHT: the terrain is sampled
+				// every half metre and its slope judged over two, so a hillside walked every day has steps between neighbours taller than one stride allows,
+				// and taken as edges they sliced it -- 207 of 300 long routes on Verteron found no way, against 134. A wall stands further off than that:
+				// the ground under a house's floor two metres down, the top of a castle wall a metre and a half up.
+				float reach = Math.max(EDGE_HEIGHT, (float) Math.hypot(offsetX, offsetY) * CELL_SIZE * slopeTangent + stepTolerance);
+				int column = nextY * width + nextX;
+				boolean footing = false;
+				for (int i = offsets[column]; i < offsets[column + 1] && !footing; i++)
+					footing = before.get(i) && Math.abs(surfaces[i] - z) <= reach;
+				if (!footing)
+					return true;
 			}
 		}
 		return false;

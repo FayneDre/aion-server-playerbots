@@ -16,6 +16,7 @@ import com.aionemu.gameserver.model.team.group.PlayerGroup;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.lifecycle.BotMapChange;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotLanding;
 import com.aionemu.gameserver.services.teleport.TeleportService;
@@ -123,6 +124,7 @@ public final class BotSquads {
 				spot = joined != null ? joined : ground;
 			}
 			TeleportService.teleportTo(member, leader.getWorldId(), leader.getInstanceId(), spot.getX(), spot.getY(), spot.getZ());
+			BotMapChange.arrive(member);
 		}
 	}
 

@@ -92,6 +92,7 @@ Future subsystems plug in as: auction house / shops → `economy/` plus new beha
 | `skillengine/effect/EffectTemplate.java` | One accessor: `getHitType()` | Minimal — a getter over an existing protected field, no behaviour |
 | `model/gameobjects/player/Player.java` | `isOnline()` means "is present"; adds `setBot()`/`isBot()` | Low per line, wide in effect — see [built.md](built.md) |
 | `PacketSendUtility`, `World`, `MultiClientingService`, `PunishmentService`, `PvpService`, `ChangeLeaderEvent` | One null check each, on the connection instead of on `isOnline()` | Minimal — and three of them were already missing a guard |
+| `services/findgroup/FindGroupService.java` | `getInstanceGroups()`, a read-only view of the Instance Groups offers | Additive, no existing line touched. The offers were private with no reader, and `BotRecruiter` answers them |
 | `ShutdownHook.java` | One line: `PlayerBotService.onShutdown()` after the leave world tasks | Low — nothing else saves bots (see below) |
 | `GameServer.java` | One line: `PlayerBotService.onStartUp()` beside the shutdown hook registration | Low — the symmetric counterpart, on a line that rarely moves |
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. Defer while the prototype uses constants. |

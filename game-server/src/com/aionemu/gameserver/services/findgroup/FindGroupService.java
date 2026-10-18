@@ -1,5 +1,7 @@
 package com.aionemu.gameserver.services.findgroup;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -125,6 +127,11 @@ public class FindGroupService {
 		List<Integer> instanceMaskIds = DataManager.AUTO_GROUP.getRecruitableInstanceMaskIds(portalNpc.getNpcId());
 		if (instanceMaskIds != null)
 			PacketSendUtility.sendPacket(player, new SM_FIND_GROUP(instanceMaskIds));
+	}
+
+	/** @return The offers in the Instance Groups tab, read by the playerbot recruiter. A live view. */
+	public Collection<ServerWideGroup> getInstanceGroups() {
+		return Collections.unmodifiableCollection(instanceGroups.values());
 	}
 
 	public void registerInstanceGroup(Player player, int instanceMaskId, String message, int minMembers) {

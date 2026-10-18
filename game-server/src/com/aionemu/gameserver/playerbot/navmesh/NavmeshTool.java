@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
@@ -109,6 +110,10 @@ public class NavmeshTool {
 		}
 		if (args.length == 2 && args[1].equals("audit")) {
 			audit(Integer.parseInt(args[0]));
+			return;
+		}
+		if (args.length == 6 && args[1].equals("reachfrom")) {
+			reachFrom(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]), Path.of(args[5]));
 			return;
 		}
 		if ((args.length == 6 || args.length == 8) && args[1].equals("path")) {
@@ -212,11 +217,34 @@ public class NavmeshTool {
 		audit(mapId, AUDIT_LONG_SPAN);
 	}
 
+	/**
+	 * Plans a route from one spot to each spot listed in a file, one "x y z" a line, and says how many were reached: the measure a change to the step
+	 * rules is checked against where it matters, such as the floors of a base joined by its stairs.
+	 */
+	private static void reachFrom(int mapId, float x, float y, float z, Path spots) throws IOException {
+		Navmesh mesh = Navmesh.open(mapId);
+		int reached = 0, total = 0;
+		for (String line : Files.readAllLines(spots)) {
+			String[] parts = line.trim().split("\\s+");
+			if (parts.length < 3)
+				continue;
+			total++;
+			float goalX = Float.parseFloat(parts[0]), goalY = Float.parseFloat(parts[1]), goalZ = Float.parseFloat(parts[2]);
+			BotPathFinder.Route route = BotPathFinder.findPath(mesh, x, y, z, goalX, goalY, goalZ);
+			if (!route.isEmpty())
+				reached++;
+			else
+				System.out.printf(Locale.ROOT, "  not reached: %.1f %.1f %.1f%s%n", goalX, goalY, goalZ, route.gaveUp() ? " (gave up)" : "");
+		}
+		System.out.printf(Locale.ROOT, "%d of %d spots reached from %.1f %.1f %.1f%n", reached, total, x, y, z);
+	}
+
 	private static void audit(int mapId, float span) throws IOException {
 		Navmesh mesh = Navmesh.open(mapId);
 		Random random = new Random(mapId); // seeded on the map, so two runs of the same map are comparable
 		List<float[]> worst = new ArrayList<>();
 		List<Float> ratios = new ArrayList<>();
+		List<List<Vector3f>> planned = new ArrayList<>();
 		int unreachable = 0, attempts = 0;
 
 		while (ratios.size() + unreachable < AUDIT_SAMPLES && attempts++ < AUDIT_SAMPLES * 50) {
@@ -236,6 +264,18 @@ public class NavmeshTool {
 				unreachable++;
 				continue;
 			}
+			// on foot only: a glide or a crossing by air goes through the air between islands, which the server checks for itself before it flies one
+			List<Vector3f> onFoot = new ArrayList<>();
+			for (int i = 0; i < route.waypoints().size(); i++) {
+				if (route.glides().contains(i) || route.flights().contains(i)) {
+					if (onFoot.size() > 1)
+						planned.add(onFoot);
+					onFoot = new ArrayList<>();
+				}
+				onFoot.add(route.waypoints().get(i));
+			}
+			if (onFoot.size() > 1)
+				planned.add(onFoot);
 			float walked = 0;
 			for (int i = 1; i < route.waypoints().size(); i++)
 				walked += route.waypoints().get(i).distance(route.waypoints().get(i - 1));
@@ -254,6 +294,7 @@ public class NavmeshTool {
 		long wandering = ratios.stream().filter(ratio -> ratio > AUDIT_SUSPECT_RATIO).count();
 		System.out.printf("Audit of %d routes over %.0f m: median %.2fx straight line, 90th percentile %.2fx, %d beyond %.1fx, %d unreachable%n",
 			ratios.size(), span, median, p90, wandering, AUDIT_SUSPECT_RATIO, unreachable);
+		System.out.printf("  %d of their stretches on foot pass through a wall of a placed model at a body's height%n", Blockers.walledRoutes(mapId, planned));
 
 		worst.sort((a, b) -> Float.compare(b[0], a[0]));
 		for (float[] sample : worst.subList(0, Math.min(5, worst.size()))) {
@@ -388,6 +429,8 @@ public class NavmeshTool {
 		for (Vector3f waypoint : route)
 			System.out.printf("  %.1f %.1f %.1f%n", waypoint.x, waypoint.y, waypoint.z);
 		System.out.println("Wrote " + writeRouteImage(mapId, mesh, route).toAbsolutePath());
+		System.out.println("Walls of placed models along each stretch, at a body's height:");
+		Blockers.crossings(mapId, route);
 	}
 
 	/** Looks outwards for walkable ground, the way the path finder does, so a spot on an eroded edge still reports a sensible height. */

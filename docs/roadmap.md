@@ -16,8 +16,8 @@ open-world maps with glide links, flight links on Reshanta and a long-walk plann
 14689 -> 469 per half hour on 800 bots, rescue teleports 403 -> 79, none in a player's sight), the test harness (`//bot squad`, notes, the command
 inbox, patch tags). **Watched with a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron (the cleric's heals, the chanter in melee,
 no fear and no wide area in a group), and a squad of level 40 crossing Reshanta's upper layer by air, together, to its goal. **Not watched in game**:
-group resurrection, the cleric facing a debuff it cannot remove, positioning against a boss, anything in a dungeon. **Not started**: bots in
-dungeons, wild PvP, the broker and shops, legions, speech, gathering, RvR.
+group resurrection, the cleric facing a debuff it cannot remove, positioning against a boss, anything in a dungeon (bots follow their player into
+one since 18 October, unwatched). **Not started**: wild PvP, the broker and shops, legions, speech, gathering, RvR.
 
 ## Dungeons and instances
 
@@ -27,9 +27,11 @@ playable alone, and it is the next thing worth doing.
 What exists: group roles, four class playbooks, positioning, marks, a squad of bots that fights as a group, and **45 dungeon meshes** with glide links,
 each put through a reach check ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)). What is missing:
 
-- **Instance entry for a connectionless player.** The group's instance is created for the leader and the members are teleported in, the same
-  `TeleportService` door bots already use. Not tried.
-- **The server opening an instance mesh** (milestone 6 of the dungeon plan): the meshes exist on disk, nothing loads one for a running instance yet.
+- **Instance entry: built 18 October, not watched in game.** A grouped bot follows its player into the instance they entered and out again
+  (`BotInstances`), revives at the entrance, and a bot saved inside starts at the exit. A map change used to leave a bot out of the world for good,
+  waiting for a client's `CM_LEVEL_READY`; `BotMapChange` now spawns it.
+- **The instance meshes** are on the server (54 files for the 45 geometries) and are opened by map id like any other on a bot's first route there:
+  nothing is left to load them, but no bot has walked one yet.
 - **Doors, lifts and floors** the open world never asked about: what the testers reported is in the dungeon plan.
 - **Bosses**: a bot that simply fights correctly clears most low-level instances; mechanics are a later refinement, not a prerequisite. Positioning
   against a boss has never been seen, because the only Elyos boss in reach outdoors stands off the mesh.
@@ -45,8 +47,10 @@ What is left once roles, playbooks and positioning exist:
   the other 21's four deaths, on the generic rotation.
 - **Damage waits for the tank to hold.** It focuses the tank's target, but opens at the same instant, so the first blow can pull the mob off.
   `AggroList.getTarget(MOST_HATED)` can answer "the tank holds it".
-- **Composition**: the director should offer a balanced group, which needs the pool stocked by role as well as by level (see the director below).
-- **Nobody forms a group.** Bots join a player's or a `//bot squad`; two bots in a field never party with each other.
+- **Composition: built 18 October for instance offers, not watched in game.** An offer in the Find Group window is filled with bots, a tank, a
+  healer and a support first, at the player's level (`BotRecruiter`). Left: the Recruit Group Members tab, alliances, and a pool stocked by role,
+  since a missing templar or cleric at a level is a missing tank or healer (see the director below).
+- **Bots never form a group of their own.** They join a player's, an offer's or a `//bot squad`; two bots in a field never party with each other.
 - **Tester points still open**: the templar that "drops the fight" (needs the tester's log or the time and the bot's name; a grouped bot no longer
   breaks off from any fight since 17 October, which may be it), group resurrection, the cleric against an assassin's rune ([cleric-plan.md](cleric-plan.md)).
 
@@ -79,7 +83,8 @@ the switch to turn when wild PvP is a decision rather than an accident.
 ## Economy
 
 **Selling works**: 37 sales in 38 trips on the night of 2 October, keepers found among the living npcs, refused shops remembered, trade within 8 m,
-and the keeper's own floor where it stands a storey away (17 October, Teminon). No shop on another layer of the map is gone to; fortress shops are
+and the keeper's own floor where it stands a storey away (17 October, Teminon), unless that floor is a pocket behind a counter, where a bot
+walked in and could not get out (18 October, the Verteron citadel). No shop on another layer of the map is gone to; fortress shops are
 kept, by decision. A player's own bot never sells, buys, dresses from, identifies or binds what is in its bag ([bot-gear.md](bot-gear.md)).
 
 Next is the **broker** (`BrokerService`), on the same "find the right npc" mechanism, then **player shops**. **Gathering and crafting** would feed the
@@ -129,8 +134,9 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
 3. **Only maps with a mesh are planned on.** 24 open-world maps and 45 dungeons have one (`tools/navmesh.ps1 <mapId>`, then `-Obelisks`); only
    Reshanta has flight links (`NavmeshTool <mapId> flights`, with the server stopped). The Cloister of Kaisinel cannot (no heightmap and almost no
    geometry); Panesterra lacks a heightmap too.
-4. **The mesh is not the geometry**: props placed at run time (gatherables, doors) are not in it, and a 0.5 m grid misses what is thinner. What is left
-   of the steps aside are those props ([obstacle-steering-plan.md](obstacle-steering-plan.md)).
+4. **The mesh is not the geometry**: props placed at run time (gatherables, doors) are not in it. Walls are, at a body's width since 18 October
+   (erosion per surface, every open-world mesh generated again). What is left of the steps aside is the module's own berth round gatherables, which
+   nothing has shown the client to need ([obstacle-steering-plan.md](obstacle-steering-plan.md)).
 5. **Walkable ground comes in islands**, and a route between two does not exist: `NavmeshTool <mapId> components` says so. Fortress obelisks are the
    usual case ([navigation-stuck-plan.md](navigation-stuck-plan.md)); Reshanta's two pass the audit through the flight links.
 6. **A crash loses at most 5 minutes** of what bots did. A clean stop takes seconds since 18 October (it took 510 s while a dead bot searched for a

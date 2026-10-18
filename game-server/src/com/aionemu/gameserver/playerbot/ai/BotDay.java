@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
+import com.aionemu.gameserver.playerbot.BotRecruiter;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
@@ -126,7 +127,7 @@ class BotDay {
 			deathsSince = now;
 			deathsAtHome = 0;
 		}
-		if (++deathsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned())
+		if (++deathsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned() || isAwayFromHome())
 			return;
 		Player bot = ai.getOwner();
 		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getRace(), home(), bot.getObjectId() + (int) now);
@@ -154,7 +155,7 @@ class BotDay {
 			strandingsSince = now;
 			strandingsAtHome = 0;
 		}
-		if (++strandingsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned() || home() == null)
+		if (++strandingsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned() || home() == null || isAwayFromHome())
 			return null;
 		Player bot = ai.getOwner();
 		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getRace(), home(), bot.getObjectId() + (int) now);
@@ -167,8 +168,18 @@ class BotDay {
 		return elsewhere;
 	}
 
+	/**
+	 * @return true while the bot is on a map that is not its home's: in an instance, or brought to a player's group from elsewhere. Every rule that moves
+	 *         a home asks the map the bot stands on, so asked from there it would write a place of that map as the home of a bot that lives on another.
+	 *         Seven recruits had their homes rewritten that way in the second they waited for their invitation, and one was then sent home to a point
+	 *         1448 m up in Eltnen's sky every fourteen seconds.
+	 */
+	private boolean isAwayFromHome() {
+		return ai.getOwner().isInInstance() || BotRecruiter.isRecruit(ai.getOwner());
+	}
+
 	/** Takes up a new home: everything else a bot does is written against the home or the anchor, so the rest follows on its own. */
-	private void moveTo(Vector3f elsewhere) {
+	void moveTo(Vector3f elsewhere) {
 		home = elsewhere;
 		BotRoster.setHome(ai.getOwner().getName(), elsewhere);
 		ai.setAnchor(elsewhere.getX(), elsewhere.getY(), elsewhere.getZ());
@@ -192,6 +203,8 @@ class BotDay {
 		if (ai.isOwned())
 			return false; // somebody's own bot lives where they left it; moving it is the world rearranging a character that is not the world's
 		Player bot = ai.getOwner();
+		if (isAwayFromHome())
+			return false;
 		Vector3f where = home();
 		if (where == null)
 			return false;

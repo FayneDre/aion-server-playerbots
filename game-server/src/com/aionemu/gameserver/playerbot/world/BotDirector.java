@@ -17,9 +17,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
@@ -158,6 +160,12 @@ public class BotDirector {
 		// was missing: it walked the world's players and so never looked at a map whose whole population was asleep, which is now most of them.
 		Set<Integer> maps = new HashSet<>(residentsByMap.keySet());
 		maps.addAll(playersByMap.keySet());
+		// An instance is nobody's region: its bots are a player's group, brought in by BotInstances. Counted as one, a dungeon with a player in it was
+		// found to have places and to want three residents, and the five members of the group were then counted as two too many.
+		maps.removeIf(worldId -> {
+			WorldMapTemplate map = DataManager.WORLD_MAPS_DATA.getTemplate(worldId);
+			return map != null && map.isInstance();
+		});
 
 		PlayerBotService bots = PlayerBotService.getInstance();
 		int budget = anybodyOnline ? CHANGES_PER_REVIEW : Integer.MAX_VALUE;

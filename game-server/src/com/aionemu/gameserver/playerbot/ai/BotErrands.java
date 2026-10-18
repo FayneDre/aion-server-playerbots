@@ -260,6 +260,11 @@ class BotErrands {
 		// and keeper is at the bot's height: in Teminon the keepers stand a floor below the deck, the bot came within three metres across and seven
 		// above, out of reach, and then aimed at the keeper's feet and was refused, 89 of the base's 93 refused routes in half an hour.
 		Vector3f besideKeeper = vendor == null ? null : NavmeshService.getInstance().groundNear(bot.getWorldId(), x, y, z);
+		// Not when that ground is a pocket: behind a counter there is floor enough for the keeper and nothing joins it to the shop. A bot sent there
+		// walked the last metres straight through the counter, could not plan a single route out, and sat down and stood up every thirteen seconds
+		// beside Drasia in the Verteron citadel, its rescue held back by the player watching it.
+		if (besideKeeper != null && NavmeshService.getInstance().isPocket(bot.getWorldId(), besideKeeper.x, besideKeeper.y, besideKeeper.z))
+			besideKeeper = null;
 		if (besideKeeper != null && PositionUtil.getDistance(besideKeeper.x, besideKeeper.y, besideKeeper.z, x, y, z) < BotVendorManager.TRADE_RANGE - 1) {
 			x = besideKeeper.x;
 			y = besideKeeper.y;

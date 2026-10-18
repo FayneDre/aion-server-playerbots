@@ -4,6 +4,16 @@ Status: milestones 0 and 1 built 16 October, 2 mostly, the at-home part of 3; th
 14689 -> 444, rescues 403 -> 111 per half hour on 800 bots). 3 and 4 built 17 October (no headway 708 -> 15); 3 unverified with a player online. Follows the open section of [navigation-stuck-plan.md](navigation-stuck-plan.md)
 ("into an obstacle, then teleported behind it"), which this replaces as the place the work is tracked.
 
+**18 October, walls themselves.** Bots noted (`//bot note`) walking into house walls in the Verteron citadel and into Teminon's castle were all on
+planned routes, no step aside: the mesh let them through. The generator eroded walkable ground **by column**, and a wall's column nearly always keeps a
+walkable surface elsewhere (the ground under a floor, the top of the wall, a roof), so the floor beside a wall was never shaved and a thin wall at an
+angle stayed one cell thick, which a diagonal step crossed. Erosion is now **per surface** (`Heightfield.erode`, `HeightfieldBuilder`) and every
+open-world mesh was generated again. Measured offline with `NavmeshTool <map> path` (each stretch tested against the solid walls at 0.5, 1 and 1.5 m),
+`audit` (routes on foot through a wall) and `reachfrom`: the noted routes clean, Teminon's npcs 99 of 101 reached from its obelisk against 97, the
+Verteron citadel 89 of 108 as before. Two path finder rules were tried and dropped (no diagonal between two shut corners; no single rise over 0.6 m):
+they cost passages, and the second shut fifteen of Teminon's npcs. The "steps aside" that remain are this module's own rule keeping 1.5 m from
+gatherables (`BotGeoHelper.gatherableClearance`), never checked against what the client does: 976 of 1011 in 47 minutes on 18 October.
+
 ## What is seen
 
 Bots walk into walls, rails and props, slide sideways along them, cross a rail "in two steps aside", and are now and then teleported home or onto

@@ -80,6 +80,19 @@ public class BotMoveController extends PlayerMoveController {
 	 * going, which is what makes its walk look decided rather than hesitant.
 	 */
 	private static final float REPLAN_DISTANCE = 2f;
+	/**
+	 * How far the destination may drift and the journey still be the one a route is being walked or planned for: a leader walking on, a target moving
+	 * about. Within it, the route in hand is walked on while the next is planned, a plan still on its way is waited for rather than asked again, and a
+	 * plan that comes back for where the destination was a moment ago is taken.
+	 * <p>
+	 * Without it, a group following its leader through Nochsana stood still: on a map with glides every plan is answered on another thread, the leader
+	 * moved more than two metres between ticks, so each tick threw the route away, stopped the bot to wait, and discarded the answer when it came for
+	 * not matching to the centimetre. A sorcerer went back and forth between two points five metres apart for sixteen seconds while its leader walked
+	 * fifty.
+	 */
+	private static final float FOLLOW_DRIFT = 8f;
+	/** How many waypoints of a route arriving mid-walk are looked at to find where the bot has got to along it. */
+	private static final int RESUME_LOOKAHEAD = 4;
 
 	private long nextGeoZUpdate;
 	/** Where the bot is ultimately going. */
@@ -254,19 +267,24 @@ public class BotMoveController extends PlayerMoveController {
 		if (sameJourney && onDetour && !isArrived())
 			return true;
 		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
-		if (pendingRoute != null && plannedForX == x && plannedForY == y && adoptPendingRoute()) {
+		if (pendingRoute != null && PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= FOLLOW_DRIFT && adoptPendingRoute()) {
 			// the plan asked for on an earlier call has arrived: taking it is the whole point of having waited, and planning again here would throw
 			// the answer away and start the wait over
-			routeIndex = 0;
+			routeIndex = resumeIndex();
 			aimAtNextWaypoint();
 		} else if (!isPlanComing(x, y) && (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE)) {
 			// said on the route's line: a bot handed the same route every second was the one fault the log could not explain without it
 			String why = route.isEmpty() ? "" : ", the destination having moved";
 			float fromX = owner.getX(), fromY = owner.getY();
-			route = List.of();
-			routeGlides = Set.of();
-			routeFlights = Set.of();
-			routeIndex = 0;
+			// The destination has only drifted: the route in hand still leads its way, and is walked on until the next one comes. Thrown away, it left
+			// the bot standing until the answer, and a leader who keeps walking keeps the answer from ever being the last one.
+			boolean walkOn = !route.isEmpty() && routeIndex < route.size() && PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= FOLLOW_DRIFT;
+			if (!walkOn) {
+				route = List.of();
+				routeGlides = Set.of();
+				routeFlights = Set.of();
+				routeIndex = 0;
+			}
 			plannedForX = x;
 			plannedForY = y;
 			journeyAvoidance = avoid;
@@ -275,8 +293,12 @@ public class BotMoveController extends PlayerMoveController {
 			// a long journey is planned on another thread, so the bot waits where it stands rather than setting off blind; a short one plans on this
 			// very call, in which case the result must be adopted right here or the first leg walks for nothing
 			NavmeshService.getInstance().planRoute(owner, x, y, z, avoid, planned -> offerRoute(planned, x, y, fromX, fromY, why));
-			adoptPendingRoute();
-			aimAtNextWaypoint();
+			if (adoptPendingRoute()) {
+				routeIndex = resumeIndex();
+				aimAtNextWaypoint();
+			} else if (!walkOn) {
+				aimAtNextWaypoint(); // nothing in hand yet: the destination itself, until the plan comes
+			} // walking on, the waypoint aimed at is still the right one
 		} else if (routeIndex >= route.size()) {
 			// keeping the route, but its waypoints are all behind us: the last stretch is walked at the destination itself, which may have shifted
 			aimAtNextWaypoint();
@@ -450,7 +472,7 @@ public class BotMoveController extends PlayerMoveController {
 			land();
 		}
 		if (adoptPendingRoute()) {
-			routeIndex = 0;
+			routeIndex = resumeIndex();
 			aimAtNextWaypoint();
 		}
 		if (hasGoal && reachedWaypoint() && aimAtNextWaypoint()) {
@@ -468,7 +490,7 @@ public class BotMoveController extends PlayerMoveController {
 	 * at the end of the current leg, which keeps a background thread from rewriting the destination mid-stride.
 	 */
 	private void offerRoute(BotPathFinder.Route answer, float forX, float forY, float fromX, float fromY, String why) {
-		if (!hasGoal || forX != finalX || forY != finalY)
+		if (!hasGoal || PositionUtil.getDistance(forX, forY, finalX, finalY) > FOLLOW_DRIFT)
 			return; // an answer to a journey that is over, or to an older one
 		awaitingPlan = false; // answered, whether or not it found a way: either way the bot stops waiting
 		List<Vector3f> planned = answer.waypoints();
@@ -802,7 +824,28 @@ public class BotMoveController extends PlayerMoveController {
 	/** @return true if a plan for about that destination was asked for recently enough to be still on its way. */
 	private boolean isPlanComing(float x, float y) {
 		return awaitingPlan && System.currentTimeMillis() - planAskedAt < PLAN_PATIENCE
-			&& PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= REPLAN_DISTANCE;
+			&& PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= FOLLOW_DRIFT;
+	}
+
+	/**
+	 * @return The index of the waypoint to walk to next on a route just taken, from where the bot stands now rather than where it stood when the route
+	 *         was asked for. A route starts at the bot's cell of that moment, and one that arrives while it walks on starts behind it: taken from its
+	 *         start, it turned the bot round to walk back to where it had been, every time a plan came in. A waypoint is behind once the bot is nearer
+	 *         the one after it than the waypoint itself is; a glide or a crossing by air is never skipped this way.
+	 */
+	private int resumeIndex() {
+		List<Vector3f> current = route;
+		Set<Integer> glides = routeGlides, flights = routeFlights;
+		int index = 0;
+		while (index + 1 < current.size() && index < RESUME_LOOKAHEAD && !glides.contains(index) && !flights.contains(index)
+			&& !glides.contains(index + 1) && !flights.contains(index + 1)) {
+			Vector3f here = current.get(index), next = current.get(index + 1);
+			if (PositionUtil.getDistance(owner.getX(), owner.getY(), next.getX(), next.getY())
+				> PositionUtil.getDistance(here.getX(), here.getY(), next.getX(), next.getY()))
+				break;
+			index++;
+		}
+		return index;
 	}
 
 	/**
@@ -857,6 +900,38 @@ public class BotMoveController extends PlayerMoveController {
 			flyLegTo(first.getX(), first.getY(), first.getZ(), GLIDE_SPEED);
 		else
 			flyLegTo(goalX, goalY, goalZ, GLIDE_SPEED);
+		return true;
+	}
+
+	/**
+	 * Glides through the given points from where the body stands, the last of them the landing: the way a leader was seen to go through the air,
+	 * followed by a member of its group. The walk to the edge is the caller's; this starts in the air.
+	 *
+	 * @return false if the body cannot glide now (already in the air, or the engine refuses: no wings yet, or a glide too soon after the last).
+	 */
+	public boolean glideAlong(List<Vector3f> path) {
+		if (path.isEmpty() || gliding || BotFlight.isInTheAir(owner) || !owner.getFlyController().switchToGliding())
+			return false;
+		Vector3f landing = path.get(path.size() - 1);
+		route = List.of();
+		routeGlides = Set.of();
+		routeFlights = Set.of();
+		routeIndex = 0;
+		// a plan asked for up on the edge is no plan for the ground below: taken on landing, it would walk the bot back towards the top
+		pendingRoute = null;
+		awaitingPlan = false;
+		finalX = goalX = landing.getX();
+		finalY = goalY = landing.getY();
+		finalZ = goalZ = landing.getZ();
+		hasGoal = true;
+		gliding = true;
+		PacketSendUtility.broadcastToSightedPlayers(owner, new SM_EMOTION(owner, EmotionType.START_GLIDE), true);
+		glideTurns.clear();
+		glideTurns.addAll(path);
+		log.info("Bot {} glides after its leader from {} to {} through {} point(s)", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
+			describe(landing.getX(), landing.getY(), landing.getZ()), path.size());
+		Vector3f first = glideTurns.poll();
+		flyLegTo(first.getX(), first.getY(), first.getZ(), GLIDE_SPEED);
 		return true;
 	}
 

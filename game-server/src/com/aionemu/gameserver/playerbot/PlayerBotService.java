@@ -64,6 +64,7 @@ public class PlayerBotService {
 		restoreRoster();
 		warmUpPlaces();
 		BotInbox.start();
+		BotRecruiter.start();
 		// Last, and it used to be first. The director reviews what each region holds against what it should hold, and both of the steps above change
 		// that answer wholesale: populating a fresh installation builds a navmesh and creates thousands of characters across eighteen maps, which
 		// takes minutes. Started first, the director's opening review fired into a world a tenth of the way up and began correcting a figure that was
@@ -251,6 +252,27 @@ public class PlayerBotService {
 	}
 
 	/**
+	 * Brings one of the world's own inhabitants into the world beside a player rather than at home: a recruit for the player's group. Runs on the
+	 * lifecycle lane, as {@link #wake} does and for the same reason.
+	 *
+	 * @return The bot, or null if it could not be brought in.
+	 */
+	public Player wakeBeside(BotRoster.Resident resident, Player nextTo) {
+		Player bot = loadAvailableBot(resident.name());
+		if (bot == null)
+			return null;
+		try {
+			PlayerBotEnterWorldService.enterWorldBeside(bot, nextTo, resident.worldId());
+			spawnedBots.put(bot.getObjectId(), bot);
+			BotRoster.setInWorld(resident.playerId(), true);
+			return bot;
+		} catch (RuntimeException e) {
+			log.error("Could not wake bot " + resident.name() + " beside " + nextTo.getName(), e);
+			return null;
+		}
+	}
+
+	/**
 	 * Takes one of the world's own inhabitants out of the world, if this is a moment at which it may go.
 	 * <p>
 	 * Three refusals, in the order that matters. A bot somebody owns is not the world's to move at all. A bot anybody can see does not vanish, and the
@@ -261,7 +283,8 @@ public class PlayerBotService {
 	 */
 	public Change sleep(Player bot) {
 		// a squad is somebody's test, and one member taken out of it is the test spoiled
-		if (!(bot.getAi() instanceof PlayerBotAI ai) || ai.isOwned() || BotSquads.isSquad(bot.getCurrentTeam()))
+		// nor a recruit, which would be saved beside its player and wake up on the player's map as one of its residents
+		if (!(bot.getAi() instanceof PlayerBotAI ai) || ai.isOwned() || BotSquads.isSquad(bot.getCurrentTeam()) || BotRecruiter.isRecruit(bot))
 			return Change.UNAVAILABLE;
 		if (bot.getKnownList().streamPlayers().anyMatch(other -> !other.isBot()))
 			return Change.SEEN;
@@ -295,6 +318,7 @@ public class PlayerBotService {
 		// Before the count is read, let alone acted on: emptying the world walks the set of bots in it and then clears the set, so a bot the director
 		// brings in between those two steps is left standing in a world nothing holds a reference to any more.
 		BotScheduler.getInstance().stopEnteringAndLeaving();
+		BotRecruiter.sendEveryoneHome(); // before anybody is saved: a recruit saved beside its player would come back living on the player's map
 		log.info("Despawning {} bot(s) for shutdown", spawnedBots.size());
 		despawnEverything();
 	}

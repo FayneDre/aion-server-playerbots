@@ -18,6 +18,7 @@ import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
+import com.aionemu.gameserver.playerbot.BotRecruiter;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
@@ -26,12 +27,15 @@ import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
+import com.aionemu.gameserver.playerbot.lifecycle.BotMapChange;
 import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
+import com.aionemu.gameserver.playerbot.social.BotInstances;
+import com.aionemu.gameserver.playerbot.social.LeaderGlides;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.positioning.BotPosition;
 import com.aionemu.gameserver.playerbot.positioning.BotStations;
@@ -160,6 +164,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final float SPOT_TOLERANCE = 1.5f;
 	/** How near its place in the formation a follower settles. Small, because that place is already set apart from the leader. */
 	private static final float FOLLOW_DISTANCE = 2f;
+	/** How far in height from where its leader left the ground a member may stand and still be up there with it, ready to glide the same way. */
+	private static final float GLIDE_SAME_LEVEL = 3f;
+	/** How near where its leader left the ground a member must come before it glides: the leader's edge, give or take a stride. */
+	private static final float TAKEOFF_REACHED = 2f;
 	/** Roughly the time a player spends looking at the resurrection window. */
 	private static final int REVIVE_DELAY_MILLIS = 10000;
 	/**
@@ -229,6 +237,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private boolean resurrectionPending;
 	/** When the bot last died, and when its group was last seen fighting since, for how long it waits to be raised. */
 	private long diedAt, groupLastFoughtAt;
+	/** The leader's last glide while it is fresh, seen on the last tick, and the one this bot has already gone down or given up on. */
+	private volatile LeaderGlides.Glide leadersGlide, copiedGlide;
+	/** Whether the last tick found the bot alive and out of the world, the state a teleport to another map leaves it in, see {@link #arriveIfStranded()}. */
+	private boolean seenOutOfWorld;
 	/**
 	 * True while a decision tick is actually running, as opposed to merely scheduled.
 	 * <p>
@@ -358,6 +370,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 		anchorZ = z;
 	}
 
+	/** Makes this the bot's home, in the roster as well, and its anchor: for a bot brought back to where it lives after being somewhere else. */
+	public void takeUpHome(Vector3f home) {
+		day.moveTo(home);
+	}
+
 	public boolean isAutonomous() {
 		return autonomous;
 	}
@@ -412,11 +429,34 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Player leader = BotGroupManager.leaderToFollow(getOwner());
 		if (leader == null)
 			return false;
+		leadersGlide = LeaderGlides.observe(leader); // every tick, fight or not: a glide is seen while it happens or not at all
 		// the bot's own place beside the leader, not the leader's feet: everything downstream already works off the anchor, so this is all "stand
 		// with the group" needs to be
 		Vector3f spot = BotGroupManager.formationSpot(getOwner(), leader);
 		setAnchor(spot.getX(), spot.getY(), spot.getZ());
 		return true;
+	}
+
+	/**
+	 * Puts up one of the bot's own buffs or mantras, its class's first ({@code ClassPlaybook.prepare}) and then any it is missing: the upkeep that opens a
+	 * fight.
+	 * <p>
+	 * Only when a fight is coming. It was done on every idle tick, so a bot walking round a village or to a shop cast a buff of a minute every minute for
+	 * nobody, which is not something anybody playing does and was reported as strange. Buffs a class casts in the middle of a fight are its playbook's
+	 * and are not this, nor is its care between fights ({@code tend}), which still runs on every tick.
+	 *
+	 * @return true if one was cast, in which case the bot is busy with it.
+	 */
+	private boolean buffForTheFight() {
+		return BotPlaybooks.of(getOwner()).prepare(getOwner()) || BotSkillManager.tryBuffSelf(getOwner()) || BotSkillManager.tryChantMantra(getOwner());
+	}
+
+	/** @return true if the bot's group has an enemy to fight, or its leader has one in its sights: the moment a member puts its buffs up. */
+	private boolean isAFightComing() {
+		if (BotGroupManager.targetToAssist(getOwner(), this::isIgnored) != null)
+			return true;
+		Player leader = BotGroupManager.leaderToFollow(getOwner());
+		return leader != null && leader.getTarget() instanceof Creature target && !target.isDead() && getOwner().isEnemy(target);
 	}
 
 	/**
@@ -429,7 +469,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void serveTheGroup() {
 		if (posture.standUp()) // one tick before acting, so the animation has played out by then
 			return;
-		if (BotPlaybooks.of(getOwner()).tend(getOwner()) || BotSkillManager.tryBuffSelf(getOwner()) || BotSkillManager.tryChantMantra(getOwner()))
+		// the class's care between fights on every tick (raising a mate, a cleanse), its buffs only with a fight in sight
+		if (BotPlaybooks.of(getOwner()).tend(getOwner()) || isAFightComing() && buffForTheFight())
 			return;
 		// A healer takes its place before the casting that is not urgent: with a mate to heal or a buff to give on every tick, which is most of a fight, the walk was never
 		// reached and the healer stood wherever the pull had left it. A mate in danger is healed first.
@@ -555,13 +596,24 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	/** What the bot decides to do this second, in priority order. Called only by {@link #botTick()}, which is what keeps it running. */
 	private void decide() {
+		if (arriveIfStranded())
+			return;
 		if (BotFlight.isInTheAir(getOwner()))
 			return; // nothing is decided for a body in the air, and nothing above this line runs either: rehousing one would teleport it
+		if (moves() != null && moves().isGliding() && !getOwner().isDead())
+			return; // the same for a live body on a glide: a fight picked up on the way down would be walked to from the air. A dead one ends its glide below
 		sheathWhenCalm();
 		abandonStalledFight();
 		// A bot crosses its level, and joins and leaves a group, while it is playing rather than while it is loading, so both are settled here rather
 		// than on the way in. Neither does anything until the answer actually changes.
 		pacing.reconcile();
+		// a recruit with no group goes home before anything else reads where it stands, the instance rule below included
+		if (BotRecruiter.sendHomeIfReleased(getOwner()) || BotInstances.followThePlayer(getOwner())) {
+			// the fight, the walk and the errand were all chosen on the map it has just left
+			cancelCombat();
+			day.forget();
+			return;
+		}
 		boolean inSquad = BotSquads.isSquad(getOwner().getCurrentTeam());
 		if (!inSquad) // a squad camps where it was formed, which is the point of forming it there
 			day.moveOutIfOutgrown();
@@ -613,13 +665,15 @@ public class PlayerBotAI extends AITemplate<Player> {
 			} else if (isRunningErrand()) {
 				// an operator sent it somewhere on purpose; let it arrive before it goes looking for its own fights
 			} else if (!posture.standUp()) { // stand up one tick before acting, so the animation has played out by then
-				// buffs go up before a fight is picked, never during one, where the cast would cost a swing.
-				// the servant before the buffs, because it is the one of them that is still there in ten minutes and the class cannot fight without it
-				if (!callUpServant() && !boardRobot() && !BotPlaybooks.of(getOwner()).tend(getOwner()) && !BotSkillManager.tryBuffSelf(getOwner())
-					&& !BotSkillManager.tryChantMantra(getOwner()) && (inSquad || !day.pursue())) {
+				// the servant and the robot are kept up ahead of anything: the class cannot fight without them, and they last. Then the class's care
+				// between fights, which is mending and cleansing; its buffs wait for the fight, below
+				if (!callUpServant() && !boardRobot() && !BotPlaybooks.of(getOwner()).tend(getOwner())
+					&& (inSquad || isRecoveringFromDeath() || !day.pursue())) {
 					// Starting a fight is the one thing the death penalty forbids, and it used to forbid everything: the bot sat where it stood for
-					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Walking, going home,
-					// buffing and the errands above are all things a player does on the way back from a death, so none of them is gated here.
+					// as long as the sickness lasted, which on an obelisk is where every corpse in the region comes back. Buffing and the errands
+					// above are things a player does on the way back from a death, so they are not gated here. The day's plan is: it was asked
+					// first, so a sick bot set off for its hunting ground, the creatures there that attack on sight came for it, and it fought them
+					// at a fraction of its strength, which is what was seen in Verteron on 18 October. It waits out the sickness first.
 					if (isRecoveringFromDeath())
 						convalesce(); // roaming would walk it to the nearest mob, and sitting on the obelisk is what filled them
 					else {
@@ -629,12 +683,43 @@ public class PlayerBotAI extends AITemplate<Player> {
 						Creature target = BotTargetSelector.findTarget(getOwner(), npc -> isIgnored(npc) || isOffLeash(npc));
 						if (target == null)
 							roam();
-						else if (BotTargetRegistry.claim(target, getOwner())) // another bot may have picked it in the same tick
-							startAttacking(target);
+						else if (BotTargetRegistry.claim(target, getOwner())) { // another bot may have picked it in the same tick
+							// the buffs now, with the fight chosen and before the first blow, one a tick: that is when a player puts them up
+							if (buffForTheFight())
+								stopMoving();
+							else
+								startAttacking(target);
+						}
 					}
 				}
 			}
 		}
+	}
+
+	/**
+	 * Spawns a bot that a teleport to another map has left out of the world, whoever teleported it.
+	 * <p>
+	 * {@link BotMapChange#arrive} is called after every teleport this module makes, but the engine makes its own: an instance that closes puts
+	 * everyone inside at its exit, and an obelisk can be on another map. Each of those left a bot waiting for a client that does not exist, for good.
+	 * A teleport on the same map takes the body out and puts it back within one call, so it is looked at on two ticks in a row: a bot is never out of
+	 * the world for a second unless it is stranded.
+	 *
+	 * @return true if the bot was out of the world, in which case nothing else is decided this tick.
+	 */
+	private boolean arriveIfStranded() {
+		Player bot = getOwner();
+		if (bot.isSpawned() || bot.isDead()) {
+			seenOutOfWorld = false;
+			return false;
+		}
+		if (seenOutOfWorld) {
+			seenOutOfWorld = false;
+			log.info("Bot {} was left out of the world by a teleport to map {}", bot.getName(), bot.getWorldId());
+			BotMapChange.arrive(bot);
+		} else {
+			seenOutOfWorld = true;
+		}
+		return true;
 	}
 
 	private void scheduleBotTick() {
@@ -1232,6 +1317,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void followLeader() {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
 			return;
+		if (followLeadersGlide(moveController))
+			return;
 		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > FOLLOW_DISTANCE) {
 			// already on its way there, and the place has not drifted enough to be worth a new plan. Without this the bot re-plans every single tick
 			// while its leader runs, and every plan turns it a little differently, which is what the walk looks like from outside: restless.
@@ -1245,6 +1332,43 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// is safe here and nothing hangs on it — the ai reads whether the bot is travelling from the move controller rather than from a flag of its
 		// own, so there is no state left believing the journey is still on.
 		stopMoving();
+	}
+
+	/**
+	 * Goes down the way the leader just did: walks to where the leader left the ground, then glides through the points it was seen at in the air. Only
+	 * from up there, while the leader is down below, and once per glide.
+	 * <p>
+	 * The walk alone could not do it. A glide crosses air no mesh joins, so a plan to a leader who had glided down was a long way round, a search that
+	 * gave up, or a proof that there was no way; in Nochsana the group came in late or not at all.
+	 *
+	 * @return true while the bot is on its way to the edge or in the air, in which case nothing else moves it.
+	 */
+	private boolean followLeadersGlide(BotMoveController moveController) {
+		LeaderGlides.Glide glide = leadersGlide;
+		if (glide == null || glide == copiedGlide)
+			return false;
+		if (moveController.isGliding())
+			return true;
+		Player bot = getOwner();
+		Vector3f takeoff = glide.takeoff();
+		// still up where the leader jumped from, and the leader still down where it came: otherwise there is nothing to copy
+		boolean above = Math.abs(bot.getZ() - takeoff.getZ()) <= GLIDE_SAME_LEVEL && bot.getZ() - glide.landing().getZ() >= LeaderGlides.MIN_DROP;
+		Player leader = BotGroupManager.leaderToFollow(bot);
+		if (!above || leader == null || leader.getZ() > takeoff.getZ() - LeaderGlides.MIN_DROP) {
+			copiedGlide = glide; // not this bot's to copy, now or later
+			return false;
+		}
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), takeoff.getX(), takeoff.getY()) > TAKEOFF_REACHED) {
+			if (moveController.isInMove() && moveController.isHeadingTo(takeoff.getX(), takeoff.getY(), RETARGET_STEP))
+				return true;
+			if (tryMoveTo(moveController, takeoff.getX(), takeoff.getY(), takeoff.getZ()))
+				return true;
+			copiedGlide = glide; // no walk to the edge: following on foot is all that is left
+			return false;
+		}
+		copiedGlide = glide;
+		stopMoving();
+		return moveController.glideAlong(glide.path());
 	}
 
 	/** Brings the bot back where it belongs once it has nothing to fight, so a chase does not slowly displace it. */
@@ -1341,6 +1465,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final float STRANDED_AT_HOME = 40;
 	/** How near the ground a rescue would put a bot on it must stand for the rescue to be no move at all, in metres. */
 	private static final float ALREADY_THERE = 5;
+	/** How far a bot shut in a pocket may be stepped out of it while a player watches: over a counter or a rail, not across a room. */
+	private static final float STEP_OUT_IN_SIGHT = 5;
 
 	/**
 	 * Puts a bot that cannot move at all back where it lives.
@@ -1368,6 +1494,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// its errand and picks another, and the rescue waits for nobody to be looking. Except in a player's group, where staying stuck is worse than
 		// being seen: the player is waiting for it, and a member left behind is a member lost.
 		if (!isInAPlayersGroup(bot) && isSeenByAPlayer(bot)) {
+			// Except out of a pocket, onto floor a step away. Doing something else never ends there, since every something else is a route out: a bot
+			// shut behind a shop counter sat down and stood up every thirteen seconds in front of the player for as long as they stayed. A step over the
+			// counter is less of a sight than that.
+			Vector3f step = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId(), false);
+			if (step != null && PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), step.getX(), step.getY(), step.getZ()) <= STEP_OUT_IN_SIGHT
+				&& NavmeshService.getInstance().isPocket(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ())) {
+				log.info("Bot {} could not move at all from {} {}, shut in a pocket, and steps out onto {} {} {} in sight of a player", bot.getName(),
+					Math.round(bot.getX()), Math.round(bot.getY()), Math.round(step.getX()), Math.round(step.getY()), Math.round(step.getZ()));
+				forgetRefusals();
+				TeleportService.teleportTo(bot, bot.getWorldId(), step.getX(), step.getY(), step.getZ());
+				return;
+			}
 			log.info("Bot {} could not move at all from {} {}, but a player has it in sight, so it does something else rather than being lifted", bot.getName(),
 				Math.round(bot.getX()), Math.round(bot.getY()));
 			day.forget();
@@ -1923,7 +2061,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 				log.info("Bot {} accepted a resurrection at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
 				return;
 			}
+			if (bot.isInInstance()) {
+				// the instance's entrance, as a player inside chooses it: the obelisk is on another map, and a bot sent there leaves its group for the
+				// length of a walk back it cannot make, since only the player's portal leads in
+				PlayerReviveService.instanceRevive(bot);
+				BotMapChange.arrive(bot); // the instance had no entrance on record, and the revival fell back to the obelisk
+				convalescence.forget();
+				setStateIfNot(AIState.IDLE);
+				log.info("Bot {} revived at the entrance of map {} at {} {} {}", bot.getName(), bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
+				return;
+			}
 			PlayerReviveService.bindRevive(bot);
+			BotMapChange.arrive(bot); // an obelisk on another map, which a death far from home can bring
 			checkLanding = true; // looked at on the next tick, once the move to the obelisk has settled
 			convalescence.forget(); // a new death, a new look at where is quiet
 			Vector3f home = day.home();

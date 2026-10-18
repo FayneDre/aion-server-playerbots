@@ -205,6 +205,11 @@ final class RangerPlaybook implements ClassPlaybook {
 		// a fight that has ended leaves its hold behind, which a new fight would take for one it is in the middle of
 		if (bot.getAi() instanceof PlayerBotAI ai && ai.holdingFireSince() != 0)
 			ai.setHoldingFire(0, ai.holdFireRearmAt());
+		return false;
+	}
+
+	@Override
+	public boolean prepare(Player bot) {
 		return perform(bot, null, decideAtRest(situationOf(bot, null, false)));
 	}
 
