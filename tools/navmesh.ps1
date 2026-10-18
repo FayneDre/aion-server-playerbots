@@ -23,6 +23,11 @@
     Writes the glide links of the maps given, alone: the mesh is not built again, and the server reads them on its next start. For the open world, where the
     generator does not write them. .\tools\navmesh.ps1 210030000 -Glides
 
+.PARAMETER OpenWorld
+    Builds again every open-world mesh the server already has (every .nav but the dungeons'), then writes again the glide links of the maps that had some
+    and the flight links of the maps that had some, since both are read off the ground the mesh describes. What a server needs after a change to the
+    generator, as on 18 October (erosion per surface, so that routes keep a body's width from walls): about 25 minutes, with the game server stopped.
+
 .PARAMETER Force
     With -Dungeons: builds again the meshes that already exist. Without it they are left alone, since a dungeon takes minutes to build and one that is already good is not
     made better by building it again. Needed after a change to the generator.
@@ -35,6 +40,7 @@
     .\tools\navmesh.ps1 all
     .\tools\navmesh.ps1 -Dungeons            # the 45 geometries of the group dungeons, and their copies; those already built are left alone
     .\tools\navmesh.ps1 -Dungeons -Force     # builds all of them again
+    .\tools\navmesh.ps1 -OpenWorld           # every open-world mesh again, with its glide and flight links
     .\tools\navmesh.ps1 110010000,400010000   # Sanctum and Reshanta, one after the other
 #>
 param(
@@ -45,6 +51,7 @@ param(
     [switch]$Field,
     [switch]$Glides,
     [switch]$Dungeons,
+    [switch]$OpenWorld,
     [switch]$Force
 )
 
@@ -71,6 +78,28 @@ if (-not $jar) { throw "No built jar found. Run: mvn -pl game-server -am package
 # the generator only needs the game-server classes and the JDK, so no other libraries are on the classpath
 Push-Location $gameServer
 try {
+    if ($OpenWorld) {
+        # the flight links are written from the mesh and read by the server as it starts: none of it is done under a running game server
+        $running = Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like '*com.aionemu.gameserver.GameServer*' }
+        if ($running) { throw 'The game server is running. Stop it first: .\tools\stop-server.ps1' }
+        $ids = Get-ChildItem 'data/navmesh' -Filter '*.nav' | Where-Object { $_.BaseName -notlike '3*' } | ForEach-Object { $_.BaseName } | Sort-Object
+        if (-not $ids) { throw 'No open-world mesh on this server to build again. Generate them one by one: .\tools\navmesh.ps1 <mapId>' }
+        foreach ($id in $ids) {
+            Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
+            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id
+            if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
+            foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'))) {
+                if (Test-Path "data/navmesh/$id.$($links[0])") {
+                    Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
+                    & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id $links[1]
+                    if ($LASTEXITCODE -ne 0) { throw "Writing the $($links[1]) of map $id failed (exit code $LASTEXITCODE)" }
+                }
+            }
+        }
+        Write-Host "Done: $($ids.Count) maps. Start the server: .\tools\start-server.ps1 (the first start rebuilds the bots' places, several minutes)" -ForegroundColor Green
+        exit 0
+    }
     if ($Obelisks) {
         # the audit asks the same service the bots do, which logs through slf4j: the server's libraries are needed, the generator's bare jar is not enough
         $arguments = @('obelisks'); if ($maps) { $arguments += $maps[0] }

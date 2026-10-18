@@ -45,6 +45,15 @@ plus les murs, et tous les maillages du monde ouvert ont été régénérés pou
   connecter plus tôt obligeait à relancer le client.
 - **Démarrage :** environ 3 minutes.
 
+**À faire sur chaque serveur de test** (les maillages ne sont pas dans le dépôt : chaque serveur génère les siens)
+1. Arrêter le serveur : `.\tools\stop-server.ps1`.
+2. Récupérer le code et construire le jar : `git pull`, puis `mvn -pl game-server -am package`.
+3. Régénérer les maillages du monde ouvert, avec leurs liens de glissade et de vol : `.\tools\navmesh.ps1 -OpenWorld`. Environ 25 minutes. Sans
+   cette étape, les bots continuent de traverser les murs.
+4. Ajouter `gameserver.instance_group.form_anywhere = true` dans `game-server\config\mygs.properties`.
+5. Déployer puis démarrer : `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`. Le premier démarrage recalcule les lieux des bots et prend
+   plusieurs minutes.
+
 **Connu, pas encore corrigé**
 - **Écarts sans raison visible :** les bots gardent 1,5 m autour des points de récolte. On ne sait pas si le client l'exige.
 - **Une maison de la citadelle de Verteron**, en (1649, 1455), n'est plus accessible : on n'y entrait qu'à travers un mur. Si elle a une vraie porte,
