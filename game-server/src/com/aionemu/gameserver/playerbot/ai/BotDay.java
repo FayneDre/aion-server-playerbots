@@ -35,6 +35,9 @@ class BotDay {
 	private static final int RESTING_SPOTS = 12;
 	/** The place {@link #restingSpot} was last worked out for, and its answer. */
 	private volatile Vector3f restingFor, restingSpot;
+	/** Until when a place that gave no resting spot is not asked again, see {@link #restingSpot}. */
+	private volatile long noRestingSpotUntil;
+	private static final long NO_RESTING_SPOT_MILLIS = 600000;
 	/** How far a bot's level may drift from its home's before it moves house. */
 	private static final int HOME_LEVEL_DRIFT = 2;
 	/** How close to somebody else a bot may stop. Bots pass through npcs, so nothing but this keeps one from halting inside a blacksmith. */
@@ -339,6 +342,10 @@ class BotDay {
 		Vector3f known = restingSpot;
 		if (known != null && restingFor != null && restingFor.equals(place) && !isCrowded(known))
 			return known;
+		// No answer is kept too, for a while: it cost the most of all, every attempt a search that ran out of its budget. On 18 October one
+		// Pandaemonium home gave none, and its residents asked again at every spell of loitering, a two second search every few seconds on the bots' threads.
+		if (known == null && place.equals(restingFor) && System.currentTimeMillis() < noRestingSpotUntil)
+			return null;
 		// the ground the place actually covers, measured from its own occupants. A number invented for this was wrong in both directions at once: a
 		// formula gave Akarios 26 m where it measures 42, so its inhabitants stood at twice the density of the npcs the village was built with.
 		float spread = BotPlaces.reachAt(bot.getWorldId(), place);
@@ -348,6 +355,8 @@ class BotDay {
 		Vector3f found = BotPlaces.spotAround(bot.getWorldId(), place, spread, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
 		restingFor = place;
 		restingSpot = found;
+		if (found == null)
+			noRestingSpotUntil = System.currentTimeMillis() + NO_RESTING_SPOT_MILLIS;
 		return found;
 	}
 

@@ -24,6 +24,7 @@ import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
 import com.aionemu.gameserver.model.templates.spawns.SpawnGroup;
 import com.aionemu.gameserver.model.templates.spawns.SpawnTemplate;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
+import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -672,7 +673,8 @@ public class BotPlaces {
 	 * <p>
 	 * The mainland is not "the largest island", which would want a sweep of the whole map, but the stretch the places themselves agree on: every
 	 * place votes with the ground under it and the winner takes it. On Eltnen 17 of the 20 busiest places name one stretch and the other three name
-	 * nothing anybody else does, which is the shape this is looking for. Verteron, for comparison, maroons one place in fourteen.
+	 * nothing anybody else does, which is the shape this is looking for. Verteron, for comparison, maroons one place in fourteen. The winner is not
+	 * alone any more: every stretch big enough to live on is a mainland too, see {@link #mainlandsOnFoot} and {@link #mainlandsByAir}.
 	 */
 	private static Places places(int worldId) {
 		CompletableFuture<Places> mine = new CompletableFuture<>();
@@ -708,8 +710,7 @@ public class BotPlaces {
 		if (votes.isEmpty())
 			return new Places(settlements, grounds); // no mesh for this map, so nothing has been shown to be cut off
 		ownersByMap.put(id, ownersOfGround(id, settlements));
-		int winner = votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
-		Set<Integer> mainland = isFlownEverywhere(id) ? mainlandsByAir(id, votes) : Set.of(winner);
+		Set<Integer> mainland = isFlownEverywhere(id) ? mainlandsByAir(id, votes) : mainlandsOnFoot(id, votes, settlements);
 		if (isFlownEverywhere(id)) {
 			// a fort changes side with every siege, and its guards with it: nobody lives in one, see isSiegeGround
 			settlements = outOfTheSieges(id, settlements);
@@ -793,6 +794,15 @@ public class BotPlaces {
 			Settlement neighbour = flyableNeighbour(worldId, place, kept);
 			if (neighbour == null)
 				continue;
+			// A bot does not fly to ground under a roof (BotFlight.cruiseOrWhyNot), so such a place is reached by nothing. Inggison kept six on 18
+			// October and its bots named four of them as under one: their residents could neither walk off nor fly, and the hunting ground they did
+			// walk to left them on ground they could not leave either, rescued home 64 times in 45 minutes.
+			Vector3f ground = NavmeshService.getInstance().groundNear(worldId, place.centre().getX(), place.centre().getY(), place.centre().getZ());
+			if (BotFlight.isUnderARoof(worldId, 1, ground != null ? ground : place.centre())) {
+				log.info("Map {}: {} {} {} is dropped by the walking tests and stays dropped -- it is under a roof, and nobody flies indoors", worldId,
+					place.centre().getX(), place.centre().getY(), place.centre().getZ());
+				continue;
+			}
 			flyable.add(place);
 			log.info("Map {}: {} {} {} is dropped by the walking tests and kept anyway -- it shares a fly zone with {} {}, {} m away", worldId,
 				place.centre().getX(), place.centre().getY(), place.centre().getZ(), neighbour.centre().getX(), neighbour.centre().getY(),
@@ -893,6 +903,40 @@ public class BotPlaces {
 	private static boolean isFlownEverywhere(int worldId) {
 		WorldMapTemplate map = DataManager.WORLD_MAPS_DATA.getTemplate(worldId);
 		return map != null && map.isFly();
+	}
+
+	/**
+	 * @return On a map that is walked, the stretch of ground the most places stand on, and every other one holding at least {@value #MAINLAND_PLACES}
+	 *         places, a settlement among them, and an obelisk.
+	 *         <p>
+	 *         One mainland was right while the mesh joined ground through walls, and stopped being right the day it kept a body's width from them
+	 *         (18 October). Gelkmaros's siege gate had been joining its three parts, a walk across the floor of the closed gate itself: they became
+	 *         stretches of 85, 64 and 47 places, and the map lost 113 of its 193 places to the one rule, with the residents that lived there. Each such
+	 *         stretch is somewhere to live, which is all the mainland ever promised. The settlement is for a shop and the people a resident lives
+	 *         among: a hollow with hunting grounds and nobody in it is not one. The obelisk is for coming back: a bot binds to the nearest one it can
+	 *         walk home from, and with none on its ground every death would end in a lift home.
+	 */
+	private static Set<Integer> mainlandsOnFoot(int worldId, Map<Integer, Integer> votes, List<Settlement> settlements) {
+		NavmeshService mesh = NavmeshService.getInstance();
+		Set<Integer> settled = new HashSet<>(), bound = new HashSet<>();
+		for (Settlement place : settlements) {
+			for (int region : mesh.regionsAt(worldId, place.centre().getX(), place.centre().getY()))
+				settled.add(region);
+		}
+		for (Vector3f obelisk : obelisksByMap.computeIfAbsent(worldId, BotPlaces::locateObelisks)) {
+			for (int region : mesh.regionsAt(worldId, obelisk.getX(), obelisk.getY()))
+				bound.add(region);
+		}
+		Set<Integer> mainland = new HashSet<>();
+		mainland.add(votes.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey());
+		votes.forEach((region, places) -> {
+			if (places >= MAINLAND_PLACES && settled.contains(region) && bound.contains(region))
+				mainland.add(region);
+		});
+		if (mainland.size() > 1)
+			log.info("Map {}: {} stretches of ground are lived on, holding {} place(s)", worldId, mainland.size(),
+				mainland.stream().mapToInt(region -> votes.getOrDefault(region, 0)).sum());
+		return mainland;
 	}
 
 	/**

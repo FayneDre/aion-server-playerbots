@@ -417,8 +417,18 @@ public class BotFlight {
 	 *         into the buildings of the Verteron citadel. A place nothing walks to and a roof covers is indoors, and indoors is reached by its door.
 	 */
 	private static boolean isUnderARoof(Player bot, Vector3f landing) {
-		return GeoService.getInstance().getClosestCollision(bot, landing.getX(), landing.getY(), landing.getZ() + ROOF_FROM, landing.getX(), landing.getY(),
-			landing.getZ() + ROOF_SEARCH, false, CollisionIntention.DEFAULT_COLLISIONS.getId(), IgnoreProperties.ANY_RACE) != null;
+		return isUnderARoof(bot.getWorldId(), bot.getInstanceId(), landing);
+	}
+
+	/**
+	 * The same question asked of a map rather than of a body, for the places a map is given before anybody stands on it.
+	 * <p>
+	 * With every kind of collision a body meets. {@code GeoService.getZ} would have needed no body either, but it asks of the physical geometry alone,
+	 * and on 18 October it found no roof over Inggison's hollow, which this ray finds: a bot took off for it at once.
+	 */
+	public static boolean isUnderARoof(int worldId, int instanceId, Vector3f spot) {
+		return GeoService.getInstance().getClosestCollision(worldId, instanceId, spot.getX(), spot.getY(), spot.getZ() + ROOF_FROM, spot.getX(), spot.getY(),
+			spot.getZ() + ROOF_SEARCH, false, CollisionIntention.DEFAULT_COLLISIONS.getId(), IgnoreProperties.ANY_RACE) != null;
 	}
 
 	/** @return Whether nothing stands between two points of the air, asked from the first of them. See {@link #airIsClear}. */

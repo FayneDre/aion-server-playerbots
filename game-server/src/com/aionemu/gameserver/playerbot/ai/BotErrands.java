@@ -34,6 +34,11 @@ class BotErrands {
 
 	/** Close enough to a shop's spawn point that a shop keeper would be in sight if there were one. */
 	private static final float VENDOR_SPOT_TOLERANCE = 10f;
+	/** Where round a keeper to look for floor that leads back, nearest first and all inside trading reach. */
+	private static final float[] KEEPER_SPOT_RADII = { 2, 3.5f, 5, 6.5f };
+	private static final int KEEPER_SPOT_DIRECTIONS = 8;
+	/** How many route searches that look may cost, once a trip. */
+	private static final int KEEPER_SPOT_SEARCHES = 8;
 	/** How long the bot leaves its bag alone after a fruitless look. Long enough not to stutter, short enough to notice the next drop. */
 	private static final long DRESSING_RETRY_MILLIS = 60000;
 	/** How long a shop spot that turned out to be empty is left alone. Long: npcs do not appear and disappear minute by minute. */
@@ -71,6 +76,10 @@ class BotErrands {
 	private volatile long noFlasksUntil;
 	/** Until when this bot stops setting out for a shop at all, after a walk the map refused. */
 	private volatile long noShopUntil;
+	/** The keeper {@link #keeperSpot} was chosen for this trip, 0 before one is in sight. */
+	private volatile int keeperSpotOf;
+	/** Where the bot stands to trade with {@link #keeperSpotOf}, null when nothing better than the line towards it was found. */
+	private volatile Vector3f keeperSpot;
 
 	BotErrands(PlayerBotAI ai) {
 		this.ai = ai;
@@ -218,6 +227,7 @@ class BotErrands {
 				return false;
 			}
 			log.info("Bot {} heads to a shop to sell", bot.getName());
+			keeperSpotOf = 0; // chosen again from where this trip starts
 		}
 
 		Npc vendor = BotVendorManager.findKnownVendor(bot);
@@ -259,12 +269,7 @@ class BotErrands {
 		// The walkable ground nearest the keeper's feet, at its own height, when it is within trading reach of it. A point on the line between bot
 		// and keeper is at the bot's height: in Teminon the keepers stand a floor below the deck, the bot came within three metres across and seven
 		// above, out of reach, and then aimed at the keeper's feet and was refused, 89 of the base's 93 refused routes in half an hour.
-		Vector3f besideKeeper = vendor == null ? null : NavmeshService.getInstance().groundNear(bot.getWorldId(), x, y, z);
-		// Not when that ground is a pocket: behind a counter there is floor enough for the keeper and nothing joins it to the shop. A bot sent there
-		// walked the last metres straight through the counter, could not plan a single route out, and sat down and stood up every thirteen seconds
-		// beside Drasia in the Verteron citadel, its rescue held back by the player watching it.
-		if (besideKeeper != null && NavmeshService.getInstance().isPocket(bot.getWorldId(), besideKeeper.x, besideKeeper.y, besideKeeper.z))
-			besideKeeper = null;
+		Vector3f besideKeeper = vendor == null ? null : spotBeside(bot, vendor);
 		if (besideKeeper != null && PositionUtil.getDistance(besideKeeper.x, besideKeeper.y, besideKeeper.z, x, y, z) < BotVendorManager.TRADE_RANGE - 1) {
 			x = besideKeeper.x;
 			y = besideKeeper.y;
@@ -292,6 +297,58 @@ class BotErrands {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * The walkable ground nearest a keeper's feet that the bot can walk back to its anchor from, chosen once a trip: the move is asked again every tick.
+	 * <p>
+	 * The keeper's own floor is not always that ground. Behind a counter there is floor enough for the keeper and nothing joins it to the shop: a bot
+	 * sent there walked the last metres straight through the counter, could not plan a single route out, and sat down and stood up every thirteen
+	 * seconds beside Drasia in the Verteron citadel, its rescue held back by the player watching it. A strip of floor larger than a pocket does the same
+	 * once the mesh keeps a body's width from walls, and the walk there can be one way: on 18 October a Pandaemonium keeper's floor was a step down
+	 * a bot took and could not climb back, and each of its customers was rescued three metres away after every sale. Such rescues had doubled across
+	 * the maps. So the question is the way back, asked once a trip with a real search: the coarse grid carries every floor of its 4 m cells and said
+	 * yes to that floor.
+	 *
+	 * @return The spot, or null when nothing near the keeper leads back to the bot's anchor.
+	 */
+	private Vector3f spotBeside(Player bot, Npc keeper) {
+		if (keeperSpotOf == keeper.getObjectId())
+			return keeperSpot;
+		NavmeshService mesh = NavmeshService.getInstance();
+		int worldId = bot.getWorldId();
+		// back to the anchor, which is where the bot goes once it has sold and what the rescue judges it by. Back to where the bot stood when it first saw
+		// the keeper was asked first, and from the floor that traps it a search to there ran out of budget rather than prove anything
+		Vector3f from = ai.anchor();
+		Vector3f spot = mesh.groundNear(worldId, keeper.getX(), keeper.getY(), keeper.getZ());
+		if (spot != null && (mesh.isPocket(worldId, spot.x, spot.y, spot.z) || !leadsBack(mesh, worldId, spot, from))) {
+			spot = null;
+			int searches = 0;
+			search: for (float radius : KEEPER_SPOT_RADII) {
+				for (int k = 0; k < KEEPER_SPOT_DIRECTIONS; k++) {
+					double angle = Math.PI * 2 * k / KEEPER_SPOT_DIRECTIONS;
+					float x = keeper.getX() + (float) Math.cos(angle) * radius, y = keeper.getY() + (float) Math.sin(angle) * radius;
+					for (Vector3f floor : mesh.floorsAt(worldId, x, y, keeper.getZ())) {
+						if (Math.abs(floor.z - keeper.getZ()) > BotVendorManager.TRADE_RANGE - 1)
+							break; // nearest first: the rest are further off still
+						if (searches++ >= KEEPER_SPOT_SEARCHES)
+							break search;
+						if (leadsBack(mesh, worldId, floor, from)) {
+							spot = floor;
+							break search;
+						}
+					}
+				}
+			}
+		}
+		keeperSpot = spot;
+		keeperSpotOf = keeper.getObjectId();
+		return spot;
+	}
+
+	/** @return false only when the mesh proves there is no walk from the spot back to {@code to}: a search that ran out of budget does not count against it. */
+	private static boolean leadsBack(NavmeshService mesh, int worldId, Vector3f spot, Vector3f to) {
+		return mesh.reach(worldId, spot.x, spot.y, spot.z, to.x, to.y, to.z) != NavmeshService.Reach.NO;
 	}
 
 	/**

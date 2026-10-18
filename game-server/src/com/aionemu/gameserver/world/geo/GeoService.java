@@ -135,8 +135,13 @@ public class GeoService implements GameEngine {
 	 */
 	public Vector3f getClosestCollision(Creature object, float fromX, float fromY, float fromZ, float toX, float toY, float toZ, boolean atNearGroundZ, byte intentions,
 		IgnoreProperties ignoreProperties) {
-		return geoMaps.get(object.getWorldId()).getClosestCollision(fromX, fromY, fromZ, toX, toY, toZ, atNearGroundZ, object.getInstanceId(), intentions,
-			ignoreProperties);
+		return getClosestCollision(object.getWorldId(), object.getInstanceId(), fromX, fromY, fromZ, toX, toY, toZ, atNearGroundZ, intentions, ignoreProperties);
+	}
+
+	/** The same ray asked of a map rather than of a body on it, for the bot module's questions about places nobody stands on yet. */
+	public Vector3f getClosestCollision(int worldId, int instanceId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ, boolean atNearGroundZ,
+		byte intentions, IgnoreProperties ignoreProperties) {
+		return geoMaps.get(worldId).getClosestCollision(fromX, fromY, fromZ, toX, toY, toZ, atNearGroundZ, instanceId, intentions, ignoreProperties);
 	}
 
 	public Vector3f getClosestCollision(Creature object, float x, float y, float z, boolean atNearGroundZ, byte intentions, IgnoreProperties ignoreProperties) {

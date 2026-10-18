@@ -19,13 +19,21 @@ class HeightfieldErosionTest {
 	}
 
 	private static Heightfield field(IntFunction<List<Surface>> columnAtX) {
+		return field((x, y) -> columnAtX.apply(x));
+	}
+
+	private interface Columns {
+		List<Surface> at(int x, int y);
+	}
+
+	private static Heightfield field(Columns columns) {
 		int[] offsets = new int[SIZE * SIZE + 1];
 		List<Float> heights = new ArrayList<>();
 		BitSet walkable = new BitSet();
 		for (int y = 0; y < SIZE; y++) {
 			for (int x = 0; x < SIZE; x++) {
 				offsets[y * SIZE + x] = heights.size();
-				for (Surface surface : columnAtX.apply(x)) {
+				for (Surface surface : columns.at(x, y)) {
 					walkable.set(heights.size(), surface.walkable());
 					heights.add(surface.z());
 				}
@@ -75,6 +83,21 @@ class HeightfieldErosionTest {
 
 		for (int x = 1; x < SIZE - 1; x++)
 			assertTrue(walkableAt(field, x, 4, x * 0.8f), "the hillside at " + x);
+	}
+
+	@Test
+	void aDoorwayInAWallAtAnAngleStaysOpen() {
+		// a wall along the diagonal, two cells thick so no step crosses it, with a doorway where x is 3 or 4
+		Heightfield field = field((x, y) -> (x + y == 8 || x + y == 9) && (x < 3 || x > 4) ? List.of(new Surface(FLOOR, false))
+			: List.of(new Surface(FLOOR, true)));
+
+		field.erode(1, BotPathFinder.STEP_TOLERANCE, 1);
+
+		// the way through: 3 4 on one side, 3 5 and 4 5 in the doorway, 4 6 on the other
+		assertTrue(walkableAt(field, 3, 5, FLOOR), "the doorway, which a square reaching to its diagonal neighbours shut");
+		assertTrue(walkableAt(field, 4, 5, FLOOR));
+		assertTrue(walkableAt(field, 3, 4, FLOOR) && walkableAt(field, 4, 6, FLOOR), "the floor on either side of it");
+		assertFalse(walkableAt(field, 1, 6, FLOOR), "the floor against the wall is still shaved");
 	}
 
 	@Test

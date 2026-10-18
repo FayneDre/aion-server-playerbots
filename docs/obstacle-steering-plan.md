@@ -12,7 +12,14 @@ open-world mesh was generated again. Measured offline with `NavmeshTool <map> pa
 `audit` (routes on foot through a wall) and `reachfrom`: the noted routes clean, Teminon's npcs 99 of 101 reached from its obelisk against 97, the
 Verteron citadel 89 of 108 as before. Two path finder rules were tried and dropped (no diagonal between two shut corners; no single rise over 0.6 m):
 they cost passages, and the second shut fifteen of Teminon's npcs. The "steps aside" that remain are this module's own rule keeping 1.5 m from
-gatherables (`BotGeoHelper.gatherableClearance`), never checked against what the client does: 976 of 1011 in 47 minutes on 18 October.
+gatherables (`BotGeoHelper.gatherableClearance`): 976 of 1011 in 47 minutes on 18 October. The client does collide with a gatherable, a player
+cannot walk through one (checked in game the same day), so those steps aside are the right ones.
+
+**Same day, later: what the shaving cost.** The erosion reached its diagonal neighbours, a square, so against a wall at an angle it took 0.7 m a side
+and shut a two metre doorway of the citadel (a quest npc's shop, at 1649 1455); it is a disc of a body's radius now, and every mesh was built again.
+The mesh also stopped joining ground through closed siege gates, which split Gelkmaros and emptied places by the hundred: the fix was the place
+filter's, not the mesh's (see [population-churn-followup.md](population-churn-followup.md)). And a keeper's own floor is no longer where a customer
+stands when the bot's ground does not lead to it: rescues after a sale had doubled (`BotErrands.spotBeside`).
 
 ## What is seen
 

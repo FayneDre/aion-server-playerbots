@@ -187,6 +187,10 @@ public class Heightfield {
 			for (int offsetX = -radius; offsetX <= radius; offsetX++) {
 				if (offsetX == 0 && offsetY == 0)
 					continue;
+				// A disc of a body's radius, not a square. The corner of the square is 0.7 m off at half metre cells, outside the body, and against a wall
+				// at an angle it shaved that much from each side: a two metre doorway in the Verteron citadel shut, and with it the shop of a quest npc.
+				if (offsetX * offsetX + offsetY * offsetY > radius * radius)
+					continue;
 				int nextX = x + offsetX, nextY = y + offsetY;
 				if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height)
 					return true; // off the map counts as an edge, which keeps bots off the very rim

@@ -87,7 +87,7 @@ Future subsystems plug in as: auction house / shops → `economy/` plus new beha
 |---|---|---|
 | `model/gameobjects/Creature.java` | `final` → `volatile` + `setAi()` | Minimal — these lines never change upstream |
 | `model/gameobjects/Creature.java` | `moveController` → `volatile` + `setMoveController()` | Minimal — same reasoning as `setAi()` |
-| `world/geo/GeoService.java` | one more overload of `getClosestCollision` taking the ray's start point | Additive, no existing line touched. The bot module tests each stretch of a flight from its own start; the existing overload can only start at the body |
+| `world/geo/GeoService.java` | two more overloads of `getClosestCollision`: one taking the ray's start point, one taking a map instead of a body | Additive; the first now delegates to the second. The bot module tests each stretch of a flight from its own start, and asks whether a place is under a roof before anybody stands there |
 | `model/team/TemporaryPlayerTeam.java` | `getBrandedTarget(int)`, a four line reader of the brand map | Minimal — the map was `protected` with no reader, and only bots need to look at a brand without a client |
 | `skillengine/effect/EffectTemplate.java` | One accessor: `getHitType()` | Minimal — a getter over an existing protected field, no behaviour |
 | `model/gameobjects/player/Player.java` | `isOnline()` means "is present"; adds `setBot()`/`isBot()` | Low per line, wide in effect — see [built.md](built.md) |

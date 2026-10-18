@@ -16,7 +16,14 @@ out inside 1000 m², which is a flood fill over the fine surfaces and names the 
 Verteron 5 of 123, every one of them named in the log with its coordinates, because a count cannot be checked and a place dropped in error is a place
 the map never populates again. The director then moves anybody left living at a place that no longer exists, because no other rule would: theirs is
 neither short nor over-full. **Since bots fly, a place is put back when it shares a fly zone with a mainland place within flight range** — reached is
-not enough, a resident has to be able to leave — which takes Eltnen to 10 dropped and Verteron to 3.
+not enough, a resident has to be able to leave — which takes Eltnen to 10 dropped and Verteron to 3. Never one under a roof, where no bot flies
+(Inggison's hollow, 18 October).
+
+**One mainland stopped being enough on 18 October**, the day the mesh kept a body's width from walls (`Heightfield.erode`). Gelkmaros's three parts had
+been joined across the floor of its closed siege gate; apart, they hold 85, 64 and 47 places, and the one-winner rule emptied two of them (193 places
+kept, then 80). Every stretch with at least five places, a settlement and an obelisk is now lived on (`BotPlaces.mainlandsOnFoot`), measured offline
+by replaying the vote on each map's cached anchors: Gelkmaros 209, Altgard 136 as before, Cygnea 94 to 175 and Enshar 195 to 254 for ground never
+lived on.
 
 Asking for a *route* instead was the obvious repair and does not work: at range every failure is honestly reported as a search that gave up, so 152
 probes over Eltnen cost 73 s and proved nothing the grid had not, against 397 ms for the fill. Why the fill's bound had to be measured is in
