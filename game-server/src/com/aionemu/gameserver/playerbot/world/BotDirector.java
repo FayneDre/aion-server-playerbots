@@ -22,8 +22,10 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
+import com.aionemu.gameserver.playerbot.BotRecruiter;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
+import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.world.BotPlaces.Settlement;
 import com.aionemu.gameserver.world.World;
@@ -175,6 +177,9 @@ public class BotDirector {
 			List<Player> watchers = playersByMap.getOrDefault(worldId, List.of());
 			boolean busy = isBusy(worldId, watchers, now);
 			List<BotRoster.Resident> residents = residentsByMap.getOrDefault(worldId, List.of());
+			// Written on 4 October and never called until the 18th, when the Inggison hollow was dropped and its residents went on living there,
+			// rescued out of it over and over: the moves land in the roster, and this review still sorts them where they were, the next one where they are.
+			evictFromNowhere(worldId, residents);
 			Map<Vector3f, Integer> villages = countByPlace(BotPresence.civic(worldId));
 			List<Settlement> fieldPlan = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline));
 			int hunters = fieldPlan.size();
@@ -558,6 +563,10 @@ public class BotDirector {
 			if (field == null)
 				continue;
 			BotRoster.setHome(resident.name(), field.centre());
+			// one awake takes it up too, or it lives on at the old spot until it next sleeps; not one that is somewhere else for a player
+			Player bot = PlayerBotService.getInstance().spawnedBot(resident.playerId());
+			if (bot != null && bot.getAi() instanceof PlayerBotAI ai && bot.getWorldId() == worldId && !bot.isInInstance() && !BotRecruiter.isRecruit(bot))
+				ai.moveHouse(field.centre());
 			moved++;
 		}
 		if (moved > 0)

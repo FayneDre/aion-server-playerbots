@@ -10,7 +10,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 ## Next, by priority
 
 1. **Dungeons, watched again** after the 18 October fixes (following in an instance, gliding after the player, walls in the mesh); then doors, lifts
-   and floors, a bot left inside when its player logs out, bosses, level 50 bots.
+   and floors, bosses, level 50 bots.
 2. **The other classes' playbooks**, spirit master, aethertech, bard and gunner first; damage that waits for the tank; group resurrection watched.
 3. **Navigation leftovers**: ambient flights stalling. Fixed on
    18 October, to measure: the Verteron citadel doorway, places lost to the walls fix, rescues after a sale, Inggison's flights from under a roof.
@@ -44,7 +44,7 @@ each put through a reach check ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.m
 - **Instance entry: built and watched 18 October** (Noschana). A grouped bot follows its player into the instance and out again (`BotInstances`),
   revives at the entrance, and a bot saved inside starts at the exit; `BotMapChange` spawns a bot a map change would leave waiting for a client's
   `CM_LEVEL_READY`. The run showed bots slow to catch up and never gliding: they now keep a route within 8 m of a moving leader and copy the
-  leader's glide from its takeoff (`LeaderGlides`), not yet watched. **Left**: a bot stays inside when its player logs out.
+  leader's glide from its takeoff (`LeaderGlides`), not yet watched. A player who logs out inside is waited for five minutes, then the bots leave the group and the instance (`BotInstances`), not watched either.
 - **The instance meshes** (54 files for the 45 geometries) are walked: Noschana's was.
 - **Doors, lifts and floors** the open world never asked about: what the testers reported is in the dungeon plan.
 - **Bosses**: a bot that simply fights correctly clears most low-level instances; mechanics are a later refinement, not a prerequisite. Positioning

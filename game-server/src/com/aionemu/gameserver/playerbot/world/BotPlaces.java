@@ -166,7 +166,7 @@ public class BotPlaces {
 	private static final Map<Integer, int[]> bandByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Integer>> levelsByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> homesByMap = new ConcurrentHashMap<>();
-	private static final Map<Integer, List<Vector3f>> obelisksByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, List<Obelisk>> obelisksByMap = new ConcurrentHashMap<>();
 	/** Per map, the faction whose settlements alone stand on a stretch of ground, by stretch; a stretch with both or neither is nobody's. */
 	private static final Map<Integer, Map<Integer, Race>> ownersByMap = new ConcurrentHashMap<>();
 	/** Whether a bot living near a spot can walk back from an obelisk, by obelisk and by ten metres of home: only proofs, never a search that gave up. */
@@ -530,27 +530,19 @@ public class BotPlaces {
 	}
 
 	/**
-	 * @return The obelisk nearest a spot, or null where the map has none.
-	 *         <p>
-	 *         Bots never bind anywhere, so dying sent them to their race's starting location — the far end of the region from wherever they live and
-	 *         work. A player binds at the obelisk nearest the ground they are working precisely so that dying costs a short walk rather than a long
-	 *         one, and a bot given the same has the same.
-	 */
-	public static Vector3f nearestObelisk(int worldId, float x, float y) {
-		return obelisksByMap.computeIfAbsent(worldId, BotPlaces::locateObelisks).stream()
-			.min(Comparator.comparingDouble(spot -> PositionUtil.getDistance(x, y, spot.x, spot.y))).orElse(null);
-	}
-
-	/**
 	 * @return The nearest obelisk that a bot living at {@code home} can walk back from, or, when none of them can be shown to be, the nearest one.
 	 *         <p>
 	 *         The nearest obelisk is not always one worth binding to. Measured over five days of logs, the obelisks of two fortresses stand on floors the
 	 *         mesh does not join to the ground around them, and nearly every bot that died near one came back where it could not take a step. An obelisk
 	 *         is judged by the ground it stands on sharing a stretch with the home, then by one route search, so no obelisk is named in code and a new
 	 *         map is judged the same way. A search that runs out of budget does not rule an obelisk out.
+	 *         <p>
+	 *         Only the bot's own faction's, and the ones anybody binds at. The nearest of all was the fallback, and on Reshanta's upper layer, where a
+	 *         home far from both bases walks back to neither, it was the enemy's: an Elyos bot bound at Primum came back among its guards and died
+	 *         every twelve seconds (18 October).
 	 */
-	public static Vector3f nearestReachableObelisk(int worldId, Vector3f home) {
-		List<Vector3f> all = new ArrayList<>(obelisksByMap.computeIfAbsent(worldId, BotPlaces::locateObelisks));
+	public static Vector3f nearestReachableObelisk(int worldId, Vector3f home, Race race) {
+		List<Vector3f> all = new ArrayList<>(obelisksOf(worldId, race));
 		all.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(home.getX(), home.getY(), spot.x, spot.y)));
 		NavmeshService mesh = NavmeshService.getInstance();
 		if (mesh.regionsAt(worldId, home.getX(), home.getY()).length == 0)
@@ -576,13 +568,29 @@ public class BotPlaces {
 		return all.isEmpty() ? null : all.get(0);
 	}
 
-	private static List<Vector3f> locateObelisks(int worldId) {
-		List<Vector3f> found = new ArrayList<>();
+	/** An obelisk and the faction that binds at it, null when anybody does. */
+	private record Obelisk(Vector3f spot, Race race) {
+	}
+
+	/** @return The obelisks of a map a character of that faction may bind at, every one of them for a null faction. */
+	private static List<Vector3f> obelisksOf(int worldId, Race race) {
+		return obelisksByMap.computeIfAbsent(worldId, BotPlaces::locateObelisks).stream()
+			.filter(obelisk -> race == null || obelisk.race() == null || obelisk.race() == race).map(Obelisk::spot).toList();
+	}
+
+	private static List<Obelisk> locateObelisks(int worldId) {
+		List<Obelisk> found = new ArrayList<>();
 		for (SpawnGroup group : DataManager.SPAWNS_DATA.getSpawnsByWorldId(worldId)) {
 			if (DataManager.BIND_POINT_DATA.getBindPointTemplate(group.getNpcId()) == null)
 				continue;
+			NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(group.getNpcId());
+			Race race = template == null || template.getTribe() == null ? null : switch (template.getTribe()) {
+				case FIELD_OBJECT_LIGHT -> Race.ELYOS;
+				case FIELD_OBJECT_DARK, GENERAL_DARK -> Race.ASMODIANS;
+				default -> null;
+			};
 			for (SpawnTemplate spawn : group.getSpawnTemplates())
-				found.add(new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()));
+				found.add(new Obelisk(new Vector3f(spawn.getX(), spawn.getY(), spawn.getZ()), race));
 		}
 		return found;
 	}
@@ -923,7 +931,7 @@ public class BotPlaces {
 			for (int region : mesh.regionsAt(worldId, place.centre().getX(), place.centre().getY()))
 				settled.add(region);
 		}
-		for (Vector3f obelisk : obelisksByMap.computeIfAbsent(worldId, BotPlaces::locateObelisks)) {
+		for (Vector3f obelisk : obelisksOf(worldId, null)) {
 			for (int region : mesh.regionsAt(worldId, obelisk.getX(), obelisk.getY()))
 				bound.add(region);
 		}

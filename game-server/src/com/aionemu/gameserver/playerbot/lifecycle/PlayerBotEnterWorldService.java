@@ -129,7 +129,7 @@ public class PlayerBotEnterWorldService {
 		Vector3f home = BotRoster.homeOf(bot.getName());
 		if (home == null)
 			return;
-		Vector3f obelisk = BotPlaces.nearestReachableObelisk(homeWorldId, home);
+		Vector3f obelisk = BotPlaces.nearestReachableObelisk(homeWorldId, home, bot.getRace());
 		if (obelisk != null)
 			bot.setBindPoint(new BindPointPosition(homeWorldId, obelisk.getX(), obelisk.getY(), obelisk.getZ(), (byte) 0));
 	}

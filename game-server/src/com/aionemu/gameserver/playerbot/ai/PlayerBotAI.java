@@ -208,6 +208,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private long attackGeneration;
 	/** When the attack loop last ran, so the decision tick can tell a fight in progress from one that has silently stopped. */
 	private volatile long lastAttackTick;
+	/** A home handed over by {@link #moveHouse}, not yet taken up. */
+	private volatile Vector3f newHome;
 	/** When the bot last actually did something to its target -- a swing sent or a skill cast, not a tick that decided to do neither. */
 	private volatile long lastBlow;
 	/**
@@ -373,6 +375,14 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Makes this the bot's home, in the roster as well, and its anchor: for a bot brought back to where it lives after being somewhere else. */
 	public void takeUpHome(Vector3f home) {
 		day.moveTo(home);
+	}
+
+	/**
+	 * Hands the bot a new home from another thread, the director's: taken up at the start of its next tick, on its own, since everything the day holds
+	 * is read and written there.
+	 */
+	public void moveHouse(Vector3f home) {
+		newHome = home;
 	}
 
 	public boolean isAutonomous() {
@@ -600,6 +610,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		if (BotFlight.isInTheAir(getOwner()))
 			return; // nothing is decided for a body in the air, and nothing above this line runs either: rehousing one would teleport it
+		Vector3f moving = newHome;
+		if (moving != null) {
+			newHome = null;
+			takeUpHome(moving);
+		}
 		if (moves() != null && moves().isGliding() && !getOwner().isDead())
 			return; // the same for a live body on a glide: a fight picked up on the way down would be walked to from the air. A dead one ends its glide below
 		sheathWhenCalm();
