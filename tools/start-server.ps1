@@ -5,7 +5,8 @@
 .DESCRIPTION
     Order matters: the game server connects to both the chat server and the login server on startup,
     so they must already be listening. Each step waits for the next server's port to actually accept
-    connections instead of sleeping for a fixed duration.
+    connections instead of sleeping for a fixed duration. The stack is then ready only once the game server has
+    registered with the login server, which happens minutes after its port opens.
 
       chat-server   port 9021 (game server connections)
       login-server  port 9014 (game server connections)
@@ -26,6 +27,9 @@
 .PARAMETER TimeoutSeconds
     How long to wait for each server to start listening before giving up.
 
+.PARAMETER RegisterTimeoutSeconds
+    How long to wait, once the game port is open, for the game server to register with the login server. Until it has, no client can connect.
+
 .EXAMPLE
     .\tools\start-server.ps1
     .\tools\start-server.ps1 -SkipChat
@@ -35,7 +39,8 @@ param(
     [switch]$SkipChat,
     [switch]$SkipCheck,
     [int]$CheckSeconds = 45,
-    [int]$TimeoutSeconds = 120
+    [int]$TimeoutSeconds = 120,
+    [int]$RegisterTimeoutSeconds = 600
 )
 
 $ErrorActionPreference = 'Stop'
@@ -104,7 +109,34 @@ if (-not $SkipChat) {
 Start-AionServer 'login-server' 9014
 Start-AionServer 'game-server' 7777
 
-Write-Host 'Server stack is up.' -ForegroundColor Green
+<#
+    The game port opens minutes before anyone can play: the game server registers with the login server only once its startup is over, bots
+    included (149 to 278 s on 18 October). A client that tries in between sees the server as down, and has to be restarted to see it come up.
+    So the stack is ready when the game server's log says it reached the login server, not when its port opens.
+#>
+function Wait-LoginRegistration {
+    $log = Join-Path $ServerRoot 'game-server\log\server_console.log'
+    $began = Get-Date
+    $deadline = $began.AddSeconds($RegisterTimeoutSeconds)
+    $nextReport = $began.AddSeconds(30)
+    Write-Host 'Waiting for the game server to register with the login server...' -ForegroundColor Cyan
+    while ((Get-Date) -lt $deadline) {
+        if ((Test-Path $log) -and (Select-String -Path $log -Pattern 'Connected to login server' -SimpleMatch -Quiet)) {
+            Write-Host ("game-server is registered with the login server after {0:N0} s" -f ((Get-Date) - $began).TotalSeconds) -ForegroundColor Green
+            return
+        }
+        if ((Get-Date) -ge $nextReport) {
+            Write-Host ("  still starting ({0:N0} s)" -f ((Get-Date) - $began).TotalSeconds)
+            $nextReport = $nextReport.AddSeconds(30)
+        }
+        Start-Sleep -Seconds 2
+    }
+    throw "The game server did not register with the login server within $RegisterTimeoutSeconds seconds. Check its window and log."
+}
+
+Wait-LoginRegistration
+
+Write-Host 'Server stack is up: clients can connect.' -ForegroundColor Green
 
 # Read what the game server wrote once the bots have begun to act, because that is when the faults showed: a tick that threw every second, and a server
 # whose console had been clicked into and stood still. It reports and does not stop anything.

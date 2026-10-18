@@ -27,6 +27,8 @@ The game server connects to both the chat server and the login server while star
 
 The script starts each one, then polls until its port accepts connections before moving on. A server already listening is left alone rather than started twice.
 
+An open game port does not mean a client can connect. The game server registers with the login server only at the very end of its startup, after the bots are ready, two to five minutes later; a client that tries before then sees the server as down and has to be restarted. So the script then waits for `Connected to login server` in the game server's log (up to `-RegisterTimeoutSeconds`, 600 by default) and only then says the stack is up.
+
 ## Each server runs as a bare JVM, not through start.bat
 
 The script reads the `JAVA` line out of each server's `start.bat` and launches java itself, so memory settings stay
