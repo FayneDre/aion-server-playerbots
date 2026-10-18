@@ -12,8 +12,9 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 1. **Dungeons, watched again** after the 18 October fixes (following in an instance, gliding after the player, walls in the mesh); then doors, lifts
    and floors, bosses, level 50 bots.
 2. **The other classes' playbooks**, spirit master, aethertech, bard and gunner first; damage that waits for the tank; group resurrection watched.
-3. **Navigation leftovers**: ambient flights stalling. Fixed on
-   18 October, to measure: the Verteron citadel doorway, places lost to the walls fix, rescues after a sale, Inggison's flights from under a roof.
+3. **Navigation leftovers**, measured on 18 October over 45 minutes with nobody online: rescue teleports, about 50 a half hour spread over every
+   map with no spot holding more than four; route searches over a second, about 600 s of the bots' threads a half hour, part of them still for shops
+   and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only.
 4. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
 5. **Speech and yielding to players**: cheap, and what a player notices first.
 6. **Wild PvP and rifts.**

@@ -130,12 +130,53 @@ public class BotVendorManager {
 		for (Vector3f spot : vendors) {
 			if (probed++ == VENDORS_PROBED)
 				break;
+			// The floor in front of the keeper, not its feet. A keeper stands behind its counter, on the strip the mesh keeps a body's width from it,
+			// where no route ends: a search for its feet could neither find one nor prove there was none, and ran out of its budget instead. 726 of the
+			// 1017 searches over a second in 45 minutes on 18 October were that, on the bots' own threads, every shop trip. The nearest floor was not
+			// enough either: in Sanctum it is the 94 cells behind the counter, a pocket, and the search for it gave up the same way.
+			Vector3f front = frontOf(bot.getWorldId(), spot);
+			Vector3f goal = front != null ? front : spot;
 			// anything but a proof is worth walking to: a mesh that gave up, or a map with no mesh at all, has said nothing against this shop, and
 			// the walk itself is the cheaper way to find out. A refusal there is caught by the mover and remembered with its own, shorter patience.
-			if (NavmeshService.getInstance().reach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y,
+			// And the trip goes to the front too. Sent to the keeper's feet instead, 243 trips of 268 failed in 23 minutes, against 91 of 122.
+			if (NavmeshService.getInstance().reach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), goal.x, goal.y,
+				goal.z) != NavmeshService.Reach.NO)
+				return goal;
+			// a front on another floor proves nothing against the shop: the keeper's feet are asked as they always were
+			if (goal != spot && NavmeshService.getInstance().reach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y,
 				spot.z) != NavmeshService.Reach.NO)
 				return spot;
 			whenUnreachable.accept(spot);
+		}
+		return null;
+	}
+
+	/** Where round a keeper to look for its front, nearest first and all inside trading reach. */
+	private static final float[] FRONT_RADII = { 0, 1.5f, 3, 4.5f, 6 };
+	private static final int FRONT_DIRECTIONS = 8;
+	/** How many floors may be measured for being a pocket, each a fill of a few thousand cells at most. */
+	private static final int FRONT_FILLS = 12;
+
+	/**
+	 * @return Floor within trading reach of a keeper that is not a pocket, nearest first, or null when none was found or the map has no mesh. No route
+	 *         is searched: a pocket is told by how much ground it has, which closes in a few thousand cells, see {@link NavmeshService#isPocket}.
+	 */
+	private static Vector3f frontOf(int worldId, Vector3f keeper) {
+		NavmeshService mesh = NavmeshService.getInstance();
+		int fills = 0;
+		for (float radius : FRONT_RADII) {
+			for (int k = 0; k < (radius == 0 ? 1 : FRONT_DIRECTIONS); k++) {
+				double angle = Math.PI * 2 * k / FRONT_DIRECTIONS;
+				float x = keeper.x + (float) Math.cos(angle) * radius, y = keeper.y + (float) Math.sin(angle) * radius;
+				for (Vector3f floor : mesh.floorsAt(worldId, x, y, keeper.z)) {
+					if (PositionUtil.getDistance(floor.x, floor.y, floor.z, keeper.x, keeper.y, keeper.z) >= TRADE_RANGE - 1)
+						break; // nearest first: the rest are further off still
+					if (fills++ >= FRONT_FILLS)
+						return null;
+					if (!mesh.isPocket(worldId, floor.x, floor.y, floor.z))
+						return floor;
+				}
+			}
 		}
 		return null;
 	}
@@ -158,6 +199,22 @@ public class BotVendorManager {
 				return;
 			double distance = PositionUtil.getDistance(bot, npc);
 			if (distance < nearestDistance[0]) {
+				nearestDistance[0] = distance;
+				nearest[0] = npc;
+			}
+		});
+		return nearest[0];
+	}
+
+	/** @return The shop keeper the bot can see that stands nearest a spot and within {@code radius} of it, or null. */
+	public static Npc findKnownVendorNear(Player bot, Vector3f spot, float radius) {
+		Npc[] nearest = { null };
+		double[] nearestDistance = { radius };
+		bot.getKnownList().forEachNpc(npc -> {
+			if (!npc.canBuy())
+				return;
+			double distance = PositionUtil.getDistance(spot.x, spot.y, spot.z, npc.getX(), npc.getY(), npc.getZ());
+			if (distance <= nearestDistance[0]) {
 				nearestDistance[0] = distance;
 				nearest[0] = npc;
 			}

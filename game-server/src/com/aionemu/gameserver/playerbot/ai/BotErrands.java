@@ -115,7 +115,8 @@ class BotErrands {
 				return false;
 			if (moveController.isInMove())
 				return true;
-			if (moveController.isBlocked() || !ai.tryMoveTo(moveController, corpse.getX(), corpse.getY(), corpse.getZ())) {
+			// the move alone, which asks whether it is blocked once the journey is this one: see the shop trip below
+			if (!ai.tryMoveTo(moveController, corpse.getX(), corpse.getY(), corpse.getZ())) {
 				log.info("Bot {} cannot reach the corpse it wanted to loot", bot.getName());
 				pendingCorpse = 0;
 				return false;
@@ -239,8 +240,9 @@ class BotErrands {
 			// when it gets home, so without this it turned round and came again -- measured at 733 fruitless trips against 91 that bought something,
 			// from 37 bots, inside two minutes. The wait is per bot rather than per shop: which shop was wrong is not the useful question when the
 			// answer may equally be that the purse is empty.
-			if (bought == 0)
-				noFlasksUntil = System.currentTimeMillis() + FLASK_TRIP_COOLDOWN_MILLIS;
+			// And one that sold it some is not either: a bot whose purchase still left it wanting flasks turned round on the spot and bought again,
+			// once a second, ten times in a minute in Cygnea on 18 October.
+			noFlasksUntil = System.currentTimeMillis() + FLASK_TRIP_COOLDOWN_MILLIS;
 			if (sold > 0 || bought > 0)
 				log.info("Bot {} sold {} stack(s) and bought {} kind(s) of flask", bot.getName(), sold, bought);
 			vendorDestination = null;
@@ -253,6 +255,10 @@ class BotErrands {
 		BotMoveController moveController = ai.moves();
 		if (moveController == null)
 			return false;
+		// Sold to whoever is in reach, as above, but walked to the keeper this trip was chosen for. The nearest one in sight was walked to instead:
+		// in Pandaemonium a bot chose a shop it could reach, walked towards a nearer keeper it could not, wrote the chosen shop off, and did that
+		// to every shop of the street in turn, a trip every two minutes and no sale. Trips given up fell from 269 to 91 in 23 minutes on 18 October.
+		vendor = BotVendorManager.findKnownVendorNear(bot, vendorDestination, VENDOR_SPOT_TOLERANCE);
 		// Nothing in sight buys, and the bot is standing where the map said a shop would be. Before this, it re-issued a move to the spot it was
 		// already on, arrived instantly, found nothing again, and did that for ever — a bot frozen at a shop that never was. The spot is dropped
 		// instead, and the next trip goes to the next nearest one.
@@ -286,7 +292,9 @@ class BotErrands {
 				z = bot.getZ() + (z - bot.getZ()) * fraction;
 			}
 		}
-		if (moveController.isBlocked() || !ai.tryMoveTo(moveController, x, y, z)) {
+		// The move alone, which asks whether it is blocked once the journey is this one. Asked first, the flag could still hold the refusal of the last
+		// journey, which only a new one clears, and turn a shop down without a route being searched.
+		if (!ai.tryMoveTo(moveController, x, y, z)) {
 			log.info("Bot {} cannot reach a shop and gives up selling", bot.getName());
 			noShopUntil = System.currentTimeMillis() + UNREACHABLE_SHOP_COOLDOWN_MILLIS;
 			// remembered, exactly as an empty spot is. Forgetting it only meant the next trip chose the same nearest shop and failed the same way,
