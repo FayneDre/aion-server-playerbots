@@ -108,7 +108,9 @@ The list "missing features in game", each with what stands today:
 - **A legion's invitation**: not answered. The first step of the legions section below.
 - **Cohorts** (alliances): a bot answers an alliance invitation but none is ever sent to one on purpose, and the recruiter fills groups only.
 - **Duels**: `//bot duel` answers one; a bot never accepts or asks for one by itself.
-- **"The shop does not work"**: which shop is meant (an npc merchant, the in-game shop, a private store) is to be asked.
+- **The in-game shop does not work**, and is not the bots' work: the server has none. The 4.8 client opens a web shop with a token
+  (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty one, a TODO upstream); the older shop packets are commented out and `config/ingameshop` is unused.
+  Either a small web shop answering the token, or reviving the old packets if this client still reads them: a decision, then a project of its own.
 - **The arenas** (four or five kinds): not started; they are instances of their own, after the dungeons.
 - **A living world**: bots in the capital with a private store, while the broker is not done; and capitals that feel lived in. The capitals have
   their 150 civic inhabitants, but they come and go: what is asked is people who stay and are seen.
