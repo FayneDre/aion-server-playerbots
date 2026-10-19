@@ -34,6 +34,8 @@ final class InstanceReach {
 	private static final int SHOWN = 8;
 	/** How high over the floor below a spot with no footing has to be to count as in the air rather than beside a floor the mesh lost, in metres. */
 	private static final float IN_THE_AIR = 6f;
+	/** How far an arrival set down in the air may drop to the floor under it, in metres. */
+	private static final float FALL = 50f;
 
 	private static final Pattern PORTAL = Pattern
 		.compile("<portal_loc\\s+world_id=\"(\\d+)\"\\s+loc_id=\"(\\d+)\"[^>]*\\sx=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
@@ -43,6 +45,10 @@ final class InstanceReach {
 	 */
 	private static final Pattern PORTAL_PATH = Pattern.compile("<portal_path\\b[^>]*?\\sloc_id=\"(\\d+)\"");
 	private static final String AERIAL = "aerial_spawn=\"true\"";
+	private static final Pattern WINDSTREAM = Pattern.compile("<windstream\\s+mapid=\"(\\d+)\"");
+	private static final Pattern WINDSTREAM_LOCATION = Pattern.compile("<location\\s+id=\"(\\d+)\"");
+	private static final Pattern FLY_PATH = Pattern
+		.compile("<flypath_location\\s+id=\"(\\d+)\"[^>]*\\sex=\"([-\\d.]+)\"\\s+ey=\"([-\\d.]+)\"\\s+ez=\"([-\\d.]+)\"\\s+eworld=\"(\\d+)\"");
 	private static final Pattern SPOT = Pattern.compile("<spot\\s+x=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
 
 	/**
@@ -85,6 +91,8 @@ final class InstanceReach {
 		int askedOfAny = 0;
 		for (float[] given : entries) {
 			float[] entry = snapped(mesh, given);
+			if (entry == null)
+				entry = fallen(mesh, given);
 			if (entry == null) {
 				System.out.printf(Locale.ROOT, "Map %d, from %.1f %.1f %.1f: the entry has no walkable ground within %.0f m, so nothing can be asked of it%n", mapId, given[0],
 					given[1], given[2], SNAP);
@@ -197,6 +205,21 @@ final class InstanceReach {
 	}
 
 	/**
+	 * @return The highest walkable floor under an arrival set down in the air, within {@link #FALL} metres, or null: a windstream ends where its flight path
+	 *         does, over the ground its rider then drops or glides to.
+	 */
+	private static float[] fallen(Navmesh mesh, float[] arrival) {
+		int cellX = mesh.cellX(arrival[0]), cellY = mesh.cellY(arrival[1]);
+		float best = Float.NaN;
+		for (int surface = 0; mesh.contains(cellX, cellY) && surface < mesh.surfaceCount(cellX, cellY); surface++) {
+			float z = mesh.surfaceZ(cellX, cellY, surface);
+			if (mesh.isWalkable(cellX, cellY, surface) && z <= arrival[2] && arrival[2] - z <= FALL && (Float.isNaN(best) || z > best))
+				best = z;
+		}
+		return Float.isNaN(best) ? null : new float[] { arrival[0], arrival[1], best };
+	}
+
+	/**
 	 * @return Where a party arrives in the instance: x, y, z each. The portal list holds every portal location of the map, the way out and the ones inside as well, so
 	 *         only those that a portal npc leads to are arrivals; a map none of whose locations is led to by anyone gets all of them rather than none.
 	 */
@@ -205,7 +228,34 @@ final class InstanceReach {
 			return HANDLER_ARRIVALS.get(mapId);
 		List<float[]> entries = entries(STATIC_DATA.resolve("portals/portal_loc.xml"), STATIC_DATA.resolve("portals/portal_template2.xml"), mapId);
 		entries.addAll(TELEPORT_LANDINGS.getOrDefault(mapId, List.of()));
+		entries.addAll(windstreamLandings(STATIC_DATA.resolve("windstreams/windstreams.xml"), STATIC_DATA.resolve("flypath_template.xml"), mapId));
 		return entries;
+	}
+
+	/**
+	 * @return Where each windstream of the map sets its rider down, x, y, z each. Esoterrace is crossed by its four windstreams and not on foot: measured from its
+	 *         entrance alone, the whole far side counted as the mesh's fault (65 %).
+	 */
+	static List<float[]> windstreamLandings(Path windstreams, Path flyPaths, int mapId) throws IOException {
+		List<float[]> landings = new ArrayList<>();
+		if (!Files.isRegularFile(windstreams) || !Files.isRegularFile(flyPaths))
+			return landings;
+		Set<Integer> ids = new HashSet<>();
+		boolean inMap = false;
+		for (String line : Files.readAllLines(windstreams)) {
+			Matcher block = WINDSTREAM.matcher(line);
+			if (block.find())
+				inMap = Integer.parseInt(block.group(1)) == mapId;
+			Matcher location = WINDSTREAM_LOCATION.matcher(line);
+			if (inMap && location.find())
+				ids.add(Integer.parseInt(location.group(1)));
+		}
+		for (String line : Files.readAllLines(flyPaths)) {
+			Matcher matcher = FLY_PATH.matcher(line);
+			if (matcher.find() && ids.contains(Integer.parseInt(matcher.group(1))) && Integer.parseInt(matcher.group(5)) == mapId)
+				landings.add(new float[] { Float.parseFloat(matcher.group(2)), Float.parseFloat(matcher.group(3)), Float.parseFloat(matcher.group(4)) });
+		}
+		return landings;
 	}
 
 	static List<float[]> entries(Path portalList, Path portalTemplates, int mapId) throws IOException {

@@ -1,6 +1,6 @@
 # Dungeon navmeshes: plan
 
-Status: milestones 0 to 5 done (45 meshes built, 9 copied, every one put through `reach`), plus glide links and a steeper slope for three stairs; on 19 October every mesh measured again and 20 built again with floors the generator had dropped (see "Measured again, 19 October"); 6, the server opening an instance mesh, not tried, though bots can now be in one: they follow their player in since 18 October (`BotInstances`). Sixteen maps measured again on the evening of 11 October with the long-walk planner rebuilt (table below): Illuminary Obelisk, 310100000, Lower Udas, Steel Rake, Dredgion and Dragon Lord's Refuge are now at 91 % or more; of those sixteen, Esoterrace, the Danuar Sanctuaries and the two Rentus remain under 80 %. The others, Drakenspire and Theobomos among them, have not been measured again. Next: portal links. Nothing here is watched in game. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**: the goal is
+Status: milestones 0 to 5 done (45 meshes built, 9 copied, every one put through `reach`), plus glide links and a steeper slope for three stairs; on 19 October every mesh measured again and 20 built again with floors the generator had dropped (see "Measured again, 19 October"); 6, the server opening an instance mesh, seen in the logs (Nochsana), bots being in one: they follow their player in since 18 October (`BotInstances`). Sixteen maps measured again on the evening of 11 October with the long-walk planner rebuilt (table below): Illuminary Obelisk, 310100000, Lower Udas, Steel Rake, Dredgion and Dragon Lord's Refuge are now at 91 % or more; on the 19th the three left under 80 % (Esoterrace, Theobomos, Rentus) were looked into: windstreams, a lift and a way up not in the data, none the generator's fault. Next: portal links. Nothing here is watched in game. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**: the goal is
 bots that fight in a party, and a solo instance holds one player (23 of the first 77, Haramel among them; `instance_cooltimes.xml` gives one member for each). That leaves the 54 ids of the first
 table in [instance-navmesh-list.md](instance-navmesh-list.md), which come down to **45 distinct geometries**: a mesh is built once and serves the ids that share it. Arenas, warfronts, housing
 and tests are out for now. Putting a bot in an instance is not this plan's: `BotInstances` does it, since 18 October.
@@ -139,10 +139,21 @@ same parts the same way and has not been looked at.
 200 m, it was sent to its home's coordinates on the instance's map. A teleporter, a lever, a lift or a door the player's key opens is then crossed by the
 player, and the bot joins them about 13 s later. Not watched in game.
 
+**The three left under 80 %, looked into.** None is a fault of the generator; each is a way up or across that is not a walk.
+
+- **Esoterrace, 65 → 99 %.** It is crossed by its four windstreams. `reach` now counts where each one sets its rider down (`windstreams.xml` and the
+  end of its `flypath_template.xml` path) as an arrival, dropped onto the floor under it within 50 m: from the third one's landing alone, 95 %.
+- **Theobomos Lab, 74 %.** The boss room is behind a face of the room model across its doorway and is entered by the portal in front of it (730177, already
+  an arrival). The upper wing (33 of 351 spots) is 10 m over the main floor with nothing between: the lift the tester spoke of. The Queen Arachne room
+  (16) is cut by a face of `bu_l_laboratory_room_06f` hanging 0.7 m over the floor, with spiders spawned on both sides of it: likely not a wall in game,
+  left as it is until a player says so. Built again in memory with today's generator, the same.
+- **Rentus, 77 and 72 %.** Kuhara's floor (z 210), a mezzanine (241) and Vasharti's deck (252) are three stretches with nothing walkable between them,
+  even at a 62° slope; door 54 is a wall box (`idyun_dummy_room_30`) and no lift or teleporter is in the data. How a party goes up is the tester's to say.
+
 ## Open questions
 
 1. **Portal links.** Steel Rake is rooms joined by things to use (`portal_use` in `portal_template2.xml`: elevator levers, the anchor, the brig, the captain's cabin), the Danuar Sanctuaries by teleporters. A link "walk to the object, use it, arrive there", read from the portal list and the spawns, would let the planner route through them; the bot must also learn to use the object.
 2. **Doors, lifts and platform phases** are not in any mesh. A door that a boss fight opens can be walked through when it is open and not when it is shut; a lift is a one way link of another kind than a glide. Draupnir, Theobomos and Adma ask for them.
-3. **Walking a glide** (`BotMoveController`) and **opening an instance mesh in the server** (milestone 6) have not been tried in game. The format is the open world's, so the second is a low risk.
+3. **Walking a glide** (`BotMoveController`) has not been tried in game. The server does open an instance mesh (milestone 6): Nochsana's twice in the logs of 18 October.
 4. **Drakenspire, Theobomos, Adma** are the maps left that a group of level 40 to 50 plays and nothing today has improved; Rentus's upper deck is a question for the tester. A glide link down to the plane at height zero under a map (region 1 on the Danuar Sanctuaries) is a fall nobody survives and should not be offered.
 5. **Disk**: `data/navmesh` is 2 GB, most of it the debugging images the tool writes beside each mesh. The meshes are the `.nav` and `.glide` files.

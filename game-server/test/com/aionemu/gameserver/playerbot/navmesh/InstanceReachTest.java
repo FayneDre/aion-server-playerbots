@@ -70,6 +70,40 @@ class InstanceReachTest {
 	}
 
 	@Test
+	void aWindstreamOfTheMapSetsItsRiderDownWhereItsFlightPathEnds(@TempDir Path directory) throws IOException {
+		Path windstreams = directory.resolve("windstreams.xml");
+		Files.writeString(windstreams, """
+			<windstreams>
+				<windstream mapid="300020000">
+					<locations>
+						<location id="158" state="1" fly_path="TWO_WAY"/>
+					</locations>
+				</windstream>
+				<windstream mapid="300250000">
+					<locations>
+						<location id="159" state="1" fly_path="ONE_WAY"/>
+						<location id="161" state="0" fly_path="ONE_WAY"/>
+					</locations>
+				</windstream>
+			</windstreams>
+			""");
+		Path flyPaths = directory.resolve("flypath_template.xml");
+		Files.writeString(flyPaths, """
+			<flypath_location id="158" sx="230" sy="114" sz="35" sworld="300020000" ex="230" ey="140" ez="35" eworld="300020000" time="8"/>
+			<flypath_location id="159" sx="398" sy="553" sz="319" sworld="300250000" ex="881" ey="643" ez="187" eworld="300250000" time="26"/>
+			<flypath_location id="160" sx="398" sy="553" sz="318" sworld="300250000" ex="1279" ey="597" ez="304" eworld="300250000" time="24.6"/>
+			<flypath_location id="161" sx="396" sy="552" sz="320" sworld="300250000" ex="769" ey="863" ez="374" eworld="300250000" time="26.9"/>
+			""");
+
+		List<float[]> esoterrace = InstanceReach.windstreamLandings(windstreams, flyPaths, 300250000);
+		assertEquals(2, esoterrace.size(), "160 is not one of the map's windstreams, and one not yet open still counts");
+		assertEquals(881f, esoterrace.get(0)[0], 0.001f);
+		assertEquals(374f, esoterrace.get(1)[2], 0.001f);
+		assertTrue(InstanceReach.windstreamLandings(windstreams, flyPaths, 300040000).isEmpty());
+		assertTrue(InstanceReach.windstreamLandings(directory.resolve("missing.xml"), flyPaths, 300250000).isEmpty(), "no list is no landing, not a failure");
+	}
+
+	@Test
 	void spawnSpotsAreReadFromTheFilesOfThatInstanceOnly(@TempDir Path directory) throws IOException {
 		Files.writeString(directory.resolve("300090000_Right_Wing_Chamber.xml"), """
 			<spawns>
