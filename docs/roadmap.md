@@ -18,7 +18,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
    and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only. The
    regression of the 18-2 walls is closed (rescues 184 -> about 50, refused routes 1873 -> about 630, Gelkmaros' lost places 149 -> 35).
 4. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
-5. **What a player does with a bot**, asked on 19 October (see "Asked in game" below): trade with a companion, friends, duels, alliances;
+5. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)), asked on 19 October (see "Asked in game" below): trade with a companion, friends, duels, alliances;
    with speech and yielding to players, cheap and what a player notices first.
 6. **Living capitals**: bots that stay and are seen in Sanctum and Pandaemonium, some with a private store.
 7. **Wild PvP, rifts and the arenas.**
