@@ -143,10 +143,11 @@ player, and the bot joins them about 13 s later. Not watched in game.
 
 - **Esoterrace, 65 → 99 %.** It is crossed by its four windstreams. `reach` now counts where each one sets its rider down (`windstreams.xml` and the
   end of its `flypath_template.xml` path) as an arrival, dropped onto the floor under it within 50 m: from the third one's landing alone, 95 %.
-- **Theobomos Lab, 74 %.** The boss room is behind a face of the room model across its doorway and is entered by the portal in front of it (730177, already
-  an arrival). The upper wing (33 of 351 spots) is 10 m over the main floor with nothing between: the lift the tester spoke of. The Queen Arachne room
-  (16) is cut by a face of `bu_l_laboratory_room_06f` hanging 0.7 m over the floor, with spiders spawned on both sides of it: likely not a wall in game,
-  left as it is until a player says so. Built again in memory with today's generator, the same.
+- **Theobomos Lab, 67 → 72 %** (both measured the same day, the search budget giving up on 50 either way). The boss room is behind a face of the
+  room model across its doorway and is entered by the portal in front of it (730177, already an arrival). Queen Arachne's room is the dungeon's first
+  boss, whose key opens the rest (the tester, 19 October), and it was cut off by a face of `bu_l_laboratory_room_06f` hanging 0.7 m over the floor:
+  left out of the mesh (`DroppedFaces`, the first such face listed), the room is walked to, 12 spots more and none lost. The upper wing is reached by
+  a lift after the three elemental rooms, and a jump and a glide on the way, the tester says (a clip to come): not in the mesh.
 - **Rentus, 77 and 72 %.** Kuhara's floor (z 210), a mezzanine (241) and Vasharti's deck (252) are three stretches with nothing walkable between them,
   even at a 62° slope; door 54 is a wall box (`idyun_dummy_room_30`) and no lift or teleporter is in the data. **The tester answered** (19 October,
   seen in game): a lift appears when Kuhara dies. It is engine-moved geometry, filed as a door (Kuhara's death changes doors 43 and 150, whose

@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.navmesh;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +89,7 @@ public class HeightfieldBuilder {
 			List<GeoModel> parts = models.get(placement.modelName());
 			if (parts == null)
 				continue;
+			List<DroppedFaces.Plane> dropped = DroppedFaces.of(mapId, placement.modelName());
 			for (GeoModel part : parts) {
 				// masked to a byte's worth of bits: the intentions are stored in a byte, and PHYSICAL_SEE_THROUGH is its sign bit
 				int intentions = part.collisionIntentions() & 0xFF;
@@ -95,9 +97,9 @@ public class HeightfieldBuilder {
 				// collides with it: floors and bridges drawn so (Drakenspire's second stage, Steel Rake's decks, the Danuar Sanctuary's boss room) were missing.
 				// Kept as solid: spots with no footing 25 -> 3 in Drakenspire and 23 -> 2 in Steel Rake, the Danuar Sanctuary reached 74 -> 94 %.
 				if ((intentions & CollisionIntention.WALK.getId()) != 0 && !(instance && (intentions & SOLID) != 0))
-					noWalkVolumes.add(place(part, placement));
+					noWalkVolumes.add(place(part, placement, dropped));
 				else if ((intentions & SOLID) != 0)
-					solids.add(place(part, placement));
+					solids.add(place(part, placement, dropped));
 			}
 		}
 		if (instance)
@@ -110,7 +112,7 @@ public class HeightfieldBuilder {
 			instance ? Heightfield.INSTANCE_AGENT_RADIUS_CELLS : Heightfield.AGENT_RADIUS_CELLS, MapSlopes.cosine(mapId), MapSlopes.buildingCosine(mapId)).rasterize();
 	}
 
-	private static PlacedMesh place(GeoModel model, GeoPlacement placement) {
+	private static PlacedMesh place(GeoModel model, GeoPlacement placement, List<DroppedFaces.Plane> dropped) {
 		float[] vertices = new float[model.vertices().length];
 		for (int v = 0; v < vertices.length; v += 3) {
 			Vector3f world = placement.toWorld(model.vertices()[v], model.vertices()[v + 1], model.vertices()[v + 2]);
@@ -118,7 +120,20 @@ public class HeightfieldBuilder {
 			vertices[v + 1] = world.y;
 			vertices[v + 2] = world.z;
 		}
-		return new PlacedMesh(vertices, model.indices(), placement.modelName().substring(placement.modelName().lastIndexOf('/') + 1).startsWith("bu_"));
+		int[] indices = model.indices();
+		if (!dropped.isEmpty()) {
+			int[] kept = new int[indices.length];
+			int count = 0;
+			for (int i = 0; i < indices.length; i += 3) {
+				int a = indices[i] * 3, b = indices[i + 1] * 3, c = indices[i + 2] * 3;
+				if (dropped.stream().noneMatch(plane -> plane.holds(vertices[a], vertices[a + 1], vertices[b], vertices[b + 1], vertices[c], vertices[c + 1]))) {
+					System.arraycopy(indices, i, kept, count, 3);
+					count += 3;
+				}
+			}
+			indices = Arrays.copyOf(kept, count);
+		}
+		return new PlacedMesh(vertices, indices, placement.modelName().substring(placement.modelName().lastIndexOf('/') + 1).startsWith("bu_"));
 	}
 
 	private Heightfield rasterize() {
