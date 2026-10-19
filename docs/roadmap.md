@@ -9,8 +9,9 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
-1. **Dungeons, watched in game** with `patch-2026-10-19`: a bot cut off from its player put beside them, the 20 meshes built again; then the
-   the tester's clip of Theobomos's lift (Rentus: a lift at Kuhara's death), bots using windstreams, lifts and teleporters themselves rather than being put beside the player.
+1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
+   Arachne's room in Theobomos Lab. Every mesh is now explained (no fault known); what is left is lifts and teleporters taken by the bots themselves,
+   only if the 13 s wait proves too long in game, then bosses.
 2. **The other classes' playbooks**, on hold: level 50 bots and their rotations run on another test server, and its feedback decides what is
    written here. Damage that waits for the tank and group resurrection watched stay ours.
 3. **Navigation leftovers**, measured on 18 October over 45 minutes with nobody online: rescue teleports, about 50 a half hour spread over every
@@ -18,8 +19,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
    and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only. The
    regression of the 18-2 walls is closed (rescues 184 -> about 50, refused routes 1873 -> about 630, Gelkmaros' lost places 149 -> 35).
 4. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
-5. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)), asked on 19 October (see "Asked in game"
-   below): trading with one's companion, friends, duels.
+5. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)): duels, friends and trading with one's companion
+   **built** in `patch-2026-10-19-2`, to be watched in game.
 6. **Cohorts** ([cohort-plan.md](cohort-plan.md)): a bot in an alliance acting as a member of its own group of six.
 7. **Living capitals**: bots that stay and are seen in Sanctum and Pandaemonium, some with a private store.
 8. **Wild PvP, rifts and the arenas.**
@@ -29,10 +30,10 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-19 (patch `patch-2026-10-19`). **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-10-19 (patch `patch-2026-10-19-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks for the templar, chanter, ranger and cleric, the marking and target rules, group
 positioning, the death routine, gear and stigmas, flight in its five milestones (the fifth crosses the Abyss by air), navmesh planning on 26
-open-world maps with glide links, flight links on Reshanta and a long-walk planner, 45 dungeon meshes (all at 91 % or more but Theobomos and Rentus), steering vetted by the mesh (steps aside
+open-world maps with glide links, flight links on Reshanta and a long-walk planner, 45 dungeon meshes (46 of 51 maps at 86 % or more, the rest a lift or a glide away), duels, friends and trades with a companion (`BotRequests`, `BotTrades`), steering vetted by the mesh (steps aside
 14689 -> 469 per half hour on 800 bots, rescue teleports 403 -> 79, none in a player's sight), the test harness (`//bot squad`, notes, the command
 inbox, patch tags). **Watched with a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron (the cleric's heals, the chanter in melee,
 no fear and no wide area in a group), and a squad of level 40 crossing Reshanta's upper layer by air, together, to its goal. **Watched with a player**: a Noschana run on 18 October, with
@@ -56,7 +57,7 @@ each put through a reach check ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.m
   map. Not watched in game.
 - **The instance meshes** (54 files for the 45 geometries) are walked: Noschana's was. On 19 October floors the generator dropped were put back in 20
   of them (Steel Rake 99 %, the Danuar Sanctuaries 94 and 95 %, the Dredgions 96 to 99 %, Sauro 91 %), and Esoterrace reads 99 % once its
-  windstreams' landings count as arrivals. Left under 80 %: **Theobomos Lab** (72 %, its lift after the elemental rooms; Queen Arachne's room, its
+  windstreams' landings count as arrivals, and both Dragon Lord's Refuges 100 % once the teleporters their handler codes count too. Left under 80 %: **Theobomos Lab** (72 %, its lift after the elemental rooms; Queen Arachne's room, its
   first boss, walked to since a face that is no wall in game was left out) and **Rentus** (77 and 72 %: a lift that appears at Kuhara's death, the tester says, which no mesh holds).
 - **Doors, lifts and windstreams** are not used by a bot itself: it is put beside its player instead. Links "walk to the object, use it, arrive
   there" are the next step if 13 s turns out too long ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)).
@@ -104,11 +105,11 @@ on it. Counting each set of islands as a region of its own is the way to raise t
 
 The list "missing features in game", each with what stands today:
 
-- **Trading with one's companion**: nothing answers a trade window for a bot. Its owner's bags are what it may not touch ([bot-gear.md](bot-gear.md)).
-- **Adding a bot as a friend**: not handled; a friend request is a window a bot cannot see ([engine-traps.md](engine-traps.md)).
+- **Trading with one's companion**: built 19 October, with its owner only; `//bot give` hands over the companion's side ([player-interactions-plan.md](player-interactions-plan.md)).
+- **Adding a bot as a friend**: built 19 October; a bot shows online while awake.
 - **A legion's invitation**: not answered. The first step of the legions section below.
 - **Cohorts** (alliances): a bot answers an alliance invitation but acts as if the whole alliance were its group ([cohort-plan.md](cohort-plan.md)).
-- **Duels**: `//bot duel` answers one; a bot never accepts or asks for one by itself.
+- **Duels**: built 19 October; a free bot within 10 levels accepts and attacks, and never asks for one.
 - **The in-game shop does not work**, and is not the bots' work: the server has none. The 4.8 client opens a web shop with a token
   (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty one, a TODO upstream); the older shop packets are commented out and `config/ingameshop` is unused.
   Either a small web shop answering the token, or reviving the old packets if this client still reads them: a decision, then a project of its own.
