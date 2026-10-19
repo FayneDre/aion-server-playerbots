@@ -9,9 +9,10 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
-1. **Dungeons, watched again** after the 18 October fixes (following in an instance, gliding after the player, walls in the mesh); then doors, lifts
-   and floors, bosses, level 50 bots.
-2. **The other classes' playbooks**, spirit master, aethertech, bard and gunner first; damage that waits for the tank; group resurrection watched.
+1. **Dungeons, watched in game** with `patch-2026-10-19`: a bot cut off from its player put beside them, the 20 meshes built again; then the
+   testers' answers on Rentus and Theobomos, bots using windstreams, lifts and teleporters themselves rather than being put beside the player.
+2. **The other classes' playbooks**, on hold: level 50 bots and their rotations run on another test server, and its feedback decides what is
+   written here. Damage that waits for the tank and group resurrection watched stay ours.
 3. **Navigation leftovers**, measured on 18 October over 45 minutes with nobody online: rescue teleports, about 50 a half hour spread over every
    map with no spot holding more than four; route searches over a second, about 600 s of the bots' threads a half hour, part of them still for shops
    and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only. The
@@ -25,10 +26,10 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-19 (patch `patch-2026-10-18-5`). **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-10-19 (patch `patch-2026-10-19`). **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks for the templar, chanter, ranger and cleric, the marking and target rules, group
 positioning, the death routine, gear and stigmas, flight in its five milestones (the fifth crosses the Abyss by air), navmesh planning on 26
-open-world maps with glide links, flight links on Reshanta and a long-walk planner, 45 dungeon meshes, steering vetted by the mesh (steps aside
+open-world maps with glide links, flight links on Reshanta and a long-walk planner, 45 dungeon meshes (all at 91 % or more but Theobomos and Rentus), steering vetted by the mesh (steps aside
 14689 -> 469 per half hour on 800 bots, rescue teleports 403 -> 79, none in a player's sight), the test harness (`//bot squad`, notes, the command
 inbox, patch tags). **Watched with a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron (the cleric's heals, the chanter in melee,
 no fear and no wide area in a group), and a squad of level 40 crossing Reshanta's upper layer by air, together, to its goal. **Watched with a player**: a Noschana run on 18 October, with
@@ -47,11 +48,19 @@ each put through a reach check ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.m
   revives at the entrance, and a bot saved inside starts at the exit; `BotMapChange` spawns a bot a map change would leave waiting for a client's
   `CM_LEVEL_READY`. The run showed bots slow to catch up and never gliding: they now keep a route within 8 m of a moving leader and copy the
   leader's glide from its takeoff (`LeaderGlides`), not yet watched. A player who logs out inside is waited for five minutes, then the bots leave the group and the instance (`BotInstances`), not watched either.
-- **The instance meshes** (54 files for the 45 geometries) are walked: Noschana's was.
-- **Doors, lifts and floors** the open world never asked about: what the testers reported is in the dungeon plan.
+- **A bot cut off from its player** in an instance (a teleporter, a lever, a lift, a windstream, a door the player's key opens) is put beside them
+  at any distance after about 13 s (`PlayerBotAI.freeItself`, 19 October); before, past 200 m, it went to its home's coordinates on the instance's
+  map. Not watched in game.
+- **The instance meshes** (54 files for the 45 geometries) are walked: Noschana's was. On 19 October floors the generator dropped were put back in 20
+  of them (Steel Rake 99 %, the Danuar Sanctuaries 94 and 95 %, the Dredgions 96 to 99 %, Sauro 91 %), and Esoterrace reads 99 % once its
+  windstreams' landings count as arrivals. Left under 80 %: **Theobomos Lab** (74 %, its lift; the Queen Arachne room may be cut by a face that is
+  not a wall in game) and **Rentus** (77 and 72 %, no walkable way up to Vasharti's deck in the data): both questions for the testers.
+- **Doors, lifts and windstreams** are not used by a bot itself: it is put beside its player instead. Links "walk to the object, use it, arrive
+  there" are the next step if 13 s turns out too long ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)).
 - **Bosses**: a bot that simply fights correctly clears most low-level instances; mechanics are a later refinement, not a prerequisite. Positioning
   against a boss has never been seen, because the only Elyos boss in reach outdoors stands off the mesh.
-- **Levels**: no level 50 bots for the Theobomos instances and Dark Poeta (asked by a tester on 9 October).
+- **Levels**: no level 50 bots for the Theobomos instances and Dark Poeta (asked by a tester on 9 October); they exist on another test server,
+  whose feedback is awaited.
 
 ## Group play
 
