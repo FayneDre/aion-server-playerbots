@@ -18,11 +18,13 @@ legions, RvR), then value per unit of effort inside each. The list just below is
    and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only. The
    regression of the 18-2 walls is closed (rescues 184 -> about 50, refused routes 1873 -> about 630, Gelkmaros' lost places 149 -> 35).
 4. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
-5. **Speech and yielding to players**: cheap, and what a player notices first.
-6. **Wild PvP and rifts.**
-7. **Economy**: the broker, then player shops, then gathering and crafting.
-8. **Legions.**
-9. **RvR and sieges.**
+5. **What a player does with a bot**, asked on 19 October (see "Asked in game" below): trade with a companion, friends, duels, alliances;
+   with speech and yielding to players, cheap and what a player notices first.
+6. **Living capitals**: bots that stay and are seen in Sanctum and Pandaemonium, some with a private store.
+7. **Wild PvP, rifts and the arenas.**
+8. **Economy**: the broker, then player shops, then gathering and crafting.
+9. **Legions**, accepting a legion's invitation first.
+10. **RvR and sieges.**
 
 ## Where things stand
 
@@ -96,6 +98,20 @@ deliberately left out.
 A region's band has two parts where its monsters do (`BotPlaces.isLivedAt`): Theobomos and Brusthonin were repopulated with 20 to 30 in their middle
 band. **Reshanta's numbers are left as they are by decision** (18 October): 29 awake with nobody online (its villages and one hunter), 85 with a player
 on it. Counting each set of islands as a region of its own is the way to raise them when wanted.
+
+## Asked in game, 19 October
+
+The list "missing features in game", each with what stands today:
+
+- **Trading with one's companion**: nothing answers a trade window for a bot. Its owner's bags are what it may not touch ([bot-gear.md](bot-gear.md)).
+- **Adding a bot as a friend**: not handled; a friend request is a window a bot cannot see ([engine-traps.md](engine-traps.md)).
+- **A legion's invitation**: not answered. The first step of the legions section below.
+- **Cohorts** (alliances): a bot answers an alliance invitation but none is ever sent to one on purpose, and the recruiter fills groups only.
+- **Duels**: `//bot duel` answers one; a bot never accepts or asks for one by itself.
+- **"The shop does not work"**: which shop is meant (an npc merchant, the in-game shop, a private store) is to be asked.
+- **The arenas** (four or five kinds): not started; they are instances of their own, after the dungeons.
+- **A living world**: bots in the capital with a private store, while the broker is not done; and capitals that feel lived in. The capitals have
+  their 150 civic inhabitants, but they come and go: what is asked is people who stay and are seen.
 
 ## Wild PvP and rifts
 
