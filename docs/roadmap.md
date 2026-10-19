@@ -18,13 +18,14 @@ legions, RvR), then value per unit of effort inside each. The list just below is
    and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only. The
    regression of the 18-2 walls is closed (rescues 184 -> about 50, refused routes 1873 -> about 630, Gelkmaros' lost places 149 -> 35).
 4. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
-5. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)), asked on 19 October (see "Asked in game" below): trade with a companion, friends, duels, alliances;
-   with speech and yielding to players, cheap and what a player notices first.
-6. **Living capitals**: bots that stay and are seen in Sanctum and Pandaemonium, some with a private store.
-7. **Wild PvP, rifts and the arenas.**
-8. **Economy**: the broker, then player shops, then gathering and crafting.
-9. **Legions**, accepting a legion's invitation first.
-10. **RvR and sieges.**
+5. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)), asked on 19 October (see "Asked in game"
+   below): trading with one's companion, friends, duels.
+6. **Cohorts** ([cohort-plan.md](cohort-plan.md)): a bot in an alliance acting as a member of its own group of six.
+7. **Living capitals**: bots that stay and are seen in Sanctum and Pandaemonium, some with a private store.
+8. **Wild PvP, rifts and the arenas.**
+9. **Economy**: the broker, then player shops, then gathering and crafting.
+10. **Legions**, accepting a legion's invitation first.
+11. **RvR and sieges.**
 
 ## Where things stand
 
@@ -106,7 +107,7 @@ The list "missing features in game", each with what stands today:
 - **Trading with one's companion**: nothing answers a trade window for a bot. Its owner's bags are what it may not touch ([bot-gear.md](bot-gear.md)).
 - **Adding a bot as a friend**: not handled; a friend request is a window a bot cannot see ([engine-traps.md](engine-traps.md)).
 - **A legion's invitation**: not answered. The first step of the legions section below.
-- **Cohorts** (alliances): a bot answers an alliance invitation but none is ever sent to one on purpose, and the recruiter fills groups only.
+- **Cohorts** (alliances): a bot answers an alliance invitation but acts as if the whole alliance were its group ([cohort-plan.md](cohort-plan.md)).
 - **Duels**: `//bot duel` answers one; a bot never accepts or asks for one by itself.
 - **The in-game shop does not work**, and is not the bots' work: the server has none. The 4.8 client opens a web shop with a token
   (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty one, a TODO upstream); the older shop packets are commented out and `config/ingameshop` is unused.

@@ -86,7 +86,8 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/moving-a-body.md](docs/moving-a-body.md) — driving a body from the server: what a movement packet carries, how often, and the task manager that stops ticking a body that says it arrived.
 - [docs/flight-plan.md](docs/flight-plan.md) — how bots get off the ground: what the engine already does, what it leaves to the server, and the milestones in verifiable order.
 - [docs/abyss-crossing-plan.md](docs/abyss-crossing-plan.md) — flight milestone 5: Reshanta's 16210 islands, flight links written offline, routes that fly across open air.
-- [docs/player-interactions-plan.md](docs/player-interactions-plan.md) — what a player does with a bot: trades, friends, duels, cohorts, speech, yielding; one reading of who asks, then milestones.
+- [docs/player-interactions-plan.md](docs/player-interactions-plan.md) — what a player does with a bot: trades with a companion, friends, duels; one reading of who asks, then milestones.
+- [docs/cohort-plan.md](docs/cohort-plan.md) — bots in a cohort (alliance): acting as a member of one's own group of six, following into alliance instances, recruiting.
 
 ### Secondary obstacle: headless `Player` lifecycle
 
