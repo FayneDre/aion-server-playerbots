@@ -107,6 +107,7 @@ public final class BotCommands {
 			// Enchanted and socketed with manastones as each piece goes on, which is how a new character is always dressed. Stigmas after the gear and
 			// the skills: the sockets are read from the skill tree, and the engine charges kinah for each stone.
 			int worn = BotOutfitter.dress(bot);
+			BotOutfitter.stockScrolls(bot);
 			int stigmas = BotStigmaFitter.fit(bot);
 			PlayerService.storePlayer(bot);
 			// A bot somebody made by hand is theirs; a bot the world made by populating a region belongs to the world. That is the whole of the

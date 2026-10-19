@@ -17,6 +17,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
+import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.playerbot.BotRecruiter;
 import com.aionemu.gameserver.playerbot.BotScheduler;
@@ -65,6 +66,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * find fights, so a shorter leash would make it abandon the very mobs it just walked to.
 	 */
 	private static final float LEASH_DISTANCE = BotTargetSelector.HOME_RADIUS;
+	/** How far behind its leader a grouped bot on foot has fallen before it reads a running scroll, in metres. */
+	private static final float RUNNING_SCROLL_DISTANCE = 30;
 	/** A chased target is only given a new route once it has moved this far, instead of on every tick. */
 	private static final float RETARGET_STEP = 3f;
 	/**
@@ -465,6 +468,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// with the group" needs to be
 		Vector3f spot = BotGroupManager.formationSpot(getOwner(), leader);
 		setAnchor(spot.getX(), spot.getY(), spot.getZ());
+		// left behind on foot: a player reads a running scroll, and a bot that has one does too
+		if (!leader.isFlying() && !BotFlight.isInTheAir(getOwner()) && PositionUtil.getDistance(getOwner(), leader) > RUNNING_SCROLL_DISTANCE)
+			BotPotionManager.tryScroll(getOwner(), StatEnum.SPEED);
 		return true;
 	}
 
@@ -480,6 +486,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean buffForTheFight() {
 		return BotPlaybooks.of(getOwner()).prepare(getOwner()) || BotSkillManager.tryBuffSelf(getOwner()) || BotSkillManager.tryChantMantra(getOwner());
+	}
+
+	/**
+	 * Reads the scroll that speeds up how the class deals its damage, swinging for the classes that fight with a weapon and casting for the rest. In a
+	 * group only, where a player keeps them up: alone, against whatever the field holds, it would spend fifty scrolls on rabbits.
+	 *
+	 * @return true if one was read.
+	 */
+	private boolean readAFightScroll() {
+		return BotPotionManager.tryScroll(getOwner(), getOwner().getPlayerClass().isPhysicalClass() ? StatEnum.ATTACK_SPEED : StatEnum.BOOST_CASTING_TIME);
 	}
 
 	/** @return true if the bot's group has an enemy to fight, or its leader has one in its sights: the moment a member puts its buffs up. */
@@ -501,7 +517,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (posture.standUp()) // one tick before acting, so the animation has played out by then
 			return;
 		// the class's care between fights on every tick (raising a mate, a cleanse), its buffs only with a fight in sight
-		if (BotPlaybooks.of(getOwner()).tend(getOwner()) || isAFightComing() && buffForTheFight())
+		if (BotPlaybooks.of(getOwner()).tend(getOwner()) || isAFightComing() && (buffForTheFight() || readAFightScroll()))
 			return;
 		// A healer takes its place before the casting that is not urgent: with a mate to heal or a buff to give on every tick, which is most of a fight, the walk was never
 		// reached and the healer stood wherever the pull had left it. A mate in danger is healed first.
@@ -629,8 +645,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void decide() {
 		if (arriveIfStranded())
 			return;
-		if (BotFlight.isInTheAir(getOwner()))
-			return; // nothing is decided for a body in the air, and nothing above this line runs either: rehousing one would teleport it
+		if (BotFlight.isInTheAir(getOwner())) {
+			// Nothing else is decided for a body in the air, and nothing below this line runs either: rehousing one would teleport it. The one exception
+			// is the group's fight, which a bot following its player through the air used to watch hovering beside them.
+			fightFromTheAir();
+			return;
+		}
 		Vector3f moving = newHome;
 		if (moving != null) {
 			newHome = null;
@@ -799,6 +819,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	private void cancelCombat() {
 		BotTargetRegistry.releaseAllOf(getOwner());
+		BotFlight.engage(getOwner(), null); // back beside its leader, or down, for a bot that was fighting in the air
 		synchronized (combatLock) {
 			stopAttackTask();
 			chaseStartTime = 0;
@@ -936,6 +957,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// used to walk the bot off in the same instant it was sent: the slide the bot showed between getting up and setting off was those two frames
 		// of the client's work arriving as one.
 		posture.drawWeapon(target);
+		if (BotFlight.isInTheAir(bot)) {
+			fightInTheAir(bot, target); // no route, no station and no chase up there: the flight is what moves the body
+			return;
+		}
 		if (bot.getCastingSkill() != null) {
 			// casting roots a real player, so the bot neither moves nor starts another action until the cast is over
 		} else if (takeStation(target)) {
@@ -948,6 +973,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				lastBlow = System.currentTimeMillis();
 				giveUpsInARow = 0;
 			}
+		} else if (target instanceof Player flier && flier.isFlying() && takeOffAfter(bot, flier)) {
+			// an enemy player who took to the air: every walking rule below would give the fight up, since the air has no floor to route to
 		} else if (closesInRatherThanCasting(target)) {
 			// a melee class past its pull walks in: its weapon and its chains are where its damage is
 		} else if (castFromAfar(target)) {
@@ -1302,6 +1329,64 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (PlayerBotConfig.POSITIONING.placesAgainst(target) && BotStations.handlesTank(getOwner()))
 			moveController.avoid(BotStations.avoidanceFor(getOwner(), target));
 		return tryMoveTo(moveController, goal.getX(), goal.getY(), goal.getZ());
+	}
+
+	/**
+	 * Joins the group's fight from the air, for a bot following its leader up there: its mates' heals first, then whatever the group
+	 * is fighting or whatever is fighting the bot. The flight then holds it within reach of the target ({@code BotFlight.engage}) and the attack loop
+	 * swings and casts from there ({@link #fightInTheAir}). A healer stays beside its leader and heals.
+	 */
+	private void fightFromTheAir() {
+		Player bot = getOwner();
+		if (!BotFlight.isFollowingInTheAir(bot) || bot.isDead() || bot.isCasting() || isAttacking() || BotGroupManager.leaderToFollow(bot) == null)
+			return;
+		// Heals only, not the buffs of tendToTheGroup: a body flying beside its leader is always moving, and a buff with a cast time cast on the move is
+		// cancelled and cast again on the next tick, for as long as the flight lasts. The buffs wait for the ground.
+		boolean healer = BotRole.of(bot) == BotRole.HEALER;
+		if (BotPlaybooks.of(bot).heal(bot)
+			|| BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT, healer)))
+			return;
+		if (healer)
+			return;
+		Creature target = BotGroupManager.targetToAssist(bot, this::isIgnored);
+		if (target == null)
+			target = findAttacker();
+		if (target == null)
+			return;
+		BotTargetRegistry.forceClaim(target, bot);
+		startAttacking(target);
+	}
+
+	/**
+	 * One beat of a fight from the air: what reaches is swung or cast, and the flight does the closing in, since there is no route to walk.
+	 */
+	private void fightInTheAir(Player bot, Creature target) {
+		BotFlight.engage(bot, target);
+		if (bot.getCastingSkill() != null)
+			return; // the flight holds the body still for it
+		boolean landed = BotAttackManager.isInAttackRange(bot, target) ? useBestSkill(target) || BotAttackManager.autoAttack(bot, target)
+			: useBestSkill(target); // something that reaches from here, which the engine answers by casting it or not
+		if (landed) {
+			lastBlow = System.currentTimeMillis();
+			giveUpsInARow = 0;
+		}
+	}
+
+	/**
+	 * An enemy player who has flown out of reach: shot at when something reaches from here, followed into the air when not. Only for a bot on its own,
+	 * since one in a group follows its leader up and down, not its quarry.
+	 *
+	 * @return true if the beat was spent on it, either way.
+	 */
+	private boolean takeOffAfter(Player bot, Player flier) {
+		if (BotGroupManager.leaderToFollow(bot) != null)
+			return false;
+		if (castFromAfar(flier)) {
+			lastBlow = System.currentTimeMillis();
+			giveUpsInARow = 0;
+			return true;
+		}
+		return BotFlight.tryPursue(bot, flier);
 	}
 
 	/**

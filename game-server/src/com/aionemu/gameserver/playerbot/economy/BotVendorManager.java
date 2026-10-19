@@ -303,16 +303,36 @@ public class BotVendorManager {
 		int kinds = 0;
 		kinds += addToOrder(bot, order, onSale, BotPotionManager.RESTORES_MANA) ? 1 : 0;
 		kinds += addToOrder(bot, order, onSale, BotPotionManager.RESTORES_HEALTH) ? 1 : 0;
-		if (kinds == 0)
+		int bought = 0;
+		if (kinds > 0) {
+			// Asked for in full first, and then for one of each. The price is the engine's to work out -- it reads the vendor's own rate and the
+			// server's modifier -- so rather than copy that sum here and watch it drift, the purse is tested by offering the order and seeing.
+			if (TradeService.performBuyFromShop(vendor, bot, order))
+				bought = kinds;
+			else {
+				TradeList smaller = new TradeList();
+				for (TradeItem item : order.getTradeItems())
+					smaller.addItem(item.getItemId(), 1);
+				bought = TradeService.performBuyFromShop(vendor, bot, smaller) ? kinds : 0;
+			}
+		}
+		return bought + buySerums(bot, vendor, onSale); // after the flasks, which matter more and are paid for first
+	}
+
+	/**
+	 * Wind serums when the shelf has them. No walk is made for them, since few shops stock any, but a daeva at a counter that does takes some: without
+	 * them a bot following a player in the air came down on its last points while the player drank and flew on.
+	 * <p>
+	 * An order of its own, after the flasks: in the same one, a purse short of the serums' price failed the whole order and the fallback bought a
+	 * single flask of each kind.
+	 *
+	 * @return 1 if serums were bought, 0 otherwise.
+	 */
+	private static int buySerums(Player bot, Npc vendor, Set<Integer> onSale) {
+		TradeList order = new TradeList();
+		if (!bot.getCommonData().isDaeva() || !addToOrder(bot, order, onSale, BotPotionManager.RESTORES_FLIGHT))
 			return 0;
-		// Asked for in full first, and then for one of each. The price is the engine's to work out -- it reads the vendor's own rate and the
-		// server's modifier -- so rather than copy that sum here and watch it drift, the purse is tested by offering the order and seeing.
-		if (TradeService.performBuyFromShop(vendor, bot, order))
-			return kinds;
-		TradeList smaller = new TradeList();
-		for (TradeItem item : order.getTradeItems())
-			smaller.addItem(item.getItemId(), 1);
-		return TradeService.performBuyFromShop(vendor, bot, smaller) ? kinds : 0;
+		return TradeService.performBuyFromShop(vendor, bot, order) ? 1 : 0;
 	}
 
 	/**
@@ -364,7 +384,8 @@ public class BotVendorManager {
 		// over, and did that again on the next trip. Half the bots on the server had none left. Buying flasks did not cause this -- selling them did,
 		// since before the bot could buy, the till simply emptied and nothing refilled it -- but buying closed it into a circle, and paid the
 		// difference between the two prices every time round.
-		if (grants(item.getItemTemplate(), BotPotionManager.RESTORES_HEALTH) || grants(item.getItemTemplate(), BotPotionManager.RESTORES_MANA))
+		if (grants(item.getItemTemplate(), BotPotionManager.RESTORES_HEALTH) || grants(item.getItemTemplate(), BotPotionManager.RESTORES_MANA)
+			|| grants(item.getItemTemplate(), BotPotionManager.RESTORES_FLIGHT))
 			return false;
 		if (isForSomeoneElse(bot, item))
 			return true; // however fine it is, it will never be worn by this character

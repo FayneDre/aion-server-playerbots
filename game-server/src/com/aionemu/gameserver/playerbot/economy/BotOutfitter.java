@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +76,26 @@ public class BotOutfitter {
 		return ItemQuality.RARE;
 	}
 
+	/** How many of each speed scroll a bot is given. A scroll lasts five minutes, so this is a long evening of group play. */
+	private static final int SCROLLS_CARRIED = 20;
+	/**
+	 * The four kinds, by the start of their client name: lesser, plain and greater ({@code _30a}, {@code _40a}, {@code _50a}, readable from 10, 20 and
+	 * 30). {@link #SCROLL_NAME} keeps exactly those: the event, legion reward and recipe versions start otherwise, and the abbey's end otherwise
+	 * ({@code _50a_retun}), at the same level, so which of two greater scrolls a bot got would have depended on the order of the item list.
+	 */
+	private static final List<String> SCROLL_KINDS = List.of("scroll_speed_run_", "scroll_speed_fly_", "scroll_speed_atk_", "scroll_speed_casting_");
+	private static final Pattern SCROLL_NAME = Pattern.compile("scroll_speed_(run|fly|atk|casting)_\\d+a", Pattern.CASE_INSENSITIVE);
+	/** Every item of those kinds, read from the item list on first use rather than when the class loads, which can be before the data is. */
+	private static volatile List<ItemTemplate> scrolls;
+
+	private static List<ItemTemplate> scrolls() {
+		List<ItemTemplate> found = scrolls;
+		if (found == null)
+			scrolls = found = DataManager.ITEM_DATA.getItemTemplates().stream()
+				.filter(template -> template.getCName() != null && SCROLL_NAME.matcher(template.getCName()).matches()).toList();
+		return found;
+	}
+
 	/** Candidates per class, level and slot are the same for every bot of that kind, and the item list is long enough to be worth remembering. */
 	private static final Map<String, List<ItemTemplate>> candidates = new ConcurrentHashMap<>();
 
@@ -127,12 +148,48 @@ public class BotOutfitter {
 		int worn = dress(bot);
 		// After the dressing, so the pieces it just put on are counted once rather than refined twice: equipping already brings a piece up to level.
 		int refined = refineWornGear(bot);
+		long scrollsAdded = stockScrolls(bot);
 		if (stripped == 0 && worn == 0 && refined == 0)
-			return bot.getName() + " had nothing to change";
+			return bot.getName() + " had nothing to change" + (scrollsAdded > 0 ? " but its scrolls, " + scrollsAdded + " added" : "");
 		// Dressing says this for itself whenever it puts something on, so it is only needed for a bot that was stripped and found nothing to replace
 		// the piece with. Said unconditionally because the alternative is a condition that is wrong the day dressing stops announcing it.
 		BotEquipManager.showAppearance(bot);
-		return bot.getName() + " took off " + stripped + " piece(s) it should not wear, put on " + worn + " and improved " + refined;
+		return bot.getName() + " took off " + stripped + " piece(s) it should not wear, put on " + worn + ", improved " + refined + " and was given "
+			+ scrollsAdded + " scroll(s)";
+	}
+
+	/**
+	 * Fills the bag with the four speed scrolls a player carries, the strongest the bot's level may read, up to {@value #SCROLLS_CARRIED} of each:
+	 * running, flight, attack and casting speed.
+	 * <p>
+	 * Handed over rather than bought, because no vendor sells them: a player has them from crafting, the broker and rewards, none of which a bot does.
+	 * Only the characters created with the starter kit had any, 89 of 1870, and nothing else ever gave a bot one. Topped up rather than added to, so
+	 * a regear brings the bag back to its stock and no further.
+	 *
+	 * @return How many scrolls were added.
+	 */
+	public static long stockScrolls(Player bot) {
+		long added = 0;
+		for (String kind : SCROLL_KINDS) {
+			ItemTemplate best = null;
+			for (ItemTemplate template : scrolls()) {
+				if (template.getCName().startsWith(kind) && template.getLevel() <= bot.getLevel()
+					&& (best == null || template.getLevel() > best.getLevel()))
+					best = template;
+			}
+			if (best == null)
+				continue; // too young to read even the lesser one
+			long missing = SCROLLS_CARRIED - bot.getInventory().getItemCountByItemId(best.getTemplateId());
+			if (missing <= 0)
+				continue;
+			Item held = bot.getInventory().getFirstItemByItemId(best.getTemplateId());
+			if (held != null)
+				bot.getInventory().increaseItemCount(held, missing);
+			else if (bot.getInventory().add(ItemFactory.newItem(best.getTemplateId(), missing)) == null)
+				continue; // a full bag: the next regear tries again
+			added += missing;
+		}
+		return added;
 	}
 
 	/**

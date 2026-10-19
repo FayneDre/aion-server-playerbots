@@ -9,6 +9,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
+0. **Flying with a player** ([flying-with-a-player-plan.md](flying-with-a-player-plan.md)), the tester's report of 19 October: landing beside the
+   leader, death in the void, serums and scrolls, rings, fighting in the air. Built, to deploy and watch; scrolls are handed over at creation and regear.
 1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
    Arachne's room in Theobomos Lab. Every mesh is now explained (no fault known); what is left is lifts and teleporters taken by the bots themselves,
    only if the 13 s wait proves too long in game, then bosses.

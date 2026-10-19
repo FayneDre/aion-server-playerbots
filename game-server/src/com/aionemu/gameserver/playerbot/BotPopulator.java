@@ -212,6 +212,7 @@ public final class BotPopulator {
 				// way into the world, which is where this used to happen, a character created and left asleep would be dressed in nothing at all.
 				PlayerBotEnterWorldService.learnMissingSkills(bot);
 				worn += BotOutfitter.dress(bot);
+				BotOutfitter.stockScrolls(bot);
 				// After the skills, like the gear and for a nearer reason: which stigmas a character may socket is read from its skill tree, and the
 				// engine charges kinah for each one, so a bot with neither knows nothing and can afford nothing.
 				BotStigmaFitter.fit(bot);
