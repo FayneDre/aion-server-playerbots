@@ -14,7 +14,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 2. **The other classes' playbooks**, spirit master, aethertech, bard and gunner first; damage that waits for the tank; group resurrection watched.
 3. **Navigation leftovers**, measured on 18 October over 45 minutes with nobody online: rescue teleports, about 50 a half hour spread over every
    map with no spot holding more than four; route searches over a second, about 600 s of the bots' threads a half hour, part of them still for shops
-   and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only.
+   and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only. The
+   regression of the 18-2 walls is closed (rescues 184 -> about 50, refused routes 1873 -> about 630, Gelkmaros' lost places 149 -> 35).
 4. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
 5. **Speech and yielding to players**: cheap, and what a player notices first.
 6. **Wild PvP and rifts.**
@@ -24,8 +25,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-18 (patch `patch-2026-10-18-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
-for its own grounds), combat with class skills, group roles, playbooks for the templar, chanter, ranger and cleric, the marking and target rules, group
+Last reviewed 2026-10-19 (patch `patch-2026-10-18-5`). **Built and running**: the population (pool, director, civic and field presence, each side woken
+for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks for the templar, chanter, ranger and cleric, the marking and target rules, group
 positioning, the death routine, gear and stigmas, flight in its five milestones (the fifth crosses the Abyss by air), navmesh planning on 26
 open-world maps with glide links, flight links on Reshanta and a long-walk planner, 45 dungeon meshes, steering vetted by the mesh (steps aside
 14689 -> 469 per half hour on 800 bots, rescue teleports 403 -> 79, none in a player's sight), the test harness (`//bot squad`, notes, the command
@@ -99,7 +100,8 @@ the switch to turn when wild PvP is a decision rather than an accident.
 
 **Selling works**: 37 sales in 38 trips on the night of 2 October, keepers found among the living npcs, refused shops remembered, trade within 8 m,
 and the keeper's own floor where it stands a storey away (17 October, Teminon), unless that floor is a pocket behind a counter, where a bot
-walked in and could not get out (18 October, the Verteron citadel). No shop on another layer of the map is gone to; fortress shops are
+walked in and could not get out (18 October, the Verteron citadel). Since 18 October a trip walks to the keeper it chose, not the nearest one
+seen, and to the floor in front of it rather than its feet: trips given up 269 -> 91 in the first 23 minutes. No shop on another layer of the map is gone to; fortress shops are
 kept, by decision. A player's own bot never sells, buys, dresses from, identifies or binds what is in its bag ([bot-gear.md](bot-gear.md)).
 
 Next is the **broker** (`BrokerService`), on the same "find the right npc" mechanism, then **player shops**. **Gathering and crafting** would feed the

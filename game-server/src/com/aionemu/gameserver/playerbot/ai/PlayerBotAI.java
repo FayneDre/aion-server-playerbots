@@ -1532,8 +1532,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// point of following somebody is being with them. It waits instead -- for the player to land, to come back, or for its own flight points.
 		// Reported from in game as a bot that followed into the air, landed, and was gone: not a flight fault at all, but the oldest rescue in the
 		// module doing what it was written to do to a bot that had never been stuck.
+		// In an instance at any distance: the player went on by a teleporter, a lever, a lift or a door their key opened, which a bot does not use, and
+		// the ordinary rescue below would send it to its home's coordinates on the instance's own map.
 		Player leader = BotGroupManager.leaderToFollow(bot);
-		if (leader != null && PositionUtil.getDistance(bot, leader) <= STAY_WITH_THE_GROUP) {
+		if (leader != null && (bot.isInInstance() || PositionUtil.getDistance(bot, leader) <= STAY_WITH_THE_GROUP)) {
 			// Waiting is for a leader in the air. One standing on the ground can be walked to from somewhere, and a bot that cannot is in a pocket, which
 			// waiting never ends: in the first squads a cleric and a ranger stood in one for minutes, 18 to 45 m from their leader, giving up every
 			// target the group fought. It is put on the nearest floor joined to the leader's, which keeps it with the group as the wait meant to.
@@ -1562,6 +1564,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// a leader in the air lands somewhere, and the bot follows it there; lifting it now would only put it under them
 			log.info("Bot {} cannot move from {} {} but is {} m from {}, so it waits rather than being put back home", bot.getName(),
 				Math.round(bot.getX()), Math.round(bot.getY()), Math.round(PositionUtil.getDistance(bot, leader)), leader.getName());
+			return;
+		}
+		if (bot.isInInstance()) {
+			// no leader here to be put beside, and its home is on another map: it waits where it is, and BotInstances takes it out
+			log.info("Bot {} cannot move from {} {} in map {} and has no leader there, so it waits", bot.getName(), Math.round(bot.getX()),
+				Math.round(bot.getY()), bot.getWorldId());
+			forgetRefusals();
 			return;
 		}
 
