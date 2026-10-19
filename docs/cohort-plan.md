@@ -59,7 +59,9 @@ Not planned. They are what sieges use and belong with RvR.
 
 ## Open questions
 
-1. **What content** the cohorts are wanted for (an alliance instance, a fortress, the open world) decides which
-   map milestone 2 is checked on and whether milestone 3 is needed.
+1. **What content they are for**, answered from `instance_cooltimes.xml` (more than six players): the PvE raids Abyssal Splinter and its unstable
+   version, Dragon Lord's Refuge and its anguished version, Drakenspire Depths and Infinity Shard (12), the Eternal Bastion (24), Padmarashka's Cave
+   (48); the rest is PvP (Kamar, Iron Wall Warfront, Stonespear Reach, the two arenas). So cohorts are PvE content and not only RvR: milestone 2 is
+   checked on Dragon Lord's Refuge or the Abyssal Splinter, which have meshes, and milestone 3 is needed.
 2. Whether a bot may **lead** an alliance group when no player is in it. The plan says no: the captain leads, as `ChangeLeaderEvent` already keeps a
    bot from becoming leader.

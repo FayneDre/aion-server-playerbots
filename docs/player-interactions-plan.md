@@ -64,10 +64,10 @@ Only with the bot's **owner** (`PlayerBotAI.isOwned`, the owner's id); anyone el
   is open puts the named items (or everything that is not worn) on the bot's side, then it locks and confirms after its owner, as above.
 - **Kinah** the same way: `//bot give <bot> kinah <amount>`.
 
-**Decision for the user**: whether a bot that is not owned (a field bot, a recruit) may trade at all. The plan says no.
+**Decided** (19 October): only a companion trades, and only with its owner; a field bot or a recruit refuses every trade.
 
 **Verified in game**: give the companion a weapon better than its own, see it wear it; take back two items and some kinah with `//bot give`.
 
 ## Open questions
 
-1. Whether a bot that is not owned may trade (milestone 3).
+None left: the one about who may trade was answered on 19 October (milestone 3).
