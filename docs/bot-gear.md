@@ -158,4 +158,5 @@ is its owner's, and so is its bag. `//bot regear` skips it by name and under `al
 alone. It does not dress itself (`BotErrands.dressUp`), sell (`runVendorTrip`, `//bot sell`) or buy flasks: on 16 October a companion chanter of 65
 sold the 15 to 20 orange and yellow pieces of cloth and plate its owner kept in its bag for other characters, because selling took anything the class
 can never wear; dressing could also put on, identify and bind to itself pieces its owner had stored. It still loots, and drinks its own flasks in a fight.
-`BotEquipManager.wear` never enchants or sockets a piece on an owned bot, for any path that would put one on.
+`BotEquipManager.wear` never enchants or sockets a piece on an owned bot, for any path that would put one on. The one piece a companion puts on from
+its bag is one its owner has just handed it in a trade, if it beats what it wears (`BotTrades`, `BotEquipManager.wearGiven`), within two minutes.

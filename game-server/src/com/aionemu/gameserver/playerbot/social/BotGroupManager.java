@@ -16,7 +16,6 @@ import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.utils.PositionUtil;
-import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 
 /**
  * What a bot does about being in a group: joining one, staying with it, and fighting what it fights.
@@ -77,19 +76,6 @@ public class BotGroupManager {
 				return true;
 		}
 		return false;
-	}
-
-	/**
-	 * Answers a pending group or alliance invitation.
-	 * <p>
-	 * A real player gets a window and clicks yes. A bot has no window, so the decision tick answers for it. {@code respond} returns false when there
-	 * was nothing pending, which makes asking the whole test — no new engine api needed to find out whether an invitation arrived.
-	 *
-	 * @return true if an invitation was accepted.
-	 */
-	public static boolean acceptPendingInvite(Player bot) {
-		return bot.getResponseRequester().respond(SM_QUESTION_WINDOW.STR_PARTY_DO_YOU_ACCEPT_INVITATION, 1)
-			|| bot.getResponseRequester().respond(SM_QUESTION_WINDOW.STR_FORCE_DO_YOU_ACCEPT_INVITATION, 1);
 	}
 
 	/**

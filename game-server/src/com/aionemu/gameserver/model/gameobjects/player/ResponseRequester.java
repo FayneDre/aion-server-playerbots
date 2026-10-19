@@ -33,6 +33,14 @@ public class ResponseRequester {
 	}
 
 	/**
+	 * @return Who is waiting for an answer to the given message, or null if nobody is. Leaves the request in place.
+	 */
+	public Creature requesterOf(int messageId) {
+		RequestResponseHandler<? extends Creature> handler = activeRequests.get(messageId);
+		return handler == null ? null : handler.getRequester();
+	}
+
+	/**
 	 * Responds to the given messageId with the given responseCode
 	 * 
 	 * @param messageId

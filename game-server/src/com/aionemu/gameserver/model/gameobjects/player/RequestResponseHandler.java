@@ -16,6 +16,13 @@ public abstract class RequestResponseHandler<T extends Creature> {
 	}
 
 	/**
+	 * @return Who asked. A client is shown the name in the question window; a bot, which has none, reads it here to decide its answer.
+	 */
+	public T getRequester() {
+		return requester;
+	}
+
+	/**
 	 * Called when a response is received
 	 * 
 	 * @param requested

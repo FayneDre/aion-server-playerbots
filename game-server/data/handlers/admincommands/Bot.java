@@ -29,6 +29,7 @@ public class Bot extends AdminCommand {
 			despawn <characterName> - Removes a spawned bot from the world.
 			despawnall - Removes every spawned bot from the world.
 			duel <characterName> - Makes the bot accept your pending duel request.
+			give <characterName> all|kinah <amount>|<item name> - Puts that on your companion's side of the trade you have open with it.
 			attack <characterName> - Makes the bot attack your target, or you if you have none.
 			stop <characterName> - Makes the bot stop attacking.
 			come <characterName> - Makes the bot walk to your position.
@@ -78,6 +79,7 @@ public class Bot extends AdminCommand {
 			case "duel" -> withName(admin, params,
 				name -> BotCommands.acceptRequest(name, SM_QUESTION_WINDOW.STR_DUEL_DO_YOU_ACCEPT_REQUEST));
 			case "attack" -> withName(admin, params, name -> BotCommands.attack(name, admin));
+			case "give" -> withName(admin, params, name -> BotCommands.give(name, admin, Arrays.asList(params).subList(2, params.length)));
 			case "stop" -> withName(admin, params, name -> BotCommands.stopAttacking(name));
 			case "come" -> withName(admin, params, name -> BotCommands.come(name, admin));
 			case "fly" -> withName(admin, params, name -> BotCommands.fly(name, params.length > 2 ? params[2] : null));

@@ -27,6 +27,7 @@ import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
+import com.aionemu.gameserver.playerbot.economy.BotTrades;
 import com.aionemu.gameserver.playerbot.lifecycle.BotMapChange;
 import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
@@ -35,6 +36,7 @@ import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotInstances;
+import com.aionemu.gameserver.playerbot.social.BotRequests;
 import com.aionemu.gameserver.playerbot.social.LeaderGlides;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.positioning.BotPosition;
@@ -278,6 +280,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * An owned bot is its owner's, and the population model keeps its hands off it — it is not paced, not capped, not rehoused and not counted.
 	 */
 	private final boolean owned;
+	/** The object id of the player who made this bot with {@code //bot create}, 0 for one spawned from its owner's own account or for an inhabitant. */
+	private final int ownerId;
 	/** How fast the bot is allowed to advance, and how far, which depends on whether it is anybody's companion at this moment. */
 	private final BotPacing pacing;
 	/** What the bot's body is doing, and the time the client needs to draw a change of it. */
@@ -323,6 +327,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	public PlayerBotAI(Player owner) {
 		super(owner);
 		this.owned = BotRoster.isSomebodysOwn(owner.getName());
+		this.ownerId = owned ? BotRoster.ownerOf(owner.getName()) : 0;
 		this.pacing = new BotPacing(owner, owned);
 		this.pacing.reconcile(); // before the first tick, so a bot cannot earn a second's experience at the wrong rate on its way in
 		this.posture = new BotPosture(owner);
@@ -343,6 +348,18 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	public boolean isOwned() {
 		return owned;
+	}
+
+	/**
+	 * @return true if the player is this bot's owner: the one who made it with {@code //bot create}, or any character of the account it was made on,
+	 *         for a character of a real account spawned as a bot. An inhabitant's account is a reserved one nobody plays on, so it has no owner here.
+	 */
+	public boolean isOwnedBy(Player player) {
+		if (!owned || player == null || player.equals(getOwner()))
+			return false;
+		if (ownerId != 0)
+			return player.getObjectId() == ownerId;
+		return player.getAccount() != null && getOwner().getAccount() != null && player.getAccount().getId() == getOwner().getAccount().getId();
 	}
 
 	/**
@@ -434,7 +451,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * @return true while the bot has a leader to follow, which is also what makes it stop deciding things for itself.
 	 */
 	private boolean followTheGroup() {
-		BotGroupManager.acceptPendingInvite(getOwner());
+		Player duelled = BotRequests.answerPending(getOwner(), new BotRequests.Self(owned, this::isOwnedBy, isAttacking()));
+		if (duelled != null)
+			startAttacking(duelled); // a duel accepted and then waited out reads as a bot that did not understand the question
+		if (owned)
+			BotTrades.tick(getOwner(), isAttacking());
 		BotGroupManager.leaveIfLeaderless(getOwner());
 		Player leader = BotGroupManager.leaderToFollow(getOwner());
 		if (leader == null)

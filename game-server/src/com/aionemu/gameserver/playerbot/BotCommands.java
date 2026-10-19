@@ -23,6 +23,7 @@ import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.economy.BotOutfitter;
 import com.aionemu.gameserver.playerbot.economy.BotStigmaFitter;
+import com.aionemu.gameserver.playerbot.economy.BotTrades;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotCreationService;
@@ -200,6 +201,13 @@ public final class BotCommands {
 			ai.startAttacking(target);
 			return characterName + " attacks " + target.getName();
 		});
+	}
+
+	/**
+	 * Puts what the owner names on their companion's side of the trade they have open with it, which a bot has no window to do.
+	 */
+	public static String give(String characterName, Player owner, List<String> what) {
+		return withBotAi(characterName, (bot, ai) -> ai.isOwnedBy(owner) ? BotTrades.give(bot, owner, what) : characterName + " is not your companion");
 	}
 
 	public static String stopAttacking(String characterName) {

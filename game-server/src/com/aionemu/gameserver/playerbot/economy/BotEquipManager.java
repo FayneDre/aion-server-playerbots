@@ -64,6 +64,28 @@ public class BotEquipManager {
 	}
 
 	/**
+	 * Puts on one of the pieces a companion's owner has just handed it, if it beats what the bot wears: the one path by which a companion dresses from
+	 * its bag ({@link BotTrades}). An unread piece is left for the owner to read.
+	 *
+	 * @return true while there may be more to put on: something went on, or a binding is under way.
+	 */
+	public static boolean wearGiven(Player bot, Set<Integer> templateIds) {
+		if (isReading(bot))
+			return true;
+		for (Item upgrade : upgrades(bot, true)) {
+			if (!templateIds.contains(upgrade.getItemTemplate().getTemplateId()))
+				continue;
+			if (wear(bot, upgrade.getObjectId(), upgrade.getItemTemplate())) {
+				LoggerFactory.getLogger(BotEquipManager.class).info("Bot {} puts on {}, given by its owner", bot.getName(), upgrade.getItemTemplate().getName());
+				return true;
+			}
+			if (bot.getResponseRequester().respond(SM_QUESTION_WINDOW.STR_SOUL_BOUND_ITEM_DO_YOU_WANT_SOUL_BOUND, 1))
+				return true;
+		}
+		return false;
+	}
+
+	/**
 	 * Throws away a piece that was created and then refused, and gives its object id back.
 	 * <p>
 	 * The giving back is the part that is not obvious and cannot be left out. {@code Item.setPersistentState} turns a {@code DELETED} on a
