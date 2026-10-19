@@ -4,6 +4,42 @@ Moved out of [patch-notes.md](patch-notes.md) as it neared 200 lines. Newest fir
 
 ---
 
+## patch-2026-10-18-3 — 18/10/2026
+
+Révision `fdc459b`, celle que `//bot version` affiche. Corrige ce que la régénération des maillages du patch précédent avait cassé, et rouvre la
+maison de la citadelle de Verteron. Les maillages ont encore été régénérés. Mesuré sur 36 minutes, ramené à 30, comparé au patch précédent.
+
+**Corrigé**
+- **Des zones entières sans habitants :** en ne laissant plus traverser les murs, les nouveaux maillages ont aussi coupé des liaisons qui passaient en
+  fait à travers une porte de siège fermée (Gelkmaros). Or une carte ne gardait qu'un seul « continent » : le reste était vidé. Gelkmaros avait perdu
+  149 lieux sur 229. Désormais, toute zone d'au moins 5 lieux, avec un village et un obélisque, est habitée : Gelkmaros n'en perd plus que 35 (comme
+  avant les nouveaux maillages), Altgard 2, et Cygnea et Enshar gagnent des zones jamais peuplées jusqu'ici. Les bots de Gelkmaros combattent de
+  nouveau autant qu'avant (1451 attaques contre 618).
+- **Téléportations après une vente :** devant certains marchands, la place la plus proche était une marche dont on ne remonte pas ; le bot y vendait,
+  puis restait bloqué et était téléporté. Il se place maintenant là d'où il peut repartir. Téléportations de secours : 87 contre 184, itinéraires
+  refusés : 793 contre 1873.
+- **Inggison :** les bots logés dans le creux sous le plateau ne pouvaient en sortir ni à pied ni en vol (il est couvert). Ces lieux ne sont plus
+  habités. Décollages à Inggison : 0 contre 142.
+- **La maison de la citadelle de Verteron** (1649, 1455) a bien une porte, en biais, que le maillage fermait. Elle est rouverte, et le PNJ de quête
+  Nadaelo est de nouveau atteignable.
+- **Serveur :** un lieu où aucun bot ne trouvait de coin où se reposer relançait de longues recherches toutes les quelques secondes.
+
+**Vérifié**
+- **Points de récolte :** ils bloquent bien le passage dans le client. La marge de 1,5 m que les bots gardent autour est donc justifiée, et les
+  petits écarts qu'on voit autour d'eux sont normaux.
+
+**À faire sur chaque serveur de test**
+1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
+2. `.\tools\navmesh.ps1 -OpenWorld` (environ 25 minutes) : à refaire même si vous l'aviez fait pour le patch précédent.
+3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`. Premier démarrage d'environ 7 minutes.
+4. Si ce n'est pas déjà fait : `gameserver.instance_group.form_anywhere = true` dans `game-server\config\mygs.properties`.
+
+**Connu, pas encore corrigé**
+- Quelques bots habitent encore le creux d'Inggison et y sont ramenés après un blocage, le temps que le directeur les reloge.
+- **Si vous vous déconnectez en donjon**, vos bots y restent tant que le groupe vous compte encore comme membre.
+
+---
+
 ## patch-2026-10-18-2 — 18/10/2026
 
 Révision `79b3863`, celle que `//bot version` affiche. Les bots vous suivent en donjon et répondent à vos annonces de groupe. Les bots ne traversent

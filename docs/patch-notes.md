@@ -6,6 +6,49 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-19-3 — 19/10/2026
+
+Révision `228691f`, celle que `//bot version` affiche. Le vol avec un bot, d'après les retours du 19/10 au soir. **Aucun maillage à régénérer.**
+Une fois le serveur relancé, tapez **`//bot regear all`** en jeu pour donner leurs parchemins aux bots déjà créés.
+
+**Corrigé**
+- **Atterrissage :** quand vous vous posez, un bot de votre groupe encore en vol vole jusqu'à vous et se pose à côté de vous, au lieu de se poser
+  là où il est (loin derrière, au milieu des monstres, ou au-dessus du vide).
+- **Le vide des Abysses tue :** un bot sans sol sous lui cherche l'île la plus proche que ses points de vol lui permettent d'atteindre ; s'il n'y en
+  a aucune, il tombe et meurt, comme un joueur. Avant, il restait suspendu en l'air puis était téléporté sur vous.
+- **Combat en vol :** un bot de votre groupe qui vous suit en vol attaque la cible du groupe, ou ce qui l'attaque, depuis les airs. Un soigneur
+  reste près de vous et soigne.
+- **PvP en vol :** un bot ennemi seul ne lâche plus le combat quand vous décollez. Il vous tire dessus si un sort porte jusqu'à vous, sinon il
+  décolle et vous poursuit ; si vous vous posez, il se pose à côté de vous et le combat continue au sol.
+
+**Nouveau**
+- **Anneaux d'accélération (Abysses) :** un bot qui vous suit passe dans l'anneau que vous venez de traverser, et reçoit le même bonus de vitesse.
+- **Sérums de vent :** un bot en vol en boit un sous la moitié de ses points de vol. Les bots en achètent chez les marchands qui en vendent.
+- **Parchemins :** chaque bot reçoit à sa création et au `//bot regear` 20 parchemins de chaque sorte (course, vol, vitesse d'attaque, vitesse
+  d'incantation), les meilleurs que son niveau permet (dès le niveau 10). Il lit le parchemin de vol en décollant, celui de course quand il a plus de
+  30 m de retard sur vous à pied, et celui d'attaque ou d'incantation quand un combat de groupe commence.
+
+**Connu, pas encore corrigé**
+- En vol, un bot ne lance pas ses buffs de groupe (ils attendent le sol) ; un soin avec temps d'incantation peut être interrompu s'il se déplace.
+- Les bots qui voyagent seuls dans les Abysses ne passent pas par les anneaux.
+- La chute dans le vide à l'entrée du Terminon Training Camp n'a pas été retrouvée dans le journal : si elle se reproduit, notez l'heure et le
+  nom du bot.
+
+**À tester**
+- Prendre de l'avance en vol puis vous poser dans un camp : le bot doit se poser à côté de vous.
+- Planer depuis un rebord au-dessus du vide avec un bot en groupe.
+- Traverser les anneaux de Primum ou de Teminon avec un bot.
+- Attaquer un monstre volant ou un ennemi en vol avec un bot dans le groupe.
+- Seul, provoquer un bot ennemi puis décoller.
+- Après `//bot regear all`, regarder un bot lire ses parchemins (icônes de buff).
+
+**À faire sur chaque serveur de test**
+1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
+2. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
+3. En jeu : `//bot regear all`.
+
+---
+
 ## patch-2026-10-19-2 — 19/10/2026
 
 Révision `9de29b7`, celle que `//bot version` affiche. Ce qu'un joueur fait avec un bot, et Theobomos Lab. **Un seul maillage est à régénérer**,
@@ -115,42 +158,6 @@ Révision `cfe42ff`, celle que `//bot version` affiche. Trois points restés ouv
 1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
 2. Si le patch 2026-10-18-3 n'a pas été installé : `.\tools\navmesh.ps1 -OpenWorld` (environ 25 minutes).
 3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
-
----
-
-## patch-2026-10-18-3 — 18/10/2026
-
-Révision `fdc459b`, celle que `//bot version` affiche. Corrige ce que la régénération des maillages du patch précédent avait cassé, et rouvre la
-maison de la citadelle de Verteron. Les maillages ont encore été régénérés. Mesuré sur 36 minutes, ramené à 30, comparé au patch précédent.
-
-**Corrigé**
-- **Des zones entières sans habitants :** en ne laissant plus traverser les murs, les nouveaux maillages ont aussi coupé des liaisons qui passaient en
-  fait à travers une porte de siège fermée (Gelkmaros). Or une carte ne gardait qu'un seul « continent » : le reste était vidé. Gelkmaros avait perdu
-  149 lieux sur 229. Désormais, toute zone d'au moins 5 lieux, avec un village et un obélisque, est habitée : Gelkmaros n'en perd plus que 35 (comme
-  avant les nouveaux maillages), Altgard 2, et Cygnea et Enshar gagnent des zones jamais peuplées jusqu'ici. Les bots de Gelkmaros combattent de
-  nouveau autant qu'avant (1451 attaques contre 618).
-- **Téléportations après une vente :** devant certains marchands, la place la plus proche était une marche dont on ne remonte pas ; le bot y vendait,
-  puis restait bloqué et était téléporté. Il se place maintenant là d'où il peut repartir. Téléportations de secours : 87 contre 184, itinéraires
-  refusés : 793 contre 1873.
-- **Inggison :** les bots logés dans le creux sous le plateau ne pouvaient en sortir ni à pied ni en vol (il est couvert). Ces lieux ne sont plus
-  habités. Décollages à Inggison : 0 contre 142.
-- **La maison de la citadelle de Verteron** (1649, 1455) a bien une porte, en biais, que le maillage fermait. Elle est rouverte, et le PNJ de quête
-  Nadaelo est de nouveau atteignable.
-- **Serveur :** un lieu où aucun bot ne trouvait de coin où se reposer relançait de longues recherches toutes les quelques secondes.
-
-**Vérifié**
-- **Points de récolte :** ils bloquent bien le passage dans le client. La marge de 1,5 m que les bots gardent autour est donc justifiée, et les
-  petits écarts qu'on voit autour d'eux sont normaux.
-
-**À faire sur chaque serveur de test**
-1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
-2. `.\tools\navmesh.ps1 -OpenWorld` (environ 25 minutes) : à refaire même si vous l'aviez fait pour le patch précédent.
-3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`. Premier démarrage d'environ 7 minutes.
-4. Si ce n'est pas déjà fait : `gameserver.instance_group.form_anywhere = true` dans `game-server\config\mygs.properties`.
-
-**Connu, pas encore corrigé**
-- Quelques bots habitent encore le creux d'Inggison et y sont ramenés après un blocage, le temps que le directeur les reloge.
-- **Si vous vous déconnectez en donjon**, vos bots y restent tant que le groupe vous compte encore comme membre.
 
 ---
 
