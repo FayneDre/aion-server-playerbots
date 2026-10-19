@@ -10,7 +10,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 ## Next, by priority
 
 1. **Dungeons, watched in game** with `patch-2026-10-19`: a bot cut off from its player put beside them, the 20 meshes built again; then the
-   testers' answers on Rentus and Theobomos, bots using windstreams, lifts and teleporters themselves rather than being put beside the player.
+   tester's answer on Theobomos (Rentus answered: a lift at Kuhara's death), bots using windstreams, lifts and teleporters themselves rather than being put beside the player.
 2. **The other classes' playbooks**, on hold: level 50 bots and their rotations run on another test server, and its feedback decides what is
    written here. Damage that waits for the tank and group resurrection watched stay ours.
 3. **Navigation leftovers**, measured on 18 October over 45 minutes with nobody online: rescue teleports, about 50 a half hour spread over every
@@ -57,7 +57,7 @@ each put through a reach check ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.m
 - **The instance meshes** (54 files for the 45 geometries) are walked: Noschana's was. On 19 October floors the generator dropped were put back in 20
   of them (Steel Rake 99 %, the Danuar Sanctuaries 94 and 95 %, the Dredgions 96 to 99 %, Sauro 91 %), and Esoterrace reads 99 % once its
   windstreams' landings count as arrivals. Left under 80 %: **Theobomos Lab** (74 %, its lift; the Queen Arachne room may be cut by a face that is
-  not a wall in game) and **Rentus** (77 and 72 %, no walkable way up to Vasharti's deck in the data): both questions for the testers.
+  not a wall in game) and **Rentus** (77 and 72 %: a lift that appears at Kuhara's death, the tester says, which no mesh holds).
 - **Doors, lifts and windstreams** are not used by a bot itself: it is put beside its player instead. Links "walk to the object, use it, arrive
   there" are the next step if 13 s turns out too long ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.md)).
 - **Bosses**: a bot that simply fights correctly clears most low-level instances; mechanics are a later refinement, not a prerequisite. Positioning

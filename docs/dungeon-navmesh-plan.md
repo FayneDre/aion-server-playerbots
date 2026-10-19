@@ -148,7 +148,9 @@ player, and the bot joins them about 13 s later. Not watched in game.
   (16) is cut by a face of `bu_l_laboratory_room_06f` hanging 0.7 m over the floor, with spiders spawned on both sides of it: likely not a wall in game,
   left as it is until a player says so. Built again in memory with today's generator, the same.
 - **Rentus, 77 and 72 %.** Kuhara's floor (z 210), a mezzanine (241) and Vasharti's deck (252) are three stretches with nothing walkable between them,
-  even at a 62° slope; door 54 is a wall box (`idyun_dummy_room_30`) and no lift or teleporter is in the data. How a party goes up is the tester's to say.
+  even at a 62° slope; door 54 is a wall box (`idyun_dummy_room_30`) and no lift or teleporter is in the data. **The tester answered** (19 October,
+  seen in game): a lift appears when Kuhara dies. It is engine-moved geometry, filed as a door (Kuhara's death changes doors 43 and 150, whose
+  models are slabs that move up between their two states), so it is in no mesh; a bot reaches the deck by being put beside its player.
 
 ## Open questions
 
