@@ -32,6 +32,8 @@ final class InstanceReach {
 	private static final float SNAP = 3f;
 	/** How many unreachable spots are printed. */
 	private static final int SHOWN = 8;
+	/** How high over the floor below a spot with no footing has to be to count as in the air rather than beside a floor the mesh lost, in metres. */
+	private static final float IN_THE_AIR = 6f;
 
 	private static final Pattern PORTAL = Pattern
 		.compile("<portal_loc\\s+world_id=\"(\\d+)\"\\s+loc_id=\"(\\d+)\"[^>]*\\sx=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
@@ -40,6 +42,7 @@ final class InstanceReach {
 	 * not always the first attribute: read only as the first, Unstable Abyssal Splinter's entrance was missed and its three inner pads were measured as the arrivals.
 	 */
 	private static final Pattern PORTAL_PATH = Pattern.compile("<portal_path\\b[^>]*?\\sloc_id=\"(\\d+)\"");
+	private static final String AERIAL = "aerial_spawn=\"true\"";
 	private static final Pattern SPOT = Pattern.compile("<spot\\s+x=\"([-\\d.]+)\"\\s+y=\"([-\\d.]+)\"\\s+z=\"([-\\d.]+)\"");
 
 	/**
@@ -126,7 +129,51 @@ final class InstanceReach {
 		if (entries.size() > 1)
 			System.out.printf(Locale.ROOT, "Map %d, from any of its %d arrivals: %d of %d spots reached (%.0f%%)%n", mapId, entries.size(), reachedByAny.size(), askedOfAny,
 				askedOfAny == 0 ? 0f : reachedByAny.size() * 100f / askedOfAny);
+		printNoFooting(mesh, mapId, sample);
 		return worst;
+	}
+
+	/**
+	 * Where the spots with no footing stand against the walkable floors of their own column: high over one is a monster in the air, a fight a walking bot
+	 * cannot join, while one a little under or over is a floor the mesh lost.
+	 */
+	private static void printNoFooting(Navmesh mesh, int mapId, List<float[]> sample) {
+		int inTheAir = 0, near = 0, noFloor = 0;
+		List<String> shown = new ArrayList<>();
+		for (float[] spot : sample) {
+			if (snapped(mesh, spot) != null)
+				continue;
+			int cellX = mesh.cellX(spot[0]), cellY = mesh.cellY(spot[1]);
+			float below = Float.NaN, above = Float.NaN;
+			for (int surface = 0; mesh.contains(cellX, cellY) && surface < mesh.surfaceCount(cellX, cellY); surface++) {
+				if (!mesh.isWalkable(cellX, cellY, surface))
+					continue;
+				float z = mesh.surfaceZ(cellX, cellY, surface);
+				if (z <= spot[2] && (Float.isNaN(below) || z > below))
+					below = z;
+				else if (z > spot[2] && (Float.isNaN(above) || z < above))
+					above = z;
+			}
+			String where;
+			if (Float.isNaN(below) && Float.isNaN(above)) {
+				noFloor++;
+				where = "no walkable floor in its column";
+			} else if (!Float.isNaN(below) && spot[2] - below > IN_THE_AIR) {
+				inTheAir++;
+				where = String.format(Locale.ROOT, "%.0f m over the floor below", spot[2] - below);
+			} else {
+				near++;
+				where = Float.isNaN(below) ? String.format(Locale.ROOT, "%.1f m under a floor", above - spot[2])
+					: String.format(Locale.ROOT, "%.1f m over the floor below", spot[2] - below);
+			}
+			if (shown.size() < SHOWN)
+				shown.add(String.format(Locale.ROOT, "  no footing: %.1f %.1f %.1f, %s", spot[0], spot[1], spot[2], where));
+		}
+		if (inTheAir + near + noFloor == 0)
+			return;
+		System.out.printf(Locale.ROOT, "Map %d, the spots with no footing: %d more than %.0f m over a floor, %d nearer one, %d over none%n", mapId, inTheAir, IN_THE_AIR,
+			near, noFloor);
+		shown.forEach(System.out::println);
 	}
 
 	/** @return The spot moved onto the nearest walkable ground within {@link #SNAP} metres of it in height, or null when there is none. */
@@ -182,7 +229,11 @@ final class InstanceReach {
 		return arrivals.isEmpty() ? all : arrivals;
 	}
 
-	/** @return Every distinct place a monster or object is put in the instance, read from its spawn file. */
+	/**
+	 * @return Every distinct place a monster or object is put in the instance, read from its spawn file, but those in the air. A spot marked
+	 *         {@code aerial_spawn} is a flyer on a path through the air, Rentus's drakan riders among them (73 of its 338): nothing walks to it, on a map
+	 *         where nobody can fly, so it measured as the mesh's fault what is the fight's shape.
+	 */
 	static List<float[]> spawnSpots(int mapId) throws IOException {
 		return spawnSpots(STATIC_DATA.resolve("spawns/Instances"), mapId);
 	}
@@ -195,7 +246,7 @@ final class InstanceReach {
 			for (Path file : files.filter(path -> path.getFileName().toString().startsWith(mapId + "_")).toList()) {
 				for (String line : Files.readAllLines(file)) {
 					Matcher matcher = SPOT.matcher(line);
-					if (matcher.find())
+					if (matcher.find() && !line.contains(AERIAL))
 						found.add(spot(matcher));
 				}
 			}

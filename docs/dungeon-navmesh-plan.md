@@ -1,6 +1,6 @@
 # Dungeon navmeshes: plan
 
-Status: milestones 0 to 5 done (45 meshes built, 9 copied, every one put through `reach`), plus glide links and a steeper slope for three stairs; 6, the server opening an instance mesh, not tried, though bots can now be in one: they follow their player in since 18 October (`BotInstances`). Sixteen maps measured again on the evening of 11 October with the long-walk planner rebuilt (table below): Illuminary Obelisk, 310100000, Lower Udas, Steel Rake, Dredgion and Dragon Lord's Refuge are now at 91 % or more; of those sixteen, Esoterrace, the Danuar Sanctuaries and the two Rentus remain under 80 %. The others, Drakenspire and Theobomos among them, have not been measured again. Next: portal links. Nothing here is watched in game. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**: the goal is
+Status: milestones 0 to 5 done (45 meshes built, 9 copied, every one put through `reach`), plus glide links and a steeper slope for three stairs; on 19 October every mesh measured again and 20 built again with floors the generator had dropped (see "Measured again, 19 October"); 6, the server opening an instance mesh, not tried, though bots can now be in one: they follow their player in since 18 October (`BotInstances`). Sixteen maps measured again on the evening of 11 October with the long-walk planner rebuilt (table below): Illuminary Obelisk, 310100000, Lower Udas, Steel Rake, Dredgion and Dragon Lord's Refuge are now at 91 % or more; of those sixteen, Esoterrace, the Danuar Sanctuaries and the two Rentus remain under 80 %. The others, Drakenspire and Theobomos among them, have not been measured again. Next: portal links. Nothing here is watched in game. Scope: the **PvE dungeons and raids for a group**, every version; **solo dungeons are out**: the goal is
 bots that fight in a party, and a solo instance holds one player (23 of the first 77, Haramel among them; `instance_cooltimes.xml` gives one member for each). That leaves the 54 ids of the first
 table in [instance-navmesh-list.md](instance-navmesh-list.md), which come down to **45 distinct geometries**: a mesh is built once and serves the ids that share it. Arenas, warfronts, housing
 and tests are out for now. Putting a bot in an instance is not this plan's: `BotInstances` does it, since 18 October.
@@ -110,6 +110,34 @@ Rentus has a deck of 54 monsters 9.5 m above anything walked to, and nothing pla
 **What the tester says about the 40 to 50 band** (Discord, 10 October): Draupnir and Theobomos have a lift near the end and a platform phase in the middle; Theobomos and Adma need an interaction with the door to the boss (he teleports the bots to himself once it is open); Dredgion has one start for each faction and goes down plateau by plateau, which is what `DredgionInstance.portToStartPosition` says (two starts, now the arrivals of the three Dredgions); Adma is only large. **None of the lifts, doors and phases is in the mesh.**
 
 Tools: `-Dungeons` leaves the meshes that exist alone and `-Force` builds them again; `-Reach` measures; `NavmeshTool <map> flood <drop> <cells>`, `gaps` and `blockers x y z` are for finding out why one fails. A mesh set takes about two hours to build and as long to measure, the meshes are not in git, and a server needs `.\tools\navmesh.ps1 -Dungeons` once.
+
+## Measured again, 19 October
+
+Every mesh measured as it stood (unchanged since the 11th but Drakenspire, Theobomos and Adma, never measured again: 47, 74 and 92 %). `reach` now says
+where the spots with no footing stand against the floors of their column, and leaves out the spawns marked `aerial_spawn` (flyers on a path through the
+air: 73 of Rentus's 338, on a map nobody flies on).
+
+**A floor the generator dropped.** A model part that is a no-walk volume *and* solid (intention 136, see-through and no-walk) was filed with the no-walk
+volumes, which an instance drops, so the floor went with them although the engine collides with it. Drakenspire's second stage stands on such floors and
+bridges. Kept as solid, in instances only; the 20 geometries holding such a part were built again (the old meshes are in
+`D:\Jeux\Aion\navmesh-backup-2026-10-19`):
+
+| Dungeon | Before | After |
+|---|---|---|
+| Steel Rake | 94 %, 23 with no footing | **99 %**, 2 |
+| Danuar Sanctuary, Seized | 74, 76 % | **94, 95 %** |
+| Dredgion, Chantra, Terath | 91, 88, 89 % | **96, 97, 99 %** |
+| Sauro Supply Base | 80 % | **91 %** |
+| Drakenspire | 31 of 66, 25 with no footing | 47 of 88, 3; **84 of 88 in ground the glide links join** |
+| Lower Udas | 97 % | 96 % |
+| the other thirteen | | within a spot |
+
+Dragon Lord's Refuge counts 13 spots instead of 5: the 8 new ones are perched 246 m up at the corners of the map, not fights. The open world files the
+same parts the same way and has not been looked at.
+
+**The bots' side.** A grouped bot that cannot walk to its player in an instance is put beside them at any distance (`PlayerBotAI.freeItself`); before, past
+200 m, it was sent to its home's coordinates on the instance's map. A teleporter, a lever, a lift or a door the player's key opens is then crossed by the
+player, and the bot joins them about 13 s later. Not watched in game.
 
 ## Open questions
 

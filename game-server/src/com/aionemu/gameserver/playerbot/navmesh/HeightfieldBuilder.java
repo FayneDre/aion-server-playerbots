@@ -91,7 +91,10 @@ public class HeightfieldBuilder {
 			for (GeoModel part : parts) {
 				// masked to a byte's worth of bits: the intentions are stored in a byte, and PHYSICAL_SEE_THROUGH is its sign bit
 				int intentions = part.collisionIntentions() & 0xFF;
-				if ((intentions & CollisionIntention.WALK.getId()) != 0)
+				// In an instance the no-walk volumes are dropped below, and a part that is a no-walk volume and solid as well went with them, though the engine
+				// collides with it: floors and bridges drawn so (Drakenspire's second stage, Steel Rake's decks, the Danuar Sanctuary's boss room) were missing.
+				// Kept as solid: spots with no footing 25 -> 3 in Drakenspire and 23 -> 2 in Steel Rake, the Danuar Sanctuary reached 74 -> 94 %.
+				if ((intentions & CollisionIntention.WALK.getId()) != 0 && !(instance && (intentions & SOLID) != 0))
 					noWalkVolumes.add(place(part, placement));
 				else if ((intentions & SOLID) != 0)
 					solids.add(place(part, placement));
