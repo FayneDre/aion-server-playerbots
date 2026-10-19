@@ -60,11 +60,19 @@ final class InstanceReach {
 	/**
 	 * Where a teleporter inside the instance puts the party, for the maps whose handler moves it in code and not through the portal list: each is measured as a further arrival, since
 	 * its ground is not joined to the rest. The Danuar Sanctuaries go from the hall to each wing in turn ({@code handleUseItemFinish} of npcs 701873, 701871, 701872).
+	 * The two Dragon Lord's Refuges, which share a handler, from the entrance to Tiamat's platform (730625) and from there to the four realms of her
+	 * dragons at the corners of the map (730673 to 730676): taken for decor perched 246 m up until the handler was read.
 	 */
-	private static final Map<Integer, List<float[]>> TELEPORT_LANDINGS = Map.of(301140000, danuarWings(), 301380000, danuarWings());
+	private static final Map<Integer, List<float[]>> TELEPORT_LANDINGS = Map.of(301140000, danuarWings(), 301380000, danuarWings(), 300520000,
+		dragonRealms(), 300630000, dragonRealms());
 
 	private static List<float[]> dredgionStarts() {
 		return List.of(new float[] { 570.468f, 166.897f, 432.29f }, new float[] { 400.741f, 166.713f, 432.29f });
+	}
+
+	private static List<float[]> dragonRealms() {
+		return List.of(new float[] { 503.389f, 514.661f, 417.404f }, new float[] { 217.144f, 195.616f, 246.0712f }, new float[] { 785.866f, 197.713f, 246.0712f },
+			new float[] { 217.947f, 832.552f, 246.0712f }, new float[] { 779.178f, 833.055f, 246.0712f });
 	}
 
 	private static List<float[]> danuarWings() {

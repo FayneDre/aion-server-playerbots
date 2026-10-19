@@ -132,7 +132,7 @@ bridges. Kept as solid, in instances only; the 20 geometries holding such a part
 | Lower Udas | 97 % | 96 % |
 | the other thirteen | | within a spot |
 
-Dragon Lord's Refuge counts 13 spots instead of 5: the 8 new ones are perched 246 m up at the corners of the map, not fights. The open world files the
+Dragon Lord's Refuge counts 13 spots instead of 5: the 8 new ones, at height 246 in the corners of the map, are the four realms of Tiamat's dragons (Fissurefang, Graviwing, Petriscale, Wrathclaw), reached by teleporters coded in the handler both refuges share; once those and the one to her platform count as arrivals, both refuges read **100 %** (the anguished one was at 8 %, with only its entrance as an arrival). The open world files the
 same parts the same way and has not been looked at.
 
 **The bots' side.** A grouped bot that cannot walk to its player in an instance is put beside them at any distance (`PlayerBotAI.freeItself`); before, past
