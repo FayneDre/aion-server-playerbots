@@ -11,10 +11,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.model.gameobjects.Item;
+import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.trade.Exchange;
 import com.aionemu.gameserver.model.trade.ExchangeItem;
 import com.aionemu.gameserver.services.ExchangeService;
+import com.aionemu.gameserver.utils.ChatUtil;
 
 /**
  * A companion's side of a trade with its owner, once {@code BotRequests} has accepted it.
@@ -78,13 +80,16 @@ public final class BotTrades {
 		Gifts given = gifts.get(bot.getObjectId());
 		if (given == null)
 			return;
+		if (!CreatureState.isStanding(bot.getState()))
+			return; // resting after a fight: a refusal now would read as "not an upgrade" and the gift would be forgotten
 		if (System.currentTimeMillis() > given.until() || !BotEquipManager.wearGiven(bot, given.templateIds()))
 			gifts.remove(bot.getObjectId());
 	}
 
 	/**
 	 * Puts what the owner names on the bot's side of the trade they have open with it: {@code all} for everything it carries but wears, {@code kinah}
-	 * and an amount, or part of an item's name.
+	 * and an amount, an item linked in the chat (shift and click) or its id, or part of its name. The names are the server's, in English, while a
+	 * French client shows its own: the link is what works whatever the client's language.
 	 *
 	 * @return What was done, for the chat window.
 	 */
@@ -97,7 +102,7 @@ public final class BotTrades {
 		if (mine == null || mine.isLocked())
 			return bot.getName() + " has already locked its side: cancel the trade and open it again";
 		if (what.isEmpty())
-			return "Usage: //bot give <name> all | kinah <amount> | <part of an item's name>";
+			return "Usage: //bot give <name> all | kinah <amount> | <an item's link> | <part of its English name>";
 		if (what.get(0).equalsIgnoreCase("kinah")) {
 			long amount;
 			try {
@@ -111,18 +116,20 @@ public final class BotTrades {
 		}
 		boolean all = what.size() == 1 && what.get(0).equalsIgnoreCase("all");
 		String name = String.join(" ", what).toLowerCase(Locale.ROOT);
+		int itemId = ChatUtil.getItemId(String.join(" ", what));
 		int before = mine.getItems().size();
 		for (Item item : bot.getInventory().getItems()) {
 			if (mine.isExchangeListFull())
 				break;
 			if (item.isEquipped() || item.getItemTemplate().isKinah())
 				continue;
-			if (all || item.getItemTemplate().getName().toLowerCase(Locale.ROOT).contains(name))
+			boolean named = itemId != 0 ? item.getItemId() == itemId : item.getItemTemplate().getName().toLowerCase(Locale.ROOT).contains(name);
+			if (all || named)
 				service.addItem(bot, item.getObjectId(), item.getItemCount()); // the engine's own checks: what cannot be traded is left where it is
 		}
 		int added = mine.getItems().size() - before;
 		if (added == 0)
-			return bot.getName() + " has nothing " + (all ? "" : "called \"" + name + "\" ") + "it can trade";
+			return bot.getName() + " has nothing " + (all ? "" : itemId != 0 ? "like " + ChatUtil.item(itemId) + " " : "called \"" + name + "\" ") + "it can trade";
 		return bot.getName() + " puts in " + added + " piece(s)" + (mine.isExchangeListFull() ? ", and the window is full" : "");
 	}
 

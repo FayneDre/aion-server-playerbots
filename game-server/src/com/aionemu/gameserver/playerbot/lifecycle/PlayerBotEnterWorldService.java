@@ -7,6 +7,7 @@ import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.dataholders.PlayerInitialData.LocationData;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
+import com.aionemu.gameserver.model.gameobjects.player.FriendList;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.model.templates.portal.InstanceExit;
@@ -83,6 +84,8 @@ public class PlayerBotEnterWorldService {
 		// character nobody asked. The same silence stops setExp calling onLevelChange, which is why a bot never learns the skills of a level it
 		// gains, and why learnMissingSkills below exists at all.
 		bot.getCommonData().setOnline(true);
+		// what a friend's list shows: PlayerEnterWorldService says it as a player logs on, and a bot that never did stayed offline in every list
+		bot.getFriendList().setStatus(FriendList.Status.ONLINE, bot.getCommonData());
 		// Weapon away, whatever the character was doing when it last left. WEAPON_EQUIPPED lives on the Player object and nothing clears it on the way
 		// out, so a bot despawned mid fight came back standing in a town holding its weapon out -- and stayed that way, since the rule that puts one
 		// away only ran after a fight this life. Reported from in game as a songweaver whose harp should have been on its back.

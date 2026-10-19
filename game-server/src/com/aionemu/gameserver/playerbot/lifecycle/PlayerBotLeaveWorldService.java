@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.lifecycle;
 
 import com.aionemu.gameserver.ai.event.AIEventType;
 import com.aionemu.gameserver.model.animations.ObjectDeleteAnimation;
+import com.aionemu.gameserver.model.gameobjects.player.FriendList;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.alliance.PlayerAllianceService;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
@@ -23,6 +24,7 @@ public class PlayerBotLeaveWorldService {
 
 	public static void leaveWorld(Player bot) {
 		bot.getCommonData().setOnline(false); // the character is no longer present, and the flag is saved with it
+		bot.getFriendList().setStatus(FriendList.Status.OFFLINE, bot.getCommonData());
 		bot.getAi().onGeneralEvent(AIEventType.DESPAWNED);
 		BotRequests.forget(bot);
 		BotTrades.forget(bot);
