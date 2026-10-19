@@ -4,6 +4,63 @@ Moved out of [patch-notes.md](patch-notes.md) as it neared 200 lines. Newest fir
 
 ---
 
+## patch-2026-10-18-2 — 18/10/2026
+
+Révision `79b3863`, celle que `//bot version` affiche. Les bots vous suivent en donjon et répondent à vos annonces de groupe. Les bots ne traversent
+plus les murs, et tous les maillages du monde ouvert ont été régénérés pour ça.
+
+**Donjons et recherche de groupe**
+- **Recrutement :** postez une annonce dans « Find Group » > « Instance Groups » (sans être en groupe, ou en étant chef), et des bots la
+  remplissent jusqu'au nombre demandé. D'abord un tank, un soigneur et un support, puis des DPS. Votre classe compte : un clerc reçoit un tank, pas un
+  second soigneur. Niveau : le vôtre à ±2 (±4 si personne n'est assez proche). Les bots arrivent près de vous et rejoignent le groupe tout seuls.
+  Quand ils quittent le groupe, ils rentrent chez eux.
+- **Suivi en instance :** quand vous entrez dans un donjon, vos bots y entrent avec vous ; quand vous en sortez, ils vous suivent dehors. Un bot mort
+  dans le donjon revient à l'entrée, pas à l'obélisque.
+- **Réglage serveur :** `gameserver.instance_group.form_anywhere = true` dans `mygs.properties`, sans quoi le bouton « Post Offer » reste grisé (les statues
+  de ce client n'ouvrent jamais la page de recrutement).
+
+**Suivre le chef**
+- **Plus d'arrêts ni d'allers-retours :** un bot continue sur son trajet pendant qu'il calcule le suivant, et reprend là où il est. Dans Nochsana, un bot
+  faisait des allers-retours sur 5 m pendant 16 s, alors que son chef avançait de 50 m.
+- **Planer :** quand vous planez, les bots qui sont encore en haut marchent jusqu'à votre point de départ, puis planent par le même chemin.
+
+**Murs et navigation**
+- **Les bots ne traversent plus les murs :** le sol collé à un mur n'était jamais réduit de la largeur d'un corps, alors un mur fin en biais se
+  traversait. Ça concernait toutes les cartes. Les trajets relevés dans vos notes (maisons de la citadelle de Verteron, château de Teminon) ne
+  traversent plus rien. Sans perte d'accès : depuis l'obélisque de Teminon, 99 PNJ sur 101 sont atteignables, contre 97 avant ; dans la citadelle de
+  Verteron, 89 sur 108, comme avant.
+- **Marchand derrière un comptoir :** un bot ne passe plus derrière le comptoir pour vendre, et un bot coincé dans un recoin en est sorti, même sous vos
+  yeux. Avant, il s'asseyait et se relevait en boucle.
+- **Pas de vol à l'intérieur d'un bâtiment :** un bot ne décolle plus vers un endroit couvert d'un toit.
+
+**Comportement**
+- **Malus de résurrection :** le bot attend la fin du malus au calme, au lieu de retourner sur son terrain de chasse.
+- **Buffs :** les bots ne se buffent plus en se promenant. Seuls, ils se buffent quand ils ont choisi leur cible ; en groupe, quand le groupe a une cible
+  ou que vous visez un ennemi. Les soins et résurrections entre les combats ne changent pas.
+
+**Serveur**
+- **`start-server.ps1` attend que le serveur de jeu soit inscrit auprès du serveur de connexion** avant d'annoncer qu'on peut se connecter. Se
+  connecter plus tôt obligeait à relancer le client.
+- **Démarrage :** environ 3 minutes.
+
+**À faire sur chaque serveur de test** (les maillages ne sont pas dans le dépôt : chaque serveur génère les siens)
+1. Arrêter le serveur : `.\tools\stop-server.ps1`.
+2. Récupérer le code et construire le jar : `git pull`, puis `mvn -pl game-server -am package`.
+3. Régénérer les maillages du monde ouvert, avec leurs liens de glissade et de vol : `.\tools\navmesh.ps1 -OpenWorld`. Environ 25 minutes. Sans
+   cette étape, les bots continuent de traverser les murs.
+4. Ajouter `gameserver.instance_group.form_anywhere = true` dans `game-server\config\mygs.properties`.
+5. Déployer puis démarrer : `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`. Le premier démarrage recalcule les lieux des bots et prend
+   plusieurs minutes.
+
+**Connu, pas encore corrigé**
+- **Écarts sans raison visible :** les bots gardent 1,5 m autour des points de récolte. On ne sait pas si le client l'exige.
+- **Une maison de la citadelle de Verteron**, en (1649, 1455), n'est plus accessible : on n'y entrait qu'à travers un mur. Si elle a une vraie porte,
+  dites-le.
+- **Si vous vous déconnectez en donjon**, vos bots y restent tant que le groupe vous compte encore comme membre.
+- **Theobomos :** beaucoup de vols de bots (140 décollages en 30 min).
+
+---
+
 ## patch-2026-10-18 — 18/10/2026
 
 Révision `3652dfc`, celle que `//bot version` affiche. Les bots traversent les Abysses en volant d'île en île, et Reshanta est peuplée sur ses deux
