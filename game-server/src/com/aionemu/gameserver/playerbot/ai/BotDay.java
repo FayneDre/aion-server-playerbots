@@ -12,6 +12,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.playerbot.BotRecruiter;
+import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.economy.BotStores;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
@@ -332,8 +333,8 @@ class BotDay {
 				return refuseStall("no way to its stall");
 			return true;
 		}
-		if (moves.isInMove() || ai.posture().standUp() || ai.posture().sheathe())
-			return true; // the engine opens no store on a body that is moving, seated or holding its weapon
+		if (moves.isInMove() || ai.posture().standUp() || ai.posture().sheathe() || BotSkillManager.leaveRobot(bot))
+			return true; // the engine opens no store on a body that is moving, seated, holding its weapon or in its robot
 		if (!BotStores.open(bot))
 			return refuseStall("nothing to sell");
 		return true;

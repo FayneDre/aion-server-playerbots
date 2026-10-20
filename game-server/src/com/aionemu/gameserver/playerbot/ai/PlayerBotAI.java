@@ -1925,6 +1925,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private boolean boardRobot() {
 		if (getOwner().getMoveController() instanceof BotMoveController moveController && moveController.isInMove())
 			return false;
+		if (day.keepsStore())
+			return false; // a merchant on its shift stands at its stall on foot: the engine opens no store on a body in its robot
+
 		return BotSkillManager.tryBoardRobot(getOwner());
 	}
 

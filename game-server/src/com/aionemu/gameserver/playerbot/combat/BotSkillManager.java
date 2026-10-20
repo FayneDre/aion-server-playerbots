@@ -617,6 +617,24 @@ public class BotSkillManager {
 		return cast(bot, bot, skills(bot, (owner, template) -> isRobotToggle(template)));
 	}
 
+	/**
+	 * Takes an aethertech out of its robot, by ending the toggle that put it there: the engine opens no private store on a body in its robot, and refused
+	 * the stores of three aethertech merchants on 20 October for nothing else.
+	 *
+	 * @return true if the bot was in its robot and is now out of it.
+	 */
+	public static boolean leaveRobot(Player bot) {
+		if (!bot.isInRobotMode())
+			return false;
+		for (Effect effect : bot.getEffectController().getAllEffects()) {
+			if (isRobotToggle(effect.getSkillTemplate())) {
+				bot.getEffectController().removeEffect(effect.getSkillId());
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Recognised by its effect rather than by its name or id, so it holds for every rank and for both factions' copies. */
 	private static boolean isRobotToggle(SkillTemplate template) {
 		if (!template.isToggle() || template.getEffects() == null)
