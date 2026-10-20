@@ -1,6 +1,5 @@
 package com.aionemu.gameserver.playerbot.economy;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,21 +35,26 @@ public final class BotStores {
 	private static final int STORES_PER_MAP = 40;
 	/** The engine's limit on a store's lines. */
 	private static final int MAX_LINES = 10;
-	/** Under this many lines left, a shift opens with a restock. */
-	private static final int RESTOCK_UNDER = 4;
-	/** How many lines a restock aims for. */
+	/** How many lines a store is stocked up to whenever it opens. */
 	private static final int STOCKED_LINES = 8;
-	/** How many restocks a keeper gets in a day, which is what keeps generated goods from flooding a town. */
-	private static final int RESTOCKS_PER_DAY = 2;
+	/**
+	 * How often a store is renewed during a shift, and how much later a keeper of its own may come round to it: the tester asked for stores renewed
+	 * regularly, and every keeper on the hour would be every store of a market closing in the same second.
+	 */
+	private static final long RENEW_EVERY_MILLIS = 60 * 60_000L, RENEW_SPREAD_MILLIS = 30 * 60_000L;
+	/**
+	 * How long a piece stays on a shelf unsold before a renewal takes it away for good, which is what keeps a store from showing the same goods all day
+	 * and what bounds the generated goods: a keeper puts out eight lines an hour at most, and what nobody bought goes back to nothing.
+	 */
+	private static final long STALE_MILLIS = 2 * 60 * 60_000L;
 	/** How far round a broker or a warehouse keeper a stall may be on a map with no markets of its own, and how far from the next stall it must be, in metres. */
 	private static final float STALL_SPREAD = 15, STALL_SPACING = 3;
 	private static final int STALL_ATTEMPTS = 12;
 
-	/** What a keeper has on its shelf: each piece's object id and when it was stocked. Kept in memory: a restart sells the leftovers to an npc as junk. */
+	/** What a keeper has on its shelf: each piece's object id and when it was stocked, and when the store was last renewed. Kept in memory. */
 	private static final class Shelf {
 		final Map<Integer, Long> stockedAt = new ConcurrentHashMap<>();
-		LocalDate day = LocalDate.now();
-		int restocks;
+		volatile long renewedAt;
 	}
 
 	private static final Map<Integer, Shelf> shelves = new ConcurrentHashMap<>();
@@ -163,9 +167,8 @@ public final class BotStores {
 			}
 		}
 		List<Item> lines = linesOf(keeper, shelf);
-		if (lines.size() < RESTOCK_UNDER && mayRestock(shelf)) {
+		if (lines.size() < STOCKED_LINES) {
 			List<Integer> templates = BotStoreStock.stock(keeper, STOCKED_LINES - lines.size());
-			shelf.restocks++;
 			long now = System.currentTimeMillis();
 			// what the restock put in the bag is whatever of its templates the shelf did not already hold
 			for (Item item : keeper.getInventory().getItems()) {
@@ -191,9 +194,32 @@ public final class BotStores {
 			return false;
 		}
 		PrivateStoreService.openPrivateStore(keeper, BotStoreStock.nameOf(keeper));
+		shelf.renewedAt = now;
 		log.info("Bot {} opens its store \"{}\" with {} line(s) at {}", keeper.getName(), BotStoreStock.nameOf(keeper), goods.length,
 			String.format("%.1f %.1f %.1f", keeper.getX(), keeper.getY(), keeper.getZ()));
 		return true;
+	}
+
+	/**
+	 * Renews an open store when its time comes: shuts it, takes away what has waited unsold for two hours, stocks up again and opens it where it stands.
+	 * Called on every tick of a keeper at its stall, and does nothing most of them.
+	 */
+	public static void renewIfDue(Player keeper) {
+		Shelf shelf = shelves.get(keeper.getObjectId());
+		long now = System.currentTimeMillis();
+		if (shelf == null || !keeper.hasStore() || now - shelf.renewedAt < RENEW_EVERY_MILLIS + Math.floorMod(keeper.getObjectId() * 0x3C6EF372L, RENEW_SPREAD_MILLIS))
+			return;
+		PrivateStoreService.closePrivateStore(keeper); // the stall is kept: the keeper does not move
+		int taken = 0;
+		for (Item item : linesOf(keeper, shelf)) {
+			if (now - shelf.stockedAt.get(item.getObjectId()) >= STALE_MILLIS) {
+				shelf.stockedAt.remove(item.getObjectId());
+				keeper.getInventory().delete(item);
+				taken++;
+			}
+		}
+		log.info("Bot {} renews its store, {} unsold line(s) taken away", keeper.getName(), taken);
+		open(keeper); // refused, the store stays shut and the next tick finds the keeper at its stall with no store, as at the start of a shift
 	}
 
 	/** Closes the keeper's store, if it has one open, and gives up its stall. */
@@ -225,14 +251,5 @@ public final class BotStores {
 		});
 		lines.sort((a, b) -> Long.compare(shelf.stockedAt.get(a.getObjectId()), shelf.stockedAt.get(b.getObjectId())));
 		return lines;
-	}
-
-	private static boolean mayRestock(Shelf shelf) {
-		LocalDate today = LocalDate.now();
-		if (!today.equals(shelf.day)) {
-			shelf.day = today;
-			shelf.restocks = 0;
-		}
-		return shelf.restocks < RESTOCKS_PER_DAY;
 	}
 }

@@ -21,7 +21,8 @@ What is asked: capitals that feel lived in, with people who **stay and are seen*
 1. **A capital day. Done.** `TownRoutine`: spells of 5 minutes (home, sitting, an errand to a town service, a visit), the same every day, starting
    at each resident's own moment. Watched: no FARMING in a capital, 5 to 17 of Sanctum's 117 residents moving at any moment.
 2. **Private stores. Built 20 October**, see [bot-stores-plan.md](bot-stores-plan.md).
-   - Four in ten residents of level 20 and over keep a store for a shift of 4 to 8 hours of the day, at a stall near a broker or a warehouse.
+   - Five in ten residents of level 20 and over keep a store for a shift of 6 to 10 hours starting at any hour, at a market stall, renewed about
+     every hour.
    - Themed stock generated at their level, priced from the template, the quality and the keeper's temperament, cheaper the longer it is unsold.
    - Check: a player buys from a bot in game, the kinah moves, and EXCHANGE_LOG has the line.
 3. **Ambience.**

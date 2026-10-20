@@ -74,9 +74,9 @@ final class TownRoutine {
 	/** The lowest level a resident keeps a store from: below it a character has little to sell anybody would want. */
 	static final int STORE_LEVEL = 20;
 	/** How many residents in ten keep a store. */
-	private static final int MERCHANTS_IN_TEN = 4;
-	/** When the first shift of the day may start and the last one end, and how long one lasts, in seconds of the day. */
-	private static final int SHIFT_EARLIEST = 8 * 3600, SHIFT_LATEST_START = 16 * 3600, SHIFT_SHORTEST = 4 * 3600, SHIFT_LONGEST = 8 * 3600;
+	private static final int MERCHANTS_IN_TEN = 5;
+	/** How long a shift lasts, in seconds. */
+	private static final int SHIFT_SHORTEST = 6 * 3600, SHIFT_LONGEST = 10 * 3600;
 
 	/** @return true for a resident who keeps a store, the same ones every day. */
 	static boolean isMerchant(int objectId) {
@@ -84,15 +84,15 @@ final class TownRoutine {
 	}
 
 	/**
-	 * @return true while a merchant's shift runs: 4 to 8 hours of its own, starting between 8:00 and 16:00, so a town's stores are open in the day and
-	 *         shut at night, and do not all open at once.
+	 * @return true while a merchant's shift runs: 6 to 10 hours of its own, starting at any hour and running past midnight when it starts late, so a town
+	 *         has stores open at every hour and they do not all open at once. Shifts of the day alone came first, from 8:00 to 16:00: nobody at night,
+	 *         and the tester asked for merchants at all hours.
 	 */
 	static boolean onShift(int objectId, int secondOfDay) {
 		int h = mix(objectId ^ 0x68E31DA4);
-		int start = SHIFT_EARLIEST + Math.floorMod(h, SHIFT_LATEST_START - SHIFT_EARLIEST + 1);
+		int start = Math.floorMod(h, DAY_SECONDS);
 		int length = SHIFT_SHORTEST + Math.floorMod(h / 7, SHIFT_LONGEST - SHIFT_SHORTEST + 1);
-		int second = Math.floorMod(secondOfDay, DAY_SECONDS);
-		return second >= start && second < start + length;
+		return Math.floorMod(secondOfDay - start, DAY_SECONDS) < length;
 	}
 
 	/** @return When in a spell's length this resident's spells start, so that residents do not all set off at once. */

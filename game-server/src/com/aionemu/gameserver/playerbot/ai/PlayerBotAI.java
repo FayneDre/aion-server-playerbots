@@ -680,8 +680,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (getOwner().hasStore()) {
 			// A keeper at its stall does nothing else: the engine refuses skills and items to a store's owner, and a body walked with its store open
 			// drags its shelf through the town. Its questions are answered above, and a group it joins is followed only once the store is shut.
-			if (!following && day.keepsStore())
+			if (!following && day.keepsStore()) {
+				BotStores.renewIfDue(getOwner());
 				return;
+			}
 			BotStores.close(getOwner());
 		}
 		if (checkLanding && getOwner().isSpawned() && !getOwner().isDead()) {

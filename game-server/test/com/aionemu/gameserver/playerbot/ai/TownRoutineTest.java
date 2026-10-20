@@ -75,36 +75,33 @@ class TownRoutineTest {
 	}
 
 	@Test
-	void merchantsKeepDayShiftsOfFourToEightHours() {
+	void merchantsKeepShiftsOfSixToTenHours() {
 		int merchants = 0;
 		for (int id = 0; id < 2000; id++) {
 			if (!TownRoutine.isMerchant(id))
 				continue;
 			merchants++;
-			int first = -1, hours = 0;
+			int minutes = 0;
 			for (int second = 0; second < DAY; second += 60) {
-				if (TownRoutine.onShift(id, second)) {
-					if (first < 0)
-						first = second;
-					hours++;
-				}
+				if (TownRoutine.onShift(id, second))
+					minutes++;
 			}
-			assertTrue(first >= 8 * 3600 && first <= 16 * 3600, "merchant " + id + " opens at second " + first);
-			assertTrue(hours >= 4 * 60 && hours <= 8 * 60 + 1, "merchant " + id + " keeps its store " + hours + " minutes");
-			assertFalse(TownRoutine.onShift(id, 3 * 3600), "nobody keeps a store at three in the morning");
+			assertTrue(minutes >= 6 * 60 && minutes <= 10 * 60 + 1, "merchant " + id + " keeps its store " + minutes + " minutes");
 		}
-		assertEquals(800, merchants, 60, "four residents in ten");
+		assertEquals(1000, merchants, 60, "five residents in ten");
 	}
 
 	@Test
-	void aboutADozenStoresOpenInSanctumInTheAfternoon() {
-		// 117 residents, most of level 20 and over: four in ten of them, on shifts that overlap at mid afternoon
-		int open = 0;
-		for (int id = 0; id < 117; id++) {
-			if (TownRoutine.isMerchant(id) && TownRoutine.onShift(id, 15 * 3600))
-				open++;
+	void storesAreOpenAtEveryHour() {
+		// the tester asked for merchants at all hours: with 2000 residents, every hour has about a sixth of the merchants on shift
+		for (int hour = 0; hour < 24; hour++) {
+			int open = 0;
+			for (int id = 0; id < 2000; id++) {
+				if (TownRoutine.isMerchant(id) && TownRoutine.onShift(id, hour * 3600 + 1800))
+					open++;
+			}
+			assertTrue(open > 250 && open < 420, open + " merchants on shift at " + hour + ":30");
 		}
-		assertTrue(open >= 6 && open <= 40, open + " stores open at 15:00");
 	}
 
 	@Test

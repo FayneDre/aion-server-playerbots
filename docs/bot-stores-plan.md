@@ -18,9 +18,13 @@ The private store is generic: `PrivateStoreService.createStoreWithItems(player, 
 
 ## Who keeps a store, and when
 
-- **The keepers.** Four in ten residents of level 20 and over on a town map, chosen by object id, so the same characters are the merchants every day.
-- **Their hours.** A shift of 4 to 8 hours, starting between 8:00 and 16:00 by the server's clock, chosen by object id. With Sanctum's 117 residents
-  that is about a dozen stores in the day and none at night, which is also the day's rhythm (milestone 6) for this one activity.
+- **The keepers.** Five in ten residents of level 20 and over on a town map, chosen by object id, so the same characters are the merchants every day.
+- **Their hours.** A shift of 6 to 10 hours, starting at any hour and running past midnight, chosen by object id, so a town has stores open at every
+  hour: the tester asked for merchants at all times. Day shifts came first (4 to 8 hours from 8:00 to 16:00): 36 merchants in Sanctum, 30 open at
+  14:30 and none at night.
+- **Renewed every hour or so** during a shift (`BotStores.renewIfDue`, 60 to 90 minutes by keeper): the store shuts for a moment, what has waited
+  unsold for two hours is taken away for good, the shelf is stocked up to 8 lines and the store opens again. Also asked for by the tester; it is what
+  bounds the generated goods, a keeper putting out 8 lines an hour at most.
 - **The cap.** At most 40 stores open on a map: the crowd test of 20 October gives about 40 characters standing in sight above 40 fps.
 - **During a shift** the resident walks to its stall, opens its store, and does nothing else: the tick returns at once (`BotDay.keepsStore`). It
   refuses duels (busy) and closes the store to join a group, as a player would.
@@ -53,8 +57,8 @@ to it on the first start, 20 October.
 
 - **Quality** is drawn: green 70, blue 25, gold 5, never above the level's ceiling ([bot-gear.md](bot-gear.md)).
 - **Only reachable, tradeable gear** (`BotGearSources`, `BotGearFit.isObtainable`, `BotEquipManager.isPlayerGear`, `ItemTemplate.isTradeable`).
-- **Stock comes into the keeper's bag** through `ItemService.addItem`, as many lines as the bag has room for. It is restocked when a shift opens
-  with fewer than 4 lines left, at most twice a day per keeper. The shelf is kept in memory; after a restart, what in the bag fits the keeper's
+- **Stock comes into the keeper's bag** through `ItemService.addItem`, as many lines as the bag has room for, up to 8 whenever the store
+  opens or is renewed. The shelf is kept in memory; after a restart, what in the bag fits the keeper's
   theme goes back on it, as freshly stocked. Left out at first, it filled four Sanctum keepers' bags after a day of restarts, and they opened nothing.
 - **Names are in French**, since the testers play in French: "Équipement templier 30-35", "Bijoux 40-45", "Pierres 25-35".
 - **Quality is drawn for gear only**: stones are drawn evenly, since most manastones are common and a draw by quality kept landing on the one
