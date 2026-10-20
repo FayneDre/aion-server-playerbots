@@ -193,6 +193,7 @@ final class GlideRoutes {
 		AirTest air, long deadline, Set<GlideLink> blocked) {
 		List<Vector3f> waypoints = new ArrayList<>();
 		Set<Integer> glides = new HashSet<>(), flights = new HashSet<>();
+		Map<Integer, Integer> rides = new HashMap<>();
 		float x = startX, y = startY, z = startZ;
 		GlideLink lastTaken = null;
 		for (int hop = 0; hop + 1 < chain.size(); hop++) {
@@ -235,7 +236,10 @@ final class GlideRoutes {
 				}
 				append(waypoints, walk.waypoints());
 				waypoints.add(new Vector3f(link.toX(), link.toY(), link.toZ()));
-				(link.flight() ? flights : glides).add(waypoints.size() - 1);
+				if (link.ride())
+					rides.put(waypoints.size() - 1, link.rideSeconds());
+				else
+					(link.flight() ? flights : glides).add(waypoints.size() - 1);
 				lastTaken = link;
 				x = link.toX();
 				y = link.toY();
@@ -259,7 +263,7 @@ final class GlideRoutes {
 			return new BotPathFinder.Route(List.of(), last.gaveUp());
 		}
 		append(waypoints, last.waypoints());
-		return new BotPathFinder.Route(waypoints, false, glides, flights);
+		return new BotPathFinder.Route(waypoints, false, glides, flights, rides);
 	}
 
 	/** @return How far the nearest edge a glide leaves this stretch from is, a metre of height counting as {@link #HEIGHT_WEIGHT} across; infinite when none leaves it. */

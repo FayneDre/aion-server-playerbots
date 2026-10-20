@@ -89,7 +89,7 @@ try {
             Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
             & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id
             if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
-            foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'))) {
+            foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'), @('ride', 'rides'))) {
                 if (Test-Path "data/navmesh/$id.$($links[0])") {
                     Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
                     & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id $links[1]

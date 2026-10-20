@@ -941,10 +941,12 @@ public class BotPlaces {
 			if (places >= MAINLAND_PLACES && settled.contains(region) && bound.contains(region))
 				mainland.add(region);
 		});
-		if (mainland.size() > 1)
-			log.info("Map {}: {} stretches of ground are lived on, holding {} place(s)", worldId, mainland.size(),
-				mainland.stream().mapToInt(region -> votes.getOrDefault(region, 0)).sum());
-		return mainland;
+		// and what a lift or a boat joins to it, which is walked to and home from like the rest
+		Set<Integer> lived = mesh.joinedByRide(worldId, mainland);
+		if (lived.size() > 1)
+			log.info("Map {}: {} stretches of ground are lived on, holding {} place(s)", worldId, lived.size(),
+				lived.stream().mapToInt(region -> votes.getOrDefault(region, 0)).sum());
+		return lived;
 	}
 
 	/**

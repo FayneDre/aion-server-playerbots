@@ -118,7 +118,19 @@ Players put their stores near the broker and the warehouse. Those spots are foun
      - The Outer Dock walks to the southern places.
      - Both ends of the Artisans Hall lift stand on the lift itself, and no route leaves them, so a link has to land on the nearest floor that
        joins its side.
-     - The Sky Canal lift is the obelisk district's only way into the city. A bot raised at the obelisk cannot walk home until that link exists. Poles, tents and colliders on 12 more maps carry such parts, and those maps were
+     - The Sky Canal lift seemed to be the obelisk district's only way into the city. That was wrong: the routes tested started on the lift
+       itself. Since the bridges, the obelisk walks into the city (726 m).
+
+     **Ride links, built 20 October** (`RideLinks`, `NavmeshTool <map> rides` writes `<map>.ride`, and `navmesh.ps1 -OpenWorld` rewrites it):
+     - The ends of a ride are put on the largest stretch within 15 m. The planner chains rides like glides, and a ride carries anyone, wings or not.
+     - The body waits where it boards, for the ride's time, and is then put down at the other end (`BotMoveController.rideAcross`). Nothing walks
+       it during the ride, and the AI decides nothing.
+     - The mainland takes in what a ride joins (`NavmeshService.joinedByRide`).
+     - The boat is planned end to end: obelisk → dock → 180 s → Outer Dock → the southern places, in 454 ms.
+     - The Artisans Hall lift is written, but it lands in a closed hall of 506 surfaces. The Protectors Hall floor (`bu_l_davaholl_holl_01a`,
+       flat) is almost absent from the mesh: under its places there are fragments of 18 cells. Still to understand.
+     - The Sky Canal lift is left out: it is a short cut inside one stretch.
+     - Not deployed yet. To check after a restart: the southern places kept, and a bot taking the boat in the log ("boards a ride"). Poles, tents and colliders on 12 more maps carry such parts, and those maps were
      left as they were.
    - The fruitless flask trip. **Fixed 20 October**: a trip made for flasks alone only goes to a keeper who sells one the bot may drink
      (`BotVendorManager.findVendor`, `forFlasks`). Deployed; the count of trips is to be measured again.

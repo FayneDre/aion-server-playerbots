@@ -108,6 +108,15 @@ public class NavmeshTool {
 			System.out.printf("Wrote %d flight links to %s in %d s%n", count, FlightLinks.fileOf(mapId).toAbsolutePath(), (System.currentTimeMillis() - started) / 1000);
 			return;
 		}
+		if (args.length == 2 && args[1].equals("rides")) {
+			int mapId = Integer.parseInt(args[0]);
+			if (!Files.isRegularFile(Navmesh.fileOf(mapId))) {
+				System.out.println("Map " + mapId + " has no mesh: its rides would name stretches of ground nothing knows");
+				System.exit(1);
+			}
+			RideLinks.writeAlone(mapId).forEach(System.out::println);
+			return;
+		}
 		if (args.length == 2 && args[1].equals("audit")) {
 			audit(Integer.parseInt(args[0]));
 			return;
@@ -141,6 +150,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> glidecheck   the glide links the map would have, their weight, and which stranded obelisks they free; writes nothing");
 			System.out.println("       NavmeshTool <mapId> glides       writes the map's glide links alone, the mesh untouched; the server reads them on its next start");
 			System.out.println("       NavmeshTool <mapId> flights      writes the map's flight links between islands alone, the mesh untouched; read on the next start");
+			System.out.println("       NavmeshTool <mapId> rides        writes the map's lifts and boats (RideLinks) onto its floors, the mesh untouched; read on the next start");
 			System.out.println("       NavmeshTool <mapId> blockers <x> <y> <z>   which placed models have a wall or something overhead at that spot");
 			return;
 		}
@@ -267,7 +277,7 @@ public class NavmeshTool {
 			// on foot only: a glide or a crossing by air goes through the air between islands, which the server checks for itself before it flies one
 			List<Vector3f> onFoot = new ArrayList<>();
 			for (int i = 0; i < route.waypoints().size(); i++) {
-				if (route.glides().contains(i) || route.flights().contains(i)) {
+				if (route.glides().contains(i) || route.flights().contains(i) || route.rides().containsKey(i)) {
 					if (onFoot.size() > 1)
 						planned.add(onFoot);
 					onFoot = new ArrayList<>();
@@ -426,8 +436,12 @@ public class NavmeshTool {
 			length += route.get(i).distance(route.get(i - 1));
 		float direct = route.get(0).distance(route.get(route.size() - 1));
 		System.out.printf("Route of %d waypoints, %.0f m walked for %.0f m as the crow flies, in %d ms%n", route.size(), length, direct, elapsed);
-		for (Vector3f waypoint : route)
-			System.out.printf("  %.1f %.1f %.1f%n", waypoint.x, waypoint.y, waypoint.z);
+		for (int i = 0; i < route.size(); i++) {
+			Vector3f waypoint = route.get(i);
+			Integer ride = result.rides().get(i);
+			String how = ride != null ? "  (a ride of " + ride + " s)" : result.glides().contains(i) ? "  (a glide)" : result.flights().contains(i) ? "  (a flight)" : "";
+			System.out.printf("  %.1f %.1f %.1f%s%n", waypoint.x, waypoint.y, waypoint.z, how);
+		}
 		System.out.println("Wrote " + writeRouteImage(mapId, mesh, route).toAbsolutePath());
 		System.out.println("Walls of placed models along each stretch, at a body's height:");
 		Blockers.crossings(mapId, route);

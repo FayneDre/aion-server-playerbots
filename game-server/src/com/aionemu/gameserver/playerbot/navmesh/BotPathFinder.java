@@ -74,10 +74,11 @@ public class BotPathFinder {
 	 * @param waypoints From start to goal, empty when there is no route.
 	 * @param glides the indexes of the waypoints that are reached by gliding down from the one before, which is not a walk and is not planned as one
 	 * @param flights the indexes of the waypoints that are reached by flying across from the one before, an island's edge to another's
+	 * @param rides the indexes of the waypoints that are reached by a lift or a boat from the one before, each with how many seconds it takes
 	 * @param gaveUp true when the search ran out of budget rather than proving there is no way. The caller can retry in steps, or fall back to
 	 *          walking straight at the goal, but it must not conclude the place is unreachable.
 	 */
-	public record Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights) {
+	public record Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights, Map<Integer, Integer> rides) {
 
 		static final Route NONE = new Route(List.of(), true);
 
@@ -87,6 +88,10 @@ public class BotPathFinder {
 
 		public Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides) {
 			this(waypoints, gaveUp, glides, Set.of());
+		}
+
+		public Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights) {
+			this(waypoints, gaveUp, glides, flights, Map.of());
 		}
 
 		public boolean isEmpty() {

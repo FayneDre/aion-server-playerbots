@@ -625,7 +625,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// region's population.
 			if (bot.isInGroup() || bot.isInAlliance())
 				return false;
-			if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isTravelling())
+			if (bot.getMoveController() instanceof BotMoveController moveController && (moveController.isTravelling() || moveController.isRiding()))
 				return false;
 			// And never in the air. Despawning takes the body out of the world mid flight -- the flight notices, but a player watching sees a bot rise
 			// and vanish, and the next review puts it back on the ground somewhere else. A journey is already refused here; a flight is a journey
@@ -658,6 +658,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		}
 		if (moves() != null && moves().isGliding() && !getOwner().isDead())
 			return; // the same for a live body on a glide: a fight picked up on the way down would be walked to from the air. A dead one ends its glide below
+		if (moves() != null && moves().isRiding() && !getOwner().isDead())
+			return; // and on a lift or a boat, which puts the body down at the other end by itself
 		sheathWhenCalm();
 		abandonStalledFight();
 		// A bot crosses its level, and joins and leaves a group, while it is playing rather than while it is loading, so both are settled here rather

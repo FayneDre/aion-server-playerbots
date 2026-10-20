@@ -8,6 +8,7 @@ import com.aionemu.gameserver.controllers.movement.PlayerMoveController;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
@@ -20,6 +21,7 @@ import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
+import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
 import com.aionemu.gameserver.playerbot.BotScheduler;
@@ -49,6 +51,8 @@ public class BotMoveController extends PlayerMoveController {
 	private static final Logger log = LoggerFactory.getLogger(BotMoveController.class);
 
 	private static final float ARRIVE_OFFSET = 0.5f;
+	/** How far from where it boarded a body may stand when its ride arrives and still be carried: further, something else moved it. */
+	private static final float RIDE_BOARDING_DRIFT = 5;
 	/**
 	 * The ground is sampled on every move tick. Sampling less often makes the bot follow a straight line between two heights and then jump to the
 	 * real one, which reads as a stutter on sloped ground.
@@ -108,6 +112,12 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile Set<Integer> routeGlides = Set.of(), pendingGlides = Set.of();
 	/** The indexes of {@link #route}, and of {@link #pendingRoute}, whose waypoint is reached by flying across from the one before: an island's edge to another's. */
 	private volatile Set<Integer> routeFlights = Set.of(), pendingFlights = Set.of();
+	/** The indexes of {@link #route}, and of {@link #pendingRoute}, whose waypoint is reached by a lift or a boat from the one before, with how long it takes. */
+	private volatile Map<Integer, Integer> routeRides = Map.of(), pendingRides = Map.of();
+	/** How long the ride to the waypoint aimed at takes, in seconds; 0 when the waypoint is not a ride's landing. */
+	private volatile int aimRideSeconds;
+	/** Until when the body is on a lift or a boat, in milliseconds: it is not walked anywhere, and arrives when the time is up. */
+	private volatile long ridingUntil;
 	/** Whether the point being gone to is a glide's landing: the leg is flown, wings out, and not walked off the edge. */
 	private volatile boolean aimIsGlide;
 	/** Whether the waypoint aimed at is the landing of a crossing by air, which {@link BotFlight} flies. */
@@ -228,6 +238,9 @@ public class BotMoveController extends PlayerMoveController {
 		// taken and cleared first, whatever happens below: it belongs to this call alone, and a leftover would keep the next journey out of ground it has no reason to
 		Avoidance avoid = nextAvoidance;
 		nextAvoidance = Avoidance.NONE;
+		if (isRiding())
+			return true; // on a lift or a boat: on its way, and nothing walks it off
+
 		// Answering "no" to a destination already found to have no route, before doing anything else.
 		// A long route is planned on another thread, so by the time the answer comes back this method has long since returned "on its way". The
 		// caller therefore never hears the refusal, asks again on the next tick, and gets "on its way" again: two bots stood in a pocket of the map
@@ -283,6 +296,7 @@ public class BotMoveController extends PlayerMoveController {
 				route = List.of();
 				routeGlides = Set.of();
 				routeFlights = Set.of();
+				routeRides = Map.of();
 				routeIndex = 0;
 			}
 			plannedForX = x;
@@ -555,6 +569,7 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		pendingGlides = answer.glides();
 		pendingFlights = answer.flights();
+		pendingRides = answer.rides();
 		pendingRoute = planned;
 		log.info("Bot {} has a route of {} waypoints to {} from {}{}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY),
 			String.format("%.1f %.1f", fromX, fromY), why);
@@ -567,6 +582,11 @@ public class BotMoveController extends PlayerMoveController {
 		if (!answer.flights().isEmpty()) {
 			Vector3f landing = planned.get(answer.flights().iterator().next());
 			log.info("Bot {} plans {} crossing(s) by air, the first landing at {}", owner.getName(), answer.flights().size(),
+				String.format("%.1f %.1f %.1f", landing.getX(), landing.getY(), landing.getZ()));
+		}
+		if (!answer.rides().isEmpty()) {
+			Vector3f landing = planned.get(answer.rides().keySet().iterator().next());
+			log.info("Bot {} plans {} ride(s), the first arriving at {}", owner.getName(), answer.rides().size(),
 				String.format("%.1f %.1f %.1f", landing.getX(), landing.getY(), landing.getZ()));
 		}
 		// A bot that waited for this plan is standing still, so nothing will come back to pick it up: no leg is running, so continueToGoal is never
@@ -590,6 +610,7 @@ public class BotMoveController extends PlayerMoveController {
 		route = planned;
 		routeGlides = pendingGlides;
 		routeFlights = pendingFlights;
+		routeRides = pendingRides;
 		return true;
 	}
 
@@ -607,16 +628,19 @@ public class BotMoveController extends PlayerMoveController {
 		// second time -- an index out of bounds that cost a bot its decision tick in the log of 16 October
 		List<Vector3f> current = route;
 		Set<Integer> glides = routeGlides, flights = routeFlights;
+		Map<Integer, Integer> rides = routeRides;
 		// the index too: two threads stepping it at once walked it past the end of a two waypoint route
 		int index = routeIndex;
 		while (index < current.size()) {
 			boolean glide = glides.contains(index), flight = flights.contains(index);
+			Integer ride = rides.get(index);
 			Vector3f waypoint = current.get(index++);
 			routeIndex = index;
 			// the first waypoint is the bot's own cell, and a route may pass close to where it already stands; a landing never is, however close
-			// across, since it is metres below
-			if (!glide && !flight && PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
+			// across, since it is metres below, and the top of a lift stands right over its foot
+			if (!glide && !flight && ride == null && PositionUtil.getDistance(owner.getX(), owner.getY(), waypoint.getX(), waypoint.getY()) < ARRIVE_OFFSET)
 				continue;
+			aimRideSeconds = ride == null ? 0 : ride;
 			goalX = waypoint.getX();
 			goalY = waypoint.getY();
 			goalZ = waypoint.getZ();
@@ -635,6 +659,7 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		aimIsGlide = false;
 		aimIsFlight = false;
+		aimRideSeconds = 0;
 		boolean changed = goalX != finalX || goalY != finalY;
 		goalX = finalX;
 		goalY = finalY;
@@ -645,6 +670,8 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	private boolean startNextLeg() {
+		if (aimRideSeconds > 0)
+			return rideAcross();
 		if (aimIsFlight)
 			return flyAcross();
 		if (aimIsGlide && !gliding)
@@ -719,6 +746,45 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	/**
+	 * Takes the lift or the boat the route reached: the waypoint aimed at is where it arrives, and the bot stands where it is boarded.
+	 * <p>
+	 * The client animates the ride and the geometry holds nothing of it, so the body waits where it boards for as long as the ride takes and is then put down
+	 * at the other end. As after a flight, the journey is handed back as over and planned again from the arrival. Whatever moved the body meanwhile (a rescue, a
+	 * death, a group's summons) cancels the ride, and the body stays where that left it.
+	 *
+	 * @return true, the bot being on its way.
+	 */
+	private boolean rideAcross() {
+		int seconds = aimRideSeconds;
+		aimRideSeconds = 0;
+		Vector3f arrival = new Vector3f(goalX, goalY, goalZ);
+		float boardedX = owner.getX(), boardedY = owner.getY();
+		int worldId = owner.getWorldId(), instanceId = owner.getInstanceId();
+		ridingUntil = System.currentTimeMillis() + seconds * 1000L;
+		hasGoal = false; // the ride has the body; the journey goes on from the arrival with a plan of its own
+		MoveTaskManager.getInstance().removeCreature(owner);
+		if (started.compareAndSet(true, false))
+			setAndSendStopMove(owner);
+		log.info("Bot {} boards a ride at {} and arrives at {} in {} s", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
+			describe(arrival.getX(), arrival.getY(), arrival.getZ()), seconds);
+		BotScheduler.getInstance().schedule(() -> {
+			ridingUntil = 0;
+			if (owner.isDead() || !owner.isSpawned() || owner.getWorldId() != worldId || owner.getInstanceId() != instanceId
+				|| PositionUtil.getDistance(owner.getX(), owner.getY(), boardedX, boardedY) > RIDE_BOARDING_DRIFT) {
+				log.info("Bot {} is no longer where it boarded its ride, and stays where it is", owner.getName());
+				return;
+			}
+			TeleportService.teleportTo(owner, worldId, instanceId, arrival.getX(), arrival.getY(), arrival.getZ());
+		}, seconds * 1000L);
+		return true;
+	}
+
+	/** @return true while the body is on a lift or a boat: nothing walks it, and it arrives by itself. */
+	public boolean isRiding() {
+		return System.currentTimeMillis() < ridingUntil;
+	}
+
+	/**
 	 * Flies the crossing the route reached the edge of: the waypoint aimed at is the landing on the other island, and the bot stands at the take-off.
 	 * <p>
 	 * The flight owns the body until it lands, and the journey is handed back as over: the next call for a route plans it again from the island the bot landed on,
@@ -766,6 +832,7 @@ public class BotMoveController extends PlayerMoveController {
 		route = List.of();
 		routeGlides = Set.of();
 		routeFlights = Set.of();
+		routeRides = Map.of();
 		routeIndex = 0;
 		plannedForX = x;
 		plannedForY = y;
@@ -836,9 +903,10 @@ public class BotMoveController extends PlayerMoveController {
 	private int resumeIndex() {
 		List<Vector3f> current = route;
 		Set<Integer> glides = routeGlides, flights = routeFlights;
+		Map<Integer, Integer> rides = routeRides;
 		int index = 0;
-		while (index + 1 < current.size() && index < RESUME_LOOKAHEAD && !glides.contains(index) && !flights.contains(index)
-			&& !glides.contains(index + 1) && !flights.contains(index + 1)) {
+		while (index + 1 < current.size() && index < RESUME_LOOKAHEAD && !glides.contains(index) && !flights.contains(index) && !rides.containsKey(index)
+			&& !glides.contains(index + 1) && !flights.contains(index + 1) && !rides.containsKey(index + 1)) {
 			Vector3f here = current.get(index), next = current.get(index + 1);
 			if (PositionUtil.getDistance(owner.getX(), owner.getY(), next.getX(), next.getY())
 				> PositionUtil.getDistance(here.getX(), here.getY(), next.getX(), next.getY()))
@@ -916,6 +984,7 @@ public class BotMoveController extends PlayerMoveController {
 		route = List.of();
 		routeGlides = Set.of();
 		routeFlights = Set.of();
+		routeRides = Map.of();
 		routeIndex = 0;
 		// a plan asked for up on the edge is no plan for the ground below: taken on landing, it would walk the bot back towards the top
 		pendingRoute = null;
@@ -988,6 +1057,7 @@ public class BotMoveController extends PlayerMoveController {
 		gliding = false;
 		aimIsGlide = false;
 		aimIsFlight = false;
+		aimRideSeconds = 0;
 		flying = false;
 		glideTurns.clear();
 		// the time spent in the air is not time spent making no headway on the ground
@@ -1007,6 +1077,7 @@ public class BotMoveController extends PlayerMoveController {
 		gliding = false;
 		aimIsGlide = false;
 		aimIsFlight = false;
+		aimRideSeconds = 0;
 		glideTurns.clear();
 		endFlight();
 	}
@@ -1063,9 +1134,11 @@ public class BotMoveController extends PlayerMoveController {
 		route = List.of();
 		routeGlides = Set.of();
 		routeFlights = Set.of();
+		routeRides = Map.of();
 		pendingRoute = null;
 		aimIsGlide = false;
 		aimIsFlight = false;
+		aimRideSeconds = 0;
 		routeIndex = 0;
 		MoveTaskManager.getInstance().removeCreature(owner);
 		if (started.compareAndSet(true, false)) {
@@ -1090,9 +1163,11 @@ public class BotMoveController extends PlayerMoveController {
 		route = List.of();
 		routeGlides = Set.of();
 		routeFlights = Set.of();
+		routeRides = Map.of();
 		pendingRoute = null;
 		aimIsGlide = false;
 		aimIsFlight = false;
+		aimRideSeconds = 0;
 		routeIndex = 0;
 		MoveTaskManager.getInstance().removeCreature(owner);
 		if (!started.compareAndSet(true, false))

@@ -6,10 +6,22 @@ package com.aionemu.gameserver.playerbot.navmesh;
  * One way only. What is below is reached from above and never the other way round, so the planner follows a link from {@code fromRegion} to {@code toRegion} and does not
  * know the reverse. A flight link ({@link FlightLinks}) is the same edge flown under power, in either direction and across open air, which is why it
  * shares the type: the planner chains both alike, and only the body that follows the route needs to know which it is. The regions are the ids {@link Heightfield#regions} gave when the file was written, which are the ones the coarse grid carries.
+ * <p>
+ * A ride ({@link RideLinks}) is the third kind: a lift or a boat the client animates and the geometry does not hold, waited on at one end and stepped off at the
+ * other, {@code rideSeconds} later.
  */
-public record GlideLink(float fromX, float fromY, float fromZ, float toX, float toY, float toZ, int fromRegion, int toRegion, boolean flight) {
+public record GlideLink(float fromX, float fromY, float fromZ, float toX, float toY, float toZ, int fromRegion, int toRegion, boolean flight, int rideSeconds) {
 
 	public GlideLink(float fromX, float fromY, float fromZ, float toX, float toY, float toZ, int fromRegion, int toRegion) {
 		this(fromX, fromY, fromZ, toX, toY, toZ, fromRegion, toRegion, false);
+	}
+
+	public GlideLink(float fromX, float fromY, float fromZ, float toX, float toY, float toZ, int fromRegion, int toRegion, boolean flight) {
+		this(fromX, fromY, fromZ, toX, toY, toZ, fromRegion, toRegion, flight, 0);
+	}
+
+	/** @return true for a lift or a boat, which nothing about the air decides. */
+	public boolean ride() {
+		return rideSeconds > 0;
 	}
 }

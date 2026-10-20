@@ -87,7 +87,7 @@ public class NavmeshService {
 
 			@Override
 			public boolean isClear(GlideLink link) {
-				return canGlide && isLinkClear(bot, link);
+				return link.ride() || canGlide && isLinkClear(bot, link); // a lift carries anyone, wings or not
 			}
 
 			@Override
@@ -155,6 +155,8 @@ public class NavmeshService {
 
 	/** @return Whether a link can be taken now: a crossing flown at one of its heights, or a glide down a clear line. A refusal is logged at debug, the one way to see which link of a plan was turned down. */
 	private static boolean isLinkClear(Player bot, GlideLink link) {
+		if (link.ride())
+			return true; // carried, not flown: the air has nothing to say
 		boolean clear = link.flight() ? BotFlight.crossing(bot, new Vector3f(link.fromX(), link.fromY(), link.fromZ()), new Vector3f(link.toX(), link.toY(), link.toZ())) != null
 			: isAirClear(bot, link);
 		if (!clear && log.isDebugEnabled())
@@ -359,6 +361,25 @@ public class NavmeshService {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * @return The stretches given, with every stretch a lift or a boat carries a body to from them and back: Sanctum's Protectors Hall and Outer Dock are
+	 *         lived in only through these. Rides are written both ways, so what is reached is also left.
+	 */
+	public Set<Integer> joinedByRide(int worldId, Set<Integer> regions) {
+		Set<Integer> joined = new HashSet<>(regions);
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return joined;
+		ArrayDeque<Integer> pending = new ArrayDeque<>(regions);
+		while (!pending.isEmpty()) {
+			for (GlideLink link : mesh.glidesFrom(pending.poll())) {
+				if (link.ride() && joined.add(link.toRegion()))
+					pending.add(link.toRegion());
+			}
+		}
+		return joined;
 	}
 
 	/**
