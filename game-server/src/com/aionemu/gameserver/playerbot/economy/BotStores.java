@@ -42,7 +42,7 @@ public final class BotStores {
 	private static final int STOCKED_LINES = 8;
 	/** How many restocks a keeper gets in a day, which is what keeps generated goods from flooding a town. */
 	private static final int RESTOCKS_PER_DAY = 2;
-	/** How far round a broker or a warehouse keeper a stall may be, and how far from the next stall it must be, in metres. */
+	/** How far round a broker or a warehouse keeper a stall may be on a map with no markets of its own, and how far from the next stall it must be, in metres. */
 	private static final float STALL_SPREAD = 15, STALL_SPACING = 3;
 	private static final int STALL_ATTEMPTS = 12;
 
@@ -60,30 +60,80 @@ public final class BotStores {
 	private BotStores() {
 	}
 
+	/** Where a town's stores gather, as players put theirs, and what share of its keepers each place takes. */
+	record Market(float x, float y, float z, float spread, int weight) {
+	}
+
+	/**
+	 * The market places a tester stood at with {@code //bot note} on 20 October, and the shares asked for: about even between the street from the Exalted
+	 * Path to the Elyos Square, the entrance of the Hall of Prosperity and the hall itself, a little more at the entrance. Stalls round the brokers and the
+	 * warehouses put nearly every store of Sanctum in one hall. A map with no entry here still uses its brokers and warehouses.
+	 */
+	private static final Map<Integer, List<Market>> MARKETS = Map.of(110010000, List.of(
+		new Market(1357, 1512, 569, 12, 10), // the entrance of the Exalted Path
+		new Market(1400, 1513, 573, 12, 10), // half way along the street
+		new Market(1451, 1511, 573, 12, 10), // the entrance of the Elyos Square
+		new Market(1471, 1442, 573, 15, 40), // in front of the Hall of Prosperity
+		new Market(1403, 1412, 573, 15, 30))); // in the Hall of Prosperity
+
 	/**
 	 * @param crowded The caller's own objection to a spot: somebody standing there.
-	 * @return The keeper's stall, the same one while it holds it, or null when no spot round the map's brokers and warehouses is free.
+	 * @return The keeper's stall, the same one while it holds it, or null when no spot of the map's markets is free.
 	 */
 	public static synchronized Vector3f stallFor(Player keeper, Predicate<Vector3f> crowded) {
 		Map<Integer, Vector3f> stalls = stallsByMap.computeIfAbsent(keeper.getWorldId(), id -> new ConcurrentHashMap<>());
 		Vector3f held = stalls.get(keeper.getObjectId());
 		if (held != null)
 			return held;
-		List<Vector3f> sites = new ArrayList<>(TownServices.keepersOf(keeper, TownServices.Service.BROKER));
-		sites.addAll(TownServices.keepersOf(keeper, TownServices.Service.WAREHOUSE));
-		if (sites.isEmpty() || stalls.size() >= STORES_PER_MAP)
+		if (stalls.size() >= STORES_PER_MAP)
 			return null;
-		Vector3f keeperStands = sites.get(Math.floorMod(keeper.getObjectId(), sites.size()));
-		// the floor in front of the counter, not the keeper's feet: Pandaemonium's brokers and warehouse keepers stand in pockets behind theirs, and a
-		// stall looked for round their feet was refused 27 times of 31 on 20 October, no spot free or no way to it, as shop trips were on 18 October
-		Vector3f front = BotVendorManager.frontOf(keeper.getWorldId(), keeperStands);
-		Vector3f site = front != null ? front : keeperStands;
 		Predicate<Vector3f> taken = spot -> crowded.test(spot) || stalls.values().stream()
 			.anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), spot.getX(), spot.getY()) < STALL_SPACING);
-		Vector3f stall = BotPlaces.spotAround(keeper.getWorldId(), site, STALL_SPREAD, STALL_ATTEMPTS, keeper.getObjectId(), taken);
-		if (stall != null)
-			stalls.put(keeper.getObjectId(), stall);
-		return stall;
+		// the keeper's own market first, then the others: a full one sends it along the street rather than home for half an hour
+		for (Market market : marketsFor(keeper)) {
+			Vector3f stall = BotPlaces.spotAround(keeper.getWorldId(), new Vector3f(market.x(), market.y(), market.z()), market.spread(), STALL_ATTEMPTS,
+				keeper.getObjectId(), taken);
+			if (stall != null) {
+				stalls.put(keeper.getObjectId(), stall);
+				return stall;
+			}
+		}
+		return null;
+	}
+
+	/** @return The markets the keeper tries, its own first, chosen by its id with each market's weight, the same every day. */
+	private static List<Market> marketsFor(Player keeper) {
+		List<Market> markets = MARKETS.get(keeper.getWorldId());
+		if (markets == null)
+			markets = aroundTheCounters(keeper);
+		if (markets.isEmpty())
+			return markets;
+		int total = markets.stream().mapToInt(Market::weight).sum();
+		int roll = Math.floorMod(keeper.getObjectId() * 0x2C1B3C6D, total);
+		int own = 0;
+		for (; own < markets.size() - 1 && roll >= markets.get(own).weight(); own++)
+			roll -= markets.get(own).weight();
+		List<Market> ordered = new ArrayList<>(markets.size());
+		for (int i = 0; i < markets.size(); i++)
+			ordered.add(markets.get((own + i) % markets.size()));
+		return ordered;
+	}
+
+	/**
+	 * @return The map's brokers and warehouse keepers as markets of equal weight, for a town nobody has said where its stores gather: the floor in front of
+	 *         each counter, not the keeper's feet. Pandaemonium's stand in pockets behind theirs, and a stall looked for round their feet was refused 27
+	 *         times of 31 on 20 October, no spot free or no way to it, as shop trips were on 18 October.
+	 */
+	private static List<Market> aroundTheCounters(Player keeper) {
+		List<Vector3f> keepers = new ArrayList<>(TownServices.keepersOf(keeper, TownServices.Service.BROKER));
+		keepers.addAll(TownServices.keepersOf(keeper, TownServices.Service.WAREHOUSE));
+		List<Market> markets = new ArrayList<>(keepers.size());
+		for (Vector3f stands : keepers) {
+			Vector3f front = BotVendorManager.frontOf(keeper.getWorldId(), stands);
+			Vector3f site = front != null ? front : stands;
+			markets.add(new Market(site.getX(), site.getY(), site.getZ(), STALL_SPREAD, 1));
+		}
+		return markets;
 	}
 
 	/** Gives up the keeper's stall, for another keeper to take. */

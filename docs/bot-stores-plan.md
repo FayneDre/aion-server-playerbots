@@ -27,6 +27,12 @@ The private store is generic: `PrivateStoreService.createStoreWithItems(player, 
 
 ## Where stores stand
 
+**Sanctum has markets of its own** (`BotStores.MARKETS`), from a tester's notes of 20 October, after the stalls round the brokers and warehouses
+put nearly every store in one hall: the street from the Exalted Path (1357 1512) by its middle (1400 1513) to the Elyos Square (1451 1511), 10 each;
+the entrance of the Hall of Prosperity (1471 1442), 40; the hall itself (1403 1412), 30. A keeper tries its own market first, then the others. The
+rule below holds for a map with no markets of its own, Pandaemonium today.
+
+
 Players put their stores near the broker and the warehouse. A stall is a spot within 15 m of a broker or a warehouse keeper (`TownServices`), on
 walkable ground, at least 3 m from any other stall and any character, chosen from the keeper's object id so it is the same every day. Taken stalls are
 registered per map (`BotStores`), so two keepers never share one.
