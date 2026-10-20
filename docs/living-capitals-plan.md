@@ -130,7 +130,13 @@ Players put their stores near the broker and the warehouse. Those spots are foun
      - The Artisans Hall lift is written, but it lands in a closed hall of 506 surfaces. The Protectors Hall floor (`bu_l_davaholl_holl_01a`,
        flat) is almost absent from the mesh: under its places there are fragments of 18 cells. Still to understand.
      - The Sky Canal lift is left out: it is a short cut inside one stretch.
-     - Not deployed yet. To check after a restart: the southern places kept, and a bot taking the boat in the log ("boards a ride"). Poles, tents and colliders on 12 more maps carry such parts, and those maps were
+     - **Watched 20 October.** Sanctum keeps 29 of its 34 places and wants 116. A resident of the Outer Dock took the boat on its own to sell
+       in the city. The tester saw it appear out of nowhere, so a rider is now hidden from the moment it boards (`HIDE20`, as a hiding skill
+       does) and shown at the arrival. The boat is the client's alone, and no data says when it sails.
+     - **A regression found with it.** Short hops are planned on the bot's own thread only on a map without links, and the rides gave Sanctum
+       links. Every few steps of 200 residents then went to the four route threads: 13 000 waits a minute, 260 answers a minute arriving too
+       late, and a `goto` waiting over three minutes. Only air links count now (`Navmesh.hasAirLinks`): after the fix, 47 waits and no late
+       answer a minute, and a bot sent from the Artisans Hall had its route in a second, walked, boarded and landed at the Outer Dock. Poles, tents and colliders on 12 more maps carry such parts, and those maps were
      left as they were.
    - The fruitless flask trip. **Fixed 20 October**: a trip made for flasks alone only goes to a keeper who sells one the bot may drink
      (`BotVendorManager.findVendor`, `forFlasks`). Deployed; the count of trips is to be measured again.

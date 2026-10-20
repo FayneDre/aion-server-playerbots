@@ -18,9 +18,11 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.EmotionType;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
+import com.aionemu.gameserver.model.gameobjects.state.CreatureVisualState;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
+import com.aionemu.gameserver.network.aion.serverpackets.SM_PLAYER_STATE;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
@@ -255,8 +257,10 @@ public class BotMoveController extends PlayerMoveController {
 			return false;
 		// as near as it gets, already found from here: standing still is the answer, and asking the planner again is the same answer twice a second
 		if (System.currentTimeMillis() < nearestUntil && PositionUtil.getDistance(nearestForX, nearestForY, x, y) < 1
-			&& PositionUtil.getDistance(nearestAtX, nearestAtY, owner.getX(), owner.getY()) < 1)
+			&& PositionUtil.getDistance(nearestAtX, nearestAtY, owner.getX(), owner.getY()) < 1) {
+			log.debug("Bot {} is already as near as it gets to {}", owner.getName(), describe(x, y, z));
 			return true;
+		}
 		hasNoRoute = false; // somewhere else is being asked for, so the last refusal says nothing about it
 		BotRestManager.standUp(owner); // a seated bot would slide across the ground
 		// CM_MOVE does this for a real player: without it the bot stays blinking and untargetable for the full protection minute
@@ -277,15 +281,23 @@ public class BotMoveController extends PlayerMoveController {
 		// does, every tick — restarts it from a position already off to one side, and the fresh deviation is measured from a bearing that has itself
 		// rotated. The deviations then compound and the bot arcs further and further out for an obstacle it had already cleared. Solo movement never
 		// showed this because it waits for the leg to end before looking again, by which time the direct way is usually open.
-		if (sameJourney && onDetour && !isArrived())
+		if (sameJourney && onDetour && !isArrived()) {
+			log.debug("Bot {} keeps to its sidestep towards {}", owner.getName(), describe(x, y, z));
 			return true;
+		}
 		// a planned route knows about walls and low obstacles the probes cannot see; without one the bot walks straight at the goal as before
 		if (pendingRoute != null && PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= FOLLOW_DRIFT && adoptPendingRoute()) {
 			// the plan asked for on an earlier call has arrived: taking it is the whole point of having waited, and planning again here would throw
 			// the answer away and start the wait over
 			routeIndex = resumeIndex();
 			aimAtNextWaypoint();
-		} else if (!isPlanComing(x, y) && (route.isEmpty() || PositionUtil.getDistance(plannedForX, plannedForY, x, y) > REPLAN_DISTANCE)) {
+		} else if (isPlanComing(x, y) || !route.isEmpty() && PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= REPLAN_DISTANCE) {
+			if (log.isDebugEnabled())
+				log.debug("Bot {} asks for no route to {}: {}", owner.getName(), describe(x, y, z),
+					isPlanComing(x, y) ? "one is on its way" : "the one in hand leads there, at waypoint " + routeIndex + " of " + route.size());
+			if (routeIndex >= route.size())
+				aimAtNextWaypoint(); // keeping the route, but its waypoints are all behind us: the last stretch is walked at the destination itself
+		} else {
 			// said on the route's line: a bot handed the same route every second was the one fault the log could not explain without it
 			String why = route.isEmpty() ? "" : ", the destination having moved";
 			float fromX = owner.getX(), fromY = owner.getY();
@@ -313,9 +325,6 @@ public class BotMoveController extends PlayerMoveController {
 			} else if (!walkOn) {
 				aimAtNextWaypoint(); // nothing in hand yet: the destination itself, until the plan comes
 			} // walking on, the waypoint aimed at is still the right one
-		} else if (routeIndex >= route.size()) {
-			// keeping the route, but its waypoints are all behind us: the last stretch is walked at the destination itself, which may have shifted
-			aimAtNextWaypoint();
 		}
 		// A short journey is planned inside the call above, so offerRoute has already run and may have proved there is no way -- it says so by
 		// clearing hasGoal. Falling through from here would hand the goal to the reactive layer, which walks straight at it, and the reset just
@@ -504,8 +513,12 @@ public class BotMoveController extends PlayerMoveController {
 	 * at the end of the current leg, which keeps a background thread from rewriting the destination mid-stride.
 	 */
 	private void offerRoute(BotPathFinder.Route answer, float forX, float forY, float fromX, float fromY, String why) {
-		if (!hasGoal || PositionUtil.getDistance(forX, forY, finalX, finalY) > FOLLOW_DRIFT)
-			return; // an answer to a journey that is over, or to an older one
+		if (!hasGoal || PositionUtil.getDistance(forX, forY, finalX, finalY) > FOLLOW_DRIFT) {
+			// an answer to a journey that is over, or to an older one; said at debug, since a route asked for and never heard of is otherwise a silence
+			log.debug("Bot {} drops the route to {}: {}", owner.getName(), String.format("%.1f %.1f", forX, forY),
+				hasGoal ? "now going to " + String.format("%.1f %.1f", finalX, finalY) : "no journey any more");
+			return;
+		}
 		awaitingPlan = false; // answered, whether or not it found a way: either way the bot stops waiting
 		List<Vector3f> planned = answer.waypoints();
 		if (planned.isEmpty()) {
@@ -748,9 +761,10 @@ public class BotMoveController extends PlayerMoveController {
 	/**
 	 * Takes the lift or the boat the route reached: the waypoint aimed at is where it arrives, and the bot stands where it is boarded.
 	 * <p>
-	 * The client animates the ride and the geometry holds nothing of it, so the body waits where it boards for as long as the ride takes and is then put down
-	 * at the other end. As after a flight, the journey is handed back as over and planned again from the arrival. Whatever moved the body meanwhile (a rescue, a
-	 * death, a group's summons) cancels the ride, and the body stays where that left it.
+	 * The client animates the ride and the geometry holds nothing of it, nor says when the boat sails, so the body is hidden as it boards, as if it had stepped
+	 * aboard, and shown again at the other end once the ride's time is up. Waiting on the quay in sight and then vanishing read, in game on 20 October, as a
+	 * character standing about for three minutes and then appearing out of nowhere. As after a flight, the journey is handed back as over and planned again
+	 * from the arrival. Whatever moved the body meanwhile (a rescue, a death, a group's summons) cancels the ride, and the body is shown where that left it.
 	 *
 	 * @return true, the bot being on its way.
 	 */
@@ -767,8 +781,11 @@ public class BotMoveController extends PlayerMoveController {
 			setAndSendStopMove(owner);
 		log.info("Bot {} boards a ride at {} and arrives at {} in {} s", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
 			describe(arrival.getX(), arrival.getY(), arrival.getZ()), seconds);
+		setRideHidden(true);
 		BotScheduler.getInstance().schedule(() -> {
 			ridingUntil = 0;
+			// shown again before it is moved: hidden while it arrives, nobody at the arrival would be told it is there
+			setRideHidden(false);
 			if (owner.isDead() || !owner.isSpawned() || owner.getWorldId() != worldId || owner.getInstanceId() != instanceId
 				|| PositionUtil.getDistance(owner.getX(), owner.getY(), boardedX, boardedY) > RIDE_BOARDING_DRIFT) {
 				log.info("Bot {} is no longer where it boarded its ride, and stays where it is", owner.getName());
@@ -777,6 +794,21 @@ public class BotMoveController extends PlayerMoveController {
 			TeleportService.teleportTo(owner, worldId, instanceId, arrival.getX(), arrival.getY(), arrival.getZ());
 		}, seconds * 1000L);
 		return true;
+	}
+
+	/**
+	 * Hides the body from every player but its group's, the way a hiding skill does, or shows it again. The deepest hide there is, so nobody's sight sees
+	 * through it: a passenger is aboard, not crouching on the quay.
+	 */
+	private void setRideHidden(boolean hidden) {
+		if (hidden)
+			owner.setVisualState(CreatureVisualState.HIDE20);
+		else if (owner.isInVisualState(CreatureVisualState.HIDE20))
+			owner.unsetVisualState(CreatureVisualState.HIDE20);
+		else
+			return;
+		if (owner.isSpawned())
+			PacketSendUtility.broadcastPacket(owner, new SM_PLAYER_STATE(owner));
 	}
 
 	/** @return true while the body is on a lift or a boat: nothing walks it, and it arrives by itself. */

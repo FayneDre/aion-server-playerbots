@@ -297,8 +297,10 @@ public class NavmeshService {
 		Navmesh mesh = get(bot.getWorldId());
 		if (mesh == null)
 			return;
-		// a short hop on a map glided down can still become a search for a chain of glides, which may take seconds: that is not for the tick thread
-		if (PositionUtil.getDistance(bot.getX(), bot.getY(), goalX, goalY) <= BotPathFinder.LONG_DISTANCE && !mesh.hasGlides()) {
+		// a short hop on a map glided down can still become a search for a chain of glides, which may take seconds: that is not for the tick thread.
+		// A map with lifts and boats alone keeps its short hops here: asked as hasGlides, Sanctum's rides sent every few steps of its 200 residents to the
+		// four route threads, and on 20 October a bot waited over three minutes in that queue for a walk across a room
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), goalX, goalY) <= BotPathFinder.LONG_DISTANCE && !mesh.hasAirLinks()) {
 			whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid));
 			return;
 		}

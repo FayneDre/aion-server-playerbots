@@ -122,6 +122,8 @@ public class Navmesh {
 	private final Map<Integer, List<GlideLink>> glides = new HashMap<>();
 	/** Whether any link is a flight, worked out on first use: see {@link #hasFlights}. */
 	private volatile Boolean flights;
+	/** Whether any link goes through the air, worked out on first use: see {@link #hasAirLinks}. */
+	private volatile Boolean airLinks;
 	private final long dataStart;
 
 	/**
@@ -232,6 +234,17 @@ public class Navmesh {
 	/** @return true if the map has any glide link at all, so the planner knows whether there is anything else to try. */
 	boolean hasGlides() {
 		return !glides.isEmpty();
+	}
+
+	/**
+	 * @return true if some of the map's links go through the air, glides or flights, which is what can turn a short hop into a long search for a chain of them.
+	 *         A lift or a boat cannot: a map has a handful, and they are tried only once the walk has failed.
+	 */
+	boolean hasAirLinks() {
+		Boolean known = airLinks;
+		if (known == null)
+			airLinks = known = glides.values().stream().anyMatch(links -> links.stream().anyMatch(link -> !link.ride()));
+		return known;
 	}
 
 	/**
