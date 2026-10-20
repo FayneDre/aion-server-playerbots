@@ -154,11 +154,13 @@ Players put their stores near the broker and the warehouse. Those spots are foun
      Characters standing still, with no store and no store name over them. So a market of about **40 stores** within sight, with passers-by
      round it, keeps the frame rate over 40: the cap per square that milestone 2 is built to. A row of stores with their names shown is to be
      measured again once it exists.
-1. **A capital day.**
-   - Occupations of their own in a capital: no FARMING, longer spells.
-   - Errands to the capital's functions (warehouse, broker, stigma master, soul healer, teleporter, crafting tables), each a short stop.
-   - Sitting (`EmotionType.SIT`) on steps and benches.
-   - Check: a resident is found at the same places at the same times, and no capital bot logs FARMING.
+1. **A capital day. Built 20 October, not deployed yet.**
+   - On a town map (`BotPresence.isTown`), the occupations give way to `TownRoutine`. Each quarter of an hour is one of four things: home 35,
+     sitting 20, an errand 30, a visit 15. It is decided from the resident's id and the hour, so it is the same every day.
+   - The errands go to a keeper found by its dialog (`TownServices`), at a spot of the resident's own within 6 m. Shops 25, broker 20,
+     warehouse 15, crafting 15, teleporter 10, stigma master 8, soul healer 7.
+   - A resident sitting out its quarter is left seated by the tick (`sitsOutTheQuarter`).
+   - Check: no capital bot logs FARMING, and "spends the quarter" lines repeat at the same hour from one day to the next.
 2. **Private stores.**
    - A SHOPKEEPING occupation of 1 to 4 hours, held by a share of the residents of level 20 and over.
    - The keeper walks to its spot, opens its themed store, and then stands with a slow tick (30 s: nothing to decide but sold out or closing time).

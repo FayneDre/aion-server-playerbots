@@ -96,6 +96,7 @@ public class BotPresence {
 	private static final Map<Integer, List<Settlement>> civicByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> fieldByMap = new ConcurrentHashMap<>();
 	private static final Map<Integer, List<Settlement>> busyFieldByMap = new ConcurrentHashMap<>();
+	private static final Map<Integer, Boolean> townByMap = new ConcurrentHashMap<>();
 
 	private BotPresence() {
 	}
@@ -212,6 +213,14 @@ public class BotPresence {
 				posts.add(field.get(i % field.size()));
 		}
 		return List.copyOf(posts);
+	}
+
+	/**
+	 * @return true for a capital, its annexes or a service town: a map whose civilians outnumber what gathers in packs, where there is nothing to hunt and a
+	 *         resident's day is the town's own ({@code TownRoutine}).
+	 */
+	public static boolean isTown(int worldId) {
+		return townByMap.computeIfAbsent(worldId, id -> kindOf(BotPlaces.settlements(id), BotPlaces.huntingGrounds(id)) != Kind.FIELD);
 	}
 
 	/**
