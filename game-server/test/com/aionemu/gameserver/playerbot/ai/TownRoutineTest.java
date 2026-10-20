@@ -75,6 +75,39 @@ class TownRoutineTest {
 	}
 
 	@Test
+	void merchantsKeepDayShiftsOfFourToEightHours() {
+		int merchants = 0;
+		for (int id = 0; id < 2000; id++) {
+			if (!TownRoutine.isMerchant(id))
+				continue;
+			merchants++;
+			int first = -1, hours = 0;
+			for (int second = 0; second < DAY; second += 60) {
+				if (TownRoutine.onShift(id, second)) {
+					if (first < 0)
+						first = second;
+					hours++;
+				}
+			}
+			assertTrue(first >= 8 * 3600 && first <= 16 * 3600, "merchant " + id + " opens at second " + first);
+			assertTrue(hours >= 4 * 60 && hours <= 8 * 60 + 1, "merchant " + id + " keeps its store " + hours + " minutes");
+			assertFalse(TownRoutine.onShift(id, 3 * 3600), "nobody keeps a store at three in the morning");
+		}
+		assertEquals(800, merchants, 60, "four residents in ten");
+	}
+
+	@Test
+	void aboutADozenStoresOpenInSanctumInTheAfternoon() {
+		// 117 residents, most of level 20 and over: four in ten of them, on shifts that overlap at mid afternoon
+		int open = 0;
+		for (int id = 0; id < 117; id++) {
+			if (TownRoutine.isMerchant(id) && TownRoutine.onShift(id, 15 * 3600))
+				open++;
+		}
+		assertTrue(open >= 6 && open <= 40, open + " stores open at 15:00");
+	}
+
+	@Test
 	void neighboursDoNotMoveAsOne() {
 		// the residents of one place have neighbouring ids: if they all changed together, a square would empty and fill again every spell
 		int changed = 0;

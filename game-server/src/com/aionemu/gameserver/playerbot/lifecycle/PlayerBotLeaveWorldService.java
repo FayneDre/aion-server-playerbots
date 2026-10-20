@@ -6,6 +6,7 @@ import com.aionemu.gameserver.model.gameobjects.player.FriendList;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.alliance.PlayerAllianceService;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
+import com.aionemu.gameserver.playerbot.economy.BotStores;
 import com.aionemu.gameserver.playerbot.economy.BotTrades;
 import com.aionemu.gameserver.playerbot.social.BotRequests;
 import com.aionemu.gameserver.services.player.PlayerService;
@@ -25,6 +26,8 @@ public class PlayerBotLeaveWorldService {
 	public static void leaveWorld(Player bot) {
 		bot.getCommonData().setOnline(false); // the character is no longer present, and the flag is saved with it
 		bot.getFriendList().setStatus(FriendList.Status.OFFLINE, bot.getCommonData());
+		// a store left open goes with the body: the engine closes one on a teleport and never on leaving, which a real player's logout never needs
+		BotStores.close(bot);
 		bot.getAi().onGeneralEvent(AIEventType.DESPAWNED);
 		BotRequests.forget(bot);
 		BotTrades.forget(bot);

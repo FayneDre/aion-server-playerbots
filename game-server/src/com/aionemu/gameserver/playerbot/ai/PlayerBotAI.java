@@ -28,6 +28,7 @@ import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
+import com.aionemu.gameserver.playerbot.economy.BotStores;
 import com.aionemu.gameserver.playerbot.economy.BotTrades;
 import com.aionemu.gameserver.playerbot.lifecycle.BotMapChange;
 import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
@@ -676,6 +677,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (!inSquad) // a squad camps where it was formed, which is the point of forming it there
 			day.moveOutIfOutgrown();
 		boolean following = followTheGroup();
+		if (getOwner().hasStore()) {
+			// A keeper at its stall does nothing else: the engine refuses skills and items to a store's owner, and a body walked with its store open
+			// drags its shelf through the town. Its questions are answered above, and a group it joins is followed only once the store is shut.
+			if (!following && day.keepsStore())
+				return;
+			BotStores.close(getOwner());
+		}
 		if (checkLanding && getOwner().isSpawned() && !getOwner().isDead()) {
 			checkLanding = false;
 			stepOffTrappedGround();

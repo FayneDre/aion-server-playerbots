@@ -280,6 +280,9 @@ public class BotEquipManager {
 		for (Item candidate : bot.getInventory().getItems()) {
 			if (!isGear(candidate) || candidate.isEquipped() || candidate.isIdentified() != identified)
 				continue;
+			if (BotStores.isOnShelf(bot, candidate))
+				continue; // the keeper's goods, not its wardrobe
+
 			// A piece made for npcs asks level one of every class while being level sixty five, and sits in a generic group that needs no mastery, so
 			// neither the engine nor the score would ever turn it down. Judged on what it is rather than on what it asks for.
 			ItemTemplate template = candidate.getItemTemplate();

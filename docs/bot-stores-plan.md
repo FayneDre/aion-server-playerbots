@@ -1,0 +1,70 @@
+# Bots' private stores
+
+**Status: in progress, milestone 2 of [living-capitals-plan.md](living-capitals-plan.md).** Designed and built 20 October 2026; not yet watched in
+game. Decisions taken by the user the same day: stock generated at the keeper's level, the prices below, and (milestone 5) bots buying from
+players' stores.
+
+## The engine already allows it
+
+The private store is generic: `PrivateStoreService.createStoreWithItems(player, TradePSItem[])`, then `openPrivateStore(player, name)`.
+
+- A player clicking the bot gets `SM_PRIVATE_STORE` through `PlayerController.onDialogSelect(BUY)`.
+- A purchase goes `CM_BUY_ITEM` → `sellStoreItem`, which asks `seller.isOnline()`: true for a bot, since that means "is present". The kinah moves and
+  `EXCHANGE_LOG` has the line.
+- The store's name is written in `SM_PLAYER_INFO`, so a newcomer sees it.
+- The engine allows **at most 10 lines**, one race only, items tradeable and not equipped, and no store while moving, flying, fighting or seated.
+- While a store is open, `PlayerRestrictions` refuses skills and item use. A teleport closes the store; **leaving the world does not**, so the bot
+  module closes it itself (`PlayerBotLeaveWorldService`).
+
+## Who keeps a store, and when
+
+- **The keepers.** Four in ten residents of level 20 and over on a town map, chosen by object id, so the same characters are the merchants every day.
+- **Their hours.** A shift of 4 to 8 hours, starting between 8:00 and 16:00 by the server's clock, chosen by object id. With Sanctum's 117 residents
+  that is about a dozen stores in the day and none at night, which is also the day's rhythm (milestone 6) for this one activity.
+- **The cap.** At most 40 stores open on a map: the crowd test of 20 October gives about 40 characters standing in sight above 40 fps.
+- **During a shift** the resident walks to its stall, opens its store, and does nothing else: the tick returns at once (`BotDay.keepsStore`). It
+  refuses duels (busy) and closes the store to join a group, as a player would.
+
+## Where stores stand
+
+Players put their stores near the broker and the warehouse. A stall is a spot within 15 m of a broker or a warehouse keeper (`TownServices`), on
+walkable ground, at least 3 m from any other stall and any character, chosen from the keeper's object id so it is the same every day. Taken stalls are
+registered per map (`BotStores`), so two keepers never share one.
+
+## What a store sells
+
+A store has **a theme**, as a player's does, which gives it its name. The theme is the keeper's, by object id.
+
+| theme | lines | content |
+|---|---|---|
+| gear for a class | 6 to 8 | weapons and armour one class wears, of the keeper's faction, level within 5 of the keeper's |
+| accessories | 6 to 8 | earrings, necklaces, rings, belts, same rules |
+| manastones | 5 to 8 | stacks of 5 to 20 of the band's manastones |
+| enchantment stones | 4 to 6 | stacks of 10 to 50 of grades from the keeper's level to 30 above it |
+
+- **Quality** is drawn: green 70, blue 25, gold 5, never above the level's ceiling ([bot-gear.md](bot-gear.md)).
+- **Only reachable, tradeable gear** (`BotGearSources`, `BotGearFit.isObtainable`, `BotEquipManager.isPlayerGear`, `ItemTemplate.isTradeable`).
+- **Stock comes into the keeper's bag** through `ItemService.addItem`, as many lines as the bag has room for. It is restocked when a shift opens
+  with fewer than 4 lines left, at most twice a day per keeper. What a restart leaves in the bag is sold to an npc like any other junk.
+- **Names are in French**, since the testers play in French: "Équipement templier 30-35", "Bijoux 40-45", "Pierres de mana 30-35",
+  "Pierres d'enchantement".
+
+## At what price (`BotStorePricing`)
+
+The data's only price is the template's `price`. An npc buys at **20%** of it and sells at 100%; the price does not depend on quality.
+
+- **Floor**: 1.25 × what an npc pays (0.25 × template), so nothing bought from a bot sells to an npc at a profit.
+- **Gear**: what an npc pays × the quality factor: common 1.3, green 1.6, blue 2.5, gold 4, epic 6. A level 30 chestpiece (template 518 000): green
+  165 000, blue 260 000, gold 415 000.
+- **Manastones**: 300 × the stone's level × the quality factor. **Enchantment stones**: 50 × the grade. Their template prices are meaningless.
+- **Temperament**: ±15% per keeper, by object id.
+- **Unsold**: 10% less per full hour since the piece was stocked, down to the floor, which a piece reaches within a day. Kept in memory: a restart
+  forgets the shelf, and its leftovers go to an npc as junk.
+- **The shelf is neither worn nor sold to an npc** between two shifts (`BotStores.isOnShelf`, asked by `BotEquipManager` and `BotVendorManager`).
+- Not built: the rise after a quick sale, which needs a hook on the sale itself.
+
+## Checks
+
+- A player buys from a bot in game; the kinah moves; `EXCHANGE_LOG` has the line.
+- A row of stores with their names shown, measured for fps as the crowd test was.
+- No keeper walks with its store open, and none is left with an open store after a sleep.

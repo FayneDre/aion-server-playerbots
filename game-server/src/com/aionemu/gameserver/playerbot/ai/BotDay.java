@@ -12,6 +12,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.playerbot.BotRecruiter;
+import com.aionemu.gameserver.playerbot.economy.BotStores;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
@@ -56,6 +57,10 @@ class BotDay {
 	private static final float ERRAND_SPREAD = 6;
 	/** How near its spot a resident has to be to sit down there, in metres. */
 	private static final float SEATED_REACH = 3;
+	/** How near its stall a merchant has to stand to open its store, in metres: stalls are three apart. */
+	private static final float STALL_REACH = 1.5f;
+	/** How long a merchant turned away from a stall waits before it tries again. */
+	private static final long STALL_RETRY_MILLIS = 30 * 60_000L;
 
 	private final PlayerBotAI ai;
 	/** What the bot is doing with its day, and until when. */
@@ -65,6 +70,8 @@ class BotDay {
 	private volatile long spellUntil;
 	/** Whether the spell's every place was refused, so the resident stays where it is until the next one. */
 	private volatile boolean spellGivenUp;
+	/** Until when a merchant turned away from a stall leaves its store shut. */
+	private volatile long stallRefusedUntil;
 	private volatile long occupationUntil;
 	/** Where the current occupation is taking the bot, so it keeps going to the same place rather than re-choosing every tick. */
 	private volatile Vector3f occupationDestination;
@@ -263,6 +270,10 @@ class BotDay {
 	 */
 	private boolean spendTheSpell() {
 		Player bot = ai.getOwner();
+		if (keepsStore())
+			return keepTheStall();
+		if (bot.hasStore())
+			BotStores.close(bot); // the shift is over
 		long now = System.currentTimeMillis();
 		if (now > spellUntil || spell == null) {
 			int second = LocalTime.now().toSecondOfDay();
@@ -285,6 +296,54 @@ class BotDay {
 			case ERRAND -> runErrand();
 			case VISIT -> wander();
 		}
+		return true;
+	}
+
+	/**
+	 * @return true while this resident should be keeping its store: a town's merchant of level 20 and over, on its shift, free of any group, and not
+	 *         turned away from a stall within the last half hour. See docs/bot-stores-plan.md.
+	 */
+	boolean keepsStore() {
+		Player bot = ai.getOwner();
+		return !ai.isOwned() && bot.getLevel() >= TownRoutine.STORE_LEVEL && TownRoutine.isMerchant(bot.getObjectId())
+			&& !bot.isInGroup() && !bot.isInAlliance() && System.currentTimeMillis() >= stallRefusedUntil && BotPresence.isTown(bot.getWorldId())
+			&& TownRoutine.onShift(bot.getObjectId(), LocalTime.now().toSecondOfDay());
+	}
+
+	/**
+	 * Walks the merchant to its stall and opens its store there. Once open, the tick does nothing else until the shift ends ({@code PlayerBotAI}).
+	 *
+	 * @return true, the shift deciding what this tick does.
+	 */
+	private boolean keepTheStall() {
+		Player bot = ai.getOwner();
+		if (bot.hasStore())
+			return true;
+		Vector3f stall = BotStores.stallFor(bot, this::isCrowded);
+		if (stall == null)
+			return refuseStall("no stall is free by a broker or a warehouse");
+		BotMoveController moves = ai.moves();
+		if (moves == null)
+			return true;
+		ai.setAnchor(stall.getX(), stall.getY(), stall.getZ());
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), stall.getX(), stall.getY()) > STALL_REACH) {
+			// its own spot to the metre, not the standing spot round the anchor every other walk ends at: stalls are three metres apart
+			if (!moves.isInMove() && !ai.tryMoveTo(moves, stall.getX(), stall.getY(), stall.getZ()))
+				return refuseStall("no way to its stall");
+			return true;
+		}
+		if (moves.isInMove() || ai.posture().standUp() || ai.posture().sheathe())
+			return true; // the engine opens no store on a body that is moving, seated or holding its weapon
+		if (!BotStores.open(bot))
+			return refuseStall("nothing to sell");
+		return true;
+	}
+
+	/** Gives the stall up for half an hour and goes back to the town's spells meanwhile. */
+	private boolean refuseStall(String why) {
+		log.info("Bot {} keeps no store for now: {}", ai.getOwner().getName(), why);
+		BotStores.release(ai.getOwner());
+		stallRefusedUntil = System.currentTimeMillis() + STALL_RETRY_MILLIS;
 		return true;
 	}
 

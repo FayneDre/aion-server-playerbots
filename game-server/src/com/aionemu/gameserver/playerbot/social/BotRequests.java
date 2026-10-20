@@ -116,8 +116,9 @@ public final class BotRequests {
 		Asker who = self.isOwner().test(asker) ? Asker.OWNER : asker.isBot() ? Asker.BOT : Asker.PLAYER;
 		long[] duel = lastDuel.get(bot.getObjectId());
 		boolean duelledLately = duel != null && duel[0] == asker.getObjectId() && System.currentTimeMillis() - duel[1] < DUEL_REST_MILLIS;
-		return new Situation(kind, who, self.companion(), bot.isDead() || self.fighting(), bot.isInInstance(), asker.getLevel() - bot.getLevel(),
-			duelledLately);
+		// keeping a store is busy too: a keeper does not leave its stall for a duel or a trade, as a player behind a counter would not
+		return new Situation(kind, who, self.companion(), bot.isDead() || self.fighting() || bot.hasStore(), bot.isInInstance(),
+			asker.getLevel() - bot.getLevel(), duelledLately);
 	}
 
 	/** Forgets what is kept about a bot leaving the world. */

@@ -71,6 +71,30 @@ final class TownRoutine {
 		return SPELL_SECONDS - Math.floorMod(secondOfDay - phaseOf(objectId), SPELL_SECONDS);
 	}
 
+	/** The lowest level a resident keeps a store from: below it a character has little to sell anybody would want. */
+	static final int STORE_LEVEL = 20;
+	/** How many residents in ten keep a store. */
+	private static final int MERCHANTS_IN_TEN = 4;
+	/** When the first shift of the day may start and the last one end, and how long one lasts, in seconds of the day. */
+	private static final int SHIFT_EARLIEST = 8 * 3600, SHIFT_LATEST_START = 16 * 3600, SHIFT_SHORTEST = 4 * 3600, SHIFT_LONGEST = 8 * 3600;
+
+	/** @return true for a resident who keeps a store, the same ones every day. */
+	static boolean isMerchant(int objectId) {
+		return Math.floorMod(mix(objectId ^ 0x1B873593), 10) < MERCHANTS_IN_TEN;
+	}
+
+	/**
+	 * @return true while a merchant's shift runs: 4 to 8 hours of its own, starting between 8:00 and 16:00, so a town's stores are open in the day and
+	 *         shut at night, and do not all open at once.
+	 */
+	static boolean onShift(int objectId, int secondOfDay) {
+		int h = mix(objectId ^ 0x68E31DA4);
+		int start = SHIFT_EARLIEST + Math.floorMod(h, SHIFT_LATEST_START - SHIFT_EARLIEST + 1);
+		int length = SHIFT_SHORTEST + Math.floorMod(h / 7, SHIFT_LONGEST - SHIFT_SHORTEST + 1);
+		int second = Math.floorMod(secondOfDay, DAY_SECONDS);
+		return second >= start && second < start + length;
+	}
+
 	/** @return When in a spell's length this resident's spells start, so that residents do not all set off at once. */
 	private static int phaseOf(int objectId) {
 		return Math.floorMod(mix(objectId ^ 0x5BD1E995), SPELL_SECONDS);

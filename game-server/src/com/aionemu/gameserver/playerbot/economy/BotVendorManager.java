@@ -400,6 +400,9 @@ public class BotVendorManager {
 	private static boolean isJunk(Player bot, Item item) {
 		if (item.isEquipped() || !item.isSellable())
 			return false;
+		// a merchant's stock between two shifts: gear for another class reads as junk, and it went to an npc for a fifth of its worth
+		if (BotStores.isOnShelf(bot, item))
+			return false;
 		if (item.getItemTemplate().getItemGroup() == ItemGroup.QUEST)
 			return false;
 		// Never what the bot drinks. Flasks are COMMON, sellable and not quest items, so every one of them read as junk: a character is born with a

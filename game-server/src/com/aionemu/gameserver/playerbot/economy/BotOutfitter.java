@@ -68,7 +68,7 @@ public class BotOutfitter {
 	 *         Still a ceiling and not a floor. What a bot actually ends up in is whatever the ranking finds, which below these levels is mostly green
 	 *         anyway because little else exists.
 	 */
-	private static ItemQuality bestQualityFor(int level) {
+	static ItemQuality bestQualityFor(int level) {
 		if (level >= 36)
 			return ItemQuality.UNIQUE;
 		if (level >= 26)

@@ -51,6 +51,11 @@ public final class TownServices {
 		return keepers == null || keepers.isEmpty() ? null : keepers.get(Math.floorMod(seed, keepers.size()));
 	}
 
+	/** @return Where every keeper of that service stands on the bot's map, in the same order every day; empty when the map has none. */
+	public static List<Vector3f> keepersOf(Player bot, Service service) {
+		return servicesOn(bot).getOrDefault(service, List.of());
+	}
+
 	private static Map<Service, List<Vector3f>> servicesOn(Player bot) {
 		return byMap.computeIfAbsent(bot.getWorldId(), id -> {
 			Map<Service, List<Vector3f>> found = new EnumMap<>(Service.class);
