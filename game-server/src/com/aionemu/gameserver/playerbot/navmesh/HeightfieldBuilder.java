@@ -90,13 +90,18 @@ public class HeightfieldBuilder {
 			if (parts == null)
 				continue;
 			List<DroppedFaces.Plane> dropped = DroppedFaces.of(mapId, placement.modelName());
+			boolean building = placement.modelName().substring(placement.modelName().lastIndexOf('/') + 1).startsWith("bu_");
 			for (GeoModel part : parts) {
 				// masked to a byte's worth of bits: the intentions are stored in a byte, and PHYSICAL_SEE_THROUGH is its sign bit
 				int intentions = part.collisionIntentions() & 0xFF;
 				// In an instance the no-walk volumes are dropped below, and a part that is a no-walk volume and solid as well went with them, though the engine
 				// collides with it: floors and bridges drawn so (Drakenspire's second stage, Steel Rake's decks, the Danuar Sanctuary's boss room) were missing.
 				// Kept as solid: spots with no footing 25 -> 3 in Drakenspire and 23 -> 2 in Steel Rake, the Danuar Sanctuary reached 74 -> 94 %.
-				if ((intentions & CollisionIntention.WALK.getId()) != 0 && !(instance && (intentions & SOLID) != 0))
+				// The open world has the same parts on its buildings and only there: Sanctum's three centre bridges are drawn so, and as no-walk volumes they
+				// cut the city in three, its eastern half and 17 of its 34 places out of every resident's reach. Its authored volumes (nowalk_obstacle*,
+				// walk_obstacle4_100m) carry the same flags and are no building, so they stay what they are.
+				boolean solidFloor = (instance || building) && (intentions & SOLID) != 0;
+				if ((intentions & CollisionIntention.WALK.getId()) != 0 && !solidFloor)
 					noWalkVolumes.add(place(part, placement, dropped));
 				else if ((intentions & SOLID) != 0)
 					solids.add(place(part, placement, dropped));

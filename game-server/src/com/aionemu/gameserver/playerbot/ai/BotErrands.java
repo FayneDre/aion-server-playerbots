@@ -178,7 +178,7 @@ class BotErrands {
 		Player bot = ai.getOwner();
 		if (!BotVendorManager.hasJunk(bot))
 			return false;
-		Vector3f vendor = BotVendorManager.findVendor(bot, this::isIgnoredVendor, this::rememberUnreachableVendor);
+		Vector3f vendor = BotVendorManager.findVendor(bot, false, this::isIgnoredVendor, this::rememberUnreachableVendor);
 		if (vendor == null)
 			return false;
 		vendorDestination = vendor;
@@ -212,10 +212,10 @@ class BotErrands {
 			// A trip that the map has just refused is not worth announcing again on the next tick. Without this the bot stood where its route ran
 			// out, declared a trip and abandoned it once per tick for as long as there were shop spots left to burn -- measured at 191 departures
 			// against 16 sales, and seen in game as a knot of bots at the citadel steps doing nothing at all.
-			if (!sellingOnDemand && (System.currentTimeMillis() < noShopUntil
-				|| !wantsFlasks(bot) && (!BotVendorManager.hasFullBag(bot) || !BotVendorManager.hasJunk(bot))))
+			boolean sells = BotVendorManager.hasFullBag(bot) && BotVendorManager.hasJunk(bot);
+			if (!sellingOnDemand && (System.currentTimeMillis() < noShopUntil || !wantsFlasks(bot) && !sells))
 				return false;
-			vendorDestination = BotVendorManager.findVendor(bot, this::isIgnoredVendor, this::rememberUnreachableVendor);
+			vendorDestination = BotVendorManager.findVendor(bot, !sellingOnDemand && !sells, this::isIgnoredVendor, this::rememberUnreachableVendor);
 			if (vendorDestination == null) {
 				// Nothing was armed here at first, and it was the dearest line of the errand. The gate above lets the bot through on every tick for
 				// as long as it wants flasks or carries junk, so a bot with no shop within reach ran the whole look -- a path search per shop -- once

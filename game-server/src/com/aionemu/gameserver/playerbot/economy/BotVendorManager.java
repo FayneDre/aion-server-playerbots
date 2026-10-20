@@ -105,17 +105,18 @@ public class BotVendorManager {
 	private static final int VENDORS_PROBED = 3;
 
 	/**
+	 * @param forFlasks Whether the trip is for flasks alone, so only a keeper who sells one this bot may drink will do.
 	 * @param isIgnored The caller's own memory: shops it has already been defeated by, and does not want tested again.
 	 * @param whenUnreachable Told of each shop the mesh <b>proves</b> this bot cannot walk to, for the caller to remember. Never told of a search
 	 *          that merely gave up — that is not evidence, and storing it would bar a shop for a slow answer rather than for a wall.
 	 * @return Where the nearest usable shop stands, or null when none of the ones tested will serve. Null does not mean the map has none left: it
 	 *         means this look found nothing, and the caller is expected to wait before asking again.
 	 */
-	public static Vector3f findVendor(Player bot, Predicate<Vector3f> isIgnored, Consumer<Vector3f> whenUnreachable) {
+	public static Vector3f findVendor(Player bot, boolean forFlasks, Predicate<Vector3f> isIgnored, Consumer<Vector3f> whenUnreachable) {
 		List<Vector3f> vendors = new ArrayList<>();
 		bot.getPosition().getWorldMapInstance().forEachNpc(npc -> {
 			NpcTemplate template = npc.getObjectTemplate();
-			if (npc.isSpawned() && template != null && template.supportsAction(DialogAction.SELL))
+			if (npc.isSpawned() && template != null && template.supportsAction(DialogAction.SELL) && (!forFlasks || sellsFlasksFor(bot, npc)))
 				vendors.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
 		});
 		// The nearest one it can actually walk to, not simply the nearest: without the test, a shop behind a wall or on another storey is chosen for
@@ -287,17 +288,9 @@ public class BotVendorManager {
 	public static int buyPotions(Player bot, Npc vendor) {
 		if (bot.isDead() || !vendor.canSell())
 			return 0;
-		TradeListTemplate goods = DataManager.TRADE_LIST_DATA.getTradeListTemplate(vendor.getNpcId());
-		// Kinah is the only currency a bot has. An abyss or reward vendor would refuse it, and asking costs an audit line rather than a polite no.
-		if (goods == null || goods.getTradeNpcType() != TradeNpcType.NORMAL)
+		Set<Integer> onSale = onSaleFor(vendor.getNpcId());
+		if (onSale.isEmpty())
 			return 0;
-
-		Set<Integer> onSale = new HashSet<>();
-		for (TradeTab tab : goods.getTradeTablist()) {
-			GoodsList list = DataManager.GOODSLIST_DATA.getGoodsListById(tab.getId());
-			if (list != null && list.getItemIdList() != null)
-				onSale.addAll(list.getItemIdList());
-		}
 
 		TradeList order = new TradeList();
 		int kinds = 0;
@@ -317,6 +310,36 @@ public class BotVendorManager {
 			}
 		}
 		return bought + buySerums(bot, vendor, onSale); // after the flasks, which matter more and are paid for first
+	}
+
+	/** @return What a keeper sells for kinah, or nothing when it does not take kinah at all. */
+	private static Set<Integer> onSaleFor(int npcId) {
+		TradeListTemplate goods = DataManager.TRADE_LIST_DATA.getTradeListTemplate(npcId);
+		// Kinah is the only currency a bot has. An abyss or reward vendor would refuse it, and asking costs an audit line rather than a polite no.
+		if (goods == null || goods.getTradeNpcType() != TradeNpcType.NORMAL)
+			return Set.of();
+		Set<Integer> onSale = new HashSet<>();
+		for (TradeTab tab : goods.getTradeTablist()) {
+			GoodsList list = DataManager.GOODSLIST_DATA.getGoodsListById(tab.getId());
+			if (list != null && list.getItemIdList() != null)
+				onSale.addAll(list.getItemIdList());
+		}
+		return onSale;
+	}
+
+	/**
+	 * @return true if the keeper sells a life or mana flask this bot may drink. A trip made for flasks alone goes to such a keeper: sent to the nearest
+	 *         one of any kind, a Sanctum resident walked to a keeper with no flask on its shelf nine times in an hour and a half, bought nothing each
+	 *         time, and was back as soon as the wait that follows a fruitless trip ran out, on 20 October.
+	 */
+	private static boolean sellsFlasksFor(Player bot, Npc vendor) {
+		for (int itemId : onSaleFor(vendor.getNpcId())) {
+			ItemTemplate template = DataManager.ITEM_DATA.getItemTemplate(itemId);
+			if (template != null && template.getLevel() <= bot.getLevel()
+				&& (grants(template, BotPotionManager.RESTORES_HEALTH) || grants(template, BotPotionManager.RESTORES_MANA)))
+				return true;
+		}
+		return false;
 	}
 
 	/**

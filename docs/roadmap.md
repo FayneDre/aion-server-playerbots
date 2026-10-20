@@ -24,7 +24,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 5. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)): duels, friends and trading with one's companion
    **built** in `patch-2026-10-19-2`, to be watched in game.
 6. **Cohorts** ([cohort-plan.md](cohort-plan.md)): a bot in an alliance acting as a member of its own group of six.
-7. **Living capitals**: bots that stay and are seen in Sanctum and Pandaemonium, some with a private store.
+7. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): bots that stay and are seen in Sanctum and Pandaemonium, some with a
+   private store.
 8. **Wild PvP, rifts and the arenas.**
 9. **Economy**: the broker, then player shops, then gathering and crafting.
 10. **Legions**, accepting a legion's invitation first.
