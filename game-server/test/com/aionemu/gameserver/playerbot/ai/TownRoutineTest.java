@@ -8,68 +8,80 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.aionemu.gameserver.playerbot.ai.TownRoutine.Activity;
-import com.aionemu.gameserver.playerbot.ai.TownRoutine.Quarter;
+import com.aionemu.gameserver.playerbot.ai.TownRoutine.Spell;
 
 /**
- * A town resident's day: the same every day, an errand always somewhere, and a town that is mostly people standing about and going on errands rather
- * than all of them doing one thing at once.
+ * A town resident's day: the same every day, an errand always somewhere, a town that is not all doing one thing at once, and residents who do not all
+ * set off at the same moment.
  */
 class TownRoutineTest {
 
+	private static final int DAY = 24 * 60 * 60;
+
 	@Test
-	void theSameQuarterIsSpentTheSameWayEveryDay() {
+	void theSameSpellIsSpentTheSameWayEveryDay() {
 		for (int id = 1000; id < 1200; id++) {
-			for (int minute = 0; minute < 24 * 60; minute += 7)
-				assertEquals(TownRoutine.at(id, minute), TownRoutine.at(id, minute + 24 * 60), "resident " + id + " at minute " + minute);
+			for (int second = 0; second < DAY; second += 437)
+				assertEquals(TownRoutine.at(id, second), TownRoutine.at(id, second + DAY), "resident " + id + " at second " + second);
 		}
 	}
 
 	@Test
-	void aQuarterIsOneThingFromItsFirstMinuteToItsLast() {
-		for (int id = 1000; id < 1200; id++)
-			assertEquals(TownRoutine.at(id, 9 * 60), TownRoutine.at(id, 9 * 60 + 14), "resident " + id);
+	void aSpellIsOneThingFromItsFirstSecondToItsLast() {
+		for (int id = 1000; id < 1200; id++) {
+			int start = 9 * 3600;
+			int left = TownRoutine.secondsLeft(id, start);
+			assertEquals(TownRoutine.at(id, start), TownRoutine.at(id, start + left - 1), "resident " + id);
+			assertEquals(TownRoutine.SPELL_SECONDS, TownRoutine.secondsLeft(id, start + left), "a new spell starts where the last one ends");
+		}
 	}
 
 	@Test
 	void anErrandAlwaysHasSomewhereToGo() {
 		for (int id = 0; id < 5000; id++) {
-			Quarter quarter = TownRoutine.at(id, 600);
-			assertEquals(quarter.activity() == Activity.ERRAND, quarter.service() != null, "resident " + id + ": " + quarter);
+			Spell spell = TownRoutine.at(id, 36000);
+			assertEquals(spell.activity() == Activity.ERRAND, spell.service() != null, "resident " + id + ": " + spell);
 		}
 	}
 
 	@Test
-	void aTownIsMostlyStandingAboutAndErrands() {
+	void aTownIsNotAllDoingOneThing() {
 		Map<Activity, Integer> counts = new EnumMap<>(Activity.class);
 		int total = 0;
 		for (int id = 0; id < 2000; id++) {
-			for (int minute = 0; minute < 24 * 60; minute += TownRoutine.QUARTER_MINUTES) {
-				counts.merge(TownRoutine.at(id, minute).activity(), 1, Integer::sum);
+			for (int second = 0; second < DAY; second += TownRoutine.SPELL_SECONDS) {
+				counts.merge(TownRoutine.at(id, second).activity(), 1, Integer::sum);
 				total++;
 			}
 		}
-		// the weights are 35, 20, 30 and 15 in a hundred: each share within two points of its own
-		assertEquals(35, 100.0 * counts.get(Activity.HOME) / total, 2);
-		assertEquals(20, 100.0 * counts.get(Activity.SIT) / total, 2);
+		// the weights are 30, 15, 30 and 25 in a hundred: each share within two points of its own
+		assertEquals(30, 100.0 * counts.get(Activity.HOME) / total, 2);
+		assertEquals(15, 100.0 * counts.get(Activity.SIT) / total, 2);
 		assertEquals(30, 100.0 * counts.get(Activity.ERRAND) / total, 2);
-		assertEquals(15, 100.0 * counts.get(Activity.VISIT) / total, 2);
+		assertEquals(25, 100.0 * counts.get(Activity.VISIT) / total, 2);
+	}
+
+	@Test
+	void residentsSetOffAtMomentsOfTheirOwn() {
+		// spells on the clock had everybody set off in the same second: a town walked for a minute and stood still for fourteen
+		int[] startsByMinute = new int[TownRoutine.SPELL_SECONDS / 60];
+		int residents = 1000;
+		for (int id = 0; id < residents; id++) {
+			int startsIn = TownRoutine.secondsLeft(id, 0) % TownRoutine.SPELL_SECONDS;
+			startsByMinute[startsIn / 60]++;
+		}
+		for (int minute = 0; minute < startsByMinute.length; minute++)
+			assertEquals(residents / startsByMinute.length, startsByMinute[minute], residents / 20, "spells starting in minute " + minute);
 	}
 
 	@Test
 	void neighboursDoNotMoveAsOne() {
-		// the residents of one place have neighbouring ids: if they all changed together, a square would empty and fill again every quarter
+		// the residents of one place have neighbouring ids: if they all changed together, a square would empty and fill again every spell
 		int changed = 0;
 		for (int id = 5000; id < 5100; id++) {
-			if (TownRoutine.at(id, 600).activity() != TownRoutine.at(id + 1, 600).activity())
+			if (TownRoutine.at(id, 36000).activity() != TownRoutine.at(id + 1, 36000).activity())
 				changed++;
 		}
 		assertTrue(changed > 40, "neighbours differ " + changed + " times in 100");
-	}
-
-	@Test
-	void theQuarterEndsOnTheQuarterHour() {
-		assertEquals(15, TownRoutine.minutesLeft(600));
-		assertEquals(1, TownRoutine.minutesLeft(614));
-		assertEquals(14, TownRoutine.minutesLeft(24 * 60 + 1));
 	}
 }

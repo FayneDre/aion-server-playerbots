@@ -1,7 +1,6 @@
 package com.aionemu.gameserver.playerbot.ai;
 
 import java.time.LocalTime;
-import java.time.temporal.ChronoField;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -61,11 +60,11 @@ class BotDay {
 	private final PlayerBotAI ai;
 	/** What the bot is doing with its day, and until when. */
 	private volatile Occupation occupation = Occupation.FARMING;
-	/** A town resident's quarter of an hour, and when it ends: see {@link TownRoutine}. */
-	private volatile TownRoutine.Quarter quarter;
-	private volatile long quarterUntil;
-	/** Whether the quarter's every place was refused, so the resident stays where it is until the next one. */
-	private volatile boolean quarterGivenUp;
+	/** A town resident's spell of a few minutes, and when it ends: see {@link TownRoutine}. */
+	private volatile TownRoutine.Spell spell;
+	private volatile long spellUntil;
+	/** Whether the spell's every place was refused, so the resident stays where it is until the next one. */
+	private volatile boolean spellGivenUp;
 	private volatile long occupationUntil;
 	/** Where the current occupation is taking the bot, so it keeps going to the same place rather than re-choosing every tick. */
 	private volatile Vector3f occupationDestination;
@@ -98,7 +97,7 @@ class BotDay {
 	boolean pursue() {
 		Player bot = ai.getOwner();
 		if (BotPresence.isTown(bot.getWorldId()))
-			return spendTheQuarter();
+			return spendTheSpell();
 		long now = System.currentTimeMillis();
 		if (now > occupationUntil) {
 			// whether this bot lives among people decides how much of its day is spent standing about: a village square wants idlers, a hillside does
@@ -253,31 +252,31 @@ class BotDay {
 	void forget() {
 		occupationUntil = 0;
 		occupationDestination = null;
-		quarterUntil = 0;
+		spellUntil = 0;
 	}
 
 	/**
-	 * A town resident's quarter of an hour: at home, sitting, on an errand to one of the town's services, or visiting another part of it, as
-	 * {@link TownRoutine} has it for this resident at this hour. Never hunting: a town has nothing to hunt.
+	 * A town resident's spell of a few minutes: at home, sitting, on an errand to one of the town's services, or visiting another part of it, as
+	 * {@link TownRoutine} has it for this resident at this time of day. Never hunting: a town has nothing to hunt.
 	 *
-	 * @return true, the quarter deciding what this tick does.
+	 * @return true, the spell deciding what this tick does.
 	 */
-	private boolean spendTheQuarter() {
+	private boolean spendTheSpell() {
 		Player bot = ai.getOwner();
 		long now = System.currentTimeMillis();
-		if (now > quarterUntil || quarter == null) {
-			int minute = LocalTime.now().get(ChronoField.MINUTE_OF_DAY);
-			quarter = TownRoutine.at(bot.getObjectId(), minute);
-			quarterUntil = now + TownRoutine.minutesLeft(minute) * 60_000L;
-			quarterGivenUp = false;
+		if (now > spellUntil || spell == null) {
+			int second = LocalTime.now().toSecondOfDay();
+			spell = TownRoutine.at(bot.getObjectId(), second);
+			spellUntil = now + TownRoutine.secondsLeft(bot.getObjectId(), second) * 1000L;
+			spellGivenUp = false;
 			occupationDestination = null;
-			log.info("Bot {} spends the quarter {}", bot.getName(),
-				quarter.service() == null ? quarter.activity() : quarter.activity() + " at the " + quarter.service());
+			log.info("Bot {} spends the spell {}", bot.getName(),
+				spell.service() == null ? spell.activity() : spell.activity() + " at the " + spell.service());
 		}
-		if (quarterGivenUp)
-			return true; // refused the way to every place the quarter had for it: stays where it is until the next one
-		// and where a quarter finds nowhere to go, the resident stays where it is: false would send it hunting, in a town with nothing to hunt
-		switch (quarter.activity()) {
+		if (spellGivenUp)
+			return true; // refused the way to every place the spell had for it: stays where it is until the next one
+		// and where a spell finds nowhere to go, the resident stays where it is: false would send it hunting, in a town with nothing to hunt
+		switch (spell.activity()) {
 			case HOME -> loiter();
 			case SIT -> {
 				if (loiter())
@@ -289,9 +288,9 @@ class BotDay {
 		return true;
 	}
 
-	/** @return true while a resident sits out its quarter, which the tick leaves alone instead of getting it to its feet. */
-	boolean sitsOutTheQuarter() {
-		return quarter != null && quarter.activity() == TownRoutine.Activity.SIT && System.currentTimeMillis() < quarterUntil
+	/** @return true while a resident sits out its spell, which the tick leaves alone instead of getting it to its feet. */
+	boolean sitsOutTheSpell() {
+		return spell != null && spell.activity() == TownRoutine.Activity.SIT && System.currentTimeMillis() < spellUntil
 			&& ai.getOwner().isInState(CreatureState.RESTING);
 	}
 
@@ -305,19 +304,19 @@ class BotDay {
 	}
 
 	/**
-	 * Goes to one of the town's services and stands near its keeper for the quarter: the shop, the broker, the warehouse, the crafting masters. The
+	 * Goes to one of the town's services and stands near its keeper for the spell: the shop, the broker, the warehouse, the crafting masters. The
 	 * keeper and the spot round it are the resident's own, so the one who keeps the broker's hours stands at the same broker in the same place.
 	 */
 	private boolean runErrand() {
 		Player bot = ai.getOwner();
 		if (occupationDestination == null) {
-			Vector3f keeper = TownServices.keeperOf(bot, quarter.service(), quarter.seed());
+			Vector3f keeper = TownServices.keeperOf(bot, spell.service(), spell.seed());
 			Vector3f spot = keeper == null ? null
 				: BotPlaces.spotAround(bot.getWorldId(), keeper, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
 			if (spot == null || unreachable.contains(spot)) {
-				// no such service on the map, no room by it, or no way there: the quarter is spent at home, and said so, or the look round the keeper
-				// -- a dozen route searches -- would be made again on every tick of the quarter
-				quarter = new TownRoutine.Quarter(TownRoutine.Activity.HOME, null, quarter.seed());
+				// no such service on the map, no room by it, or no way there: the spell is spent at home, and said so, or the look round the keeper
+				// -- a dozen route searches -- would be made again on every tick of the spell
+				spell = new TownRoutine.Spell(TownRoutine.Activity.HOME, null, spell.seed());
 				return loiter();
 			}
 			occupationDestination = spot;
@@ -508,10 +507,10 @@ class BotDay {
 		// the map cut off from the villages asked sixty times in three minutes.
 		if (occupationDestination != null)
 			unreachable.add(occupationDestination);
-		if (quarter != null && BotPresence.isTown(ai.getOwner().getWorldId())) {
-			// in town the quarter goes on: an errand refused is spent at home, and a home refused where the resident stands
-			quarterGivenUp = quarter.activity() == TownRoutine.Activity.HOME || quarter.activity() == TownRoutine.Activity.SIT;
-			quarter = new TownRoutine.Quarter(TownRoutine.Activity.HOME, null, quarter.seed());
+		if (spell != null && BotPresence.isTown(ai.getOwner().getWorldId())) {
+			// in town the spell goes on: an errand refused is spent at home, and a home refused where the resident stands
+			spellGivenUp = spell.activity() == TownRoutine.Activity.HOME || spell.activity() == TownRoutine.Activity.SIT;
+			spell = new TownRoutine.Spell(TownRoutine.Activity.HOME, null, spell.seed());
 			occupationDestination = null;
 			return true;
 		}

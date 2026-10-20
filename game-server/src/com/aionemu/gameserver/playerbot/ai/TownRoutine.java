@@ -3,22 +3,27 @@ package com.aionemu.gameserver.playerbot.ai;
 import com.aionemu.gameserver.playerbot.world.TownServices.Service;
 
 /**
- * What a resident of a town does with each quarter of an hour of the day.
+ * What a resident of a town does with each spell of a few minutes of the day.
  * <p>
  * The occupations of the countryside, drawn at random for a few minutes each, were what a town had too, and a town showed it: a third of a capital's
  * day was farming, which finds nothing to hunt in a city and stands still, and the rest was spells of three to ten minutes, so nobody was ever found
  * at the same place twice. Measured on 20 October over two and a half hours, 196 residents of Sanctum and Pandaemonium drew farming 1543 times.
  * <p>
- * A quarter is decided from the resident's id and the hour alone, so it is the same every day: the one who sits on the steps at nine sits there again
- * the next morning, and the one who keeps a broker's hours keeps them. Habits are what make a crowd read as people rather than as traffic. Nothing here
- * hunts.
+ * A spell is decided from the resident's id and the time of day alone, so it is the same every day: the one who sits on the steps at nine sits there
+ * again the next morning, and the one who keeps a broker's hours keeps them. Habits are what make a crowd read as people rather than as traffic.
+ * Nothing here hunts.
+ * <p>
+ * Each resident's spells start at a moment of its own. Quarters of an hour on the clock were tried first: everybody set off at the quarter, walked for a
+ * minute and stood for fourteen, and a tester in Sanctum saw nobody move at all, which the count agreed with: 0 to 2 of 117 residents moving between
+ * two quarters. Short spells staggered across residents keep somebody on their way at every moment.
  */
 final class TownRoutine {
 
-	/** How long one quarter lasts, in minutes. */
-	static final int QUARTER_MINUTES = 15;
+	/** How long one spell lasts, in seconds. */
+	static final int SPELL_SECONDS = 5 * 60;
+	private static final int DAY_SECONDS = 24 * 60 * 60;
 
-	/** What a resident is doing for the quarter. */
+	/** What a resident is doing for the spell. */
 	enum Activity {
 		/** Standing about at its own spot where it lives. */
 		HOME,
@@ -31,16 +36,16 @@ final class TownRoutine {
 	}
 
 	/**
-	 * The quarter's plan.
+	 * The spell's plan.
 	 *
 	 * @param service Where the errand is to, for {@link Activity#ERRAND}; null otherwise.
 	 * @param seed Which one of the town's places or services of that kind, so the same resident goes to the same one.
 	 */
-	record Quarter(Activity activity, Service service, int seed) {
+	record Spell(Activity activity, Service service, int seed) {
 	}
 
-	/** How much a resident leans towards each activity, in {@link Activity} order: a town is mostly people standing about and going on errands. */
-	private static final int[] ACTIVITY_WEIGHTS = { 35, 20, 30, 15 };
+	/** How much a resident leans towards each activity, in {@link Activity} order: a town is mostly people standing about, on errands and passing. */
+	private static final int[] ACTIVITY_WEIGHTS = { 30, 15, 30, 25 };
 	/** How often each service is gone to, in {@link Service} order: the shops and the broker most, the soul healer least. */
 	private static final int[] SERVICE_WEIGHTS = { 25, 20, 15, 15, 10, 8, 7 };
 
@@ -48,22 +53,27 @@ final class TownRoutine {
 	}
 
 	/**
-	 * @param objectId The resident's id, which is what makes its habits its own.
-	 * @param minuteOfDay The minute of the server's day, 0 to 1439.
-	 * @return What the resident does in the quarter that minute falls in.
+	 * @param objectId The resident's id, which is what makes its habits and the moments it sets off its own.
+	 * @param secondOfDay The second of the server's day.
+	 * @return What the resident does in the spell that second falls in.
 	 */
-	static Quarter at(int objectId, int minuteOfDay) {
-		int quarter = Math.floorMod(minuteOfDay, 24 * 60) / QUARTER_MINUTES;
-		int hash = mix(objectId * 31 + quarter);
+	static Spell at(int objectId, int secondOfDay) {
+		int spell = Math.floorMod(secondOfDay - phaseOf(objectId), DAY_SECONDS) / SPELL_SECONDS;
+		int hash = mix(objectId * 31 + spell);
 		Activity activity = Activity.values()[pick(ACTIVITY_WEIGHTS, Math.floorMod(hash, 1000))];
-		int seed = mix(objectId) >>> 1; // the same service or place of a kind each time it is gone to, whatever the quarter
+		int seed = mix(objectId) >>> 1; // the same service or place of a kind each time it is gone to, whatever the spell
 		Service service = activity == Activity.ERRAND ? Service.values()[pick(SERVICE_WEIGHTS, Math.floorMod(hash / 1000, 1000))] : null;
-		return new Quarter(activity, service, seed);
+		return new Spell(activity, service, seed);
 	}
 
-	/** @return How many minutes are left of the quarter that minute falls in, at least one. */
-	static int minutesLeft(int minuteOfDay) {
-		return QUARTER_MINUTES - Math.floorMod(minuteOfDay, QUARTER_MINUTES);
+	/** @return How many seconds are left of the resident's spell that second falls in, at least one. */
+	static int secondsLeft(int objectId, int secondOfDay) {
+		return SPELL_SECONDS - Math.floorMod(secondOfDay - phaseOf(objectId), SPELL_SECONDS);
+	}
+
+	/** @return When in a spell's length this resident's spells start, so that residents do not all set off at once. */
+	private static int phaseOf(int objectId) {
+		return Math.floorMod(mix(objectId ^ 0x5BD1E995), SPELL_SECONDS);
 	}
 
 	/** @return The index whose share of the weights a roll of 0 to 999 falls in. */
@@ -80,7 +90,7 @@ final class TownRoutine {
 		return weights.length - 1;
 	}
 
-	/** A bit mixer, so neighbouring ids and neighbouring quarters do not lean the same way. */
+	/** A bit mixer, so neighbouring ids and neighbouring spells do not lean the same way. */
 	private static int mix(int value) {
 		int h = value * 0x9E3779B9;
 		h ^= h >>> 16;

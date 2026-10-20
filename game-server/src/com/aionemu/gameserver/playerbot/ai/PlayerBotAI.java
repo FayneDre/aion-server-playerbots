@@ -722,8 +722,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// bag is full and a shop is being walked to or worked, everything else waits
 			} else if (isRunningErrand()) {
 				// an operator sent it somewhere on purpose; let it arrive before it goes looking for its own fights
-			} else if (day.sitsOutTheQuarter()) {
-				// a town resident sitting out its quarter on the steps: the line below would get it to its feet every tick only to sit it down again
+			} else if (day.sitsOutTheSpell()) {
+				// a town resident sitting out its spell on the steps: the line below would get it to its feet every tick only to sit it down again
 			} else if (!posture.standUp()) { // stand up one tick before acting, so the animation has played out by then
 				// the servant and the robot are kept up ahead of anything: the class cannot fight without them, and they last. Then the class's care
 				// between fights, which is mending and cleansing; its buffs wait for the fight, below
