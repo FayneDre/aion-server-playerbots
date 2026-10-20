@@ -39,15 +39,19 @@ A store has **a theme**, as a player's does, which gives it its name. The theme 
 |---|---|---|
 | gear for a class | 6 to 8 | weapons and armour one class wears, of the keeper's faction, level within 5 of the keeper's |
 | accessories | 6 to 8 | earrings, necklaces, rings, belts, same rules |
-| manastones | 5 to 8 | stacks of 5 to 20 of the band's manastones |
-| enchantment stones | 4 to 6 | stacks of 10 to 50 of grades from the keeper's level to 30 above it |
+| stones | 5 to 8 | stacks of 5 to 20 of the band's manastones, and of 10 to 50 enchantment stones of grades from 30 under the keeper's level to 60 over |
+
+Enchantment stones had a theme of their own at first: they come in grades about 30 apart, so such a store held one line. Stalls are looked for
+round the floor in front of a keeper's counter (`BotVendorManager.frontOf`): round its feet, 27 of 31 Pandaemonium merchants found no stall or no way
+to it on the first start, 20 October.
 
 - **Quality** is drawn: green 70, blue 25, gold 5, never above the level's ceiling ([bot-gear.md](bot-gear.md)).
 - **Only reachable, tradeable gear** (`BotGearSources`, `BotGearFit.isObtainable`, `BotEquipManager.isPlayerGear`, `ItemTemplate.isTradeable`).
 - **Stock comes into the keeper's bag** through `ItemService.addItem`, as many lines as the bag has room for. It is restocked when a shift opens
   with fewer than 4 lines left, at most twice a day per keeper. What a restart leaves in the bag is sold to an npc like any other junk.
-- **Names are in French**, since the testers play in French: "Équipement templier 30-35", "Bijoux 40-45", "Pierres de mana 30-35",
-  "Pierres d'enchantement".
+- **Names are in French**, since the testers play in French: "Équipement templier 30-35", "Bijoux 40-45", "Pierres 25-35".
+- **Quality is drawn for gear only**: stones are drawn evenly, since most manastones are common and a draw by quality kept landing on the one
+  green among them.
 
 ## At what price (`BotStorePricing`)
 

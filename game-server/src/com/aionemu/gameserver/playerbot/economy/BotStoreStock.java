@@ -27,7 +27,12 @@ public final class BotStoreStock {
 
 	/** What a store sells, which also gives it its name. */
 	public enum Theme {
-		GEAR, ACCESSORIES, MANASTONES, ENCHANTMENT
+		GEAR, ACCESSORIES,
+		/**
+		 * Manastones of the band and enchantment stones round the keeper's level. One theme rather than two: enchantment stones come in grades about 30
+		 * apart, so a store of them alone held one line, which is what two such stores showed on 20 October.
+		 */
+		STONES
 	}
 
 	/** The classes a gear store is stocked for, with the name a French client shows for each. */
@@ -40,8 +45,8 @@ public final class BotStoreStock {
 	private static final Set<ItemGroup> ACCESSORY_GROUPS = Set.of(ItemGroup.EARRING, ItemGroup.RING, ItemGroup.NECKLACE, ItemGroup.BELT);
 	/** How far from the keeper's level the pieces it sells may be. */
 	private static final int LEVEL_SPREAD = 5;
-	/** How many grades above the keeper's level the enchantment stones it sells may go: a stone works best at or above the piece's level. */
-	private static final int ENCHANTMENT_GRADES = 30;
+	/** How many grades under and over the keeper's level the enchantment stones it sells may be: a stone works best at or above the piece's level. */
+	private static final int ENCHANTMENT_GRADES_UNDER = 30, ENCHANTMENT_GRADES_OVER = 60;
 	/** Green, blue and gold, out of a hundred, before the level's ceiling cuts the top off. */
 	private static final int[] QUALITY_WEIGHTS = { 70, 25, 5 };
 	private static final ItemQuality[] QUALITIES = { ItemQuality.RARE, ItemQuality.LEGEND, ItemQuality.UNIQUE };
@@ -68,17 +73,16 @@ public final class BotStoreStock {
 		return switch (themeOf(keeper.getObjectId())) {
 			case GEAR -> "Équipement " + CLASS_NAMES.get(classOf(keeper.getObjectId())) + " " + low + "-" + high;
 			case ACCESSORIES -> "Bijoux " + low + "-" + high;
-			case MANASTONES -> "Pierres de mana " + Math.max(1, keeper.getLevel() - 2 * LEVEL_SPREAD) + "-" + keeper.getLevel();
-			case ENCHANTMENT -> "Pierres d'enchantement";
+			case STONES -> "Pierres " + Math.max(1, keeper.getLevel() - 2 * LEVEL_SPREAD) + "-" + keeper.getLevel();
 		};
 	}
 
-	/** @return How the price of what this theme sells is worked out. */
-	public static BotStorePricing.Kind kindOf(Theme theme) {
-		return switch (theme) {
-			case GEAR, ACCESSORIES -> BotStorePricing.Kind.GEAR;
-			case MANASTONES -> BotStorePricing.Kind.MANASTONE;
+	/** @return How the price of a piece is worked out. */
+	public static BotStorePricing.Kind kindOf(ItemTemplate template) {
+		return switch (template.getItemGroup()) {
+			case MANASTONE -> BotStorePricing.Kind.MANASTONE;
 			case ENCHANTMENT -> BotStorePricing.Kind.ENCHANTMENT;
+			default -> BotStorePricing.Kind.GEAR;
 		};
 	}
 
@@ -96,12 +100,13 @@ public final class BotStoreStock {
 			return stocked;
 		int room = Math.min(lines, keeper.getInventory().getFreeSlots());
 		for (int attempt = 0; stocked.size() < room && attempt < room * 4; attempt++) {
-			ItemTemplate template = draw(pool, BotOutfitter.bestQualityFor(keeper.getLevel()));
+			// stones by an even draw: most manastones are common, and a draw by quality kept landing on the one green among them
+			ItemTemplate template = theme == Theme.STONES ? Rnd.get(pool) : draw(pool, BotOutfitter.bestQualityFor(keeper.getLevel()));
 			if (template == null || stocked.contains(template.getTemplateId()))
 				continue;
-			long count = switch (theme) {
-				case GEAR, ACCESSORIES -> 1;
-				case MANASTONES -> Rnd.get(5, 20);
+			long count = switch (kindOf(template)) {
+				case GEAR -> 1;
+				case MANASTONE -> Rnd.get(5, 20);
 				case ENCHANTMENT -> Rnd.get(10, 50);
 			};
 			if (ItemService.addItem(keeper, template.getTemplateId(), count) < count)
@@ -156,9 +161,9 @@ public final class BotStoreStock {
 				&& Math.abs(template.getLevel() - level) <= LEVEL_SPREAD && BotEquipManager.isPlayerGear(template);
 			case ACCESSORIES -> ACCESSORY_GROUPS.contains(group) && Math.abs(template.getLevel() - level) <= LEVEL_SPREAD
 				&& BotEquipManager.isPlayerGear(template);
-			case MANASTONES -> group == ItemGroup.MANASTONE && template.getLevel() <= level && template.getLevel() >= level - 2 * LEVEL_SPREAD;
-			case ENCHANTMENT -> group == ItemGroup.ENCHANTMENT && template.getLevel() >= level && template.getLevel() <= level + ENCHANTMENT_GRADES
-				&& template.getName() != null && template.getName().endsWith("Enchantment Stone");
+			case STONES -> group == ItemGroup.MANASTONE && template.getLevel() <= level && template.getLevel() >= level - 2 * LEVEL_SPREAD
+				|| group == ItemGroup.ENCHANTMENT && template.getLevel() >= level - ENCHANTMENT_GRADES_UNDER
+					&& template.getLevel() <= level + ENCHANTMENT_GRADES_OVER && template.getName() != null && template.getName().endsWith("Enchantment Stone");
 		};
 	}
 

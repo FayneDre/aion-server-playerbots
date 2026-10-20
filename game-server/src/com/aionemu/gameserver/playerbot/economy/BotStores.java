@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Item;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.trade.TradePSItem;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
@@ -72,7 +73,11 @@ public final class BotStores {
 		sites.addAll(TownServices.keepersOf(keeper, TownServices.Service.WAREHOUSE));
 		if (sites.isEmpty() || stalls.size() >= STORES_PER_MAP)
 			return null;
-		Vector3f site = sites.get(Math.floorMod(keeper.getObjectId(), sites.size()));
+		Vector3f keeperStands = sites.get(Math.floorMod(keeper.getObjectId(), sites.size()));
+		// the floor in front of the counter, not the keeper's feet: Pandaemonium's brokers and warehouse keepers stand in pockets behind theirs, and a
+		// stall looked for round their feet was refused 27 times of 31 on 20 October, no spot free or no way to it, as shop trips were on 18 October
+		Vector3f front = BotVendorManager.frontOf(keeper.getWorldId(), keeperStands);
+		Vector3f site = front != null ? front : keeperStands;
 		Predicate<Vector3f> taken = spot -> crowded.test(spot) || stalls.values().stream()
 			.anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), spot.getX(), spot.getY()) < STALL_SPACING);
 		Vector3f stall = BotPlaces.spotAround(keeper.getWorldId(), site, STALL_SPREAD, STALL_ATTEMPTS, keeper.getObjectId(), taken);
@@ -111,17 +116,18 @@ public final class BotStores {
 		}
 		if (lines.isEmpty())
 			return false;
-		BotStorePricing.Kind kind = BotStoreStock.kindOf(BotStoreStock.themeOf(keeper.getObjectId()));
 		long now = System.currentTimeMillis();
 		TradePSItem[] goods = lines.stream().limit(MAX_LINES).map(item -> {
 			ItemTemplate template = item.getItemTemplate();
 			long hours = (now - shelf.stockedAt.get(item.getObjectId())) / 3_600_000L;
-			long price = BotStorePricing.price(kind, template.getPrice(), template.getItemQuality(), template.getLevel(), keeper.getObjectId(), hours);
+			long price = BotStorePricing.price(BotStoreStock.kindOf(template), template.getPrice(), template.getItemQuality(), template.getLevel(), keeper.getObjectId(), hours);
 			return new TradePSItem(item.getObjectId(), item.getItemId(), item.getItemCount(), price);
 		}).toArray(TradePSItem[]::new);
 		PrivateStoreService.createStoreWithItems(keeper, goods);
 		if (!keeper.hasStore()) {
-			log.info("Bot {} could not open its store: the engine refused its {} line(s)", keeper.getName(), goods.length);
+			// the engine says why only to a client; the states it asks about are said here instead
+			log.info("Bot {} could not open its store: the engine refused its {} line(s) (moving {}, weapon out {}, seated {})", keeper.getName(),
+				goods.length, keeper.getMoveController().isInMove(), keeper.isInAttackMode(), keeper.isInState(CreatureState.RESTING));
 			return false;
 		}
 		PrivateStoreService.openPrivateStore(keeper, BotStoreStock.nameOf(keeper));
@@ -151,7 +157,8 @@ public final class BotStores {
 		List<Item> lines = new ArrayList<>();
 		shelf.stockedAt.keySet().removeIf(objectId -> {
 			Item item = keeper.getInventory().getItemByObjId(objectId);
-			if (item == null || item.isEquipped())
+			// the engine's own test, which refuses the whole store for one piece that fails it
+			if (item == null || item.isEquipped() || item.getPackCount() <= 0 && !item.isTradeable())
 				return true;
 			lines.add(item);
 			return false;
