@@ -6,6 +6,44 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-20 — 20/10/2026
+
+Révision `a9e9ad4`, celle que `//bot version` affiche. Les capitales vivantes : Sanctum entier, une journée de ville, des boutiques tenues par les bots.
+**Maillages à régénérer** sur un autre serveur de test, serveur arrêté : `.\tools\navmesh.ps1 110010000,120010000,710010000`, puis, depuis le
+dossier `game-server` du serveur, `java -cp "libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool 110010000 rides` (le bateau de Sanctum).
+Une fois le serveur relancé, tapez **`//bot populate 110010000 0`** à Sanctum pour créer les habitants qui lui manquaient.
+
+**Corrigé**
+- **Sanctum entier :** la moitié est de la ville (Artisans Hall, Divine Road…) était coupée du reste pour les bots, ses trois ponts centraux étant
+  pris pour des murs. Sanctum passe de 62 à 116 habitants.
+- **Allers-retours inutiles :** un bot qui va acheter des potions ne va plus chez un marchand qui n'en vend pas (il y retournait toutes les 10 minutes).
+
+**Nouveau**
+- **Le bateau de l'Airship Dock :** les bots le prennent pour aller à l'Outer Dock (Dionysia Tavern) et en revenir, et le quartier sud est de
+  nouveau habité. Un bot disparaît en montant à bord et réapparaît à l'arrivée trois minutes plus tard : le bateau n'existe que dans votre client.
+- **Une journée de ville :** à Sanctum, Pandaemonium et leurs annexes, les habitants ne « chassent » plus. Par tranches de 5 minutes, ils restent
+  chez eux, s'assoient, font une course (marchand, courtier, entrepôt, artisans, téléporteur, maître des stigmas, guérisseur d'âme) ou visitent un
+  autre quartier. Chacun a ses habitudes : la même chose à la même heure chaque jour. Une quinzaine bougent à tout moment à Sanctum.
+- **Boutiques privées des bots :** la moitié des habitants de niveau 20 et plus tiennent une boutique, 6 à 10 heures par jour, à toute heure : une
+  quinzaine ouvertes en permanence à Sanctum, au plus 40 par carte. À Sanctum, elles sont dans la rue de l'Exalted Path à l'Elyos Square, devant
+  le Hall of Prosperity et dedans. Trois sortes : équipement d'une classe, bijoux, pierres (mana et enchantement), au niveau du marchand.
+- **Prix :** jamais sous ce qu'un PNJ rachète plus un quart ; vert, bleu et or plus chers ; chaque marchand un peu plus cher ou moins cher qu'un
+  autre ; un objet invendu baisse de 10 % par heure. Chaque boutique se renouvelle toutes les heures environ : les invendus de plus de deux heures
+  partent, du stock neuf arrive.
+- Un marchand en boutique refuse les duels et les échanges, et ferme boutique s'il accepte une invitation de groupe.
+
+**Connu, pas encore corrigé**
+- La terrasse du Protectors Hall reste vide : son sol manque dans le maillage.
+- Pandaemonium n'a pas encore ses zones de marché : ses boutiques sont autour des courtiers et des entrepôts, et quelques marchands n'y arrivent pas.
+- Le prix d'un objet ne monte pas quand il part vite.
+
+**À tester**
+- Acheter dans une boutique de bot, puis revenir une heure plus tard pour voir l'étalage renouvelé.
+- Passer à Sanctum la nuit : il doit rester des boutiques ouvertes.
+- Regarder un bot embarquer sur le bateau : il doit disparaître au départ.
+
+---
+
 ## patch-2026-10-19-3 — 19/10/2026
 
 Révision `228691f`, celle que `//bot version` affiche. Le vol avec un bot, d'après les retours du 19/10 au soir. **Aucun maillage à régénérer.**
@@ -109,54 +147,6 @@ Révision `666ce2b`, celle que `//bot version` affiche. Les donjons avec des bot
 **À faire sur chaque serveur de test**
 1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
 2. `.\tools\navmesh.ps1 -Dungeons -Force` (environ 17 minutes).
-3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
-
----
-
-## patch-2026-10-18-5 — 18/10/2026
-
-Révision `c7bbc59`, celle que `//bot version` affiche. Les trajets vers les boutiques. Pas de régénération des maillages. Mesuré sur les 23 premières
-minutes après un redémarrage, comparé à la même fenêtre.
-
-**Corrigé**
-- **Le bot marchait vers le mauvais marchand :** il choisissait une boutique accessible, puis marchait vers le marchand le plus proche de lui, qu'il ne
-  pouvait parfois pas atteindre, et abandonnait la boutique choisie. Il recommençait ainsi avec chaque boutique de la rue, toutes les 2 minutes. Il
-  marche maintenant vers celle qu'il a choisie, et vend toujours au premier marchand à sa portée. Trajets abandonnés : 91 contre 269.
-- **Il visait les pieds du marchand**, derrière le comptoir, hors du sol praticable : chaque recherche d'itinéraire tournait 1 à 2 secondes pour
-  rien. Il vise maintenant le premier sol devant le marchand, à portée d'échange. Temps de calcul de ces recherches lentes : 599 s contre 978.
-- **Fioles :** un bot qui venait d'acheter des fioles, sans en avoir assez, retournait en acheter chaque seconde.
-
-**Connu, pas encore corrigé**
-- Environ 50 téléportations de secours par demi-heure, réparties sur toutes les cartes, sans endroit qui revienne plus de 4 fois.
-- Des recherches d'itinéraire longues (plus d'une seconde) prennent encore environ 600 secondes de calcul par demi-heure, sans effet visible en jeu.
-
-**À faire sur chaque serveur de test**
-1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
-2. Si le patch 2026-10-18-3 n'a pas été installé : `.\tools\navmesh.ps1 -OpenWorld` (environ 25 minutes).
-3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
-
----
-
-## patch-2026-10-18-4 — 18/10/2026
-
-Révision `cfe42ff`, celle que `//bot version` affiche. Trois points restés ouverts au patch précédent. Pas de régénération des maillages.
-
-**Corrigé**
-- **Bots restés en donjon :** si vous vous déconnectez dans une instance, vos bots vous attendent 5 minutes (le temps de relancer un client), puis
-  quittent le groupe et sortent de l'instance. Les bots recrutés par la recherche de groupe rentrent ensuite chez eux. Pareil pour un groupe dont il ne
-  reste aucun joueur.
-- **Mort en boucle dans les Abysses :** un bot élyséen ressuscitait à Primum, la base asmodienne, et ses gardes le tuaient toutes les 12 secondes.
-  Quand aucun obélisque n'est atteignable à pied depuis chez lui, un bot prenait le plus proche, de n'importe quelle faction. Il ne s'attache plus
-  qu'aux obélisques de sa faction ou neutres.
-- **Habitants de lieux disparus :** la règle qui reloge les habitants d'un lieu supprimé existait depuis le 4 octobre mais n'était jamais appelée.
-  98 bots ont été relogés au premier démarrage, dont 47 du creux d'Inggison ; un bot éveillé prend son nouveau domicile tout de suite.
-
-**À vérifier en jeu**
-- Déconnectez-vous dans un donjon avec vos bots : au bout de 5 minutes, ils doivent quitter le groupe et ne plus être dans l'instance.
-
-**À faire sur chaque serveur de test**
-1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
-2. Si le patch 2026-10-18-3 n'a pas été installé : `.\tools\navmesh.ps1 -OpenWorld` (environ 25 minutes).
 3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
 
 ---
