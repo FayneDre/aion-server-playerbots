@@ -177,7 +177,9 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
 
 ## Known limits, in order of how much they will bite
 
-1. **How many characters a client tolerates in one place is unmeasured**, the one ceiling this project does not control and the one a player feels.
+1. **How many characters a client tolerates in one place**: measured once on 20 October, in Sanctum on the tester's machine. It held 60 fps with
+   25 standing in sight, about 45 with 50, 35 with 75 and 30 with 97 ([living-capitals-plan.md](living-capitals-plan.md)). This is the ceiling
+   this project does not control and the one a player feels.
 2. **Memory**: about 800 awake bots fill a 2560 MB heap (90% old generation), which is why the two housing maps (Oriel, Pernon) are not populated.
    The machine has little left besides: a long background wait of the tooling was killed for low memory on 17 October.
 3. **Only maps with a mesh are planned on.** 26 open-world maps and 45 dungeons have one (`tools/navmesh.ps1 <mapId>`, then `-Obelisks`); only

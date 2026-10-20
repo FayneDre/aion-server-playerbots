@@ -103,12 +103,39 @@ Players put their stores near the broker and the warehouse. Those spots are foun
      the 38 characters it lacked, and 96 were awake. Still lost, for other reasons: the terrace at z 811 (52 townsfolk, probably reached by a
      teleporter), the southern group at z 520 to 530, the closed arena, and two small places. Pandaemonium and 710010000 were regenerated too
      (their obelisks pass): Pandaemonium still loses the same 4 of 36 places, which are not near its walk-flagged entrance floor, and 710010000
-     loses 3 of 76, with no earlier figure to compare against. Poles, tents and colliders on 12 more maps carry such parts, and those maps were
+     loses 3 of 76, with no earlier figure to compare against. **The tester's answer about the places still lost**: three rides join them to the
+     city, and none of the three is in the geo data. The first is a lift at the Sky Canal up to the upper quarters. The second is a lift in the
+     middle of the Artisans Hall (the crafting tables, z 590) up to the Protectors Hall: that is the terrace at z 811. The third is a boat from the
+     Airship Dock (Phogus, 1660 1503 543) to the Outer Dock, the island of the Dionysia Tavern: that is the southern group at z 520 to 530. The way
+     to reach them is a ride link (walk to the platform, wait for the ride, arrive), joining the islands the way flight links join Reshanta's.
+     **The ends, from the tester's notes (20 October)**:
+     - the boat, 1669 1497 543 → 1791 2005 518, about 3 minutes;
+     - the Sky Canal lift, 1692 1615 567 → 1777 1616 593, about 20 s;
+     - the Artisans Hall lift, 1867 1507 591 → 1867 1508 805, about 20 s.
+
+     What the mesh says about those ends:
+     - The obelisk (1474 1598 574), the Airship Dock and the foot of the Sky Canal lift are one stretch of ground.
+     - The Outer Dock walks to the southern places.
+     - Both ends of the Artisans Hall lift stand on the lift itself, and no route leaves them, so a link has to land on the nearest floor that
+       joins its side.
+     - The Sky Canal lift is the obelisk district's only way into the city. A bot raised at the obelisk cannot walk home until that link exists. Poles, tents and colliders on 12 more maps carry such parts, and those maps were
      left as they were.
    - The fruitless flask trip. **Fixed 20 October**: a trip made for flasks alone only goes to a keeper who sells one the bot may drink
      (`BotVendorManager.findVendor`, `forFlasks`). Deployed; the count of trips is to be measured again.
-   - Count in game how many characters and stores a client tolerates in one square: the roadmap's first limit, never measured, and a market is
-     where it bites first.
+   - Count in game how many characters and stores a client tolerates in one square. **Measured 20 October** on the tester's machine, in Sanctum,
+     with bots brought within 15 m and their autonomy off:
+
+     | bots in sight | fps |
+     |---:|---:|
+     | 0 | 60 |
+     | 25 | 60 |
+     | 50 | about 45 |
+     | 75 | about 35 |
+     | 97 | about 30, dips to 27-28 |
+
+     Characters standing still, with no store and no store name over them. So a market of about **40 stores** within sight, with passers-by
+     round it, keeps the frame rate over 40: the cap per square that milestone 2 is built to. A row of stores with their names shown is to be
+     measured again once it exists.
 1. **A capital day.**
    - Occupations of their own in a capital: no FARMING, longer spells.
    - Errands to the capital's functions (warehouse, broker, stigma master, soul healer, teleporter, crafting tables), each a short stop.
