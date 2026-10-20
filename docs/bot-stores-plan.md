@@ -54,7 +54,8 @@ to it on the first start, 20 October.
 - **Quality** is drawn: green 70, blue 25, gold 5, never above the level's ceiling ([bot-gear.md](bot-gear.md)).
 - **Only reachable, tradeable gear** (`BotGearSources`, `BotGearFit.isObtainable`, `BotEquipManager.isPlayerGear`, `ItemTemplate.isTradeable`).
 - **Stock comes into the keeper's bag** through `ItemService.addItem`, as many lines as the bag has room for. It is restocked when a shift opens
-  with fewer than 4 lines left, at most twice a day per keeper. What a restart leaves in the bag is sold to an npc like any other junk.
+  with fewer than 4 lines left, at most twice a day per keeper. The shelf is kept in memory; after a restart, what in the bag fits the keeper's
+  theme goes back on it, as freshly stocked. Left out at first, it filled four Sanctum keepers' bags after a day of restarts, and they opened nothing.
 - **Names are in French**, since the testers play in French: "Équipement templier 30-35", "Bijoux 40-45", "Pierres 25-35".
 - **Quality is drawn for gear only**: stones are drawn evenly, since most manastones are common and a draw by quality kept landing on the one
   green among them.
@@ -68,8 +69,8 @@ The data's only price is the template's `price`. An npc buys at **20%** of it an
   165 000, blue 260 000, gold 415 000.
 - **Manastones**: 300 × the stone's level × the quality factor. **Enchantment stones**: 50 × the grade. Their template prices are meaningless.
 - **Temperament**: ±15% per keeper, by object id.
-- **Unsold**: 10% less per full hour since the piece was stocked, down to the floor, which a piece reaches within a day. Kept in memory: a restart
-  forgets the shelf, and its leftovers go to an npc as junk.
+- **Unsold**: 10% less per full hour since the piece was stocked, down to the floor, which a piece reaches within a day. A restart counts
+  the hours again from nought.
 - **The shelf is neither worn nor sold to an npc** between two shifts (`BotStores.isOnShelf`, asked by `BotEquipManager` and `BotVendorManager`).
 - Not built: the rise after a quick sale, which needs a hook on the sale itself.
 

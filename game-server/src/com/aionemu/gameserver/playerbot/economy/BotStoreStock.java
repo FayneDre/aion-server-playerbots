@@ -115,6 +115,11 @@ public final class BotStoreStock {
 		return stocked;
 	}
 
+	/** @return true if the piece is something the keeper's store would stock, which is what a shelf forgotten by a restart is rebuilt from. */
+	public static boolean fitsTheme(Player keeper, ItemTemplate template) {
+		return candidatesFor(keeper, themeOf(keeper.getObjectId())).contains(template);
+	}
+
 	/** @return A template of a drawn quality, falling back to the qualities under it when none is stocked; null when the pool has none at all. */
 	private static ItemTemplate draw(List<ItemTemplate> pool, ItemQuality ceiling) {
 		int roll = Rnd.get(0, 99), quality = 0;

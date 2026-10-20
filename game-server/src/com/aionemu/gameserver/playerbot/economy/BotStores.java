@@ -152,6 +152,16 @@ public final class BotStores {
 		if (keeper.hasStore())
 			return true;
 		Shelf shelf = shelves.computeIfAbsent(keeper.getObjectId(), id -> new Shelf());
+		if (shelf.stockedAt.isEmpty()) {
+			// A shelf is kept in memory, and a restart forgets it while the goods stay in the bag. Left there, they were neither sold nor sellable: on
+			// 20 October, after a day of restarts, four Sanctum keepers had bags too full to restock and opened nothing. What fits the theme goes back
+			// on the shelf, as freshly stocked.
+			long now = System.currentTimeMillis();
+			for (Item item : keeper.getInventory().getItems()) {
+				if (!item.isEquipped() && BotStoreStock.fitsTheme(keeper, item.getItemTemplate()))
+					shelf.stockedAt.put(item.getObjectId(), now);
+			}
+		}
 		List<Item> lines = linesOf(keeper, shelf);
 		if (lines.size() < RESTOCK_UNDER && mayRestock(shelf)) {
 			List<Integer> templates = BotStoreStock.stock(keeper, STOCKED_LINES - lines.size());
