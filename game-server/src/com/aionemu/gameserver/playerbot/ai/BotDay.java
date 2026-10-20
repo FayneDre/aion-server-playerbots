@@ -314,8 +314,12 @@ class BotDay {
 			Vector3f keeper = TownServices.keeperOf(bot, quarter.service(), quarter.seed());
 			Vector3f spot = keeper == null ? null
 				: BotPlaces.spotAround(bot.getWorldId(), keeper, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
-			if (spot == null || unreachable.contains(spot))
-				return loiter(); // no such service on the map, no room by it, or no way there: the quarter is spent at home
+			if (spot == null || unreachable.contains(spot)) {
+				// no such service on the map, no room by it, or no way there: the quarter is spent at home, and said so, or the look round the keeper
+				// -- a dozen route searches -- would be made again on every tick of the quarter
+				quarter = new TownRoutine.Quarter(TownRoutine.Activity.HOME, null, quarter.seed());
+				return loiter();
+			}
 			occupationDestination = spot;
 		}
 		ai.setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());

@@ -172,6 +172,14 @@ try {
         Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
         & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim()
         if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
+        # links name the mesh's stretches by number, and a new mesh numbers them afresh: a link file left from the old one would join the wrong ground
+        foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'), @('ride', 'rides'))) {
+            if (Test-Path "data/navmesh/$($id.Trim()).$($links[0])") {
+                Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
+                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() $links[1]
+                if ($LASTEXITCODE -ne 0) { throw "Writing the $($links[1]) of map $id failed (exit code $LASTEXITCODE)" }
+            }
+        }
     }
     Write-Host 'Done. Restart the game server to load the new meshes: .\tools\stop-server.ps1 then .\tools\start-server.ps1' -ForegroundColor Green
 } finally {
