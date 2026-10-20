@@ -273,8 +273,8 @@ class BotDay {
 		Player bot = ai.getOwner();
 		if (keepsStore())
 			return keepTheStall();
-		if (bot.hasStore())
-			BotStores.close(bot); // the shift is over
+		// the shift is over: the store shut, and the stall given up even when the keeper never reached it, or it stays held until a restart
+		BotStores.close(bot);
 		long now = System.currentTimeMillis();
 		if (now > spellUntil || spell == null) {
 			int second = LocalTime.now().toSecondOfDay();
@@ -322,7 +322,7 @@ class BotDay {
 			return true;
 		Vector3f stall = BotStores.stallFor(bot, this::isCrowded);
 		if (stall == null)
-			return refuseStall("no stall is free by a broker or a warehouse");
+			return refuseStall("no stall is free in the town's markets");
 		BotMoveController moves = ai.moves();
 		if (moves == null)
 			return true;
