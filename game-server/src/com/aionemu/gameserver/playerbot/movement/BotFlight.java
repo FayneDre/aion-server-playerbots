@@ -22,6 +22,7 @@ import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.model.templates.zone.ZoneType;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
+import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
@@ -641,6 +642,7 @@ public class BotFlight {
 		// after the flight is scheduled, and guarded: a class's own take-off rule must never be able to leave a bot registered as flying with nothing to fly it
 		try {
 			BotPlaybooks.of(bot).onTakeOff(bot);
+			BotSkillManager.tryFlightBuff(bot); // the classes with no playbook, whose flight buffs nothing else casts
 			// a flight that goes somewhere, not the up and back: the scroll lasts five minutes and a player reads one leaving the ground
 			if (hoverAfter < 0)
 				BotPotionManager.tryScroll(bot, StatEnum.FLY_SPEED);

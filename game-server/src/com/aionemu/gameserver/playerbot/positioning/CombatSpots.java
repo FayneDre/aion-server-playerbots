@@ -1,7 +1,9 @@
 package com.aionemu.gameserver.playerbot.positioning;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 
@@ -80,27 +82,33 @@ public final class CombatSpots {
 	 * @return The spot, at the enemy's own height, or null when the role has no rule or no acceptable spot exists, in which case the bot stays where it is.
 	 */
 	public static Vector3f spotFor(BotPosition role, Situation situation, float reach) {
+		return spotFor(role, situation, reach, _ -> true);
+	}
+
+	/**
+	 * @param standsWell What the world says of a spot the geometry accepts, asked nearest first and only until one passes: whether there is ground under it
+	 *          and the enemy can be seen from it. A spot behind a stair or a pillar is in reach on the plane and useless in the world.
+	 * @return The nearest spot of the first ring that has one the world accepts, or null.
+	 */
+	public static Vector3f spotFor(BotPosition role, Situation situation, float reach, Predicate<Vector3f> standsWell) {
 		if (role == BotPosition.NONE)
 			return null;
-		Vector3f best = null;
-		double bestDistance = Double.MAX_VALUE;
 		for (float radius : radii(role, reach, situation.enemyRadius())) {
+			List<Vector3f> ring = new ArrayList<>();
 			for (int i = 0; i < SAMPLES; i++) {
 				double angle = 2 * Math.PI * i / SAMPLES;
 				double dx = Math.cos(angle), dy = Math.sin(angle);
 				if (!allowsDirection(role, situation, dx, dy))
 					continue;
 				float px = (float) (situation.enemy().getX() + dx * radius), py = (float) (situation.enemy().getY() + dy * radius);
-				if (!isAcceptable(role, situation, reach, px, py))
-					continue;
-				double distance = Math.hypot(px - situation.from().getX(), py - situation.from().getY());
-				if (distance < bestDistance) {
-					bestDistance = distance;
-					best = new Vector3f(px, py, situation.enemy().getZ());
-				}
+				if (isAcceptable(role, situation, reach, px, py))
+					ring.add(new Vector3f(px, py, situation.enemy().getZ()));
 			}
-			if (best != null)
-				return best; // the first ring that has anything is the one wanted: a nearer one is only a fallback
+			ring.sort(Comparator.comparingDouble(p -> Math.hypot(p.getX() - situation.from().getX(), p.getY() - situation.from().getY())));
+			for (Vector3f spot : ring) {
+				if (standsWell.test(spot))
+					return spot; // the first ring that has anything is the one wanted: a nearer one is only a fallback
+			}
 		}
 		return null;
 	}

@@ -18,6 +18,7 @@ import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.skillengine.change.Change;
 import com.aionemu.gameserver.skillengine.condition.ChainCondition;
+import com.aionemu.gameserver.skillengine.condition.OnFlyCondition;
 import com.aionemu.gameserver.skillengine.condition.SkillChargeCondition;
 import com.aionemu.gameserver.skillengine.effect.AbstractHealEffect;
 import com.aionemu.gameserver.skillengine.effect.DamageEffect;
@@ -25,6 +26,8 @@ import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.effect.EffectTemplate;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.skillengine.effect.EffectType;
+import com.aionemu.gameserver.skillengine.effect.FPHealEffect;
+import com.aionemu.gameserver.skillengine.effect.FPHealInstantEffect;
 import com.aionemu.gameserver.skillengine.effect.HostileUpEffect;
 import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
 import com.aionemu.gameserver.skillengine.effect.RideRobotEffect;
@@ -244,6 +247,57 @@ public class BotSkillManager {
 		}
 		return 0;
 	}
+
+	/**
+	 * Puts up a buff that only works in the air, as the bot takes off: a gladiator's Strengthen Wings, a songweaver's Soaring Sonnet. The guide asks for
+	 * them in flight only, and the upkeep never casts them: they last a fraction of their cooldown. The classes with a playbook claim their own
+	 * (Swiftwing, Splendor of Flight) and cast them in {@code onTakeOff}, so they are not seen here.
+	 *
+	 * @return true if one was cast.
+	 */
+	public static boolean tryFlightBuff(Player bot) {
+		if (!bot.isInFlyingState())
+			return false;
+		// a refill of flight points (an aethertech's Fuel Reserves) is for when they run low, not for a take-off on a full bar
+		boolean lowOnFlight = bot.getLifeStats().getFpPercentage() < 50;
+		return cast(bot, bot, skills(bot, (b, template) -> isFlightOnly(template) && !isAlreadyUp(b, template)
+			&& (lowOnFlight || !template.hasAnyEffect(EffectType.FPHEALINSTANT))));
+	}
+
+	/**
+	 * @return true if the skill is a flight buff: it does something for flight (a stat changed only in the air, flight speed or flight time raised, flight
+	 *         points healed) and nothing a body on the ground would miss, bar resisting roots and snares. The data says it four ways: Soaring Sonnet
+	 *         conditions its change on flight, Swiftwing raises flight speed outright, Splendor of Flight heals flight points, and Strengthen Wings adds
+	 *         two unconditioned resistances to its flight changes.
+	 */
+	static boolean isFlightOnly(SkillTemplate template) {
+		if (template.getEffects() == null)
+			return false;
+		boolean forFlight = false;
+		for (EffectTemplate effect : template.getEffects().getEffects()) {
+			if (effect instanceof FPHealEffect || effect instanceof FPHealInstantEffect) {
+				forFlight = true;
+				continue;
+			}
+			if (effect instanceof DamageEffect || effect instanceof AbstractHealEffect)
+				return false;
+			if (effect.getChange() == null)
+				continue;
+			for (Change change : effect.getChange()) {
+				boolean inTheAir = change.getConditions() != null && change.getConditions().getConditions().stream().anyMatch(OnFlyCondition.class::isInstance);
+				if (inTheAir || FLIGHT_STATS.contains(change.getStat()) && change.getValue() > 0)
+					forFlight = true;
+				else if (!HOLD_RESISTANCES.contains(change.getStat()))
+					return false;
+			}
+		}
+		return forFlight;
+	}
+
+	/** The stats that are flight, raised by a flight buff. */
+	private static final Set<StatEnum> FLIGHT_STATS = Set.of(StatEnum.FLY_SPEED, StatEnum.FLY_TIME, StatEnum.REGEN_FP);
+	/** What a flight buff may add besides, which is no reason to cast it on the ground. */
+	private static final Set<StatEnum> HOLD_RESISTANCES = Set.of(StatEnum.ROOT_RESISTANCE, StatEnum.SNARE_RESISTANCE);
 
 	private static boolean isMissingSelfBuff(Player bot, SkillTemplate template) {
 		return isSelfBuff(template) && isWorthKeepingUp(template) && !coversAnApproach(template) && !isAlreadyUp(bot, template);
@@ -1226,6 +1280,8 @@ public class BotSkillManager {
 			if (template.isToggle() && !isMantra(template) && !isRobotToggle(template))
 				return false;
 			if (bot.isSkillDisabled(template)) // cooldowns are keyed by cooldown id, not skill id, which this handles
+				return false;
+			if (!bot.isInFlyingState() && isFlightOnly(template)) // cast on the ground it is a cooldown spent on nothing
 				return false;
 			if (isWaitingForTheEventItAnswers(bot, template))
 				return false;

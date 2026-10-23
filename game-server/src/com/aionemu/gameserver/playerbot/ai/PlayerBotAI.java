@@ -42,6 +42,7 @@ import com.aionemu.gameserver.playerbot.social.BotRequests;
 import com.aionemu.gameserver.playerbot.social.LeaderGlides;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.social.BotTransports;
+import com.aionemu.gameserver.world.geo.GeoService;
 import com.aionemu.gameserver.playerbot.positioning.BotPosition;
 import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
@@ -994,6 +995,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// casting roots a real player, so the bot neither moves nor starts another action until the cast is over
 		} else if (takeStation(target)) {
 			// walking to the place its class fights from, which is behind the enemy for melee and back from it for the rest; nothing is swung on the way
+		} else if (comesIntoSight(target)) {
+			// in reach and out of sight, behind a stair or a corner: every cast would be refused, so it walks round until it sees the target
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
 			chaseStartTime = 0;
 			pulledFromAfar = true; // the fight is opened in reach, so a target that steps back is followed, not shot at
@@ -1068,7 +1071,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
 			return true;
 		Vector3f spot = BotStations.spotFor(bot, target);
-		if (spot == null)
+		// Already standing on it and still not placed: the spot passed the line of sight as asked from the enemy, and the bot's own look disagrees. Walking
+		// to where it stands would spend every tick here; comesIntoSight takes it on from this step.
+		if (spot == null || PositionUtil.getDistance(bot.getX(), bot.getY(), spot.getX(), spot.getY()) <= SPOT_TOLERANCE)
 			return false;
 		lastStationRoute = now;
 		moveController.avoid(BotStations.avoidanceFor(bot, target));
@@ -1146,6 +1151,27 @@ public class PlayerBotAI extends AITemplate<Player> {
 		lastStationRoute = now;
 		moveController.avoid(BotStations.avoidanceFor(bot, fight));
 		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
+	}
+
+	/**
+	 * Walks towards a target that is within the bot's reach but out of its sight, along the mesh's route, which goes round what is in the way.
+	 * <p>
+	 * Reach was the only question asked, and a target below a stair or round a pillar is in reach: a ranged bot stood there with every cast refused for
+	 * want of a line of sight, landed nothing, and gave the fight up after twenty seconds (reported on 19 October). The walk is asked again on every
+	 * tick, so it stops on the first step from which the target can be seen. A group's healer is left where it is, which is its whole rule.
+	 *
+	 * @return true while the bot is on its way.
+	 */
+	private boolean comesIntoSight(Creature target) {
+		Player bot = getOwner();
+		if (isGroupHealer(bot) || PositionUtil.getDistance(bot, target) > Math.max(BotSkillManager.reach(bot), bot.getGameStats().getAttackRange().getCurrent() / 1000f)
+			|| GeoService.getInstance().canSee(bot, target) || !(bot.getMoveController() instanceof BotMoveController moveController))
+			return false;
+		long now = System.currentTimeMillis();
+		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
+			return true;
+		lastStationRoute = now;
+		return tryMoveTo(moveController, target.getX(), target.getY(), target.getZ());
 	}
 
 	/** @return true if this is a ranged class standing where it should against the target, which then waits for something to cast rather than close in. */

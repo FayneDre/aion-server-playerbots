@@ -81,7 +81,7 @@ maison de la citadelle de Verteron. Les maillages ont encore été régénérés
 1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
 2. `.\tools\navmesh.ps1 -OpenWorld` (environ 25 minutes) : à refaire même si vous l'aviez fait pour le patch précédent.
 3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`. Premier démarrage d'environ 7 minutes.
-4. Si ce n'est pas déjà fait : `gameserver.instance_group.form_anywhere = true` dans `game-server\config\mygs.properties`.
+4. Si ce n'est pas déjà fait : `gameserver.instance_group.form_anywhere = true` dans `game-server\config\main\group.properties` (passer de `false` à `true`), ou dans `game-server\config\mygs.properties` si vous avez créé ce fichier facultatif, qui remplace les réglages de `main`.
 
 **Connu, pas encore corrigé**
 - Quelques bots habitent encore le creux d'Inggison et y sont ramenés après un blocage, le temps que le directeur les reloge.
@@ -101,7 +101,7 @@ plus les murs, et tous les maillages du monde ouvert ont été régénérés pou
   Quand ils quittent le groupe, ils rentrent chez eux.
 - **Suivi en instance :** quand vous entrez dans un donjon, vos bots y entrent avec vous ; quand vous en sortez, ils vous suivent dehors. Un bot mort
   dans le donjon revient à l'entrée, pas à l'obélisque.
-- **Réglage serveur :** `gameserver.instance_group.form_anywhere = true` dans `mygs.properties`, sans quoi le bouton « Post Offer » reste grisé (les statues
+- **Réglage serveur :** `gameserver.instance_group.form_anywhere = true` dans `config\main\group.properties` (ou `mygs.properties` s'il existe), sans quoi le bouton « Post Offer » reste grisé (les statues
   de ce client n'ouvrent jamais la page de recrutement).
 
 **Suivre le chef**
@@ -133,7 +133,7 @@ plus les murs, et tous les maillages du monde ouvert ont été régénérés pou
 2. Récupérer le code et construire le jar : `git pull`, puis `mvn -pl game-server -am package`.
 3. Régénérer les maillages du monde ouvert, avec leurs liens de glissade et de vol : `.\tools\navmesh.ps1 -OpenWorld`. Environ 25 minutes. Sans
    cette étape, les bots continuent de traverser les murs.
-4. Ajouter `gameserver.instance_group.form_anywhere = true` dans `game-server\config\mygs.properties`.
+4. Mettre `gameserver.instance_group.form_anywhere = true` dans `game-server\config\main\group.properties` (passer de `false` à `true`), ou dans `game-server\config\mygs.properties` si vous avez créé ce fichier facultatif, qui remplace les réglages de `main`.
 5. Déployer puis démarrer : `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`. Le premier démarrage recalcule les lieux des bots et prend
    plusieurs minutes.
 

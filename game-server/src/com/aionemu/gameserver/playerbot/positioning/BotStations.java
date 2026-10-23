@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.geoEngine.collision.IgnoreProperties;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
@@ -23,6 +24,7 @@ import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.services.TribeRelationService;
 import com.aionemu.gameserver.utils.PositionUtil;
+import com.aionemu.gameserver.world.geo.GeoService;
 
 /**
  * The world's side of positioning: reads what {@link CombatSpots} needs from the engine, asks it, and says whether a bot is where its class belongs.
@@ -110,7 +112,8 @@ public final class BotStations {
 			case BEHIND -> PositionUtil.isBehind(bot, enemy, PLACED_BEHIND_DEGREES) && BotAttackManager.isInAttackRange(bot, enemy);
 			case RANGED -> {
 				double distance = PositionUtil.getDistance(bot, enemy, true);
-				yield PositionUtil.isBehind(bot, enemy, BACK_HALF_DEGREES) && distance >= CombatSpots.MIN_STANDOFF && distance <= BotSkillManager.reach(bot);
+				yield PositionUtil.isBehind(bot, enemy, BACK_HALF_DEGREES) && distance >= CombatSpots.MIN_STANDOFF && distance <= BotSkillManager.reach(bot)
+					&& GeoService.getInstance().canSee(bot, enemy);
 			}
 			case FRONT -> CombatSpots.isTankPlaced(situationOf(bot, enemy, List.of(), false));
 			case HEALER -> CombatSpots.isHealerPlaced(situationOf(bot, enemy, otherMembers(bot), false), BotSkillManager.healReach(bot));
@@ -133,11 +136,23 @@ public final class BotStations {
 			default -> BotSkillManager.reach(bot);
 		};
 		CombatSpots.Situation situation = situationOf(bot, enemy, role == BotPosition.HEALER ? otherMembers(bot) : List.of(), true);
-		Vector3f spot = CombatSpots.spotFor(role, situation, reach);
-		if (spot == null)
-			return null;
-		// the geometry works on a plane; the ground is the navmesh's to say, and a spot with none under it is no spot
-		return NavmeshService.getInstance().groundNear(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ());
+		// the geometry works on a plane; the ground is the navmesh's to say, and a spot with none under it is no spot. A ranged bot must also see the
+		// enemy from it: a spot below a stair or round a corner is in reach on the plane, every cast from it is refused, and the bot gave the fight up
+		// after twenty seconds of standing there (reported on 19 October)
+		Vector3f[] ground = { null };
+		CombatSpots.spotFor(role, situation, reach, spot -> {
+			Vector3f under = NavmeshService.getInstance().groundNear(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ());
+			if (under == null || role == BotPosition.RANGED && !seesFrom(enemy, under))
+				return false;
+			ground[0] = under;
+			return true;
+		});
+		return ground[0];
+	}
+
+	/** @return true if nothing stands between the enemy and a body on that ground, asked from the enemy's side, which is the same line. */
+	private static boolean seesFrom(Creature enemy, Vector3f ground) {
+		return GeoService.getInstance().canSee(enemy, ground.getX(), ground.getY(), ground.getZ(), IgnoreProperties.ANY_RACE);
 	}
 
 	/**
