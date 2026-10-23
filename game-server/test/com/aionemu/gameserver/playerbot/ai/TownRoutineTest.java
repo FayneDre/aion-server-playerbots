@@ -75,33 +75,49 @@ class TownRoutineTest {
 	}
 
 	@Test
-	void merchantsKeepShiftsOfSixToTenHours() {
+	void eightResidentsInTenAreMerchants() {
 		int merchants = 0;
 		for (int id = 0; id < 2000; id++) {
-			if (!TownRoutine.isMerchant(id))
-				continue;
-			merchants++;
-			int minutes = 0;
-			for (int second = 0; second < DAY; second += 60) {
-				if (TownRoutine.onShift(id, second))
-					minutes++;
-			}
-			assertTrue(minutes >= 6 * 60 && minutes <= 10 * 60 + 1, "merchant " + id + " keeps its store " + minutes + " minutes");
+			if (TownRoutine.isMerchant(id))
+				merchants++;
 		}
-		assertEquals(1000, merchants, 60, "five residents in ten");
+		assertEquals(1600, merchants, 60);
 	}
 
 	@Test
-	void storesAreOpenAtEveryHour() {
-		// the tester asked for merchants at all hours: with 2000 residents, every hour has about a sixth of the merchants on shift
-		for (int hour = 0; hour < 24; hour++) {
-			int open = 0;
-			for (int id = 0; id < 2000; id++) {
-				if (TownRoutine.isMerchant(id) && TownRoutine.onShift(id, hour * 3600 + 1800))
-					open++;
+	void theRotaKeepsTheSameNumberOfStoresAtEveryHour() {
+		// the number is the rota's and not chance: Sanctum, with a quarter fewer residents than Pandaemonium, held 26 stores against its 40
+		for (int merchants : new int[] { 45, 77, 102, 300 }) {
+			for (int second = 0; second < DAY; second += 600) {
+				int open = 0;
+				for (int rank = 0; rank < merchants; rank++) {
+					if (TownRoutine.onRota(rank, merchants, second))
+						open++;
+				}
+				assertEquals(TownRoutine.ON_SHIFT, open, merchants + " merchants at second " + second);
 			}
-			assertTrue(open > 250 && open < 420, open + " merchants on shift at " + hour + ":30");
 		}
+	}
+
+	@Test
+	void aShiftIsOneStretchAsLongAsTheTownNeeds() {
+		int merchants = 77, minutes = 0, starts = 0;
+		boolean was = TownRoutine.onRota(10, merchants, DAY - 60);
+		for (int second = 0; second < DAY; second += 60) {
+			boolean is = TownRoutine.onRota(10, merchants, second);
+			if (is)
+				minutes++;
+			if (is && !was)
+				starts++;
+			was = is;
+		}
+		assertEquals(1, starts, "one shift a day");
+		assertEquals(24 * 60 * TownRoutine.ON_SHIFT / merchants, minutes, 2, "44 of 77 merchants: about 14 hours");
+	}
+
+	@Test
+	void aTownWithFewMerchantsKeepsThemAllOnShift() {
+		assertTrue(TownRoutine.onRota(30, 40, 12345));
 	}
 
 	@Test

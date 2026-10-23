@@ -73,26 +73,43 @@ final class TownRoutine {
 
 	/** The lowest level a resident keeps a store from: below it a character has little to sell anybody would want. */
 	static final int STORE_LEVEL = 20;
-	/** How many residents in ten keep a store. */
-	private static final int MERCHANTS_IN_TEN = 5;
-	/** How long a shift lasts, in seconds. */
-	private static final int SHIFT_SHORTEST = 6 * 3600, SHIFT_LONGEST = 10 * 3600;
+	/** How many residents in ten keep a store, the same ones every day. */
+	private static final int MERCHANTS_IN_TEN = 8;
+	/**
+	 * How many of a town's merchants are on shift at once: the 40 stores a map holds, and a few more for those that cannot reach their stall.
+	 * <p>
+	 * A count and not a share. Each merchant had a shift of its own, drawn from its id, and how many stores a town held was chance multiplied by how many
+	 * residents it had: about 16 in Sanctum and 21 in Pandaemonium with shifts of 6 to 10 hours, and still 26 against 40 with longer ones, while
+	 * Pandaemonium, with a third more residents, was full (23 October).
+	 */
+	static final int ON_SHIFT = 44;
 
 	/** @return true for a resident who keeps a store, the same ones every day. */
 	static boolean isMerchant(int objectId) {
 		return Math.floorMod(mix(objectId ^ 0x1B873593), 10) < MERCHANTS_IN_TEN;
 	}
 
+	/** @return Where a merchant stands in its town's rota: the town's merchants are sorted on this, so neighbouring ids are not neighbours on it. */
+	static int rotaOrder(int objectId) {
+		return mix(objectId ^ 0x68E31DA4);
+	}
+
 	/**
-	 * @return true while a merchant's shift runs: 6 to 10 hours of its own, starting at any hour and running past midnight when it starts late, so a town
-	 *         has stores open at every hour and they do not all open at once. Shifts of the day alone came first, from 8:00 to 16:00: nobody at night,
-	 *         and the tester asked for merchants at all hours.
+	 * @param rank Where the merchant stands among its town's merchants sorted by {@link #rotaOrder}.
+	 * @param merchants How many merchants the town has.
+	 * @return true while the merchant is on shift: a window of {@link #ON_SHIFT} merchants that goes round the rota once a day, so that a town has
+	 *         the same number of stores open at every hour, and each merchant keeps its store for a stretch of the day as long as the town has few
+	 *         merchants for its stores: about 14 hours in a town of 77, all day in a town of 44 or fewer.
 	 */
-	static boolean onShift(int objectId, int secondOfDay) {
-		int h = mix(objectId ^ 0x68E31DA4);
-		int start = Math.floorMod(h, DAY_SECONDS);
-		int length = SHIFT_SHORTEST + Math.floorMod(h / 7, SHIFT_LONGEST - SHIFT_SHORTEST + 1);
-		return Math.floorMod(secondOfDay - start, DAY_SECONDS) < length;
+	static boolean onRota(int rank, int merchants, int secondOfDay) {
+		if (merchants <= ON_SHIFT)
+			return true;
+		return Math.floorMod(rank - firstOnShift(merchants, secondOfDay), merchants) < ON_SHIFT;
+	}
+
+	/** @return Where in a town's rota the window of merchants on shift starts at this second of the day. */
+	static int firstOnShift(int merchants, int secondOfDay) {
+		return (int) ((long) secondOfDay * merchants / DAY_SECONDS);
 	}
 
 	/** @return When in a spell's length this resident's spells start, so that residents do not all set off at once. */

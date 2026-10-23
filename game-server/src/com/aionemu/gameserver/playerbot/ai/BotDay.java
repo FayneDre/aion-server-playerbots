@@ -1,6 +1,9 @@
 package com.aionemu.gameserver.playerbot.ai;
 
 import java.time.LocalTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,6 +25,7 @@ import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.playerbot.world.BotQuestGrounds;
 import com.aionemu.gameserver.playerbot.world.TownServices;
 import com.aionemu.gameserver.utils.PositionUtil;
+import com.aionemu.gameserver.world.World;
 
 /**
  * What a resident does with its day.
@@ -62,6 +66,11 @@ class BotDay {
 	private static final float STALL_REACH = 1.5f;
 	/** How long a merchant turned away from a stall waits before it tries again. */
 	private static final long STALL_RETRY_MILLIS = 30 * 60_000L;
+	/**
+	 * How long a merchant with no way to its stall waits before it tries again: a resident living across the town from its markets has no way there
+	 * the next half hour either, and each try took a turn of the rota from a merchant that could have kept a store.
+	 */
+	private static final long STALL_UNREACHABLE_MILLIS = 6 * 3600_000L;
 
 	private final PlayerBotAI ai;
 	/** What the bot is doing with its day, and until when. */
@@ -306,9 +315,51 @@ class BotDay {
 	 */
 	boolean keepsStore() {
 		Player bot = ai.getOwner();
-		return !ai.isOwned() && bot.getLevel() >= TownRoutine.STORE_LEVEL && TownRoutine.isMerchant(bot.getObjectId())
-			&& !bot.isInGroup() && !bot.isInAlliance() && System.currentTimeMillis() >= stallRefusedUntil && BotPresence.isTown(bot.getWorldId())
-			&& TownRoutine.onShift(bot.getObjectId(), LocalTime.now().toSecondOfDay());
+		return isMerchantHere(bot) && !bot.isInGroup() && !bot.isInAlliance() && System.currentTimeMillis() >= stallRefusedUntil && onShift(bot);
+	}
+
+	/** @return true for a resident that keeps a store in the town it stands in, on shift or not: what a town's rota is made of. */
+	private static boolean isMerchantHere(Player bot) {
+		return bot.getAi() instanceof PlayerBotAI ai && !ai.isOwned() && bot.getLevel() >= TownRoutine.STORE_LEVEL
+			&& TownRoutine.isMerchant(bot.getObjectId()) && BotPresence.isTown(bot.getWorldId());
+	}
+
+	/** How long a town's rota is kept before its merchants are counted again, in milliseconds. */
+	private static final long ROTA_MILLIS = 60_000;
+
+	/** A town's merchants in rota order, and when they were counted. */
+	private record Rota(long countedAt, List<Integer> merchants) {
+	}
+
+	/** The rota of each town, by map. */
+	private static final Map<Integer, Rota> rotas = new ConcurrentHashMap<>();
+
+	/** @return true while the merchant's turn on its town's rota runs: see {@link TownRoutine#onRota}. */
+	private static boolean onShift(Player bot) {
+		long now = System.currentTimeMillis();
+		Rota rota = rotas.compute(bot.getWorldId(),
+			(worldId, known) -> known != null && now - known.countedAt() < ROTA_MILLIS ? known : new Rota(now, merchantsOf(worldId)));
+		List<Integer> merchants = rota.merchants();
+		if (merchants.size() <= TownRoutine.ON_SHIFT)
+			return merchants.contains(bot.getObjectId());
+		// The window counts only merchants that can get to their stall: one with no way there gives its turn to the next for as long as it waits. Merchants living across the town from its markets found no way to their stall and held a third of Sanctum's turns for nothing.
+		int first = TownRoutine.firstOnShift(merchants.size(), LocalTime.now().toSecondOfDay());
+		for (int i = 0, counted = 0; i < merchants.size() && counted < TownRoutine.ON_SHIFT; i++) {
+			int id = merchants.get((first + i) % merchants.size());
+			if (id == bot.getObjectId())
+				return true;
+			if (unreachableUntil.getOrDefault(id, 0L) <= now)
+				counted++;
+		}
+		return false;
+	}
+
+	/** When each merchant with no way to its stall may try again, by object id: what the rota skips. */
+	private static final Map<Integer, Long> unreachableUntil = new ConcurrentHashMap<>();
+
+	private static List<Integer> merchantsOf(int worldId) {
+		return World.getInstance().getAllPlayers().stream().filter(player -> player.getWorldId() == worldId && isMerchantHere(player))
+			.map(Player::getObjectId).sorted(Comparator.comparingInt(TownRoutine::rotaOrder)).toList();
 	}
 
 	/**
@@ -322,7 +373,7 @@ class BotDay {
 			return true;
 		Vector3f stall = BotStores.stallFor(bot, this::isCrowded);
 		if (stall == null)
-			return refuseStall("no stall is free in the town's markets");
+			return refuseStall("no stall is free in the town's markets", STALL_RETRY_MILLIS);
 		BotMoveController moves = ai.moves();
 		if (moves == null)
 			return true;
@@ -330,21 +381,25 @@ class BotDay {
 		if (PositionUtil.getDistance(bot.getX(), bot.getY(), stall.getX(), stall.getY()) > STALL_REACH) {
 			// its own spot to the metre, not the standing spot round the anchor every other walk ends at: stalls are three metres apart
 			if (!moves.isInMove() && !ai.tryMoveTo(moves, stall.getX(), stall.getY(), stall.getZ()))
-				return refuseStall("no way to its stall");
+				return refuseStall("no way to its stall", STALL_UNREACHABLE_MILLIS);
 			return true;
 		}
 		if (moves.isInMove() || ai.posture().standUp() || ai.posture().sheathe() || BotSkillManager.leaveRobot(bot))
 			return true; // the engine opens no store on a body that is moving, seated, holding its weapon or in its robot
 		if (!BotStores.open(bot))
-			return refuseStall("nothing to sell");
+			return refuseStall("nothing to sell", STALL_RETRY_MILLIS);
 		return true;
 	}
 
 	/** Gives the stall up for half an hour and goes back to the town's spells meanwhile. */
-	private boolean refuseStall(String why) {
+	private boolean refuseStall(String why, long retryMillis) {
 		log.info("Bot {} keeps no store for now: {}", ai.getOwner().getName(), why);
 		BotStores.release(ai.getOwner());
-		stallRefusedUntil = System.currentTimeMillis() + STALL_RETRY_MILLIS;
+		stallRefusedUntil = System.currentTimeMillis() + retryMillis;
+		// Only a merchant that cannot get to the markets gives its turn up. One turned away because every store is taken keeps it: giving it up put
+		// the next merchant on shift, who was turned away in turn, and the window ran round the whole town in minutes.
+		if (retryMillis == STALL_UNREACHABLE_MILLIS)
+			unreachableUntil.put(ai.getOwner().getObjectId(), stallRefusedUntil);
 		return true;
 	}
 
