@@ -81,6 +81,19 @@ public interface ClassPlaybook {
 		return false;
 	}
 
+	/** @return false for a class that never swings its weapon: when it has nothing to cast it waits for something, as a sorcerer does. */
+	default boolean swings(Player bot) {
+		return true;
+	}
+
+	/**
+	 * @return true while the class wants to go on resting although the generic bar (90 % health, 35 % mana) is met: a sorcerer rests from under half its
+	 *         mana up to full. Asked out of a fight only, where resting is decided.
+	 */
+	default boolean wantsToRest(Player bot) {
+		return false;
+	}
+
 	/** What a class says about being outnumbered, which the generic rule answers by leaving under 40 % health. */
 	enum Outnumbered {
 		/** Nothing: the generic rule decides. */

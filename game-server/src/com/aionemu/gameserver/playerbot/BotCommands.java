@@ -17,8 +17,10 @@ import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.economy.BotOutfitter;
@@ -209,6 +211,21 @@ public final class BotCommands {
 	 */
 	public static String give(String characterName, Player owner, List<String> what) {
 		return withBotAi(characterName, (bot, ai) -> ai.isOwnedBy(owner) ? BotTrades.give(bot, owner, what) : characterName + " is not your companion");
+	}
+
+	/**
+	 * Has a sorcerer bot open a gate to its faction's capital (Summon Rift), the guide's proposal: no item used, a minute's cooldown. Named, that bot; with
+	 * no name, the sorcerer bot in the requester's group.
+	 */
+	public static String gate(String characterName, Player requester) {
+		if (characterName != null)
+			return withBot(characterName, BotPlaybooks::openGate);
+		TemporaryPlayerTeam<?> team = requester == null ? null : requester.getCurrentTeam();
+		if (team == null)
+			return "You are in no group: name the sorcerer, //bot gate <characterName>.";
+		Player sorcerer = team.getMembers().stream().filter(member -> member.isBot() && member.getPlayerClass() == PlayerClass.SORCERER).findFirst()
+			.orElse(null);
+		return sorcerer == null ? "Your group has no sorcerer bot." : BotPlaybooks.openGate(sorcerer);
 	}
 
 	public static String stopAttacking(String characterName) {

@@ -1002,7 +1002,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			chaseStartTime = 0;
 			pulledFromAfar = true; // the fight is opened in reach, so a target that steps back is followed, not shot at
 			stopMoving();
-			if (useBestSkill(target) || BotAttackManager.autoAttack(bot, target)) {
+			// a class that never swings (a sorcerer's "Always Be Casting") waits for a spell rather than reaching for its orb
+			if (useBestSkill(target) || BotPlaybooks.of(bot).swings(bot) && BotAttackManager.autoAttack(bot, target)) {
 				lastBlow = System.currentTimeMillis();
 				giveUpsInARow = 0;
 			}
@@ -1949,7 +1950,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean isHealthyEnoughToFight() {
 		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT
-			&& getOwner().getLifeStats().getMpPercentage() >= MIN_ENGAGE_MP_PERCENT;
+			&& getOwner().getLifeStats().getMpPercentage() >= MIN_ENGAGE_MP_PERCENT && !BotPlaybooks.of(getOwner()).wantsToRest(getOwner());
 	}
 
 	/**

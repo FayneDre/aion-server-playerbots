@@ -13,6 +13,7 @@ public final class BotPlaybooks {
 	private static final ClassPlaybook RANGER = new RangerPlaybook();
 	private static final ClassPlaybook CLERIC = new ClericPlaybook();
 	private static final ClassPlaybook GLADIATOR = new GladiatorPlaybook();
+	private static final ClassPlaybook SORCERER = new SorcererPlaybook();
 
 	private BotPlaybooks() {
 	}
@@ -25,11 +26,17 @@ public final class BotPlaybooks {
 			case RANGER -> RANGER;
 			case CLERIC -> CLERIC;
 			case GLADIATOR -> GLADIATOR;
+			case SORCERER -> SORCERER;
 			default -> ClassPlaybook.NONE;
 		};
 	}
 
 	public static ClassPlaybook of(Player bot) {
 		return of(bot.getPlayerClass());
+	}
+
+	/** Has a sorcerer bot open a gate to the capital at its feet, for {@code //bot gate}. @return The line to answer with. */
+	public static String openGate(Player bot) {
+		return SorcererPlaybook.openGate(bot);
 	}
 }

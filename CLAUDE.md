@@ -59,7 +59,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/test-harness-plan.md](docs/test-harness-plan.md) — the tooling for test sessions: notes in the log, feedback zips, patch tags, debug on demand, bot-only squads, the command inbox.
 - [docs/patch-notes.md](docs/patch-notes.md) — every test patch, in French for the testers, newest first, by its git tag; `tag-patch.ps1` refuses a patch without its entry.
 - [docs/tester-feedback.md](docs/tester-feedback.md) — what a useful tester report holds, the commands to type during a session, and the template.
-- [docs/skill-glossary.md](docs/skill-glossary.md) — French skill names from guides and testers mapped to skill groups; `skill-lookup.ps1 -Name` reads it.
+- [docs/skill-glossary.md](docs/skill-glossary.md) — French skill names from guides and testers mapped to skill groups, one file per class from the gladiator on, taken from the French client; `skill-lookup.ps1 -Name` reads them all.
 - [docs/skill-traps.md](docs/skill-traps.md) — what the skill engine decides about buffs and areas that the obvious question gets wrong: one buff under two names, areas measured from the caster.
 - [docs/world-and-data-traps.md](docs/world-and-data-traps.md) — the other half: geometry two systems describe differently, objects handed over half built, and templates that rewrite themselves as you read them.
 - [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
@@ -75,6 +75,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/ranger-plan.md](docs/ranger-plan.md) — plan for playing the ranger as the guide describes it: skills mapped to the data, personal buffs, openers, not becoming the target, traps, open questions.
 - [docs/cleric-plan.md](docs/cleric-plan.md) — plan for playing the cleric as the guide describes it: skills mapped to the data, the rules solo and grouped, how heals are rationed, DP, open points about the guide's thresholds.
 - [docs/gladiator-plan.md](docs/gladiator-plan.md) — plan for playing the gladiator as the guide describes it: skills and chains mapped to the data, the posture, survival, knocking down, areas without bystanders, DP, questions for the guide.
+- [docs/sorcerer-plan.md](docs/sorcerer-plan.md) — plan for playing the sorcerer as the guide describes it: skills mapped to the data, upkeep, mana, defence, the fire rotation, ground spells, control, the flight, questions for the guide.
 - [docs/group-positioning-plan.md](docs/group-positioning-plan.md) — plan for where each class stands in a group fight: in front, behind, back or in heal range, and out of the aggro of every other pack.
 - [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
 - [docs/navigation-stuck-plan.md](docs/navigation-stuck-plan.md) — why bots end up stuck and teleported home: the obelisk pockets found in the logs, and the milestones.

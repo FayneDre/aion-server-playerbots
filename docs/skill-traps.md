@@ -59,3 +59,10 @@ caster why. For a bot the step can come from its own walk on the movement thread
 began, then before it, then only within the engine's range rule, each left some steps landing under casts. What holds is the step itself refusing to
 move a body that is casting (`BotMoveController.moveToDestination`). Measured with a probe on `PlayerController.cancelCurrentSkill` in a squad: casts
 lost went from 28 of 162 to 6 of 178, the six all to a target that died first.
+
+## A spell laid on the ground needs a point
+
+A skill whose first target is `POINT` (a sorcerer's Flaming Meteor and Summon Rift, a gladiator's Battle Banner, the Ice Sheet stigma) takes its caster as
+its first target and the area's centre from a point the client sends with the cast (`CM_CASTSPELL`, target type 1). Cast without one, the point is
+the map's origin. `BotSkillManager.cast` gives it the feet of whom it is aimed at, the bot's own for one laid round itself, and asks the reach itself,
+since the engine measures none for these.

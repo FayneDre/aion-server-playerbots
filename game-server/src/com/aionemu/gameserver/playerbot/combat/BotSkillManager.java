@@ -128,6 +128,8 @@ public class BotSkillManager {
 	private record CleanseTry(long lookAfter) {
 	}
 
+	/** The target type a cast on a point is sent with, coordinates rather than an object ({@code CM_CASTSPELL} reads the same code). */
+	private static final int POINT_TARGET = 1;
 	/** An area of enemies this wide or wider is never attacked in a group or an instance, see {@link #isWideAreaAmongOthers}. */
 	private static final int WIDE_AREA = 20;
 	/** How long after a cleanse's cast ends the effect it aimed at is given to be gone. */
@@ -927,6 +929,14 @@ public class BotSkillManager {
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			if (skill == null)
 				continue;
+			if (template.getProperties() != null && template.getProperties().getFirstTarget() == FirstTargetAttribute.POINT) {
+				// A spell laid on the ground: the client sends a point with it (CM_CASTSPELL, target type 1), and without one the area went off at the
+				// map's origin. The point is the feet of whom it is aimed at, the bot's own for one laid round itself (a sorcerer's Summon Rift). The engine
+				// measures nothing for these, the caster being their first target, so the reach is asked here.
+				if (!target.equals(bot) && PositionUtil.getDistance(bot, target) > template.getProperties().getFirstTargetRange())
+					continue;
+				skill.setTargetType(POINT_TARGET, target.getX(), target.getY(), target.getZ());
+			}
 			// A cast roots its caster, and the walk has to end before the cast begins, not after. Ended after, a step of the walk could still land
 			// in between, on the movement thread: the cast's move listener then noted that the caster moved, and the engine cut the cast short at its
 			// end. Every cast a bot began while walking failed that way, and was begun again a second or two later -- seen in the first squads as a

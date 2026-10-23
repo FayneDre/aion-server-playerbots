@@ -82,6 +82,7 @@ public class Bot extends AdminCommand {
 			case "give" -> withName(admin, params, name -> BotCommands.give(name, admin, Arrays.asList(params).subList(2, params.length)));
 			case "stop" -> withName(admin, params, name -> BotCommands.stopAttacking(name));
 			case "come" -> withName(admin, params, name -> BotCommands.come(name, admin));
+			case "gate" -> sendInfo(admin, BotCommands.gate(argument(params, 1), admin));
 			case "fly" -> withName(admin, params, name -> BotCommands.fly(name, params.length > 2 ? params[2] : null));
 			case "flyto" -> withName(admin, params, name -> BotCommands.flyTo(name, admin));
 			case "land" -> withName(admin, params, name -> BotCommands.land(name));

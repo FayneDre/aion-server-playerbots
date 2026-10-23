@@ -89,10 +89,11 @@ function Remove-Accents([string]$Text) {
     return -join ($decomposed.ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' })
 }
 $glossaryGroups = @()
-$glossary = Join-Path (Split-Path -Parent $PSScriptRoot) 'docs\skill-glossary.md'
-if ($Name -and (Test-Path $glossary)) {
+# the glossary is split by class, skill-glossary.md and one skill-glossary-<class>.md per class added since, to keep each file readable
+$glossaries = @(Get-ChildItem (Join-Path (Split-Path -Parent $PSScriptRoot) 'docs') -Filter 'skill-glossary*.md' | ForEach-Object { $_.FullName })
+if ($Name -and $glossaries.Count -gt 0) {
     $wanted = Remove-Accents $Name
-    foreach ($row in Get-Content $glossary -Encoding UTF8) {
+    foreach ($row in (Get-Content $glossaries -Encoding UTF8)) {
         if ($row -notmatch '^\| ([^|]+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \|$' -or $row -match '^\| French') { continue }
         $french, $english, $groupCell, $rowClass = $Matches[1].Trim(), $Matches[2].Trim(), $Matches[3], $Matches[4].Trim()
         if ((Remove-Accents $french) -notmatch $wanted) { continue }
