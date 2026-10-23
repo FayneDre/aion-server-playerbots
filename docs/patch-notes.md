@@ -6,6 +6,39 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-24 — 24/10/2026
+
+Révision `89b459a`, celle que `//bot version` affiche. Les capitales vivantes : visiteurs et paroles, et une navigation plus fluide pour tous les
+bots. **Aucun maillage à régénérer.** La base reçoit une colonne au démarrage (`playerbot_characters.visiting_from`), ajoutée seule.
+
+**Nouveau**
+- **Visiteurs en capitale :** quand un joueur entre à Sanctum ou Pandaemonium, 15 bots d'autres régions arrivent aux téléporteurs, surtout des
+  niveaux qui manquent en ville (50+). Ils regardent autour d'eux un moment, se promènent et font leurs courses 20 à 40 minutes, puis repartent
+  par le téléporteur. Ils restent 5 minutes après le départ du dernier joueur.
+- **Paroles en capitale :** les marchands crient le nom de leur boutique, les résidents de niveau 20+ cherchent un groupe (et acceptent
+  l'invitation). Un cri toutes les quelques minutes, seulement près d'un joueur. `//bot speech off` les fait taire jusqu'au redémarrage.
+- **Ville plus animée :** les résidents passent moins de temps chez eux ou assis, plus en courses et en promenades.
+
+**Corrigé**
+- **Trajets en attente :** un bot qui attendait un long trajet le redemandait toutes les 5 secondes ; la file se bouchait et des bots restaient
+  plantés des minutes. Avec les correctifs suivants, deux fois plus de trajets trouvés, et deux fois et demie moins de recherches lentes.
+- **Ventes de butin :** plus de boutique visée à 2 ou 3 km (800 m au plus), et une boutique injoignable pour plusieurs bots est laissée de côté.
+- **Courses en ville :** vers le devant du comptoir, pas les pieds du marchand ; place cherchée plus loin quand le marchand est entouré.
+- **Promenades en ville :** vers l'étage du quartier qu'on peut atteindre, pas un toit ou un balcon.
+- **Stands :** plus au bord des ponts ni dans l'enclos des statues de téléportation, et plus alignés en rangées.
+- **Démarrage du serveur :** les bots commencent leur journée étalés sur 4 minutes au lieu de tous en même temps.
+
+**Connu, pas encore corrigé**
+- Les grilles et rambardes du décor n'existent pas pour le serveur : un bot qui passe peut encore en traverser une.
+- Environ 15 bots secourus (téléportés chez eux) toutes les 10 minutes sur l'ensemble du monde, à mesurer plus longuement.
+- Duels entre bots et familiers en attente ; les prix des pierres d'enchantement attendent les réponses au plan des marchandises.
+
+**À tester**
+- Entrer dans une capitale : les visiteurs arrivent-ils vite, se dispersent-ils, repartent-ils par le téléporteur ?
+- Écouter les cris près des marchés, et inviter un bot qui cherche un groupe.
+
+---
+
 ## patch-2026-10-23-2 — 23/10/2026
 
 Révision `7e94c45`, celle que `//bot version` affiche. Les boutiques des bots, d'après les retours du 23/10. **Aucun maillage à régénérer.**
@@ -140,42 +173,6 @@ Une fois le serveur relancé, tapez **`//bot regear all`** en jeu pour donner le
 1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
 2. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
 3. En jeu : `//bot regear all`.
-
----
-
-## patch-2026-10-19-2 — 19/10/2026
-
-Révision `9de29b7`, celle que `//bot version` affiche. Ce qu'un joueur fait avec un bot, et Theobomos Lab. **Un seul maillage est à régénérer**,
-celui de Theobomos Lab (voir plus bas).
-
-**Nouveau**
-- **Duels :** un bot accepte seul un duel s'il ne combat pas, qu'il n'est pas en donjon et qu'il est à 10 niveaux de vous au plus, puis il attaque
-  tout de suite. Il refuse un second duel du même joueur pendant 3 minutes.
-- **Amis :** un bot accepte toute demande d'ami. Il apparaît en ligne quand il est actif, hors ligne quand il dort.
-- **Échange avec votre compagnon** (seulement le vôtre ; tout autre bot refuse) : ouvrez l'échange, il accepte. Ce que vous lui **donnez**, il le
-  porte dans les 2 minutes si c'est mieux que ce qu'il a. Pour **reprendre** quelque chose, tapez **avant de verrouiller**
-  `//bot give <nom> all`, `//bot give <nom> kinah <montant>` ou `//bot give <nom>` suivi du lien de l'objet (Maj + clic sur l'objet). Il verrouille
-  et valide juste après vous.
-
-**Corrigé**
-- **Theobomos Lab :** la salle de la reine Arachne, le premier boss, était coupée de l'entrée pour les bots par un panneau du décor qu'on traverse en
-  jeu. Elle est maintenant accessible à pied.
-
-**Connu, pas encore corrigé**
-- Les ascenseurs de Rentus (à la mort de Kuhara) et de Theobomos (après les salles élémentaires) et les téléporteurs de Dragon Lord's Refuge ne sont
-  pas pris par les bots : ils vous rejoignent environ 13 secondes plus tard.
-- Les noms d'objets tapés en français ne sont pas reconnus par `//bot give` : utilisez le lien de l'objet.
-
-**À tester**
-- Défier un bot en duel ; en défier un en plein combat (il doit refuser).
-- Ajouter un bot en ami et le voir en ligne.
-- Donner une arme à votre compagnon ; lui reprendre deux objets et des kinahs avec `//bot give`.
-
-**À faire sur chaque serveur de test**
-1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
-2. Si le patch 2026-10-19 n'a pas été installé : `.\tools\navmesh.ps1 -Dungeons -Force` (environ 17 minutes) ; sinon
-   `.\tools\navmesh.ps1 -Dungeons 310110000 -Force` (une minute).
-3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
 
 ---
 

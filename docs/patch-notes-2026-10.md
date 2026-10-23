@@ -4,6 +4,42 @@ Moved out of [patch-notes.md](patch-notes.md) as it neared 200 lines. Newest fir
 
 ---
 
+## patch-2026-10-19-2 — 19/10/2026
+
+Révision `9de29b7`, celle que `//bot version` affiche. Ce qu'un joueur fait avec un bot, et Theobomos Lab. **Un seul maillage est à régénérer**,
+celui de Theobomos Lab (voir plus bas).
+
+**Nouveau**
+- **Duels :** un bot accepte seul un duel s'il ne combat pas, qu'il n'est pas en donjon et qu'il est à 10 niveaux de vous au plus, puis il attaque
+  tout de suite. Il refuse un second duel du même joueur pendant 3 minutes.
+- **Amis :** un bot accepte toute demande d'ami. Il apparaît en ligne quand il est actif, hors ligne quand il dort.
+- **Échange avec votre compagnon** (seulement le vôtre ; tout autre bot refuse) : ouvrez l'échange, il accepte. Ce que vous lui **donnez**, il le
+  porte dans les 2 minutes si c'est mieux que ce qu'il a. Pour **reprendre** quelque chose, tapez **avant de verrouiller**
+  `//bot give <nom> all`, `//bot give <nom> kinah <montant>` ou `//bot give <nom>` suivi du lien de l'objet (Maj + clic sur l'objet). Il verrouille
+  et valide juste après vous.
+
+**Corrigé**
+- **Theobomos Lab :** la salle de la reine Arachne, le premier boss, était coupée de l'entrée pour les bots par un panneau du décor qu'on traverse en
+  jeu. Elle est maintenant accessible à pied.
+
+**Connu, pas encore corrigé**
+- Les ascenseurs de Rentus (à la mort de Kuhara) et de Theobomos (après les salles élémentaires) et les téléporteurs de Dragon Lord's Refuge ne sont
+  pas pris par les bots : ils vous rejoignent environ 13 secondes plus tard.
+- Les noms d'objets tapés en français ne sont pas reconnus par `//bot give` : utilisez le lien de l'objet.
+
+**À tester**
+- Défier un bot en duel ; en défier un en plein combat (il doit refuser).
+- Ajouter un bot en ami et le voir en ligne.
+- Donner une arme à votre compagnon ; lui reprendre deux objets et des kinahs avec `//bot give`.
+
+**À faire sur chaque serveur de test**
+1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
+2. Si le patch 2026-10-19 n'a pas été installé : `.\tools\navmesh.ps1 -Dungeons -Force` (environ 17 minutes) ; sinon
+   `.\tools\navmesh.ps1 -Dungeons 310110000 -Force` (une minute).
+3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
+
+---
+
 ## patch-2026-10-19 — 19/10/2026
 
 Révision `666ce2b`, celle que `//bot version` affiche. Les donjons avec des bots. **Les maillages des donjons sont à régénérer** (voir plus bas).
