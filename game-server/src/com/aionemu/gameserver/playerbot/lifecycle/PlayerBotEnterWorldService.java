@@ -96,7 +96,7 @@ public class PlayerBotEnterWorldService {
 			stepOffStructures(bot); // and before that again: a position saved on top of something comes back on top of it
 		}
 		bindToNearestObelisk(bot, backHome ? bot.getWorldId() : homeWorldId);
-		standOnGround(bot);
+		standOnGround(bot, backHome);
 		// Bots advance, because a character that cannot is not one. What keeps the low regions from emptying is the pace, not a ban: the drift
 		// upwards is arithmetic, so it is governed by arithmetic. Both brakes are set by BotPacing, which the ai owns and settles as it is built a
 		// few lines down — including undoing whatever was saved with the character last time.
@@ -211,13 +211,55 @@ public class PlayerBotEnterWorldService {
 	 * the map said something else. Such a bot is not merely misplaced, it is unroutable: nothing walkable is within reach, so every journey it ever
 	 * attempts is refused and it spends its life asking. Done on entering the world so that a bot stuck once is freed the next time it spawns, rather
 	 * than needing to be found and moved by hand.
+	 *
+	 * @param homeIsHere Whether the bot is on the map it lives on, so that its home can be asked about.
 	 */
-	private static void standOnGround(Player bot) {
+	private static void standOnGround(Player bot, boolean homeIsHere) {
 		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
-		if (ground == null || PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), ground.getX(), ground.getY(), ground.getZ()) < Heightfield.CELL_SIZE)
-			return; // no mesh for this map, or it is already standing where it should be
-		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} was stuck in the scenery and starts at {} {} {} instead",
-			bot.getName(), String.format("%.1f", ground.getX()), String.format("%.1f", ground.getY()), String.format("%.1f", ground.getZ()));
+		if (ground == null) {
+			landFromTheAir(bot, homeIsHere);
+			return;
+		}
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), ground.getX(), ground.getY(), ground.getZ()) < Heightfield.CELL_SIZE)
+			return; // already standing where it should be
+		moveTo(bot, ground, "was stuck in the scenery");
+	}
+
+	/**
+	 * Puts down a bot saved with no ground near it: in the air, over a floor further below than a step.
+	 * <p>
+	 * {@link #standOnGround} looks for ground within a few metres of height, and finding none it took the spot for a map without a mesh and left the bot
+	 * where it was. A gladiator walked onto nothing under Pandaemonium's temple dome, 27 m above the floor and 20 m above the nearest ledge, and came
+	 * back there at every start for three days, refused every route it asked for and photographed standing in the air.
+	 * <p>
+	 * Onto the floor it would have fallen to, when that floor leads home; home otherwise, since a floor that leads nowhere is the same fault lower down.
+	 */
+	private static void landFromTheAir(Player bot, boolean homeIsHere) {
+		NavmeshService navmesh = NavmeshService.getInstance();
+		Vector3f floor = navmesh.floorsAt(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ()).stream().filter(below -> below.getZ() <= bot.getZ())
+			.max(java.util.Comparator.comparingDouble(Vector3f::getZ)).orElse(null);
+		if (floor == null)
+			return; // no mesh for this map, or no floor under the bot: over the void, which is not this rule's to judge
+		String why = "was standing " + Math.round(bot.getZ() - floor.getZ()) + " m up in the air";
+		Vector3f home = homeIsHere ? BotRoster.homeOf(bot.getName()) : null; // a home on another map leads nowhere from here by definition
+		if (home != null && navmesh.groundNear(bot.getWorldId(), home.getX(), home.getY(), home.getZ()) == null) {
+			// The home itself is in the air: a templar in Poeta had its home 1400 m above the ground, stood there, and was sent back there by this very
+			// rule. The floor it lands on becomes its home, or every rescue after this one would lift it back into the sky.
+			LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} had its home in the air at {} {} {} and lives on the floor below now",
+				bot.getName(), Math.round(home.getX()), Math.round(home.getY()), Math.round(home.getZ()));
+			BotRoster.setHome(bot.getName(), floor);
+			home = null;
+		}
+		if (home != null && !navmesh.canReach(bot.getWorldId(), floor.getX(), floor.getY(), floor.getZ(), home.getX(), home.getY(), home.getZ())) {
+			Vector3f spot = BotPlaces.spotAround(bot.getWorldId(), home, BotPlaces.reachAt(bot.getWorldId(), home), 8, bot.getObjectId(), null);
+			floor = spot != null ? spot : home;
+		}
+		moveTo(bot, floor, why);
+	}
+
+	private static void moveTo(Player bot, Vector3f ground, String why) {
+		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} {} and starts at {} {} {} instead", bot.getName(), why,
+			String.format("%.1f", ground.getX()), String.format("%.1f", ground.getY()), String.format("%.1f", ground.getZ()));
 		bot.setPosition(World.getInstance().createPosition(bot.getWorldId(), ground.getX(), ground.getY(), ground.getZ(), bot.getHeading(),
 			bot.getInstanceId()));
 	}

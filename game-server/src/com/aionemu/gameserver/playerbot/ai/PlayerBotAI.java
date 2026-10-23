@@ -315,6 +315,20 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Refusals in a row, reset by any movement that starts. */
 	private int refusedMoves;
 	/**
+	 * How many destinations in a row a bot may give up on from one spot before the spot is the fault rather than the destinations.
+	 * <p>
+	 * A count of its own, beside {@link #refusedMoves}, because that one never reaches its bound for a bot that is refused everything: a route is
+	 * searched on another thread, the move is "on its way" until the search fails, and that answer resets the count. A gladiator walked onto a ledge
+	 * under Pandaemonium's temple dome, 27 m above the floor, and gave up on every destination it drew for two days without being rescued once.
+	 */
+	private static final int ISOLATED_REFUSALS = 6;
+	/** How far a bot may have moved between two give-ups for both to count as made from the same spot, in metres. */
+	private static final float SAME_SPOT = 3;
+	/** Where the give-ups being counted were made from, null when none is. */
+	private Vector3f refusedFrom;
+	/** Destinations given up on in a row from {@link #refusedFrom}. */
+	private int refusedFromThere;
+	/**
 	 * Whether this fight's opening has been tried. One attempt per fight and no more: an opening burst that will not go off now is on cooldown, which
 	 * is itself the answer, and retrying it every tick would spend it halfway through the fight where most of it is wasted.
 	 */
@@ -1564,9 +1578,40 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
 			return true;
 		Vector3f spot = standingSpot();
-		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), spot.getX(), spot.getY()) <= SPOT_TOLERANCE)
+		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), spot.getX(), spot.getY()) <= SPOT_TOLERANCE) {
+			refusedFromThere = 0; // where it means to be, so whatever it was refused, the spot it stands on is not the fault
 			return true;
+		}
 		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
+	}
+
+	/**
+	 * Notes that the bot gave up on where it was going, and frees it once it has given up on everything from the spot it stands on.
+	 * <p>
+	 * Not at home: a bot standing in its own village and refused a hunting ground has an unreachable hunting ground, and lifting it home moves nothing.
+	 */
+	void destinationRefused() {
+		Player bot = getOwner();
+		Vector3f here = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
+		if (refusedFrom == null || PositionUtil.getDistance(refusedFrom.getX(), refusedFrom.getY(), refusedFrom.getZ(), here.getX(), here.getY(),
+			here.getZ()) > SAME_SPOT) {
+			refusedFrom = here;
+			refusedFromThere = 0;
+		}
+		if (++refusedFromThere < ISOLATED_REFUSALS)
+			return;
+		refusedFrom = null;
+		refusedFromThere = 0;
+		Vector3f home = day.home();
+		if (home == null)
+			return;
+		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), home.getX(), home.getY(), home.getZ());
+		Vector3f doorstep = ground != null ? ground : home;
+		if (PositionUtil.getDistance(here.getX(), here.getY(), here.getZ(), doorstep.getX(), doorstep.getY(), doorstep.getZ()) < STRANDED_AT_HOME)
+			return;
+		log.info("Bot {} gave up on {} destinations in a row from {} {} {}, so it is the spot that leads nowhere", bot.getName(), ISOLATED_REFUSALS,
+			Math.round(here.getX()), Math.round(here.getY()), Math.round(here.getZ()));
+		freeItself(true);
 	}
 
 	/**
@@ -1633,7 +1678,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return true;
 		}
 		if (++refusedMoves >= STUCK_REFUSALS)
-			freeItself();
+			freeItself(false);
 		return false;
 	}
 
@@ -1663,8 +1708,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 * — behind a rock, under a root, onto a shelf. From inside, every destination is refused, including spots a pace away: three separate bots have
 	 * now spent minutes asking for routes that do not exist from where they stand. There is no diagnosis to make at that point and nothing to walk
 	 * out along, which is exactly why players are given an unstick command rather than advice.
+	 *
+	 * @param isolated Whether the bot has given up on everything from where it stands, rather than been refused a few moves: it is then lifted even
+	 *          with a player looking, since a body standing in the air over a capital's crowd is a worse sight than one that blinks out of it.
 	 */
-	private void freeItself() {
+	private void freeItself(boolean isolated) {
 		Player bot = getOwner();
 		Vector3f home = day.home();
 		refusedMoves = 0;
@@ -1681,7 +1729,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// A body blinking across the ground in front of somebody is the fault itself, not its cure, so a bot a player can see is not lifted: it drops
 		// its errand and picks another, and the rescue waits for nobody to be looking. Except in a player's group, where staying stuck is worse than
 		// being seen: the player is waiting for it, and a member left behind is a member lost.
-		if (!isInAPlayersGroup(bot) && isSeenByAPlayer(bot)) {
+		if (!isolated && !isInAPlayersGroup(bot) && isSeenByAPlayer(bot)) {
 			// Except out of a pocket, onto floor a step away. Doing something else never ends there, since every something else is a route out: a bot
 			// shut behind a shop counter sat down and stood up every thirteen seconds in front of the player for as long as they stayed. A step over the
 			// counter is less of a sight than that.
@@ -1781,7 +1829,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			x = moved.getX();
 			y = moved.getY();
 			z = moved.getZ();
-		} else if (PositionUtil.getDistance(bot.getX(), bot.getY(), x, y) < ALREADY_THERE) {
+		} else if (PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), x, y, z) < ALREADY_THERE) {
+			// in three dimensions: a bot on a ledge straight above its front door is not at its front door
 			// A lift onto the spot the bot stands on moves nothing and shows a body blinking: 136 of 403 rescues in half an hour were that. A bot standing
 			// at its own front door asking for somewhere the planner cannot find is not stuck, its destination is, and forgetting it was the cure.
 			log.info("Bot {} could not move at all from {} {}, where it lives, and is left there with its errand forgotten", bot.getName(),

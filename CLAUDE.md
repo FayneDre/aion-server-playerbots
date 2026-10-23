@@ -90,6 +90,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
 - [docs/abyss-crossing-plan.md](docs/abyss-crossing-plan.md) — flight milestone 5: Reshanta's 16210 islands, flight links written offline, routes that fly across open air.
 - [docs/flying-with-a-player-plan.md](docs/flying-with-a-player-plan.md) — the 19 October report: landing where the leader landed, the void, serums and scrolls, rings, fighting in the air.
 - [docs/feedback-2026-10-20.md](docs/feedback-2026-10-20.md) — the 19 and 20 October reports: resting before rejoining, the cleric's heal loop, the glide's missing wings, following flights and teleports, line of sight, flight-only buffs.
+- [docs/feedback-2026-10-21.md](docs/feedback-2026-10-21.md) — the 21 October report on the capitals: a bot standing in the air, stores bunched in Pandaemonium, no high levels in town, helmets and shields of the wrong class.
 - [docs/player-interactions-plan.md](docs/player-interactions-plan.md) — what a player does with a bot: trades with a companion, friends, duels; one reading of who asks, then milestones.
 - [docs/living-capitals-plan.md](docs/living-capitals-plan.md) — plan for capitals that feel lived in: decisions, milestones (the capital day,
   stores, ambience, speech, bots as buyers), risks. What milestones 0 and 1 found is in

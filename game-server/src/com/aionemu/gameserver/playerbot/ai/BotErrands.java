@@ -296,6 +296,7 @@ class BotErrands {
 		// journey, which only a new one clears, and turn a shop down without a route being searched.
 		if (!ai.tryMoveTo(moveController, x, y, z)) {
 			log.info("Bot {} cannot reach a shop and gives up selling", bot.getName());
+			ai.destinationRefused();
 			noShopUntil = System.currentTimeMillis() + UNREACHABLE_SHOP_COOLDOWN_MILLIS;
 			// remembered, exactly as an empty spot is. Forgetting it only meant the next trip chose the same nearest shop and failed the same way,
 			// which is how one unreachable spot produced thousands of trips and no sales.

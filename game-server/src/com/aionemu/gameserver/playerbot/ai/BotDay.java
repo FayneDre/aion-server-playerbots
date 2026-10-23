@@ -550,6 +550,7 @@ class BotDay {
 		Vector3f where = home();
 		if (where != null)
 			ai.setAnchor(where.getX(), where.getY(), where.getZ());
+		ai.destinationRefused();
 	}
 
 	/**
@@ -562,6 +563,7 @@ class BotDay {
 	 */
 	private boolean giveUp() {
 		log.info("Bot {} cannot get to where {} would take it, and does something else", ai.getOwner().getName(), occupation);
+		ai.destinationRefused();
 		// Remembered, not merely abandoned. The place a bot is sent to is chosen the same way every time — the nearest village, the next place along
 		// the list — so forgetting a refusal means choosing the same unreachable place on the next tick, for ever. One bot standing in a pocket of
 		// the map cut off from the villages asked sixty times in three minutes.
