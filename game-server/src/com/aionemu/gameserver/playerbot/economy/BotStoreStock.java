@@ -42,6 +42,11 @@ public final class BotStoreStock {
 		Map.entry(PlayerClass.CHANTER, "aède"), Map.entry(PlayerClass.GUNNER, "pistolero"), Map.entry(PlayerClass.BARD, "barde"),
 		Map.entry(PlayerClass.RIDER, "éthertech"));
 	private static final List<PlayerClass> STOCKED_CLASSES = List.copyOf(new java.util.TreeSet<>(CLASS_NAMES.keySet()));
+
+	/** @return The class's name as a French client shows it, for what a bot says; the enum's own name for a starting class, which no store sells for. */
+	public static String frenchName(PlayerClass playerClass) {
+		return CLASS_NAMES.getOrDefault(playerClass, playerClass.name().toLowerCase());
+	}
 	private static final Set<ItemGroup> ACCESSORY_GROUPS = Set.of(ItemGroup.EARRING, ItemGroup.RING, ItemGroup.NECKLACE, ItemGroup.BELT);
 	/** How far from the keeper's level the pieces it sells may be. */
 	private static final int LEVEL_SPREAD = 5;

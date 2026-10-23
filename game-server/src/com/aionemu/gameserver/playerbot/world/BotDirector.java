@@ -26,6 +26,7 @@ import com.aionemu.gameserver.playerbot.BotRecruiter;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.BotVisitors;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
+import com.aionemu.gameserver.playerbot.social.BotSpeech;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.world.BotPlaces.Settlement;
@@ -131,6 +132,8 @@ public class BotDirector {
 		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(this::review), REVIEW_INTERVAL_MILLIS, REVIEW_INTERVAL_MILLIS);
 		// the capitals' visitors on a clock of their own, on the same lane: a player often only passes through a capital
 		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(BotVisitors::review), BotVisitors.REVIEW_MILLIS, BotVisitors.REVIEW_MILLIS);
+		// what bots say in the capitals: a few packets every few minutes, so on the tick lane itself
+		scheduler.scheduleAtFixedRate(BotSpeech::review, BotSpeech.REVIEW_MILLIS, BotSpeech.REVIEW_MILLIS);
 	}
 
 	/**
