@@ -5,6 +5,8 @@ import java.util.Comparator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.DialogAction;
@@ -58,6 +60,40 @@ public class BotVendorManager {
 	public static final float TRADE_RANGE = 8f;
 	/** How far above or below a bot a shop may be and still be gone to: a flight link climbs 200 m, and Reshanta's layers are 1200 m apart. */
 	private static final float SHOP_HEIGHT_REACH = 300f;
+	/**
+	 * How far a shop may be for a trip to it, as the crow flies, in metres. There was no bound: on 23 October 193 of 205 failed trips were to shops
+	 * two and three kilometres off, every search for them giving up on its 1.5 s budget, twice a trip (the look, then the walk), on the four threads
+	 * every bot's long routes share. Nobody walks across a map to sell; a bot further than this keeps its bag until it is nearer a town.
+	 */
+	private static final float SHOP_TRIP_RANGE = 800f;
+
+	/**
+	 * Shops whose trips gave up for several bots, by map and the spot a trip goes to, with the bots that gave up and when. A search that gives up is no
+	 * proof, so one bot's failure bars a shop for that bot alone; but a Sanctum shop on ground nothing joins was asked for 39 times in 18 minutes on
+	 * 23 October, each search running out of its budget after four seconds and more. Three bots defeated by the same spot bar it for everybody a while.
+	 */
+	private static final Map<Integer, Map<Vector3f, Map<Integer, Long>>> tripsGivenUp = new ConcurrentHashMap<>();
+	/** How many different bots must give up on a shop for it to be left alone by all. */
+	private static final int BOTS_GIVEN_UP = 3;
+	/** How long a give-up is remembered, and so how long a shop given up by enough bots is left alone, in milliseconds. */
+	private static final long GIVEN_UP_MILLIS = 30 * 60_000L;
+
+	/** Notes that this bot's trip to a shop's spot was given up, so that a spot defeating several bots is left alone by all for a while. */
+	public static void tripGivenUp(Player bot, Vector3f spot) {
+		tripsGivenUp.computeIfAbsent(bot.getWorldId(), id -> new ConcurrentHashMap<>())
+			.computeIfAbsent(spot, s -> new ConcurrentHashMap<>()).put(bot.getObjectId(), System.currentTimeMillis());
+	}
+
+	/** @return true while enough bots have recently given up on a shop's spot for every bot to leave it alone. */
+	static boolean isGivenUpByMany(int worldId, Vector3f spot) {
+		Map<Vector3f, Map<Integer, Long>> byMap = tripsGivenUp.get(worldId);
+		Map<Integer, Long> bots = byMap == null ? null : byMap.get(spot);
+		if (bots == null)
+			return false;
+		long now = System.currentTimeMillis();
+		bots.values().removeIf(at -> now - at > GIVEN_UP_MILLIS);
+		return bots.size() >= BOTS_GIVEN_UP;
+	}
 	/** Bag fill above which a bot stops farming and goes to sell. */
 	public static final float BAG_FULL_THRESHOLD = 0.9f;
 	/**
@@ -126,6 +162,7 @@ public class BotVendorManager {
 		// a shop on another layer is not a shop: Reshanta's upper layer has none outside its fortresses, and its residents set out for Teminon's,
 		// 1200 m below, and were refused, 210 of the 304 refused routes of 22 bots in half an hour. Nothing joins the layers that a route could find.
 		vendors.removeIf(spot -> Math.abs(spot.z - bot.getZ()) > SHOP_HEIGHT_REACH);
+		vendors.removeIf(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y) > SHOP_TRIP_RANGE);
 		vendors.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y, spot.z)));
 		int probed = 0;
 		for (Vector3f spot : vendors) {
@@ -137,6 +174,10 @@ public class BotVendorManager {
 			// enough either: in Sanctum it is the 94 cells behind the counter, a pocket, and the search for it gave up the same way.
 			Vector3f front = frontOf(bot.getWorldId(), spot);
 			Vector3f goal = front != null ? front : spot;
+			if (isGivenUpByMany(bot.getWorldId(), goal)) {
+				probed--; // not a search paid for, so not one of the few this look may make
+				continue; // and not one to pay for again: several bots ran out of time on it lately
+			}
 			// anything but a proof is worth walking to: a mesh that gave up, or a map with no mesh at all, has said nothing against this shop, and
 			// the walk itself is the cheaper way to find out. A refusal there is caught by the mover and remembered with its own, shorter patience.
 			// And the trip goes to the front too. Sent to the keeper's feet instead, 243 trips of 268 failed in 23 minutes, against 91 of 122.

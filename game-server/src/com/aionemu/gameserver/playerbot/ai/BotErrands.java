@@ -306,6 +306,7 @@ class BotErrands {
 			// remembered, exactly as an empty spot is. Forgetting it only meant the next trip chose the same nearest shop and failed the same way,
 			// which is how one unreachable spot produced thousands of trips and no sales.
 			ignoredVendors.put(vendorDestination, System.currentTimeMillis() + EMPTY_SHOP_MILLIS);
+			BotVendorManager.tripGivenUp(bot, vendorDestination);
 			vendorDestination = null;
 			sellingOnDemand = false;
 			return false;
