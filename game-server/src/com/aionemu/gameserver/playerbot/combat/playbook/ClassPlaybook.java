@@ -81,6 +81,24 @@ public interface ClassPlaybook {
 		return false;
 	}
 
+	/** What a class says about being outnumbered, which the generic rule answers by leaving under 40 % health. */
+	enum Outnumbered {
+		/** Nothing: the generic rule decides. */
+		GENERIC,
+		/** It holds, whatever the generic rule would do. */
+		STAND,
+		/** It leaves, at any health. */
+		FLEE
+	}
+
+	/**
+	 * @param attackers Everything that has decided to kill a bot not in a group, two or more of them.
+	 * @return What the class does about it. The level gap is not the class's to overrule: something too far above the bot is still left.
+	 */
+	default Outnumbered whenOutnumbered(Player bot, List<Creature> attackers) {
+		return Outnumbered.GENERIC;
+	}
+
 	/** Called as the bot breaks off a fight it is running from, for a class with something that helps it get away. */
 	default void onRetreat(Player bot) {
 	}

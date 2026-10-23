@@ -94,6 +94,14 @@ public class BotTargetSelector {
 		return candidate instanceof Player other && !other.equals(bot) && !other.isInSameTeam(bot);
 	}
 
+	/**
+	 * @return true if the bot could pick this monster for itself within that radius: its level, its rank, nobody else's, in sight. For a class that pulls
+	 *         a second monster on purpose, which must be one the bot would have chosen alone.
+	 */
+	public static boolean isFairGame(Player bot, Npc npc, float radius) {
+		return isAttackable(bot, npc, radius);
+	}
+
 	private static boolean isAttackable(Player bot, Npc npc, float radius) {
 		if (npc.isDead() || !npc.isSpawned() || !bot.isEnemy(npc))
 			return false;

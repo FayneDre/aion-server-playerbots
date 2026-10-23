@@ -183,9 +183,9 @@ A fear (`EffectType.FEAR`, the spirit master's Fear Shriek among them) is never 
 frightened monster runs where nobody follows and pulls every pack it passes. Alone in the open it is still the class's way out of a fight.
 
 Nor is an attack on an area of enemies of 20 m or more, around the caster or around its target (`isWideAreaAmongOthers`): at that size it reaches
-packs nobody engaged, which a tester asked to be banned outright. Both rules sit in `cast`, so a playbook's own choice obeys them too. A smaller area
-around the target is refused in a group when it would take in an enemy the group is not fighting (`wakesAPackAround`), as one around the caster
-already was. The templar's Provoking Roar reaches 8 m.
+packs nobody engaged, which a tester asked to be banned outright. Both rules sit in `cast`, so a playbook's own choice obeys them too. A smaller area,
+around the caster or the target, is refused when it would take in an enemy nobody is fighting, in a group or alone (`wakesABystander`, in `cast`
+since 23 October; it was the generic order's and group only, and the gladiator's guide asks it solo too). The templar's Provoking Roar reaches 8 m.
 
 ## Procs, and what is left unlabelled
 

@@ -41,7 +41,8 @@ asks this as well now. Other class buffs sharing an id: a cleric's `PR_HEALERSHA
 The engine checks a skill's range against its first target, and an area with `first_target="ME"` has the caster as its first target: the check passes
 from any distance, and the skill goes off on empty ground. Every one of the gladiator's fifteen areas is of that kind, and a gladiator walking up fired them
 all before anything was in reach. `BotSkillManager.areaIsWorthIt` measures the target against the area the way `TargetRangeProperty.checkRange` does
-(radius, cone, strip), and in a group also refuses an area that would take in a monster not yet fighting the group.
+(radius, cone, strip); `wakesABystander`, asked of every cast in `cast`, refuses an area that would take in a monster nobody is fighting yet, alone or
+in a group.
 
 ## Ready again at once is not the same as not on
 

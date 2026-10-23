@@ -12,6 +12,7 @@ public final class BotPlaybooks {
 	private static final ClassPlaybook CHANTER = new ChanterPlaybook();
 	private static final ClassPlaybook RANGER = new RangerPlaybook();
 	private static final ClassPlaybook CLERIC = new ClericPlaybook();
+	private static final ClassPlaybook GLADIATOR = new GladiatorPlaybook();
 
 	private BotPlaybooks() {
 	}
@@ -23,6 +24,7 @@ public final class BotPlaybooks {
 			case CHANTER -> CHANTER;
 			case RANGER -> RANGER;
 			case CLERIC -> CLERIC;
+			case GLADIATOR -> GLADIATOR;
 			default -> ClassPlaybook.NONE;
 		};
 	}

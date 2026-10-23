@@ -525,49 +525,43 @@ public class BotSkillManager {
 	}
 
 	/**
-	 * Tells whether an area centred on the bot would land where it should: on its target, and in a group on nothing that is not already fighting.
+	 * Tells whether an area centred on the bot would reach its target.
 	 * <p>
 	 * The engine checks a skill's range against its first target, and for these the first target is the caster, so the check always passes and the
 	 * skill goes off on empty ground. A gladiator fired all fifteen of its own as it walked up, none of them reaching, which is what was reported.
-	 * In a group the same blast also wakes every pack it touches, which is the one thing a group fight must not do.
-	 * <p>
-	 * Skills aimed at a target or a point are left to the engine, which measures those properly.
+	 * Skills aimed at a target or a point are left to the engine, which measures those properly. What else an area lands on is
+	 * {@link #wakesABystander}, asked of every cast.
 	 */
 	private static boolean areaIsWorthIt(Player bot, Creature target, SkillTemplate template) {
 		Properties properties = template.getProperties();
-		if (properties.getTargetType() != TargetRangeAttribute.AREA)
-			return true;
-		if (properties.getFirstTarget() != FirstTargetAttribute.ME)
-			return !wakesAPackAround(bot, target, properties.getEffectiveRange());
-		if (!isInsideArea(bot, target, properties))
-			return false;
-		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
-		if (team == null)
-			return true;
-		List<Player> members = team.getMembers();
-		boolean[] wakesAPack = { false };
-		bot.getKnownList().forEachNpc(npc -> {
-			if (!wakesAPack[0] && !npc.isDead() && bot.isEnemy(npc) && !npc.getAggroList().isHating(bot)
-				&& members.stream().noneMatch(member -> npc.getAggroList().isHating(member)) && isInsideArea(bot, npc, properties))
-				wakesAPack[0] = true;
-		});
-		return !wakesAPack[0];
+		return properties.getTargetType() != TargetRangeAttribute.AREA || properties.getFirstTarget() != FirstTargetAttribute.ME
+			|| isInsideArea(bot, target, properties);
 	}
 
 	/**
-	 * @return true if an area around the target, in a group, would take in an enemy nobody in the group is fighting yet. The engine measures these from
-	 *         the target, which is why they were left to it; it measures whether they land, not what else they land on, and in a group the second is
-	 *         the question. Alone, a bot that wakes a pack has only itself to answer to, and the fight is its own.
+	 * Tells an attack on an area that would take in an enemy nobody is fighting yet: one that does not hate the bot, nor, in a group, any member. It wakes
+	 * whatever it touches, and a fight against one monster becomes a fight against its camp.
+	 * <p>
+	 * Asked in a group from the start, and alone as well since the gladiator's guide asks it of the class solo and grouped: "ne pas toucher des ennemis qui
+	 * ne sont pas actuellement en combat". It sits in {@link #cast}, so a playbook's own choice obeys it too: until then only the generic order asked it,
+	 * and a gladiator's Wrathful Explosion, a playbook move, would have gone off over a camp. The target itself is not a bystander, whatever it hates.
+	 * An area around the caster is measured as the engine measures it ({@link #isInsideArea}); one around the target, as a circle of its range.
 	 */
-	private static boolean wakesAPackAround(Player bot, Creature target, float reach) {
-		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
-		if (team == null || reach <= 0)
+	private static boolean wakesABystander(Player bot, Creature target, SkillTemplate template) {
+		Properties properties = template.getProperties();
+		if (properties == null || properties.getTargetType() != TargetRangeAttribute.AREA || properties.getTargetRelation() != TargetRelationAttribute.ENEMY)
 			return false;
-		List<Player> members = team.getMembers();
+		boolean aroundTheCaster = properties.getFirstTarget() == FirstTargetAttribute.ME;
+		float reach = properties.getEffectiveRange();
+		if (!aroundTheCaster && (target == null || reach <= 0))
+			return false;
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		List<Player> fighting = team == null ? List.of(bot) : team.getMembers();
 		boolean[] wakes = { false };
 		bot.getKnownList().forEachNpc(npc -> {
 			if (!wakes[0] && !npc.equals(target) && !npc.isDead() && bot.isEnemy(npc) && !npc.getAggroList().isHating(bot)
-				&& members.stream().noneMatch(member -> npc.getAggroList().isHating(member)) && PositionUtil.isInRange(target, npc, reach, false))
+				&& fighting.stream().noneMatch(member -> npc.getAggroList().isHating(member))
+				&& (aroundTheCaster ? isInsideArea(bot, npc, properties) : PositionUtil.isInRange(target, npc, reach, false)))
 				wakes[0] = true;
 		});
 		return wakes[0];
@@ -928,7 +922,7 @@ public class BotSkillManager {
 		if (bot.isCasting())
 			return false;
 		for (SkillTemplate template : candidates) {
-			if (sendsItRunning(bot, template) || isWideAreaAmongOthers(bot, template))
+			if (sendsItRunning(bot, template) || isWideAreaAmongOthers(bot, template) || wakesABystander(bot, target, template))
 				continue;
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			if (skill == null)
