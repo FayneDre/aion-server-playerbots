@@ -56,6 +56,7 @@ about 40 characters in sight, measured 20 October).
   (2 %), 106 to 124 searches over a second (capitals and 220050000, 210060000, 210070000, 220020000), 15 to 40 shops unreachable, 1 to 4
   rescues. The first 8 minutes after a restart are three times that. Leads, in order: spread the start of the bots over a few minutes; give
   sell trips and errands the floor-that-can-be-reached rule visits have (`BotPlaces.visitSpotOf`); have slow searches give up sooner.
+- Not handled: a visitor a player takes into their group still leaves by the teleporter when its visit ends.
 - Town places are visited at the lowest floor a walker reaches (`visitSpotOf`): a place's centre is a townsperson's height, sometimes a roof.
   Errands look up to 12 m round a keeper when 6 m is crowded: Pandaemonium's brokers and warehouses stand in its markets.
 

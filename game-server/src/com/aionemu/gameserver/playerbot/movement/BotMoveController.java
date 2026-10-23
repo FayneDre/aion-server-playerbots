@@ -171,6 +171,11 @@ public class BotMoveController extends PlayerMoveController {
 	 * step aside blind -- 13422 of 14689 steps aside.
 	 */
 	private static final long PLAN_PATIENCE = 5000;
+	/**
+	 * How long a search still queued or running is waited on before it is taken for lost and asked again, in milliseconds: one that threw never
+	 * answers, and a bot waiting on it for good would stand there for good.
+	 */
+	private static final long PLAN_LOST = 60_000;
 	/** A destination found to be as near as the ground goes, where the bot stood when it was, and until when asking again is answered at once. */
 	private volatile float nearestForX = Float.NaN, nearestForY, nearestAtX, nearestAtY;
 	private volatile long nearestUntil;
@@ -936,7 +941,8 @@ public class BotMoveController extends PlayerMoveController {
 
 	/** @return true if a plan for about that destination was asked for recently enough to be still on its way. */
 	private boolean isPlanComing(float x, float y) {
-		return awaitingPlan && (planInFlight || System.currentTimeMillis() - planAskedAt < PLAN_PATIENCE)
+		long waited = System.currentTimeMillis() - planAskedAt;
+		return awaitingPlan && (planInFlight && waited < PLAN_LOST || waited < PLAN_PATIENCE)
 			&& PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= FOLLOW_DRIFT;
 	}
 

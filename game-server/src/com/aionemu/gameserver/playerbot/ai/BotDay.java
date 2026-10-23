@@ -336,8 +336,10 @@ class BotDay {
 	private boolean leaveTown(Vector3f wayOut) {
 		Player bot = ai.getOwner();
 		if (PositionUtil.getDistance(bot.getX(), bot.getY(), wayOut.getX(), wayOut.getY()) > TELEPORTER_REACH && !BotVisitors.isOverdue(bot)) {
+			// asked every tick, not only once still: a visit can end mid-walk to an errand, and that walk would otherwise be finished first. Asked for the
+			// journey it is already on, the move controller does nothing new
 			BotMoveController moves = ai.moves();
-			if (moves != null && (moves.isInMove() || ai.tryMoveTo(moves, wayOut.getX(), wayOut.getY(), wayOut.getZ())))
+			if (moves != null && ai.tryMoveTo(moves, wayOut.getX(), wayOut.getY(), wayOut.getZ()))
 				return true;
 			// no way back to it: it leaves from where it stands, as a player with a return scroll would
 		}
