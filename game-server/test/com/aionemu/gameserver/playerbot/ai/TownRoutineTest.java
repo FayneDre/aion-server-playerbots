@@ -54,11 +54,11 @@ class TownRoutineTest {
 				total++;
 			}
 		}
-		// the weights are 30, 15, 30 and 25 in a hundred: each share within two points of its own
-		assertEquals(30, 100.0 * counts.get(Activity.HOME) / total, 2);
-		assertEquals(15, 100.0 * counts.get(Activity.SIT) / total, 2);
-		assertEquals(30, 100.0 * counts.get(Activity.ERRAND) / total, 2);
-		assertEquals(25, 100.0 * counts.get(Activity.VISIT) / total, 2);
+		// the weights are 20, 10, 35 and 35 in a hundred: each share within two points of its own
+		assertEquals(20, 100.0 * counts.get(Activity.HOME) / total, 2);
+		assertEquals(10, 100.0 * counts.get(Activity.SIT) / total, 2);
+		assertEquals(35, 100.0 * counts.get(Activity.ERRAND) / total, 2);
+		assertEquals(35, 100.0 * counts.get(Activity.VISIT) / total, 2);
 	}
 
 	@Test

@@ -44,8 +44,12 @@ final class TownRoutine {
 	record Spell(Activity activity, Service service, int seed) {
 	}
 
-	/** How much a resident leans towards each activity, in {@link Activity} order: a town is mostly people standing about, on errands and passing. */
-	private static final int[] ACTIVITY_WEIGHTS = { 30, 15, 30, 25 };
+	/**
+	 * How much a resident leans towards each activity, in {@link Activity} order. Was 30, 15, 30, 25: with the stores the 44 keepers of a capital stand
+	 * at their stalls all their shift, and half the rest stood or sat at home, so a tester found the capitals stiller than before them (23 October).
+	 * More errands and walks, fewer people standing about.
+	 */
+	private static final int[] ACTIVITY_WEIGHTS = { 20, 10, 35, 35 };
 	/** How often each service is gone to, in {@link Service} order: the shops and the broker most, the soul healer least. */
 	private static final int[] SERVICE_WEIGHTS = { 25, 20, 15, 15, 10, 8, 7 };
 

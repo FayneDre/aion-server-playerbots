@@ -19,7 +19,8 @@ What is asked: capitals that feel lived in, with people who **stay and are seen*
 0. **Measure and explain. Done.** Sanctum's missing half (the centre bridges read as no-walk volumes), its rides (a boat and a lift, `RideLinks`),
    the fruitless flask trips, and the crowd test: about 40 characters in sight keep 40 fps. Open: the Protectors Hall floor is missing from the
    mesh, so its terrace stays empty.
-1. **A capital day. Done.** `TownRoutine`: spells of 5 minutes (home, sitting, an errand to a town service, a visit), the same every day, starting
+1. **A capital day. Done.** `TownRoutine`: spells of 5 minutes (home 20 %, sitting 10 %, an errand to a town service 35 %, a visit 35 %; until
+   23 October 30, 15, 30, 25, too still once the stores held 44 keepers), the same every day, starting
    at each resident's own moment. Watched: no FARMING in a capital, 5 to 17 of Sanctum's 117 residents moving at any moment.
 2. **Private stores. Built 20 October**, see [bot-stores-plan.md](bot-stores-plan.md).
    - Eight in ten residents of level 20 and over keep a store, 44 at a time on a rota that goes round once a day, at a market stall, renewed about
@@ -43,7 +44,9 @@ What is asked: capitals that feel lived in, with people who **stay and are seen*
    - Groups of two to four facing one another, with emotes, first.
    - A rare wave or bow when a player stops in front of a bot.
    - Bots duelling on a square: duels exist, and onlookers are life.
-   - Cosmetic pets and costumes, so a crowd is not all combat gear.
+   - Pets, so a crowd is not all combat gear (costumes dropped on 23 October).
+
+The detailed plan for milestones 3 to 5 is [capital-life-plan.md](capital-life-plan.md).
 
 Dropped on 23 October: **bots as buyers** of players' stores and the broker, and **the day's rhythm** (fuller in the evening, arrivals through the
 teleporter and the obelisk).
