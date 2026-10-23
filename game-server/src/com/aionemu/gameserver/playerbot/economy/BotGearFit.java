@@ -9,6 +9,7 @@ import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.ItemType;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
+import com.aionemu.gameserver.model.templates.item.enums.ItemSubType;
 
 /**
  * What a bot is allowed to end up wearing: gear a player could really come by, in the armour its class wears and with the weapon its class fights
@@ -21,7 +22,10 @@ import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
  */
 public class BotGearFit {
 
-	/** The five places armour has a type that can be the wrong one. A helmet, a shield and every accessory are left out: they have none. */
+	/**
+	 * The five places armour has a type in the data. A helmet has one too, read from its model name ({@link #armourWeight}); a shield and every
+	 * accessory have none.
+	 */
 	private static final long BODY_SLOTS = ItemSlot.TORSO.getSlotIdMask() | ItemSlot.PANTS.getSlotIdMask() | ItemSlot.GLOVES.getSlotIdMask()
 		| ItemSlot.BOOTS.getSlotIdMask() | ItemSlot.SHOULDER.getSlotIdMask();
 
@@ -74,7 +78,8 @@ public class BotGearFit {
 	}
 
 	/**
-	 * @return true if this is armour of the kind the class actually wears, or something that has no kind at all — a shield, a helmet, an accessory.
+	 * @return true if this is armour of the kind the class actually wears, or something that has no kind at all — a hat any class wears, an
+	 *         accessory. A shield only for a class that carries one.
 	 *         <p>
 	 *         The heaviest it is trained for, and nothing lighter. A class may legally wear every type below its own — a templar is taught cloth and
 	 *         leather proficiency on the way to plate, and the engine accepts a robe on it without a word — which is how a templar of 37 came to be
@@ -84,7 +89,9 @@ public class BotGearFit {
 	 *         which is what it can wear that day.
 	 */
 	public static boolean isRightArmour(Player bot, ItemTemplate template) {
-		if (!isBodyArmour(template))
+		if (isShield(template))
+			return carriesAShield(bot.getPlayerClass());
+		if (!isBodyArmour(template) && (template.getItemGroup() != ItemGroup.HEAD || armourWeight(template) == 0))
 			return true;
 		int heaviest = heaviestTrained(bot);
 		// A piece in one of the generic groups — ItemSubType.ALL_ARMOR — declares no type, weighs nothing here and so never matches. That is the
@@ -157,7 +164,46 @@ public class BotGearFit {
 	 *         ways it reached the top of a list it had no business being in.
 	 */
 	public static int armourWeight(ItemTemplate template) {
+		if (template.getItemGroup() == ItemGroup.HEAD)
+			return headgearWeight(template);
 		return weightOf(template.getItemGroup());
+	}
+
+	/**
+	 * @return The armour type a helmet is made in, as a weight, or 0 for headgear made for nobody in particular.
+	 *         <p>
+	 *         Helmets share one group whatever they are made of, so the data gives them no type and every class may wear every one; the model name
+	 *         does say, by its first segment, as the body pieces' does. Read from there because a store of gladiator gear was seen selling a cloth
+	 *         headband and a leather hat, and a gladiator in either is dressed for another class.
+	 */
+	private static int headgearWeight(ItemTemplate template) {
+		String model = template.getCName();
+		if (model == null)
+			return 0;
+		return switch (model.substring(0, Math.max(0, model.indexOf('_')))) {
+			case "pl" -> weightOf(ItemGroup.PL_TORSO);
+			case "ch" -> weightOf(ItemGroup.CH_TORSO);
+			case "lt" -> weightOf(ItemGroup.LT_TORSO);
+			case "rb" -> weightOf(ItemGroup.RB_TORSO);
+			case "cl" -> weightOf(ItemGroup.CL_TORSO);
+			default -> 0; // "ac", the hats and headbands any class wears
+		};
+	}
+
+	/** @return true for a shield, of whatever kind. */
+	public static boolean isShield(ItemTemplate template) {
+		return template.getItemGroup().getItemSubType() == ItemSubType.SHIELD || template.getItemGroup() == ItemGroup.CL_SHIELD;
+	}
+
+	/**
+	 * @return true for a class that fights with a shield in its other hand. Authored for the reason {@link #weaponsOfTrade} gives: every other class
+	 *         holds a weapon in two hands or two weapons, and a store of gladiator gear was seen selling two shields.
+	 */
+	public static boolean carriesAShield(PlayerClass playerClass) {
+		return switch (playerClass) {
+			case TEMPLAR, CLERIC, WARRIOR, PRIEST -> true;
+			default -> false;
+		};
 	}
 
 	private static int weightOf(ItemGroup group) {

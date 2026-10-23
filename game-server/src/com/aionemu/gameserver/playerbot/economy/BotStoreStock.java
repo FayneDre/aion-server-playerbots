@@ -162,7 +162,8 @@ public final class BotStoreStock {
 		ItemGroup group = template.getItemGroup();
 		return switch (theme) {
 			case GEAR -> (template.isWeapon() && BotGearFit.weaponsOfTrade(forClass).contains(group)
-				|| template.isArmor() && !ACCESSORY_GROUPS.contains(group) && template.isClassSpecific(forClass))
+				|| template.isArmor() && !ACCESSORY_GROUPS.contains(group) && template.isClassSpecific(forClass)
+					&& (!BotGearFit.isShield(template) || BotGearFit.carriesAShield(forClass)))
 				&& Math.abs(template.getLevel() - level) <= LEVEL_SPREAD && BotEquipManager.isPlayerGear(template);
 			case ACCESSORIES -> ACCESSORY_GROUPS.contains(group) && Math.abs(template.getLevel() - level) <= LEVEL_SPREAD
 				&& BotEquipManager.isPlayerGear(template);
