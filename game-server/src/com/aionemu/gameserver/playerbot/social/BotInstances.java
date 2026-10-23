@@ -82,7 +82,7 @@ public final class BotInstances {
 	 * @return The real player leading the bot's group, or null. A squad is led by a bot and never goes into an instance of its own accord, so it is
 	 *         left out, and so is a group whose leader has left it (see {@link BotGroupManager#leaderToFollow}).
 	 */
-	private static Player playerToFollow(Player bot) {
+	static Player playerToFollow(Player bot) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		if (team == null)
 			return null;
@@ -136,7 +136,7 @@ public final class BotInstances {
 	}
 
 	/** Teleports the bot to its own place beside the player, on floor the player's ground joins, as {@link BotSquads} does for its members. */
-	private static void moveBeside(Player bot, Player player) {
+	static void moveBeside(Player bot, Player player) {
 		Vector3f spot = BotGroupManager.formationSpot(bot, player);
 		Vector3f ground = NavmeshService.getInstance().groundNear(player.getWorldId(), spot.getX(), spot.getY(), spot.getZ());
 		if (ground != null) {

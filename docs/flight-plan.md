@@ -121,7 +121,8 @@ polymorphed, costs no cooldown from an existing flight, and the halved drain fal
 packet shape, the `GLIDE` mask bit and its flag, whose bits are also how npc gaits are encoded: several rounds of watching a bot from the ground. And
 the gain is small here. On a descent it saves a point or two. On an escort, where doubling 45 seconds of endurance would matter, it cannot be used at
 all: a gliding body loses height continuously, and holding a place beside a flying player is flight. It belongs with milestone 5, where a bot will have
-reason to descend for a long time.
+reason to descend for a long time. *Since built for glide links and for copying a leader's glide; the `GLIDE` mask bit itself was only added on
+23 October, after bots were seen gliding with no wings ([feedback-2026-10-20.md](feedback-2026-10-20.md)), and is still to be watched in game.*
 
 **5. Volume navigation, and only then the Abyss.** Reshanta's islands need a route through open air over a gap with no ground under it, which is the
 only case the straight line plus ray cannot answer, and it also needs Reshanta's mesh, which exists since 2026-10-09 (98 MB, 14 s to write, under 3 GB of heap). Planned and, through its

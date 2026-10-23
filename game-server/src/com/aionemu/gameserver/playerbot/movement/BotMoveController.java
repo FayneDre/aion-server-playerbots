@@ -3,6 +3,7 @@ package com.aionemu.gameserver.playerbot.movement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.controllers.movement.GlideFlag;
 import com.aionemu.gameserver.controllers.movement.MovementMask;
 import com.aionemu.gameserver.controllers.movement.PlayerMoveController;
 import java.util.ArrayList;
@@ -396,7 +397,7 @@ public class BotMoveController extends PlayerMoveController {
 	 * the ground, and the target window reads "Altitude =" for the whole climb. So the server says the position itself, in the player form —
 	 * {@code POSITION | MANUAL} with a velocity, which is what {@code SM_PLAYER_INFO} builds when it has only a destination
 	 * ({@code normalize(target - position) * movementSpeed}) and what {@code CM_MOVE} reads coming the other way. It is also the only form that gets
-	 * the flight animation drawn rather than the gliding one.
+	 * the flight animation drawn rather than the gliding one; a glide adds the {@code GLIDE} bit to it to get the wings of a glide.
 	 */
 	private void tellFlightLeg(float x, float y, float z) {
 		lastFlightTell = System.currentTimeMillis();
@@ -429,7 +430,10 @@ public class BotMoveController extends PlayerMoveController {
 		vectorY = gapY / gap * carry;
 		vectorZ = gapZ / gap * carry;
 		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
-		movementMask = (byte) (MovementMask.POSITION | MovementMask.MANUAL);
+		// A glide carries the GLIDE bit and its flag, as a gliding client's CM_MOVE does. Without it a client draws a body standing in the air: the bots
+		// that copied a glide on 20 October were seen hanging in front of a cliff with no wings, gliding as far as the server knew.
+		movementMask = (byte) (MovementMask.POSITION | MovementMask.MANUAL | (gliding ? MovementMask.GLIDE : 0));
+		glideFlag = GlideFlag.NONE;
 		setInMove(true);
 		PacketSendUtility.broadcastToSightedPlayers(owner, new SM_MOVE(owner));
 	}

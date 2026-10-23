@@ -41,6 +41,7 @@ import com.aionemu.gameserver.playerbot.social.BotInstances;
 import com.aionemu.gameserver.playerbot.social.BotRequests;
 import com.aionemu.gameserver.playerbot.social.LeaderGlides;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
+import com.aionemu.gameserver.playerbot.social.BotTransports;
 import com.aionemu.gameserver.playerbot.positioning.BotPosition;
 import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
@@ -157,6 +158,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final int FINISH_IT_PERCENT = 20;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
 	private static final float ANCHOR_TOLERANCE = 5f;
+	/** How far from its group a bot back from the obelisk may be and still join it before resting: near enough for the group to cover the walk. */
+	private static final float CATCH_UP_UNRESTED = 40f;
 	/**
 	 * How far from the place it shares a bot stands.
 	 * <p>
@@ -465,6 +468,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (leader == null)
 			return false;
 		leadersGlide = LeaderGlides.observe(leader); // every tick, fight or not: a glide is seen while it happens or not at all
+		// a leader on a flight transporter is not walked after: the anchor stays where the flight left from, and BotTransports brings the bot on arrival
+		if (BotTransports.isLeaderInTransit(getOwner()))
+			return true;
 		// the bot's own place beside the leader, not the leader's feet: everything downstream already works off the anchor, so this is all "stand
 		// with the group" needs to be
 		Vector3f spot = BotGroupManager.formationSpot(getOwner(), leader);
@@ -573,9 +579,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/**
 	 * @return true when the bot has fallen behind its group and should walk rather than sit down. Resting takes a bot out of the fight for as long as
 	 *         it lasts, which is fine alone in an empty camp and not fine when the group has moved on without it.
+	 *         <p>
+	 *         Except for a bot just back from the obelisk and a long way from its group: it rests first. It used to set off at a quarter of its health
+	 *         with the death penalty, walk through the mobs between the obelisk and the group alone, and die on the way, which is what a player saw on
+	 *         20 October: revived at 12:55:51, dead again 63 s later and halfway there.
 	 */
 	private boolean mustCatchUp(boolean following) {
-		return following && PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY) > ANCHOR_TOLERANCE;
+		if (!following)
+			return false;
+		double behind = PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), anchorX, anchorY);
+		return behind > ANCHOR_TOLERANCE && (behind <= CATCH_UP_UNRESTED || !isRecoveringFromDeath());
 	}
 
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
@@ -667,7 +680,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// than on the way in. Neither does anything until the answer actually changes.
 		pacing.reconcile();
 		// a recruit with no group goes home before anything else reads where it stands, the instance rule below included
-		if (BotRecruiter.sendHomeIfReleased(getOwner()) || BotInstances.followThePlayer(getOwner())) {
+		if (BotRecruiter.sendHomeIfReleased(getOwner()) || BotInstances.followThePlayer(getOwner()) || BotTransports.followThePlayer(getOwner())) {
 			// the fight, the walk and the errand were all chosen on the map it has just left
 			cancelCombat();
 			day.forget();
@@ -709,7 +722,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// Measured at the Tursin Outpost on Verteron, where survival at five minutes was nil.
 		} else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
 			Creature attacker = findAttacker();
-			if (attacker != null)
+			if (attacker != null && following && healsBeforeDefending()) {
+				// a mate in danger comes before the healer's own attacker: a cleric swinging at an add while the tank died was seen on 20 October
+			} else if (attacker != null)
 				startAttacking(attacker); // no health check: a bot being hit defends itself, it does not sit down
 			else if (errands.collectLoot()) {
 				// busy with a corpse, everything else can wait
@@ -1144,7 +1159,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 *         surplus it goes back to healing. A monster that is hitting the healer itself is another matter, and is fought whatever the mana.
 	 */
 	private static boolean healerHasNoSurplus(Player bot, Creature target) {
-		return BotRole.of(bot) == BotRole.HEALER && bot.getCurrentTeam() != null && !BotSkillManager.hasManaToSpare(bot) && !bot.equals(target.getTarget());
+		return isGroupHealer(bot) && !BotSkillManager.hasManaToSpare(bot) && !bot.equals(target.getTarget());
+	}
+
+	private static boolean isGroupHealer(Player bot) {
+		return BotRole.of(bot) == BotRole.HEALER && bot.getCurrentTeam() != null;
+	}
+
+	/** @return true if this is a group's healer with a mate in danger and it has just cast something on them. */
+	private boolean healsBeforeDefending() {
+		return isGroupHealer(getOwner()) && BotGroupManager.mostHurtMember(getOwner(), HEALER_DANGER_PERCENT, true) != null && tendToTheGroup();
 	}
 
 	/**
@@ -1413,7 +1437,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean followIntoTheAir() {
 		Player leader = BotGroupManager.leaderToFollow(getOwner());
-		return leader != null && leader.isFlying() && BotFlight.tryEscort(getOwner(), leader);
+		// a flight transporter or a windstream is a flight too, and not one a bot can keep up with: BotTransports brings it on arrival
+		return leader != null && leader.isFlying() && !leader.isUsingFlightTransporterOrWindstream() && BotFlight.tryEscort(getOwner(), leader);
 	}
 
 	void stopMoving() {
@@ -1654,8 +1679,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// module doing what it was written to do to a bot that had never been stuck.
 		// In an instance at any distance: the player went on by a teleporter, a lever, a lift or a door their key opened, which a bot does not use, and
 		// the ordinary rescue below would send it to its home's coordinates on the instance's own map.
+		// A player's group at any distance as well: a player who has gone a long way off went by something the bot does not use, and home is the one
+		// place it should not be put. On 20 October three members were rescued to their homes across Eltnen while their player was on a flight.
 		Player leader = BotGroupManager.leaderToFollow(bot);
-		if (leader != null && (bot.isInInstance() || PositionUtil.getDistance(bot, leader) <= STAY_WITH_THE_GROUP)) {
+		if (leader != null && (bot.isInInstance() || isInAPlayersGroup(bot) && leader.getWorldId() == bot.getWorldId() || PositionUtil.getDistance(bot, leader) <= STAY_WITH_THE_GROUP)) {
 			// Waiting is for a leader in the air. One standing on the ground can be walked to from somewhere, and a bot that cannot is in a pocket, which
 			// waiting never ends: in the first squads a cleric and a ranger stood in one for minutes, 18 to 45 m from their leader, giving up every
 			// target the group fought. It is put on the nearest floor joined to the leader's, which keeps it with the group as the wait meant to.
@@ -1999,6 +2026,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private Creature findAttacker() {
 		Player bot = getOwner();
+		boolean groupHealer = isGroupHealer(bot);
 		Creature[] attacker = { null };
 		bot.getKnownList().forEachNpc(npc -> {
 			// The aggro list, not getTarget(). A creature that has decided to kill this bot is not necessarily swinging at it this instant: it is
@@ -2010,7 +2038,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// one. Nothing that counts as scenery can hurt a bot, so there is nothing to defend against.
 			// isIgnored as well, which it did not use to be: a bot that has just broken off is still hated by what it ran from, so without this the
 			// very next tick turned it round and walked it back into the fight it had decided to leave.
-			if (attacker[0] == null && !npc.isDead() && !BotTargetSelector.isScenery(npc) && npc.getAggroList().isHating(bot) && !isIgnored(npc))
+			// A group's healer is the exception, and counts only what is aimed at it, by the same rule the fight loop uses to let such a fight go
+			// (healerHasNoSurplus). Read two ways, the add a cleric had rooted was hated enough to start a fight every tick and not aimed at it enough to
+			// keep one, so the cleric started and dropped it every second for 18 s and cast no heal while the templar died (20 October, 13:11).
+			if (attacker[0] == null && !npc.isDead() && !BotTargetSelector.isScenery(npc) && npc.getAggroList().isHating(bot) && !isIgnored(npc)
+				&& (!groupHealer || bot.equals(npc.getTarget())))
 				attacker[0] = npc;
 		});
 		return attacker[0];
