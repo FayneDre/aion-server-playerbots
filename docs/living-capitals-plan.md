@@ -1,7 +1,7 @@
 # Living capitals
 
-**Status: in progress, milestone 2 (private stores), built and not yet watched in game.** Milestones 0 and 1 are done and were watched in game on 20
-October 2026; what they measured and fixed is in [living-capitals-findings.md](living-capitals-findings.md). The stores have a plan of their own,
+**Status: in progress.** Milestones 0 and 1 done and watched in game on 20 October 2026; milestone 2 (private stores) built and reworked on
+23 October, not yet watched; 3 to 5 not started, in that order; what they measured and fixed is in [living-capitals-findings.md](living-capitals-findings.md). The stores have a plan of their own,
 [bot-stores-plan.md](bot-stores-plan.md).
 
 What is asked: capitals that feel lived in, with people who **stay and are seen**, some of them keeping a private store while the broker is not done.
@@ -11,7 +11,8 @@ What is asked: capitals that feel lived in, with people who **stay and are seen*
 1. **Where store goods come from**: stock generated at the keeper's level, capped per keeper and per day; what bots really loot can be added once
    field bots carry their good drops home.
 2. **Prices**: as written in [bot-stores-plan.md](bot-stores-plan.md), then moved by sales.
-3. **Bots buy from players' stores**: yes, capped per bot and per day, and only below the fair price (milestone 5).
+3. **Bots buy from players' stores**: decided on 20 October, dropped on 23 October with the day's rhythm. Should it come back, with the broker:
+   `BrokerService.getAveragePrice` **divides by zero** when the broker holds no listing (`counter = 0`).
 
 ## Milestones
 
@@ -25,29 +26,27 @@ What is asked: capitals that feel lived in, with people who **stay and are seen*
      every hour.
    - Themed stock generated at their level, priced from the template, the quality and the keeper's temperament, cheaper the longer it is unsold.
    - Check: a player buys from a bot in game, the kinah moves, and EXCHANGE_LOG has the line.
-3. **Ambience.**
-   - Groups of two to four facing one another, with emotes.
-   - A rare wave or bow when a player stops in front of a bot.
-   - Bots duelling on a square: duels exist, and onlookers are life.
-   - Cosmetic pets and costumes, so a crowd is not all combat gear.
+3. **Visitors.** Agreed on 23 October. Capital residents are made at the level of the map's monsters, as everywhere, so a capital holds mostly
+   residents under 30 and from 45 to 49 (Pandaemonium on 23 October: 18 of 135 at 50 and over, 5 from 30 to 44). A tester saw no high levels in
+   town ([feedback-2026-10-21.md](feedback-2026-10-21.md)).
+   - Sleepers of the faction, from 10 to the highest level in the pool, are woken at the capital's obelisk. They spend 20 to 40 minutes on the
+     town routine, then fall asleep out of sight. Their home never moves: `goHome` puts them back in their region on their next spawn.
+   - Levels are drawn to fill what the residents lack, so the whole crowd spreads from 10 to the top, rather than drawn in the pool's proportions.
+   - 10 to 20 visitors at a time per capital, in rotation.
+   - A visitor flag, so that no rule moves a home into town. No store at first; opening some would bring stock of 50 and over.
+   - Only sleepers: no region loses a bot that is awake, and a visitor is not counted in its own region while it is away.
 4. **Speech.**
    - Store adverts in the region channel ("Selling plate 30-35, see my store"), one every few minutes per capital, not per bot.
    - Calls for a group, echoing the offers `BotRecruiter` fills.
    - Cheap and highly visible, noisy if overdone: a cap per channel.
-5. **Bots as buyers.** They browse players' stores and buy what sits under the fair price, inside a daily cap (decision 3). The broker comes next, on
-   the same price rule. `BrokerService.getAveragePrice` **divides by zero** when the broker holds no listing (`counter = 0`): a trap for that phase.
-6. **The day's rhythm.**
-   - Fuller in the evening, emptier at night, by the server's clock.
-   - Arrivals and departures through the teleporter and the obelisk, where a player can see them, rather than out of thin air.
-7. **Visitors.** Not started; agreed on 23 October, to be done later. Capital residents are made at the level of the map's monsters, as
-   everywhere, so a capital holds mostly residents under 30 and from 45 to 49 (Pandaemonium on 23 October: 18 of 135 at 50 and over, 5 from 30 to 44).
-   A tester saw no high levels in town ([feedback-2026-10-21.md](feedback-2026-10-21.md)).
-   - Sleepers of the faction, from 10 to the highest level in the pool, are woken at the capital's obelisk. They spend 20 to 40 minutes on the
-     town routine, then fall asleep out of sight. Their home never moves: `goHome` puts them back in their region on their next spawn.
-   - Levels are drawn to fill what the residents lack, so the whole crowd spreads from 10 to the top, rather than drawn in the pool's proportions.
-   - 10 to 20 visitors at a time per capital, in rotation; later, more in the evening (milestone 6).
-   - A visitor flag, so that no rule moves a home into town. No store at first; opening some would bring stock of 50 and over.
-   - Only sleepers: no region loses a bot that is awake, and a visitor is not counted in its own region while it is away.
+5. **Ambience.**
+   - Groups of two to four facing one another, with emotes, first.
+   - A rare wave or bow when a player stops in front of a bot.
+   - Bots duelling on a square: duels exist, and onlookers are life.
+   - Cosmetic pets and costumes, so a crowd is not all combat gear.
+
+Dropped on 23 October: **bots as buyers** of players' stores and the broker, and **the day's rhythm** (fuller in the evening, arrivals through the
+teleporter and the obelisk).
 
 ## Later, to be decided
 
@@ -61,7 +60,7 @@ What is asked: capitals that feel lived in, with people who **stay and are seen*
 
 - **Memory and the client.** 150 bots a capital is already the cap. A keeper costs almost no ticks but still a character in sight, so the client
   ceiling decides.
-- **Economy.** Generated stock and buying bots create items and kinah. Everything goes through the engine's own paths, so EXCHANGE_LOG traces it, and
-  the daily caps are the valve.
+- **Economy.** Generated stock creates items, and sales move kinah. Everything goes through the engine's own paths, so EXCHANGE_LOG traces it, and
+  the stock cap per keeper is the valve.
 - **A frozen store.** If a bot keeps a store, everything that moves it (rescue, director, sleep, group invitation) must close the store first.
   Otherwise `PlayerRestrictions` refuses the move without saying why.

@@ -17,8 +17,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
    (templar, chanter, ranger, cleric, gladiator, sorcerer). Damage that waits for the tank and group resurrection watched stay ours.
 3. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): store goods priced as on a live broker, with coins and medals
-   ([bot-store-goods-plan.md](bot-store-goods-plan.md)), waiting on the guide's answers; then ambience, speech, bots as buyers, the day's rhythm,
-   and visitors of every level woken at the obelisk (milestone 7).
+   ([bot-store-goods-plan.md](bot-store-goods-plan.md)), waiting on the guide's answers; then visitors of every level woken at the obelisk,
+   speech in the region channel, and ambience (groups, emotes, duels). Bots as buyers and the day's rhythm are dropped.
 4. **Navigation leftovers**, measured on 18 October over 45 minutes with nobody online: rescue teleports, about 50 a half hour spread over every
    map; route searches over a second, about 600 s of the bots' threads a half hour (`NavmeshService` logs each with its `NavmeshTool path` line).
    Ambient flights stalling, 7 a half hour, log only. How a bot climbed onto nothing under Pandaemonium's dome (21 October) is unexplained.
