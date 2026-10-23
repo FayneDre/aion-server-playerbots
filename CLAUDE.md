@@ -96,6 +96,7 @@ Bots currently use **reactive steering** built on those raycasts: it handles ope
   stores, ambience, speech, bots as buyers), risks. What milestones 0 and 1 found is in
   [docs/living-capitals-findings.md](docs/living-capitals-findings.md): Sanctum's bridges and rides, the crowd test, the town routine.
 - [docs/bot-stores-plan.md](docs/bot-stores-plan.md) — bots' private stores: who keeps one and when, where the stalls stand, themed stock, prices.
+- [docs/chat-channels-plan.md](docs/chat-channels-plan.md) — bots in the Trade, Find Group and Region channels: a game server to chat server packet, true lines in many forms, pace.
 - [docs/capital-life-plan.md](docs/capital-life-plan.md) — visitors of every level, speech by shout, groups, waves and duels in the capitals: living capitals milestones 3 to 5.
 - [docs/bot-store-goods-plan.md](docs/bot-store-goods-plan.md) — enchantment stones priced as on a live broker, coins and medals for sale: what 4.8 has of the guide's goods.
 - [docs/cohort-plan.md](docs/cohort-plan.md) — bots in a cohort (alliance): acting as a member of one's own group of six, following into alliance instances, recruiting.
