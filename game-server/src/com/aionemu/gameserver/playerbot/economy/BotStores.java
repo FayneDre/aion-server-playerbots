@@ -78,7 +78,13 @@ public final class BotStores {
 		new Market(1400, 1513, 573, 12, 10), // half way along the street
 		new Market(1451, 1511, 573, 12, 10), // the entrance of the Elyos Square
 		new Market(1471, 1442, 573, 15, 40), // in front of the Hall of Prosperity
-		new Market(1403, 1412, 573, 15, 30))); // in the Hall of Prosperity
+		new Market(1403, 1412, 573, 15, 30)), // in the Hall of Prosperity
+		// Pandaemonium, from a tester's notes of 23 October: stalls round its brokers and warehouses put 80 of them in one hall and 35 in two others
+		120010000, List.of(
+		new Market(1609, 1400, 193, 12, 10), // on the Vifrost Bridge
+		new Market(1393, 1401, 208, 12, 10), // in Market Street
+		new Market(1300, 1415, 208, 12, 10), // on Pandaemonium Plaza
+		new Market(1323, 1481, 210, 12, 10))); // by the Temple of Gold
 
 	/**
 	 * @param crowded The caller's own objection to a spot: somebody standing there.

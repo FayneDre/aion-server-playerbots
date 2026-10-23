@@ -33,8 +33,10 @@ The private store is generic: `PrivateStoreService.createStoreWithItems(player, 
 
 **Sanctum has markets of its own** (`BotStores.MARKETS`), from a tester's notes of 20 October, after the stalls round the brokers and warehouses
 put nearly every store in one hall: the street from the Exalted Path (1357 1512) by its middle (1400 1513) to the Elyos Square (1451 1511), 10 each;
-the entrance of the Hall of Prosperity (1471 1442), 40; the hall itself (1403 1412), 30. A keeper tries its own market first, then the others. The
-rule below holds for a map with no markets of its own, Pandaemonium today.
+the entrance of the Hall of Prosperity (1471 1442), 40; the hall itself (1403 1412), 30. A keeper tries its own market first, then the others.
+**Pandaemonium** has four since 23 October, also from a tester's notes, 10 each, 12 m wide: the Vifrost Bridge (1609 1400), Market Street
+(1393 1401), Pandaemonium Plaza (1300 1415) and by the Temple of Gold (1323 1481). Before them, its stalls were bunched in three spots: about 80 in
+one hall, 35 in two others. The rule below holds for a map with no markets of its own.
 
 
 Players put their stores near the broker and the warehouse. A stall is a spot within 15 m of a broker or a warehouse keeper (`TownServices`), on
