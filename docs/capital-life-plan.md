@@ -96,8 +96,8 @@ duels go through `DuelService` (`onDuelRequest`, `confirmDuelWith`), which bots 
 
 **Steps, in this order.**
 
-1. **Groups of two to four.** A new town spell, `GATHER`: residents whose spell falls together meet at a square, stand in a circle facing its
-   middle and play talking emotes every 10 to 30 seconds. The emote ids are to be read from the client data first.
+1. **Groups of two to four. Tried and dropped on 24 October**: circles of talkers (a GATHER spell, four places round a middle, emotes) were built
+   and watched in game; the user found the result poor, and it was removed.
 2. **A wave or a bow.** A player stopping within 5 m in front of an idle resident gets one, one time in five, once per player per 10 minutes.
 3. **Duels on a square.** Two residents of close level duel, at most one duel per capital every 15 minutes, three to five onlookers in a ring.
    Bot against bot is new: both sides fight a player that is a bot.
