@@ -2,7 +2,7 @@
 
 **Status: in progress.** Visitors (part 1) built on 23 October, deployed and not yet watched in game: `BotVisitors`, the column
 `visiting_from` (added by `SchemaUpdater` on start), `PlayerBotService.wakeVisitor`, `PlayerBotEnterWorldService.returnFromVisit`, and in `BotDay`
-the place in town, the way out and no store. Speech and ambience not started. Planned for milestones 3 to 5 of
+the place in town, the way out and no store. Speech (part 2) built the same night (`BotSpeech`, `//bot speech`), heard in game in Pandaemonium on 24 October. Ambience not started. Planned for milestones 3 to 5 of
 [living-capitals-plan.md](living-capitals-plan.md); the user's answers are at the end.
 
 ## 1. Visitors (milestone 3)
@@ -64,6 +64,8 @@ about 40 characters in sight, measured 20 October).
   feet behind it, whose tests ran out of their budget one after another; bots brought in at the server's start begin their day 0 to 4 minutes
   later; market stalls are moved off their grid point by up to 2 m (rows and columns in Market Street), 4.5 m apart at least. First 8 minutes:
   refused routes 244 -> 163, slow searches 188 -> 130; then per 10 minutes slow searches 99 -> 42, errands refused 31 -> 11 (5 minutes measured).
+- Teleport statues stand in enclosures of fence and rail the client alone draws: bots stood in them by the Vifrost Bridge. Statues are no longer
+  town teleporters (`TownServices`), and stalls keep 6 m from them (`BotStores.STATUE_BERTH`). A walk can still cross such a fence.
 - Not handled: a visitor a player takes into their group still leaves by the teleporter when its visit ends.
 - Town places are visited at the lowest floor a walker reaches (`visitSpotOf`): a place's centre is a townsperson's height, sometimes a roof.
   Errands look up to 12 m round a keeper when 6 m is crowded: Pandaemonium's brokers and warehouses stand in its markets.
@@ -73,6 +75,10 @@ about 40 characters in sight, measured 20 October).
 **The obstacle.** The Region, Trade and Find Group channels are the chat server's (`chat-server`, `ChannelType`): a client joins them itself, and
 a bot has no chat server session. What the game server offers a bot is **say** (white) and **shout** (orange), heard by the players whose client
 knows the bot, about 95 m round it.
+
+**Built 23 October** (`BotSpeech`, every 5 s on the tick lane): adverts every 2 to 4 minutes a capital, calls every 3 to 6, a speaker within
+80 m of a real player, quiet 30 minutes after it spoke, four French templates of each; `//bot speech off` silences them. Calls name the
+speaker's class and level and ask to be invited, which a bot accepts from anyone. Not built: calls naming an instance.
 
 **Steps.**
 

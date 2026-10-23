@@ -69,6 +69,11 @@ public final class TownServices {
 				NpcTemplate template = npc.getObjectTemplate();
 				if (!npc.isSpawned() || template == null)
 					return;
+				// A teleport statue stands in an enclosure, a fence round a plinth that only the client draws: visitors arrived inside it and errands
+				// ended in it, standing in the rail by Pandaemonium's Vifrost Bridge statues (23 October). The teleporters who are people stand at a
+				// counter, and serve the same journeys.
+				if (template.getName() != null && template.getName().contains("teleport statue"))
+					return;
 				for (Service service : Service.values()) {
 					if (template.supportsAction(service.dialogAction))
 						found.computeIfAbsent(service, s -> new ArrayList<>()).add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));

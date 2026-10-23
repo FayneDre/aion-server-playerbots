@@ -20,6 +20,7 @@ import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.TownServices;
 import com.aionemu.gameserver.services.PrivateStoreService;
 import com.aionemu.gameserver.utils.PositionUtil;
+import com.aionemu.gameserver.world.World;
 
 /**
  * Bots' private stores: where each keeper's stall stands, what is on its shelf and since when, and the opening and closing of the engine's store.
@@ -139,6 +140,7 @@ public final class BotStores {
 		return stallsOfMarket.computeIfAbsent(worldId + "/" + market, key -> {
 			NavmeshService navmesh = NavmeshService.getInstance();
 			List<Vector3f> spots = new ArrayList<>();
+			List<Vector3f> statues = statuesOn(worldId);
 			float spread = market.spread();
 			for (float dx = -spread; dx <= spread; dx += STALL_SPACING) {
 				for (float dy = -spread; dy <= spread; dy += STALL_SPACING) {
@@ -154,6 +156,8 @@ public final class BotStores {
 					// the mesh snaps a spot onto the nearest walkable cell, so two spots of the grid can land together
 					if (spots.stream().anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), ground.getX(), ground.getY()) < STALL_NEAREST))
 						continue;
+					if (statues.stream().anyMatch(statue -> PositionUtil.getDistance(statue.getX(), statue.getY(), ground.getX(), ground.getY()) < STATUE_BERTH))
+						continue;
 					if (isAwayFromEdges(navmesh, worldId, ground)
 						&& navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), market.x(), market.y(), market.z()))
 						spots.add(ground);
@@ -162,6 +166,22 @@ public final class BotStores {
 			log.info("Market at {} {} on map {} holds {} stalls", Math.round(market.x()), Math.round(market.y()), worldId, spots.size());
 			return List.copyOf(spots);
 		});
+	}
+
+	/**
+	 * How far from a teleport statue a stall must stand, in metres. A statue stands in an enclosure of fence the client alone draws, and a keeper on
+	 * Pandaemonium's Vifrost Bridge opened its store in that fence, 4.6 m from the statue (23 October).
+	 */
+	private static final float STATUE_BERTH = 6;
+
+	/** @return Where the teleport statues of a map stand. */
+	private static List<Vector3f> statuesOn(int worldId) {
+		List<Vector3f> statues = new ArrayList<>();
+		World.getInstance().getWorldMap(worldId).getMainWorldMapInstance().forEachNpc(npc -> {
+			if (npc.getObjectTemplate() != null && npc.getObjectTemplate().getName() != null && npc.getObjectTemplate().getName().contains("teleport statue"))
+				statues.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
+		});
+		return statues;
 	}
 
 	/** How far round a stall the floor must carry on at its height, in metres, and how much higher or lower it may be there. */
