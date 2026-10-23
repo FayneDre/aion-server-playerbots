@@ -39,6 +39,15 @@ What is asked: capitals that feel lived in, with people who **stay and are seen*
 6. **The day's rhythm.**
    - Fuller in the evening, emptier at night, by the server's clock.
    - Arrivals and departures through the teleporter and the obelisk, where a player can see them, rather than out of thin air.
+7. **Visitors.** Not started; agreed on 23 October, to be done later. Capital residents are made at the level of the map's monsters, as
+   everywhere, so a capital holds mostly residents under 30 and from 45 to 49 (Pandaemonium on 23 October: 18 of 135 at 50 and over, 5 from 30 to 44).
+   A tester saw no high levels in town ([feedback-2026-10-21.md](feedback-2026-10-21.md)).
+   - Sleepers of the faction, from 10 to the highest level in the pool, are woken at the capital's obelisk. They spend 20 to 40 minutes on the
+     town routine, then fall asleep out of sight. Their home never moves: `goHome` puts them back in their region on their next spawn.
+   - Levels are drawn to fill what the residents lack, so the whole crowd spreads from 10 to the top, rather than drawn in the pool's proportions.
+   - 10 to 20 visitors at a time per capital, in rotation; later, more in the evening (milestone 6).
+   - A visitor flag, so that no rule moves a home into town. No store at first; opening some would bring stock of 50 and over.
+   - Only sleepers: no region loses a bot that is awake, and a visitor is not counted in its own region while it is away.
 
 ## Later, to be decided
 

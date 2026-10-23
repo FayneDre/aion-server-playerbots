@@ -25,7 +25,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
    **built** in `patch-2026-10-19-2`, to be watched in game.
 6. **Cohorts** ([cohort-plan.md](cohort-plan.md)): a bot in an alliance acting as a member of its own group of six.
 7. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): bots that stay and are seen in Sanctum and Pandaemonium, some with a
-   private store.
+   private store; later, visitors of every level woken at the obelisk for half an hour (milestone 7).
 8. **Wild PvP, rifts and the arenas.**
 9. **Economy**: the broker, then player shops, then gathering and crafting.
 10. **Legions**, accepting a legion's invitation first.
