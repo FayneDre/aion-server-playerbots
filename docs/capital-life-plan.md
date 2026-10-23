@@ -98,11 +98,9 @@ duels go through `DuelService` (`onDuelRequest`, `confirmDuelWith`), which bots 
 
 1. **Groups of two to four. Tried and dropped on 24 October**: circles of talkers (a GATHER spell, four places round a middle, emotes) were built
    and watched in game; the user found the result poor, and it was removed.
-2. **A wave or a bow.** A player stopping within 5 m in front of an idle resident gets one, one time in five, once per player per 10 minutes.
-3. **Duels on a square.** Two residents of close level duel, at most one duel per capital every 15 minutes, three to five onlookers in a ring.
-   Bot against bot is new: both sides fight a player that is a bot.
-4. **Pets**, after a look at the data: which toy pets are obtainable, and what summoning one needs (a pet list in the database). Possibly
-   left for later.
+2. **A wave or a bow.** Dropped on 24 October.
+3. **Duels on a square** (two residents of close level, onlookers in a ring) and **pets**: on hold since 24 October, not to be built until the user
+   asks.
 
 ## Decisions (23 October)
 
@@ -110,4 +108,4 @@ duels go through `DuelService` (`onDuelRequest`, `confirmDuelWith`), which bots 
 2. **Visitors only while a real player is in the capital**, 15 at a time, **all at once**: a player often only passes through, and one visitor
    every half minute filled the town after they had left. Looked at every 5 seconds; with nobody there for 5 minutes, the visits end.
 3. **A visitor leaves by the teleporter**, in sight, as a player does.
-4. **Ambience**: groups, waves, duels, then pets. Costumes are dropped.
+4. **Ambience**: groups, waves, duels, then pets. Costumes are dropped. On 24 October: groups tried and dropped, waves dropped, duels and pets on hold.

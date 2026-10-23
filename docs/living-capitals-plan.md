@@ -40,11 +40,7 @@ What is asked: capitals that feel lived in, with people who **stay and are seen*
    - Store adverts in the region channel ("Selling plate 30-35, see my store"), one every few minutes per capital, not per bot.
    - Calls for a group, echoing the offers `BotRecruiter` fills.
    - Cheap and highly visible, noisy if overdone: a cap per channel.
-5. **Ambience.**
-   - Groups of two to four facing one another, with emotes, first.
-   - A rare wave or bow when a player stops in front of a bot.
-   - Bots duelling on a square: duels exist, and onlookers are life.
-   - Pets, so a crowd is not all combat gear (costumes dropped on 23 October).
+5. **Ambience.** Talking circles tried and dropped, waves dropped (24 October); duels on a square and pets on hold.
 
 The detailed plan for milestones 3 to 5 is [capital-life-plan.md](capital-life-plan.md).
 
