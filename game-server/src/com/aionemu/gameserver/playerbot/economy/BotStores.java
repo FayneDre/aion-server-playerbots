@@ -144,13 +144,39 @@ public final class BotStores {
 					// the mesh snaps a spot onto the nearest walkable cell, so two spots of the grid can land together
 					if (spots.stream().anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), ground.getX(), ground.getY()) < STALL_SPACING))
 						continue;
-					if (navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), market.x(), market.y(), market.z()))
+					if (isAwayFromEdges(navmesh, worldId, ground)
+						&& navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), market.x(), market.y(), market.z()))
 						spots.add(ground);
 				}
 			}
 			log.info("Market at {} {} on map {} holds {} stalls", Math.round(market.x()), Math.round(market.y()), worldId, spots.size());
 			return List.copyOf(spots);
 		});
+	}
+
+	/** How far round a stall the floor must carry on at its height, in metres, and how much higher or lower it may be there. */
+	private static final float[] EDGE_RADII = { 1, 2 };
+	private static final float EDGE_STEP = 1;
+
+	/**
+	 * @return true when the floor round a spot carries on at its height in every direction: not at the edge of a deck or a bridge.
+	 *         <p>
+	 *         Railings are not in the mesh, the drop behind them is: a keeper on Pandaemonium's Vifrost Bridge opened its store standing in the rail,
+	 *         the floor 8.5 m down a metre away (23 October).
+	 */
+	private static boolean isAwayFromEdges(NavmeshService navmesh, int worldId, Vector3f spot) {
+		for (float radius : EDGE_RADII) {
+			for (int k = 0; k < 8; k++) {
+				double angle = Math.PI * k / 4;
+				float x = spot.getX() + (float) Math.cos(angle) * radius, y = spot.getY() + (float) Math.sin(angle) * radius;
+				boolean level = false;
+				for (Vector3f floor : navmesh.floorsAt(worldId, x, y, spot.getZ()))
+					level |= Math.abs(floor.getZ() - spot.getZ()) <= EDGE_STEP;
+				if (!level)
+					return false;
+			}
+		}
+		return true;
 	}
 
 	/** @return The markets the keeper tries, its own first, chosen by its id with each market's weight, the same every day. */
