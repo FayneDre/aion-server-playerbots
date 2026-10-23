@@ -60,6 +60,10 @@ about 40 characters in sight, measured 20 October).
   shop within 800 m (`BotVendorManager.SHOP_TRIP_RANGE`), and a shop three bots gave up on is left alone by all for 30 minutes. Per 10 minutes:
   shops unreachable 85 -> 4, slow searches 166 -> 99, refused routes 277 -> 167, rescues 22 -> 14. Market stalls keep off deck edges (a keeper stood
   in the Vifrost Bridge rail, the floor 8.5 m down a metre away). Next: town errands and spells refused (31 and 73 per 10 minutes), staggered start.
+- **Errands and the start, done the same night**: errands go round the floor in front of the counter (`BotVendorManager.frontOf`), not the keeper's
+  feet behind it, whose tests ran out of their budget one after another; bots brought in at the server's start begin their day 0 to 4 minutes
+  later; market stalls are moved off their grid point by up to 2 m (rows and columns in Market Street), 4.5 m apart at least. First 8 minutes:
+  refused routes 244 -> 163, slow searches 188 -> 130; then per 10 minutes slow searches 99 -> 42, errands refused 31 -> 11 (5 minutes measured).
 - Not handled: a visitor a player takes into their group still leaves by the teleporter when its visit ends.
 - Town places are visited at the lowest floor a walker reaches (`visitSpotOf`): a place's centre is a townsperson's height, sometimes a roof.
   Errands look up to 12 m round a keeper when 6 m is crowded: Pandaemonium's brokers and warehouses stand in its markets.

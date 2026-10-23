@@ -9,6 +9,8 @@ import java.util.concurrent.ScheduledFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.commons.utils.Rnd;
+import com.aionemu.gameserver.GameServer;
 import com.aionemu.gameserver.ai.AIState;
 import com.aionemu.gameserver.ai.AITemplate;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
@@ -312,6 +314,16 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile int giveUpsInARow;
 	/** How many refusals in a row mean the bot is not blocked from somewhere but wedged where it stands. */
 	private static final int STUCK_REFUSALS = 12;
+	/**
+	 * Until when a bot brought in at the server's start waits before its day begins: shop trips, hunting grounds, errands. Every bot of the world
+	 * spawned in the same few seconds and set off in the same few seconds, and the first eight minutes after a restart held three times the refused
+	 * routes and slow searches of any eight minutes after (23 October). It still defends itself, loots and mends meanwhile.
+	 */
+	private volatile long settlesAt;
+	/** How long after the server's start a spawn counts as part of the start, in seconds: the world is brought in at the end of a two minute start. */
+	private static final int STARTUP_SECONDS = 360;
+	/** How long a bot brought in at the start may wait before its day begins, at most, in seconds. */
+	private static final int SETTLING_IN_SECONDS = 240;
 	/** Refusals in a row, reset by any movement that starts. */
 	private int refusedMoves;
 	/**
@@ -759,6 +771,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 				// A squad's leader pulls for the squad, so it waits for the squad, as a player leading a group waits for the healer's mana. Buffs and the
 				// rest of its upkeep can wait with it; standing still is what lets the others catch up and sit down.
 				stopMoving();
+			} else if (System.currentTimeMillis() < settlesAt) {
+				// still settling in after the server's start: see settlesAt
 			} else if (!inSquad && errands.runVendorTrip()) {
 				// bag is full and a shop is being walked to or worked, everything else waits
 			} else if (isRunningErrand()) {
@@ -2191,6 +2205,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// without leaving AIState.CREATED, every event except (BEFORE_)SPAWNED is filtered out
 		setStateIfNot(AIState.IDLE);
 		setAnchor(getOwner().getX(), getOwner().getY(), getOwner().getZ());
+		// brought in with the whole world at startup: its day starts a while later, a moment of its own
+		if (System.currentTimeMillis() / 1000 - GameServer.START_TIME_SECONDS < STARTUP_SECONDS)
+			settlesAt = System.currentTimeMillis() + Rnd.get(0, SETTLING_IN_SECONDS) * 1000L;
 		synchronized (combatLock) {
 			scheduleBotTick();
 		}
