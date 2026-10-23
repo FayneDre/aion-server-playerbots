@@ -154,7 +154,7 @@ public final class BotStoreStock {
 				if (fits(template, theme, forClass, level))
 					found.add(template);
 			}
-			return theme == Theme.GEAR ? heaviestArmourOnly(found) : List.copyOf(found);
+			return theme == Theme.GEAR ? heaviestArmourOnly(found, BotGearFit.heaviestLearnedBy(forClass, race, level)) : List.copyOf(found);
 		});
 	}
 
@@ -174,11 +174,11 @@ public final class BotStoreStock {
 	}
 
 	/**
-	 * @return The weapons, and of the armour only the heaviest kind there is: a class may legally wear everything lighter than its own, and a store of
+	 * @param heaviest The weight of the heaviest armour the class learns: the class's own, which is not the heaviest the store found.
+	 * @return The weapons, and of the armour only the class's own kind: a class may legally wear everything lighter than its own, and a store of
 	 *         plate for templars with robes in it reads as a mistake, for the same reason {@code BotGearFit.isRightArmour} gives.
 	 */
-	private static List<ItemTemplate> heaviestArmourOnly(List<ItemTemplate> found) {
-		int heaviest = found.stream().filter(ItemTemplate::isArmor).mapToInt(BotGearFit::armourWeight).max().orElse(0);
+	private static List<ItemTemplate> heaviestArmourOnly(List<ItemTemplate> found, int heaviest) {
 		return found.stream().filter(template -> !template.isArmor() || BotGearFit.armourWeight(template) == heaviest || BotGearFit.armourWeight(template) == 0)
 			.toList();
 	}

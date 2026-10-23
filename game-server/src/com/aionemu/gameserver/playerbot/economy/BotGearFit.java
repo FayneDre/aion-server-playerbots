@@ -4,6 +4,7 @@ import java.util.Set;
 
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.PlayerClass;
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.items.ItemSlot;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
@@ -215,6 +216,28 @@ public class BotGearFit {
 			case CLOTHES -> 1;
 			default -> 0;
 		};
+	}
+
+	/**
+	 * @return The weight of the heaviest armour a class learns by that level, read from the skill tree, or 0 if it learns none.
+	 *         <p>
+	 *         {@link #isRightArmour} asks the same of a bot's own skills. A store is stocked for a class nobody in the room is, so it has no skill list to
+	 *         read; the item data cannot answer either, since every piece declares every class. Stores were stocked with the heaviest armour among what
+	 *         they found, which was plate for everyone: a store of spiritmaster gear sold nothing else.
+	 */
+	public static int heaviestLearnedBy(PlayerClass playerClass, Race race, int level) {
+		int heaviest = 0;
+		for (ItemGroup group : ARMOUR_TYPES) {
+			for (int skillId : DataManager.SKILL_DATA.getMasterySkills(group)) {
+				if (learns(playerClass, race, level, skillId) || !playerClass.isStartingClass() && learns(playerClass.getStartingClass(), race, level, skillId))
+					heaviest = Math.max(heaviest, weightOf(group));
+			}
+		}
+		return heaviest;
+	}
+
+	private static boolean learns(PlayerClass playerClass, Race race, int level, int skillId) {
+		return DataManager.SKILL_TREE_DATA.getTemplatesForSkill(skillId, playerClass, race).stream().anyMatch(learnt -> learnt.getMinLevel() <= level);
 	}
 
 	/** @return The weight of the heaviest armour the bot is trained for today, or 0 if it is trained for none at all. */
