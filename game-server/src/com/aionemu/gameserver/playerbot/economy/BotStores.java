@@ -53,6 +53,11 @@ public final class BotStores {
 	 * metres. The spacing was 3, and a tester found Pandaemonium's Market Street packed shoulder to shoulder on 23 October.
 	 */
 	private static final float STALL_SPREAD = 15, STALL_SPACING = 6;
+	/**
+	 * How far each stall of a market's grid is moved off its grid point, at most, on each axis, in metres, and how near two stalls may then stand.
+	 * On the bare grid the keepers of Market Street stood in rows and columns, which no crowd of players does (23 October).
+	 */
+	private static final float STALL_JITTER = 2, STALL_NEAREST = 4.5f;
 	/** Every stall each market holds, worked out once per map and market. */
 	private static final Map<String, List<Vector3f>> stallsOfMarket = new ConcurrentHashMap<>();
 
@@ -105,7 +110,7 @@ public final class BotStores {
 		if (stalls.size() >= STORES_PER_MAP)
 			return null;
 		Predicate<Vector3f> taken = spot -> crowded.test(spot) || stalls.values().stream()
-			.anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), spot.getX(), spot.getY()) < STALL_SPACING);
+			.anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), spot.getX(), spot.getY()) < STALL_NEAREST);
 		// the keeper's own market first, then the others: a full one sends it along the street rather than home for half an hour
 		for (Market market : marketsFor(keeper)) {
 			List<Vector3f> spots = stallsOf(keeper.getWorldId(), market);
@@ -123,7 +128,8 @@ public final class BotStores {
 	}
 
 	/**
-	 * @return Every stall a market holds: a grid of spots {@link #STALL_SPACING} apart within its spread, on walkable ground joined to its middle.
+	 * @return Every stall a market holds: a grid of spots {@link #STALL_SPACING} apart within its spread, each moved off its point by up to
+	 *         {@link #STALL_JITTER}, on walkable ground joined to its middle.
 	 *         <p>
 	 *         A grid rather than spots drawn round the middle at each asking. Drawn spots landed on a wall, a stair or a passer-by often enough that a
 	 *         keeper was turned away from a market with room left in it: Sanctum's Hall of Prosperity entrance, weighted for 40 stores, held 8 on
@@ -138,11 +144,15 @@ public final class BotStores {
 				for (float dy = -spread; dy <= spread; dy += STALL_SPACING) {
 					if (dx * dx + dy * dy > spread * spread)
 						continue;
-					Vector3f ground = navmesh.groundNear(worldId, market.x() + dx, market.y() + dy, market.z());
+					// moved off the grid point by an amount of its own, the same every day since it is drawn from the point
+					int seed = Float.hashCode(market.x() + dx) * 31 + Float.hashCode(market.y() + dy);
+					float jitterX = STALL_JITTER * (Math.floorMod(seed * 0x9E3779B9, 2001) / 1000f - 1);
+					float jitterY = STALL_JITTER * (Math.floorMod(seed * 0x85EBCA6B, 2001) / 1000f - 1);
+					Vector3f ground = navmesh.groundNear(worldId, market.x() + dx + jitterX, market.y() + dy + jitterY, market.z());
 					if (ground == null || ground.getZ() - market.z() > BotPlaces.STANDS_ON_A_STRUCTURE)
 						continue;
 					// the mesh snaps a spot onto the nearest walkable cell, so two spots of the grid can land together
-					if (spots.stream().anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), ground.getX(), ground.getY()) < STALL_SPACING))
+					if (spots.stream().anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), ground.getX(), ground.getY()) < STALL_NEAREST))
 						continue;
 					if (isAwayFromEdges(navmesh, worldId, ground)
 						&& navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), market.x(), market.y(), market.z()))
