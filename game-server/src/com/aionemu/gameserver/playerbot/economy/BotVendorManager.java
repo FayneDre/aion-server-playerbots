@@ -203,7 +203,7 @@ public class BotVendorManager {
 	 * @return Floor within trading reach of a keeper that is not a pocket, nearest first, or null when none was found or the map has no mesh. No route
 	 *         is searched: a pocket is told by how much ground it has, which closes in a few thousand cells, see {@link NavmeshService#isPocket}.
 	 */
-	static Vector3f frontOf(int worldId, Vector3f keeper) {
+	public static Vector3f frontOf(int worldId, Vector3f keeper) {
 		NavmeshService mesh = NavmeshService.getInstance();
 		int fills = 0;
 		for (float radius : FRONT_RADII) {

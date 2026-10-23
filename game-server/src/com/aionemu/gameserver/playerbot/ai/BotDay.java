@@ -18,6 +18,7 @@ import com.aionemu.gameserver.playerbot.BotRecruiter;
 import com.aionemu.gameserver.playerbot.BotVisitors;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.economy.BotStores;
+import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
@@ -465,12 +466,18 @@ class BotDay {
 		Player bot = ai.getOwner();
 		if (occupationDestination == null) {
 			Vector3f keeper = TownServices.keeperOf(bot, spell.service(), spell.seed());
-			Vector3f spot = keeper == null ? null
-				: BotPlaces.spotAround(bot.getWorldId(), keeper, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
+			// Round the floor in front of the counter, not round the keeper's feet. Each spot round its feet was tested for a way to them, and they stand
+			// behind their counters on ground nothing joins: each test ran out of its budget, a second to four, up to a dozen an errand, on the thread that
+			// thinks for eight bots. Pandaemonium's brokers, warehouses and teleporter were most of the capitals' slow searches on 23 October. Sell trips
+			// learnt this on 18 October (BotVendorManager.frontOf).
+			Vector3f counter = keeper == null ? null : BotVendorManager.frontOf(bot.getWorldId(), keeper);
+			Vector3f around = counter != null ? counter : keeper;
+			Vector3f spot = around == null ? null
+				: BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
 			// Wider when the counter is crowded. Pandaemonium's brokers and warehouses stand in its markets since 23 October, and with store keepers
 			// at their stalls round them nothing was free within 6 m: two errands in three refused there, and visitors sent back to their teleporter.
-			if (spot == null && keeper != null)
-				spot = BotPlaces.spotAround(bot.getWorldId(), keeper, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
+			if (spot == null && around != null)
+				spot = BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
 			if (spot == null || unreachable.contains(spot)) {
 				log.info("Bot {} finds no way to the {} keeper{}, and spends the spell {}", bot.getName(), spell.service(),
 					keeper == null ? " (none on the map)" : " at " + Math.round(keeper.getX()) + " " + Math.round(keeper.getY()) + " " + Math.round(keeper.getZ()),
