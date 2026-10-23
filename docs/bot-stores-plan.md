@@ -18,10 +18,18 @@ The private store is generic: `PrivateStoreService.createStoreWithItems(player, 
 
 ## Who keeps a store, and when
 
-- **The keepers.** Five in ten residents of level 20 and over on a town map, chosen by object id, so the same characters are the merchants every day.
-- **Their hours.** A shift of 6 to 10 hours, starting at any hour and running past midnight, chosen by object id, so a town has stores open at every
-  hour: the tester asked for merchants at all times. Day shifts came first (4 to 8 hours from 8:00 to 16:00): 36 merchants in Sanctum, 30 open at
-  14:30 and none at night.
+- **The keepers.** Eight in ten residents of level 20 and over on a town map, chosen by object id, so the same characters are the merchants every day.
+- **Their hours: a rota.** A town's merchants are sorted in an order of their own (`TownRoutine.rotaOrder`), and a window of 44 of them,
+  the 40 stores and four for those that cannot reach a stall, goes round it once a day (`TownRoutine.onRota`). A town has the same number of
+  stores at every hour, and a merchant keeps its store for one stretch a day, about 14 hours in a town of 77 merchants. Before, each merchant had
+  a shift drawn from its id: day shifts first (none at night), then any hour, and the count was chance times the town's size, 26 in Sanctum
+  against 40 in Pandaemonium on 23 October. Stand-ins making up the difference were tried the same day and swapped stalls in a loop.
+  A merchant with no way to its stall gives its turn to the next for 6 hours (`BotDay.STALL_UNREACHABLE_MILLIS`); one turned away because
+  every stall is taken keeps it, or the window runs round the whole town in minutes. Stock renewal is unchanged: every 60 to 90 minutes.
+- **Stalls are a grid** (`BotStores.stallsOf`): spots 6 m apart within a market's spread, on walkable ground joined to its middle, worked out
+  once and logged ("Market at ... holds N stalls"): Sanctum 152, Pandaemonium 109. Spots drawn round the middle at each asking turned
+  keepers away from markets with room left. After a restart, a town reaches about 40 within 15 minutes: keepers from the far quarters walk or
+  take the boat, holding their stall on the way.
 - **Renewed every hour or so** during a shift (`BotStores.renewIfDue`, 60 to 90 minutes by keeper): the store shuts for a moment, what has waited
   unsold for two hours is taken away for good, the shelf is stocked up to 8 lines and the store opens again. Also asked for by the tester; it is what
   bounds the generated goods, a keeper putting out 8 lines an hour at most.
@@ -34,13 +42,14 @@ The private store is generic: `PrivateStoreService.createStoreWithItems(player, 
 **Sanctum has markets of its own** (`BotStores.MARKETS`), from a tester's notes of 20 October, after the stalls round the brokers and warehouses
 put nearly every store in one hall: the street from the Exalted Path (1357 1512) by its middle (1400 1513) to the Elyos Square (1451 1511), 10 each;
 the entrance of the Hall of Prosperity (1471 1442), 40; the hall itself (1403 1412), 30. A keeper tries its own market first, then the others.
-**Pandaemonium** has four since 23 October, also from a tester's notes, 10 each, 12 m wide: the Vifrost Bridge (1609 1400), Market Street
+**Pandaemonium** has four since 23 October, also from a tester's notes, 10 each, 20 m round: the Vifrost Bridge (1609 1400), Market Street
 (1393 1401), Pandaemonium Plaza (1300 1415) and by the Temple of Gold (1323 1481). Before them, its stalls were bunched in three spots: about 80 in
-one hall, 35 in two others. The rule below holds for a map with no markets of its own.
+one hall, 35 in two others. Stalls stand 6 m apart since the same day, after Market Street was found packed at 3 m, and
+Sanctum's markets were widened to match (18 to 22 m), with a sixth round the Elyos Square (1529 1512). The rule below holds for a map with no markets of its own.
 
 
 Players put their stores near the broker and the warehouse. A stall is a spot within 15 m of a broker or a warehouse keeper (`TownServices`), on
-walkable ground, at least 3 m from any other stall and any character, chosen from the keeper's object id so it is the same every day. Taken stalls are
+walkable ground, at least 6 m from any other stall and any character, chosen from the keeper's object id so it is the same every day. Taken stalls are
 registered per map (`BotStores`), so two keepers never share one.
 
 ## What a store sells

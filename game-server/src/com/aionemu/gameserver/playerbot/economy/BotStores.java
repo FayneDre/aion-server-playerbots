@@ -15,6 +15,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.trade.TradePSItem;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.TownServices;
 import com.aionemu.gameserver.services.PrivateStoreService;
@@ -47,9 +48,13 @@ public final class BotStores {
 	 * and what bounds the generated goods: a keeper puts out eight lines an hour at most, and what nobody bought goes back to nothing.
 	 */
 	private static final long STALE_MILLIS = 2 * 60 * 60_000L;
-	/** How far round a broker or a warehouse keeper a stall may be on a map with no markets of its own, and how far from the next stall it must be, in metres. */
-	private static final float STALL_SPREAD = 15, STALL_SPACING = 3;
-	private static final int STALL_ATTEMPTS = 12;
+	/**
+	 * How far round a broker or a warehouse keeper a stall may be on a map with no markets of its own, and how far from the next stall it must be, in
+	 * metres. The spacing was 3, and a tester found Pandaemonium's Market Street packed shoulder to shoulder on 23 October.
+	 */
+	private static final float STALL_SPREAD = 15, STALL_SPACING = 6;
+	/** Every stall each market holds, worked out once per map and market. */
+	private static final Map<String, List<Vector3f>> stallsOfMarket = new ConcurrentHashMap<>();
 
 	/** What a keeper has on its shelf: each piece's object id and when it was stocked, and when the store was last renewed. Kept in memory. */
 	private static final class Shelf {
@@ -74,17 +79,19 @@ public final class BotStores {
 	 * warehouses put nearly every store of Sanctum in one hall. A map with no entry here still uses its brokers and warehouses.
 	 */
 	private static final Map<Integer, List<Market>> MARKETS = Map.of(110010000, List.of(
-		new Market(1357, 1512, 569, 12, 10), // the entrance of the Exalted Path
-		new Market(1400, 1513, 573, 12, 10), // half way along the street
-		new Market(1451, 1511, 573, 12, 10), // the entrance of the Elyos Square
-		new Market(1471, 1442, 573, 15, 40), // in front of the Hall of Prosperity
-		new Market(1403, 1412, 573, 15, 30)), // in the Hall of Prosperity
+		new Market(1357, 1512, 569, 18, 10), // the entrance of the Exalted Path
+		new Market(1400, 1513, 573, 18, 10), // half way along the street
+		new Market(1451, 1511, 573, 18, 10), // the entrance of the Elyos Square
+		new Market(1471, 1442, 573, 22, 40), // in front of the Hall of Prosperity
+		new Market(1403, 1412, 573, 20, 30), // in the Hall of Prosperity
+		// round the middle of the Elyos Square, whose very centre is blocked: added on 23 October, when stalls 6 m apart left seven keepers with no room
+		new Market(1529, 1512, 566, 20, 10)),
 		// Pandaemonium, from a tester's notes of 23 October: stalls round its brokers and warehouses put 80 of them in one hall and 35 in two others
 		120010000, List.of(
-		new Market(1609, 1400, 193, 12, 10), // on the Vifrost Bridge
-		new Market(1393, 1401, 208, 12, 10), // in Market Street
-		new Market(1300, 1415, 208, 12, 10), // on Pandaemonium Plaza
-		new Market(1323, 1481, 210, 12, 10))); // by the Temple of Gold
+		new Market(1609, 1400, 193, 20, 10), // on the Vifrost Bridge
+		new Market(1393, 1401, 208, 20, 10), // in Market Street
+		new Market(1300, 1415, 208, 20, 10), // on Pandaemonium Plaza
+		new Market(1323, 1481, 210, 20, 10))); // by the Temple of Gold
 
 	/**
 	 * @param crowded The caller's own objection to a spot: somebody standing there.
@@ -101,14 +108,49 @@ public final class BotStores {
 			.anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), spot.getX(), spot.getY()) < STALL_SPACING);
 		// the keeper's own market first, then the others: a full one sends it along the street rather than home for half an hour
 		for (Market market : marketsFor(keeper)) {
-			Vector3f stall = BotPlaces.spotAround(keeper.getWorldId(), new Vector3f(market.x(), market.y(), market.z()), market.spread(), STALL_ATTEMPTS,
-				keeper.getObjectId(), taken);
-			if (stall != null) {
-				stalls.put(keeper.getObjectId(), stall);
-				return stall;
+			List<Vector3f> spots = stallsOf(keeper.getWorldId(), market);
+			// from a spot of its own, the same every day, and on round the market
+			int first = spots.isEmpty() ? 0 : Math.floorMod(keeper.getObjectId() * 0x9E3779B9, spots.size());
+			for (int i = 0; i < spots.size(); i++) {
+				Vector3f stall = spots.get((first + i) % spots.size());
+				if (!taken.test(stall)) {
+					stalls.put(keeper.getObjectId(), stall);
+					return stall;
+				}
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * @return Every stall a market holds: a grid of spots {@link #STALL_SPACING} apart within its spread, on walkable ground joined to its middle.
+	 *         <p>
+	 *         A grid rather than spots drawn round the middle at each asking. Drawn spots landed on a wall, a stair or a passer-by often enough that a
+	 *         keeper was turned away from a market with room left in it: Sanctum's Hall of Prosperity entrance, weighted for 40 stores, held 8 on
+	 *         23 October, and the town 28. A grid says once, in the log, how many stores each market really holds.
+	 */
+	private static List<Vector3f> stallsOf(int worldId, Market market) {
+		return stallsOfMarket.computeIfAbsent(worldId + "/" + market, key -> {
+			NavmeshService navmesh = NavmeshService.getInstance();
+			List<Vector3f> spots = new ArrayList<>();
+			float spread = market.spread();
+			for (float dx = -spread; dx <= spread; dx += STALL_SPACING) {
+				for (float dy = -spread; dy <= spread; dy += STALL_SPACING) {
+					if (dx * dx + dy * dy > spread * spread)
+						continue;
+					Vector3f ground = navmesh.groundNear(worldId, market.x() + dx, market.y() + dy, market.z());
+					if (ground == null || ground.getZ() - market.z() > BotPlaces.STANDS_ON_A_STRUCTURE)
+						continue;
+					// the mesh snaps a spot onto the nearest walkable cell, so two spots of the grid can land together
+					if (spots.stream().anyMatch(other -> PositionUtil.getDistance(other.getX(), other.getY(), ground.getX(), ground.getY()) < STALL_SPACING))
+						continue;
+					if (navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), market.x(), market.y(), market.z()))
+						spots.add(ground);
+				}
+			}
+			log.info("Market at {} {} on map {} holds {} stalls", Math.round(market.x()), Math.round(market.y()), worldId, spots.size());
+			return List.copyOf(spots);
+		});
 	}
 
 	/** @return The markets the keeper tries, its own first, chosen by its id with each market's weight, the same every day. */
