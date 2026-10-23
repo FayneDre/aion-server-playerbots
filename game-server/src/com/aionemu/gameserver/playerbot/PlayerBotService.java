@@ -273,6 +273,33 @@ public class PlayerBotService {
 	}
 
 	/**
+	 * Brings one of the world's own inhabitants into a capital as a visitor, at the spot given, its home kept on the map it lives on. Runs on the
+	 * lifecycle lane, as {@link #wake} does. See {@link BotVisitors}.
+	 *
+	 * @return The bot, or null if it could not be brought in.
+	 */
+	public Player wakeVisitor(BotRoster.Resident resident, int worldId, Vector3f spot) {
+		Player bot = loadAvailableBot(resident.name());
+		if (bot == null)
+			return null;
+		try {
+			// recorded before it is in the world, so that a save at any moment after files it under its own map
+			BotRoster.setVisitingFrom(resident.playerId(), resident.worldId());
+			PlayerBotEnterWorldService.enterWorldAt(bot, worldId, spot, resident.worldId());
+			// rested, as somebody arriving in town is: it slept as it left its last fight, and came in at half its health and sat down at the teleporter
+			bot.getLifeStats().setCurrentHpPercent(100);
+			bot.getLifeStats().setCurrentMpPercent(100);
+			spawnedBots.put(bot.getObjectId(), bot);
+			BotRoster.setInWorld(resident.playerId(), true);
+			return bot;
+		} catch (RuntimeException e) {
+			BotRoster.setVisitingFrom(resident.playerId(), 0);
+			log.error("Could not bring bot " + resident.name() + " to map " + worldId, e);
+			return null;
+		}
+	}
+
+	/**
 	 * Takes one of the world's own inhabitants out of the world, if this is a moment at which it may go.
 	 * <p>
 	 * Three refusals, in the order that matters. A bot somebody owns is not the world's to move at all. A bot anybody can see does not vanish, and the
@@ -284,7 +311,9 @@ public class PlayerBotService {
 	public Change sleep(Player bot) {
 		// a squad is somebody's test, and one member taken out of it is the test spoiled
 		// nor a recruit, which would be saved beside its player and wake up on the player's map as one of its residents
-		if (!(bot.getAi() instanceof PlayerBotAI ai) || ai.isOwned() || BotSquads.isSquad(bot.getCurrentTeam()) || BotRecruiter.isRecruit(bot))
+		// nor a visitor, which its own region still counts as awake and sent to sleep seconds after it came: it leaves by the teleporter instead
+		if (!(bot.getAi() instanceof PlayerBotAI ai) || ai.isOwned() || BotSquads.isSquad(bot.getCurrentTeam()) || BotRecruiter.isRecruit(bot)
+			|| BotVisitors.isVisitor(bot))
 			return Change.UNAVAILABLE;
 		if (bot.getKnownList().streamPlayers().anyMatch(other -> !other.isBot()))
 			return Change.SEEN;

@@ -24,6 +24,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.playerbot.BotRecruiter;
 import com.aionemu.gameserver.playerbot.BotScheduler;
+import com.aionemu.gameserver.playerbot.BotVisitors;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
@@ -128,6 +129,8 @@ public class BotDirector {
 		started = true;
 		BotScheduler scheduler = BotScheduler.getInstance();
 		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(this::review), REVIEW_INTERVAL_MILLIS, REVIEW_INTERVAL_MILLIS);
+		// the capitals' visitors on a clock of their own, on the same lane: a player often only passes through a capital
+		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(BotVisitors::review), BotVisitors.REVIEW_MILLIS, BotVisitors.REVIEW_MILLIS);
 	}
 
 	/**

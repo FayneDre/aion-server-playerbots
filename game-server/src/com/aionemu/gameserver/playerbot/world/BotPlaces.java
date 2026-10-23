@@ -649,22 +649,94 @@ public class BotPlaces {
 	 * but emigration. Worse, the walk crosses everything in between, so a character of two was to be found in a forest of eights — not because it was
 	 * settled there, but because its errand led through it.
 	 *
-	 * @param level The visitor's level, which decides where it has any business being.
+	 * @param level The bot's level, or 0 for any place at all: in a town nobody fights, and a visitor of 65 found no quarter of Pandaemonium,
+	 *          whose places are rated by its few monsters, fit to visit.
 	 * @param pick Whatever makes this bot's choice its own.
 	 * @return Somewhere to go, or null when nowhere nearby suits it — in which case it is better off staying where it is.
 	 */
 	public static Vector3f placeToVisit(int worldId, Vector3f from, int level, int pick) {
+		return placeToVisit(worldId, from, level, pick, null, WANDERING_RANGE);
+	}
+
+	/**
+	 * @param walker Where the bot stands, to find each place's floor it can walk to; null to take places at their centre, as the countryside does.
+	 * @param range How far from {@code from} a place may be, in metres: {@link #WANDERING_RANGE} for a resident.
+	 */
+	public static Vector3f placeToVisit(int worldId, Vector3f from, int level, int pick, Vector3f walker, float range) {
 		List<Vector3f> within = new ArrayList<>();
 		for (Settlement place : homes(worldId)) {
-			if (isSamePlace(place.centre(), from) || within.contains(place.centre()))
+			if (isSamePlace(place.centre(), from))
 				continue;
-			if (!isFitFor(place.level(), level))
+			if (level > 0 && !isFitFor(place.level(), level))
 				continue;
-			if (PositionUtil.getDistance(from.x, from.y, from.z, place.centre().x, place.centre().y, place.centre().z) > WANDERING_RANGE) // see groundToWork
+			if (PositionUtil.getDistance(from.x, from.y, from.z, place.centre().x, place.centre().y, place.centre().z) > range) // see groundToWork
 				continue;
-			within.add(place.centre());
+			if (!within.contains(place.centre()))
+				within.add(place.centre());
 		}
-		return within.isEmpty() ? null : within.get(Math.floorMod(pick, within.size()));
+		if (walker == null)
+			return within.isEmpty() ? null : within.get(Math.floorMod(pick, within.size()));
+		// the floor of each, from the one picked on, until one has a floor the walker can reach; each place is asked once and remembered
+		// two places at most a call: each one not yet known can cost a route search per floor, on the thread that thinks for eight bots, and a walker
+		// standing somewhere cut off would otherwise be refused by every place of the town in turn
+		for (int i = 0; i < Math.min(within.size(), VISITS_ASKED); i++) {
+			Vector3f spot = visitSpotOf(worldId, within.get(Math.floorMod(pick + i, within.size())), walker);
+			if (spot != null)
+				return spot;
+		}
+		return null;
+	}
+
+	/** How many places one walker asks about in one call, at most. */
+	private static final int VISITS_ASKED = 2;
+	/** Where each place is visited, by map and centre, once a walker has reached it. */
+	private static final Map<Integer, Map<Vector3f, Vector3f>> visitSpots = new ConcurrentHashMap<>();
+	/** Until when a place nobody could walk to is left alone, by map and centre. */
+	private static final Map<Integer, Map<Vector3f, Long>> unvisitedUntil = new ConcurrentHashMap<>();
+	/** How long a place no floor of which a walker could reach is left alone before another walker asks again, in milliseconds. */
+	private static final long UNVISITED_MILLIS = 10 * 60_000L;
+
+	/**
+	 * @return The floor a place is visited at: under or over its centre, the lowest a walker standing where it does can reach; null when it has none.
+	 *         A floor found is remembered for good; none found is remembered for {@link #UNVISITED_MILLIS} only, since it says as much about the walker
+	 *         as about the place: remembered for good, it shut Pandaemonium's Vifrost Bridge, where visitors arrive, and a quarter the planner reaches
+	 *         offline in under a second.
+	 *         <p>
+	 *         The centre's height is a townsperson's, from the spawn data, and in a town of storeys it can be a balcony or a roof. A place is kept when
+	 *         joined ground lies anywhere under it, but a visit aimed at its centre was aimed at that roof: three of fifteen visitors to Pandaemonium
+	 *         on 23 October found no way to theirs, which the planner reached at the floor below in under a second. A pocket test does not tell them
+	 *         apart: a roof of a thousand square metres is no pocket, and joins nothing. The centre itself is left alone, since a resident's home is
+	 *         matched by it.
+	 */
+	static Vector3f visitSpotOf(int worldId, Vector3f centre, Vector3f walker) {
+		Map<Vector3f, Vector3f> known = visitSpots.computeIfAbsent(worldId, id -> new ConcurrentHashMap<>());
+		Vector3f spot = known.get(centre);
+		if (spot != null)
+			return spot;
+		Map<Vector3f, Long> refused = unvisitedUntil.computeIfAbsent(worldId, id -> new ConcurrentHashMap<>());
+		long now = System.currentTimeMillis();
+		if (refused.getOrDefault(centre, 0L) > now)
+			return null;
+		NavmeshService navmesh = NavmeshService.getInstance();
+		if (!navmesh.hasMesh(worldId))
+			return centre;
+		// From the lowest, pockets left out: a town's streets run under its balconies and roofs, and each floor that cannot be walked to costs a
+		// search of about a second and a half before it says so. Measured on three places of Pandaemonium: the first floor tried this way was
+		// the one, where nearest in height first took two to four searches.
+		List<Vector3f> floors = new ArrayList<>(navmesh.floorsAt(worldId, centre.getX(), centre.getY(), centre.getZ()));
+		floors.removeIf(floor -> navmesh.isPocket(worldId, floor.getX(), floor.getY(), floor.getZ()));
+		floors.sort(Comparator.comparingDouble(Vector3f::getZ));
+		for (Vector3f floor : floors) {
+			if (navmesh.canReach(worldId, walker.getX(), walker.getY(), walker.getZ(), floor.getX(), floor.getY(), floor.getZ())) {
+				known.put(centre, floor);
+				return floor;
+			}
+		}
+		log.info("Map {}: no floor of the place at {} {} {} could be walked to from {} {} {}; asked again in {} minutes", worldId,
+			Math.round(centre.getX()), Math.round(centre.getY()), Math.round(centre.getZ()), Math.round(walker.getX()), Math.round(walker.getY()),
+			Math.round(walker.getZ()), UNVISITED_MILLIS / 60_000);
+		refused.put(centre, now + UNVISITED_MILLIS);
+		return null;
 	}
 
 	/** A map's places once the ones nothing can walk out of have been dropped. Both lists at once, because the mainland is decided by both together. */

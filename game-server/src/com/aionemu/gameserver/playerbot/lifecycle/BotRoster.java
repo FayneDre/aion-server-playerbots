@@ -171,7 +171,7 @@ public class BotRoster {
 	public static List<Resident> pool() {
 		List<Resident> residents = new ArrayList<>();
 		try (Connection con = DatabaseFactory.getConnection();
-				 PreparedStatement stmt = con.prepareStatement("SELECT p.`id`, p.`name`, p.`world_id`, b.`home_x`, b.`home_y`, b.`home_z`, p.`race` "
+				 PreparedStatement stmt = con.prepareStatement("SELECT p.`id`, p.`name`, IF(b.`visiting_from` <> 0, b.`visiting_from`, p.`world_id`), b.`home_x`, b.`home_y`, b.`home_z`, p.`race` "
 					 + "FROM `playerbot_characters` b JOIN `players` p ON p.`id` = b.`player_id` "
 					 + "WHERE b.`resident` = 1 AND b.`owner_id` = 0 AND p.`account_id` >= ?")) {
 			stmt.setInt(1, PlayerBotCreationService.BOT_ACCOUNT_ID_BASE);
@@ -201,7 +201,7 @@ public class BotRoster {
 	public static List<Sleeper> sleepers(Race race) {
 		List<Sleeper> sleepers = new ArrayList<>();
 		try (Connection con = DatabaseFactory.getConnection();
-				 PreparedStatement stmt = con.prepareStatement("SELECT p.`id`, p.`name`, p.`world_id`, b.`home_x`, b.`home_y`, b.`home_z`, p.`player_class`, p.`exp` "
+				 PreparedStatement stmt = con.prepareStatement("SELECT p.`id`, p.`name`, IF(b.`visiting_from` <> 0, b.`visiting_from`, p.`world_id`), b.`home_x`, b.`home_y`, b.`home_z`, p.`player_class`, p.`exp` "
 					 + "FROM `playerbot_characters` b JOIN `players` p ON p.`id` = b.`player_id` "
 					 + "WHERE b.`resident` = 1 AND b.`in_world` = 0 AND b.`owner_id` = 0 AND p.`account_id` >= ? AND p.`race` = ?")) {
 			stmt.setInt(1, PlayerBotCreationService.BOT_ACCOUNT_ID_BASE);
@@ -254,6 +254,40 @@ public class BotRoster {
 			stmt.executeUpdate();
 		} catch (SQLException e) {
 			log.error("Could not record whether bot " + playerId + " is in the world", e);
+		}
+	}
+
+	/**
+	 * Records that a resident is visiting a capital, away from the map it lives on, or that it is back.
+	 * <p>
+	 * Kept in the database and not in memory, unlike a recruit's home map, because a visitor can be saved in the capital: by the five minute sweep,
+	 * by a stop, by a crash. The pool files every resident under the map its character is saved on, and a visitor filed under the capital would be
+	 * read as one of its residents with a home on none of its places, and rehomed there.
+	 *
+	 * @param homeWorldId The map it lives on, or 0 once it is back there.
+	 */
+	public static void setVisitingFrom(int playerId, int homeWorldId) {
+		try (Connection con = DatabaseFactory.getConnection(); PreparedStatement stmt = con.prepareStatement(upsert("visiting_from"))) {
+			stmt.setInt(1, playerId);
+			stmt.setInt(2, homeWorldId);
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			log.error("Could not record where bot " + playerId + " is visiting from", e);
+		}
+	}
+
+	/** @return The map this character lives on while it is visiting another, or 0 when it is at home. */
+	public static int visitingFrom(String characterName) {
+		try (Connection con = DatabaseFactory.getConnection();
+				 PreparedStatement stmt = con.prepareStatement("SELECT b.`visiting_from` FROM `playerbot_characters` b "
+					 + "JOIN `players` p ON p.`id` = b.`player_id` WHERE p.`name` = ?")) {
+			stmt.setString(1, characterName);
+			try (ResultSet rs = stmt.executeQuery()) {
+				return rs.next() ? rs.getInt(1) : 0;
+			}
+		} catch (SQLException e) {
+			log.error("Could not read where " + characterName + " is visiting from", e);
+			return 0;
 		}
 	}
 

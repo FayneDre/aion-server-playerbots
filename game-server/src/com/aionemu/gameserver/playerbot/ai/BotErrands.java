@@ -18,6 +18,7 @@ import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.playerbot.BotVisitors;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.World;
 
@@ -203,6 +204,10 @@ class BotErrands {
 		if (ai.isOwned())
 			return false;
 		Player bot = ai.getOwner();
+		// Nor a visitor to a capital. Each arrives with a hunter's full bag, so the fifteen of them set off for the same shop at once, 500 m from the
+		// teleporter in Pandaemonium, and stood waiting minutes for their routes, looking lost. It sells at home; in town the day takes it to shops.
+		if (BotVisitors.isVisitor(bot))
+			return false;
 		if (vendorDestination == null) {
 			// a full bag alone is not enough: one full of gear, quest items or anything rare never empties and would loop forever. An operator who
 			// asked for a trip has already made that judgement, and keeps the bot going until it has actually sold: without this, a first shop spot

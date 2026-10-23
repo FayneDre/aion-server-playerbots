@@ -10,6 +10,7 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.DialogAction;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.npc.NpcTemplate;
+import com.aionemu.gameserver.world.World;
 
 /**
  * Where a town's services stand: the shops, the broker, the warehouse, the crafting masters, the teleporter, the stigma master, the soul healer.
@@ -47,19 +48,24 @@ public final class TownServices {
 	 * @return Where a keeper of that service stands on the bot's map, or null when the map has none.
 	 */
 	public static Vector3f keeperOf(Player bot, Service service, int seed) {
-		List<Vector3f> keepers = servicesOn(bot).get(service);
+		List<Vector3f> keepers = servicesOn(bot.getWorldId()).get(service);
 		return keepers == null || keepers.isEmpty() ? null : keepers.get(Math.floorMod(seed, keepers.size()));
 	}
 
 	/** @return Where every keeper of that service stands on the bot's map, in the same order every day; empty when the map has none. */
 	public static List<Vector3f> keepersOf(Player bot, Service service) {
-		return servicesOn(bot).getOrDefault(service, List.of());
+		return keepersOn(bot.getWorldId(), service);
 	}
 
-	private static Map<Service, List<Vector3f>> servicesOn(Player bot) {
-		return byMap.computeIfAbsent(bot.getWorldId(), id -> {
+	/** @return Where every keeper of that service stands on a map, asked before anybody is on it: where a visitor to a capital arrives. */
+	public static List<Vector3f> keepersOn(int worldId, Service service) {
+		return servicesOn(worldId).getOrDefault(service, List.of());
+	}
+
+	private static Map<Service, List<Vector3f>> servicesOn(int worldId) {
+		return byMap.computeIfAbsent(worldId, id -> {
 			Map<Service, List<Vector3f>> found = new EnumMap<>(Service.class);
-			bot.getPosition().getWorldMapInstance().forEachNpc(npc -> {
+			World.getInstance().getWorldMap(id).getMainWorldMapInstance().forEachNpc(npc -> {
 				NpcTemplate template = npc.getObjectTemplate();
 				if (!npc.isSpawned() || template == null)
 					return;

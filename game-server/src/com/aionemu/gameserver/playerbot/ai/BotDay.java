@@ -15,6 +15,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.playerbot.BotRecruiter;
+import com.aionemu.gameserver.playerbot.BotVisitors;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.economy.BotStores;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
@@ -60,10 +61,14 @@ class BotDay {
 	private static final long DEATH_WINDOW_MILLIS = 600000;
 	/** How far round a service's keeper a resident on an errand stands, in metres: near enough to be at the counter, not in the keeper's lap. */
 	private static final float ERRAND_SPREAD = 6;
+	/** How far from a keeper an errand may end when nothing is free nearer, in metres. */
+	private static final float ERRAND_SPREAD_CROWDED = 12;
 	/** How near its spot a resident has to be to sit down there, in metres. */
 	private static final float SEATED_REACH = 3;
 	/** How near its stall a merchant has to stand to open its store, in metres: stalls are three apart. */
 	private static final float STALL_REACH = 1.5f;
+	/** How near the teleporter it came by a visitor has to be to leave by it, in metres. */
+	private static final float TELEPORTER_REACH = 4;
 	/** How long a merchant turned away from a stall waits before it tries again. */
 	private static final long STALL_RETRY_MILLIS = 30 * 60_000L;
 	/**
@@ -139,6 +144,10 @@ class BotDay {
 	 * function of the map's list of villages. Falls back to where it stands, which is what a bot made before homes were recorded has.
 	 */
 	Vector3f home() {
+		// a visitor's home is on another map: in town its place is where it arrived, and it is not cached, since the visit ends
+		Vector3f placeInTown = BotVisitors.placeInTown(ai.getOwner());
+		if (placeInTown != null)
+			return placeInTown;
 		if (home == null)
 			home = BotRoster.homeOf(ai.getOwner().getName());
 		if (home == null)
@@ -211,7 +220,7 @@ class BotDay {
 	 *         1448 m up in Eltnen's sky every fourteen seconds.
 	 */
 	private boolean isAwayFromHome() {
-		return ai.getOwner().isInInstance() || BotRecruiter.isRecruit(ai.getOwner());
+		return ai.getOwner().isInInstance() || BotRecruiter.isRecruit(ai.getOwner()) || BotVisitors.isVisitor(ai.getOwner());
 	}
 
 	/** Takes up a new home: everything else a bot does is written against the home or the anchor, so the rest follows on its own. */
@@ -280,6 +289,11 @@ class BotDay {
 	 */
 	private boolean spendTheSpell() {
 		Player bot = ai.getOwner();
+		Vector3f wayOut = BotVisitors.wayOut(bot);
+		if (wayOut != null)
+			return leaveTown(wayOut);
+		if (BotVisitors.isArriving(bot))
+			return true; // stands where it arrived a moment, as somebody off a teleporter looks round, rather than the fifteen setting off as one
 		if (keepsStore())
 			return keepTheStall();
 		// the shift is over: the store shut, and the stall given up even when the keeper never reached it, or it stays held until a restart
@@ -297,7 +311,12 @@ class BotDay {
 		if (spellGivenUp)
 			return true; // refused the way to every place the spell had for it: stays where it is until the next one
 		// and where a spell finds nowhere to go, the resident stays where it is: false would send it hunting, in a town with nothing to hunt
-		switch (spell.activity()) {
+		TownRoutine.Activity activity = spell.activity();
+		// A visitor's home is the teleporter it came by: a spell at home stood it there for five minutes, three of them at once in Pandaemonium.
+		// It has no home in town, so it goes round the town instead.
+		if (BotVisitors.isVisitor(bot) && (activity == TownRoutine.Activity.HOME || activity == TownRoutine.Activity.SIT))
+			activity = TownRoutine.Activity.VISIT;
+		switch (activity) {
 			case HOME -> loiter();
 			case SIT -> {
 				if (loiter())
@@ -306,6 +325,24 @@ class BotDay {
 			case ERRAND -> runErrand();
 			case VISIT -> wander();
 		}
+		return true;
+	}
+
+	/**
+	 * Walks a visitor whose visit is over back to the teleporter it came by, and has it taken home there, as a player leaves a capital.
+	 *
+	 * @return true, the visit's end deciding what this tick does.
+	 */
+	private boolean leaveTown(Vector3f wayOut) {
+		Player bot = ai.getOwner();
+		if (PositionUtil.getDistance(bot.getX(), bot.getY(), wayOut.getX(), wayOut.getY()) > TELEPORTER_REACH && !BotVisitors.isOverdue(bot)) {
+			BotMoveController moves = ai.moves();
+			if (moves != null && (moves.isInMove() || ai.tryMoveTo(moves, wayOut.getX(), wayOut.getY(), wayOut.getZ())))
+				return true;
+			// no way back to it: it leaves from where it stands, as a player with a return scroll would
+		}
+		forget();
+		BotVisitors.depart(bot);
 		return true;
 	}
 
@@ -321,7 +358,7 @@ class BotDay {
 	/** @return true for a resident that keeps a store in the town it stands in, on shift or not: what a town's rota is made of. */
 	private static boolean isMerchantHere(Player bot) {
 		return bot.getAi() instanceof PlayerBotAI ai && !ai.isOwned() && bot.getLevel() >= TownRoutine.STORE_LEVEL
-			&& TownRoutine.isMerchant(bot.getObjectId()) && BotPresence.isTown(bot.getWorldId());
+			&& TownRoutine.isMerchant(bot.getObjectId()) && BotPresence.isTown(bot.getWorldId()) && !BotVisitors.isVisitor(bot);
 	}
 
 	/** How long a town's rota is kept before its merchants are counted again, in milliseconds. */
@@ -428,9 +465,21 @@ class BotDay {
 			Vector3f keeper = TownServices.keeperOf(bot, spell.service(), spell.seed());
 			Vector3f spot = keeper == null ? null
 				: BotPlaces.spotAround(bot.getWorldId(), keeper, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
+			// Wider when the counter is crowded. Pandaemonium's brokers and warehouses stand in its markets since 23 October, and with store keepers
+			// at their stalls round them nothing was free within 6 m: two errands in three refused there, and visitors sent back to their teleporter.
+			if (spot == null && keeper != null)
+				spot = BotPlaces.spotAround(bot.getWorldId(), keeper, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
 			if (spot == null || unreachable.contains(spot)) {
-				// no such service on the map, no room by it, or no way there: the spell is spent at home, and said so, or the look round the keeper
-				// -- a dozen route searches -- would be made again on every tick of the spell
+				log.info("Bot {} finds no way to the {} keeper{}, and spends the spell {}", bot.getName(), spell.service(),
+					keeper == null ? " (none on the map)" : " at " + Math.round(keeper.getX()) + " " + Math.round(keeper.getY()) + " " + Math.round(keeper.getZ()),
+					BotVisitors.isVisitor(bot) ? "visiting" : "at home");
+				// no such service on the map, no room by it, or no way there: the spell is spent at home, or the look round the keeper -- a dozen
+				// route searches -- would be made again on every tick of the spell. A visitor's home is the teleporter it came by, and this sent it back
+				// to stand there in silence: most of Pandaemonium's fifteen were found idle on 23 October. It goes round the town instead.
+				if (BotVisitors.isVisitor(bot)) {
+					spell = new TownRoutine.Spell(TownRoutine.Activity.VISIT, null, spell.seed());
+					return wander();
+				}
 				spell = new TownRoutine.Spell(TownRoutine.Activity.HOME, null, spell.seed());
 				return loiter();
 			}
@@ -494,7 +543,13 @@ class BotDay {
 		if (occupationDestination == null) {
 			// somewhere near home and fit for its level, rather than any settlement on the map: the walk itself crosses everything in between, and
 			// that is how a character of two came to be standing in a forest of eights
-			Vector3f elsewhere = BotPlaces.placeToVisit(bot.getWorldId(), home(), bot.getLevel(), bot.getObjectId() + (int) occupationUntil);
+			// in a town nothing to fight, so any quarter will do; and a town is storeys, so each quarter is visited at a floor the bot can walk to
+			boolean town = BotPresence.isTown(bot.getWorldId());
+			// A visitor goes anywhere in town: its home is the teleporter it came by, and within the resident's range of Pandaemonium's Vifrost Bridge
+			// there was one quarter, where the fifteen of them went and stood together.
+			float range = BotVisitors.isVisitor(bot) ? Float.MAX_VALUE : BotPlaces.WANDERING_RANGE;
+			Vector3f elsewhere = BotPlaces.placeToVisit(bot.getWorldId(), home(), town ? 0 : bot.getLevel(), bot.getObjectId() + (int) occupationUntil,
+				town ? new Vector3f(bot.getX(), bot.getY(), bot.getZ()) : null, range);
 			// a place already known to be out of reach is no destination at all. Nowhere suitable nearby means staying put rather than setting off
 			// across the region: the fallback used to be "any settlement", which is exactly the walk this is meant to prevent.
 			occupationDestination = elsewhere != null && !unreachable.contains(elsewhere) ? elsewhere : null;
@@ -617,7 +672,9 @@ class BotDay {
 	 * @return true, because the occupation did decide what this tick does: nothing.
 	 */
 	private boolean giveUp() {
-		log.info("Bot {} cannot get to where {} would take it, and does something else", ai.getOwner().getName(), occupation);
+		// in town the spell is what was refused: the occupation is whatever the bot did before it came, FARMING for a visitor
+		Object doing = spell != null && BotPresence.isTown(ai.getOwner().getWorldId()) ? spell.activity() : occupation;
+		log.info("Bot {} cannot get to where {} would take it, and does something else", ai.getOwner().getName(), doing);
 		ai.destinationRefused();
 		// Remembered, not merely abandoned. The place a bot is sent to is chosen the same way every time — the nearest village, the next place along
 		// the list — so forgetting a refusal means choosing the same unreachable place on the next tick, for ever. One bot standing in a pocket of

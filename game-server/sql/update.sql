@@ -20,3 +20,6 @@ ALTER TABLE `playerbot_characters`
 	ADD COLUMN `home_x` float NOT NULL DEFAULT '0' AFTER `in_world`,
 	ADD COLUMN `home_y` float NOT NULL DEFAULT '0' AFTER `home_x`,
 	ADD COLUMN `home_z` float NOT NULL DEFAULT '0' AFTER `home_y`;
+
+ALTER TABLE `playerbot_characters`
+	ADD COLUMN `visiting_from` int NOT NULL DEFAULT '0' AFTER `home_z`;

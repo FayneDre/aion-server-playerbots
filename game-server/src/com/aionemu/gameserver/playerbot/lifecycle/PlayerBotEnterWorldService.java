@@ -58,6 +58,16 @@ public class PlayerBotEnterWorldService {
 	}
 
 	/**
+	 * Spawns a resident at a spot of another map than the one it lives on, to stay there for a while: a visitor to a capital.
+	 *
+	 * @param homeWorldId The map the bot lives on, whose obelisk it is bound to.
+	 */
+	public static void enterWorldAt(Player bot, int worldId, Vector3f spot, int homeWorldId) {
+		bot.setPosition(World.getInstance().createPosition(worldId, spot.getX(), spot.getY(), spot.getZ(), bot.getHeading(), 1));
+		enterWorld(bot, false, homeWorldId);
+	}
+
+	/**
 	 * Spawns a resident beside a player, to stay there: a recruit for the player's group. {@link #enterWorld(Player, Player)} does not do for this,
 	 * since it puts a resident that is far from home back at home, on whatever map it now stands on.
 	 *
@@ -92,6 +102,7 @@ public class PlayerBotEnterWorldService {
 		BotAttackManager.leaveAttackMode(bot);
 		if (backHome) {
 			leaveSavedInstance(bot); // first of all: everything after it reads the map the bot is on
+			returnFromVisit(bot); // and a visitor saved in a capital lives elsewhere: everything after this reads where it lives
 			goHome(bot); // before the ground check, so a strayed resident is put back and then stood on solid ground there
 			stepOffStructures(bot); // and before that again: a position saved on top of something comes back on top of it
 		}
@@ -158,6 +169,25 @@ public class PlayerBotEnterWorldService {
 		}
 		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} was saved inside map {} and starts at its exit, map {}", bot.getName(),
 			savedOn, bot.getWorldId());
+	}
+
+	/**
+	 * Puts a visitor saved in a capital back on the map it lives on, at its home.
+	 * <p>
+	 * A visit ends at the teleporter, and a visitor saved before that, by the sweep, a stop or a crash, would otherwise start in the capital with a
+	 * home on another map, which {@link #goHome} would read as coordinates of the capital.
+	 */
+	private static void returnFromVisit(Player bot) {
+		int homeWorldId = BotRoster.visitingFrom(bot.getName());
+		if (homeWorldId == 0)
+			return;
+		BotRoster.setVisitingFrom(bot.getObjectId(), 0);
+		Vector3f home = BotRoster.homeOf(bot.getName());
+		if (bot.getWorldId() == homeWorldId || home == null)
+			return;
+		LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} was saved visiting map {} and starts at home on map {}", bot.getName(),
+			bot.getWorldId(), homeWorldId);
+		bot.setPosition(World.getInstance().createPosition(homeWorldId, home.getX(), home.getY(), home.getZ(), bot.getHeading(), 1));
 	}
 
 	/**
