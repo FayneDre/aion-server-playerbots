@@ -9,23 +9,23 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
-0. **Flying with a player** ([flying-with-a-player-plan.md](flying-with-a-player-plan.md)), the tester's report of 19 October: landing beside the
-   leader, death in the void, serums and scrolls, rings, fighting in the air. Built, to deploy and watch; scrolls are handed over at creation and regear.
+0. **Watch in game what is deployed** (`patch-2026-10-23` and `-2`): the 19 to 21 October fixes (resting before rejoining, the cleric's heals,
+   glide wings, following flights and teleports, line of sight, flight-only buffs, bots stranded in the air), the gladiator and sorcerer
+   playbooks with `//bot gate`, and the stores (class armour, 40 a capital on a rota, stalls 6 m apart).
 1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
-   Arachne's room in Theobomos Lab. Every mesh is now explained (no fault known); what is left is lifts and teleporters taken by the bots themselves,
-   only if the 13 s wait proves too long in game, then bosses.
-2. **The other classes' playbooks**, on hold: level 50 bots and their rotations run on another test server, and its feedback decides what is
-   written here. Damage that waits for the tank and group resurrection watched stay ours.
-3. **Navigation leftovers**, measured on 18 October over 45 minutes with nobody online: rescue teleports, about 50 a half hour spread over every
-   map with no spot holding more than four; route searches over a second, about 600 s of the bots' threads a half hour, part of them still for shops
-   and the rest long walks (`NavmeshService` logs each with its `NavmeshTool path` line). Ambient flights stalling, 7 a half hour, log only. The
-   regression of the 18-2 walls is closed (rescues 184 -> about 50, refused routes 1873 -> about 630, Gelkmaros' lost places 149 -> 35).
-4. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
-5. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)): duels, friends and trading with one's companion
-   **built** in `patch-2026-10-19-2`, to be watched in game.
-6. **Cohorts** ([cohort-plan.md](cohort-plan.md)): a bot in an alliance acting as a member of its own group of six.
-7. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): bots that stay and are seen in Sanctum and Pandaemonium, some with a
-   private store; later, visitors of every level woken at the obelisk for half an hour (milestone 7).
+   Arachne's room in Theobomos Lab. Left: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long, then bosses.
+2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
+   (templar, chanter, ranger, cleric, gladiator, sorcerer). Damage that waits for the tank and group resurrection watched stay ours.
+3. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): store goods priced as on a live broker, with coins and medals
+   ([bot-store-goods-plan.md](bot-store-goods-plan.md)), waiting on the guide's answers; then ambience, speech, bots as buyers, the day's rhythm,
+   and visitors of every level woken at the obelisk (milestone 7).
+4. **Navigation leftovers**, measured on 18 October over 45 minutes with nobody online: rescue teleports, about 50 a half hour spread over every
+   map; route searches over a second, about 600 s of the bots' threads a half hour (`NavmeshService` logs each with its `NavmeshTool path` line).
+   Ambient flights stalling, 7 a half hour, log only. How a bot climbed onto nothing under Pandaemonium's dome (21 October) is unexplained.
+5. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
+6. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)): duels, friends and trading with one's companion
+   built in `patch-2026-10-19-2`, to be watched in game.
+7. **Cohorts** ([cohort-plan.md](cohort-plan.md)): a bot in an alliance acting as a member of its own group of six.
 8. **Wild PvP, rifts and the arenas.**
 9. **Economy**: the broker, then player shops, then gathering and crafting.
 10. **Legions**, accepting a legion's invitation first.
@@ -33,15 +33,15 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-19 (patch `patch-2026-10-19-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
-for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks for the templar, chanter, ranger and cleric, the marking and target rules, group
-positioning, the death routine, gear and stigmas, flight in its five milestones (the fifth crosses the Abyss by air), navmesh planning on 26
-open-world maps with glide links, flight links on Reshanta and a long-walk planner, 45 dungeon meshes (46 of 51 maps at 86 % or more, the rest a lift or a glide away), duels, friends and trades with a companion (`BotRequests`, `BotTrades`), steering vetted by the mesh (steps aside
-14689 -> 469 per half hour on 800 bots, rescue teleports 403 -> 79, none in a player's sight), the test harness (`//bot squad`, notes, the command
-inbox, patch tags). **Watched with a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron (the cleric's heals, the chanter in melee,
-no fear and no wide area in a group), and a squad of level 40 crossing Reshanta's upper layer by air, together, to its goal. **Watched with a player**: a Noschana run on 18 October, with
-the group recruited from a Find Group offer and following into the instance. **Not watched in game**: group resurrection, the cleric facing a debuff it
-cannot remove, positioning against a boss, the follow and glide fixes made after that run. **Not started**: wild PvP, the broker and shops, legions, speech, gathering, RvR.
+Last reviewed 2026-10-23 (patch `patch-2026-10-23-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
+for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
+for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
+routine, gear and stigmas, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with glide links,
+flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, friends and trades with a companion, steering vetted by the mesh,
+capitals with a town routine and 40 bot stores each, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
+a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron, and a squad crossing Reshanta's upper layer by air. **Watched with a
+player**: a Noschana run on 18 October, and Sanctum's town day on 20 October. **Not watched in game**: everything listed at 0 above, group
+resurrection, positioning against a boss. **Not started**: wild PvP, the broker and player shops, legions, speech, gathering, RvR.
 
 ## Dungeons and instances
 
@@ -73,7 +73,7 @@ each put through a reach check ([dungeon-navmesh-plan.md](dungeon-navmesh-plan.m
 
 What is left once roles, playbooks and positioning exist:
 
-- **The other classes' playbooks**: gladiator, assassin, sorcerer, spirit master, bard, gunner, aethertech. The pattern is set (`ClassPlaybook`, rules by
+- **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech. The pattern is set (`ClassPlaybook`, rules by
   skill group, a data test that checks every group against the skill templates); each is a plan from the guide's document, a playbook and a test.
   **Spirit master, aethertech, bard and gunner come first**: on Reshanta's upper layer they died 36 times of 40 in half an hour, four bots against
   the other 21's four deaths, on the generic rotation.
@@ -117,8 +117,7 @@ The list "missing features in game", each with what stands today:
   (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty one, a TODO upstream); the older shop packets are commented out and `config/ingameshop` is unused.
   Either a small web shop answering the token, or reviving the old packets if this client still reads them: a decision, then a project of its own.
 - **The arenas** (four or five kinds): not started; they are instances of their own, after the dungeons.
-- **A living world**: bots in the capital with a private store, while the broker is not done; and capitals that feel lived in. The capitals have
-  their 150 civic inhabitants, but they come and go: what is asked is people who stay and are seen.
+- **A living world**: built 20 to 23 October, a town day and 40 bot stores a capital ([living-capitals-plan.md](living-capitals-plan.md)).
 
 ## Wild PvP and rifts
 
@@ -171,9 +170,8 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
   or crafting. Existing gunners keep their cannon until `//bot regear all` (two pistols since 17 October).
 - **Ambient flights stall on fly-zone maps**: "flight has not moved, its leg is handed over again" comes up 14 to 100 times in forty minutes, mostly
   at heights of 100 to 300 on the open world maps. Older than the Abyss work; not looked into.
-- **241 tests, 28 classes of them on the bot module**, run on every deploy: the director, route planning (flight routes included), steering vetting,
-  the four playbooks and a sweep of every skill template. The combat half of `PlayerBotAI` is still untested and unsplit, which is why a mistake there
-  is silent rather than loud. Decisions written as pure functions of a situation record are what made the suites possible; keep writing them that way.
+- **352 tests on the bot module**, run on every deploy. The combat half of `PlayerBotAI` is still untested and unsplit, so a mistake there is
+  silent. Decisions written as pure functions of a situation record are what made the suites possible; keep writing them that way.
 
 ## Known limits, in order of how much they will bite
 
