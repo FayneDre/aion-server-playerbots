@@ -6,6 +6,31 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-23-2 — 23/10/2026
+
+Révision `7e94c45`, celle que `//bot version` affiche. Les boutiques des bots, d'après les retours du 23/10. **Aucun maillage à régénérer.**
+
+**Corrigé**
+- **Boutiques de classe :** elles ne vendaient que de la plaque. Chaque classe a maintenant son armure : plaque pour gladiateur et templier,
+  mailles pour clerc, aède et éthertech, cuir pour assassin, rôdeur et pistolero, robe pour sorcier, spiritualiste et barde.
+- **40 boutiques par capitale, à toute heure :** les marchands tiennent boutique à tour de rôle, 44 en service à la fois. Avant, leur nombre
+  dépendait du hasard et de la taille de la ville : 16 à Sanctum, 21 à Pandaemonium. Un marchand qui ne peut pas rejoindre les marchés laisse
+  son tour au suivant.
+- **Boutiques moins serrées :** 6 m entre deux stands au lieu de 3, des marchés plus larges, et un sixième marché à Sanctum autour de l'Elyos Square.
+
+**Connu, pas encore corrigé**
+- Après un redémarrage, il faut environ 15 minutes pour atteindre les 40 boutiques : les marchands des quartiers éloignés marchent ou prennent
+  le bateau jusqu'au marché.
+- Le message « fusion de serveurs » à la sélection des personnages (compte avec les deux factions) vient du client : le serveur ne peut pas le
+  désactiver.
+- Les prix des pierres d'enchantement, et la vente de pièces et de médailles, attendent les réponses au plan des marchandises.
+
+**À tester**
+- Une boutique de chaque classe : la bonne armure, sans bouclier hors templier et clerc.
+- Compter les boutiques à Sanctum et à Pandaemonium, et leur espacement.
+
+---
+
 ## patch-2026-10-23 — 23/10/2026
 
 Révision `d0daa64`. Les retours du 19, 20 et 21/10, le gladiateur et le sorcier d'après leurs guides. **Aucun maillage à régénérer.**
@@ -150,34 +175,6 @@ celui de Theobomos Lab (voir plus bas).
 1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
 2. Si le patch 2026-10-19 n'a pas été installé : `.\tools\navmesh.ps1 -Dungeons -Force` (environ 17 minutes) ; sinon
    `.\tools\navmesh.ps1 -Dungeons 310110000 -Force` (une minute).
-3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
-
----
-
-## patch-2026-10-19 — 19/10/2026
-
-Révision `666ce2b`, celle que `//bot version` affiche. Les donjons avec des bots. **Les maillages des donjons sont à régénérer** (voir plus bas).
-
-**Corrigé**
-- **Bot perdu en donjon :** quand vous passez un téléporteur, un levier, un ascenseur, un windstream ou une porte que votre clé ouvre, votre bot ne
-  peut pas vous suivre à pied. Il réapparaît maintenant à côté de vous, quelle que soit la distance, environ 13 secondes plus tard. Avant, au-delà de
-  200 m, il était renvoyé vers les coordonnées de sa maison, mais sur la carte du donjon.
-- **Sols manquants :** des planchers et des ponts manquaient aux maillages de 20 donjons. Part des monstres que les bots peuvent atteindre à pied :
-  Steel Rake 99 % (94 avant), Danuar Sanctuary et sa version occupée 94 et 95 % (74 et 76), Dredgion, Chantra et Terath 96, 97 et 99 % (91, 88 et
-  89), Sauro 91 % (80). À Drakenspire, 84 des 88 emplacements de monstres sont désormais reliés à l'entrée, en marchant ou en sautant d'une plateforme.
-
-**Connu, pas encore corrigé**
-- **Theobomos Lab** : l'ascenseur vers l'aile haute n'est pas connu des bots, qui vous rejoignent par la réapparition décrite plus haut. Dans la salle
-  de la reine Arachne, une paroi invisible coupe peut-être la salle en deux : dites-nous si vous la traversez librement.
-- **Rentus** : nous ne savons pas comment on monte du sol de Kuhara jusqu'au pont de Vasharti. Dites-nous comment vous y montez.
-- Les bots ne prennent pas eux-mêmes les windstreams, les ascenseurs et les téléporteurs : ils vous rejoignent par la réapparition.
-
-**À tester**
-- Dans un Dredgion, à Esoterrace (après un windstream) ou à Steel Rake : vos bots doivent réapparaître près de vous en 15 secondes environ.
-
-**À faire sur chaque serveur de test**
-1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
-2. `.\tools\navmesh.ps1 -Dungeons -Force` (environ 17 minutes).
 3. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
 
 ---
