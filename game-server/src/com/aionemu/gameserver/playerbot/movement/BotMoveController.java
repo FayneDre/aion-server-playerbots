@@ -157,6 +157,12 @@ public class BotMoveController extends PlayerMoveController {
 	 * navmesh was in the middle of solving for it.
 	 */
 	private volatile boolean awaitingPlan;
+	/**
+	 * Whether a search asked for is still queued or running, answered or not. While it is, the same journey never asks again: past
+	 * {@link #PLAN_PATIENCE} it did, every five seconds for every waiting bot, and once the four route threads fell behind the queue grew faster
+	 * than they emptied it. Visitors to Pandaemonium waited over four minutes for routes asked for on 23 October, standing where they had arrived.
+	 */
+	private volatile boolean planInFlight;
 	/** When the plan being awaited was asked for: past {@link #PLAN_PATIENCE} it is taken for lost and asked again. */
 	private volatile long planAskedAt;
 	/**
@@ -319,7 +325,11 @@ public class BotMoveController extends PlayerMoveController {
 			awaitingPlan = true; // before asking, so a plan that resolves synchronously clears it again inside the call below
 			// a long journey is planned on another thread, so the bot waits where it stands rather than setting off blind; a short one plans on this
 			// very call, in which case the result must be adopted right here or the first leg walks for nothing
-			NavmeshService.getInstance().planRoute(owner, x, y, z, avoid, planned -> offerRoute(planned, x, y, fromX, fromY, why));
+			planInFlight = NavmeshService.getInstance().hasMesh(owner.getWorldId()); // a map with no mesh is never answered, so nothing is awaited there
+			NavmeshService.getInstance().planRoute(owner, x, y, z, avoid, planned -> {
+				planInFlight = false;
+				offerRoute(planned, x, y, fromX, fromY, why);
+			});
 			if (adoptPendingRoute()) {
 				routeIndex = resumeIndex();
 				aimAtNextWaypoint();
@@ -926,7 +936,7 @@ public class BotMoveController extends PlayerMoveController {
 
 	/** @return true if a plan for about that destination was asked for recently enough to be still on its way. */
 	private boolean isPlanComing(float x, float y) {
-		return awaitingPlan && System.currentTimeMillis() - planAskedAt < PLAN_PATIENCE
+		return awaitingPlan && (planInFlight || System.currentTimeMillis() - planAskedAt < PLAN_PATIENCE)
 			&& PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= FOLLOW_DRIFT;
 	}
 
