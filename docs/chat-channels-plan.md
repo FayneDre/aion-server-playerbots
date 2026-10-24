@@ -2,7 +2,7 @@
 
 **Status: milestones 0 and 1 done (24 October): a bot's line seen in game in Region, Trade and Find Group (`//bot chat`). The name
 suffix is copied from a reader, so a second account needs nothing. Milestone 2, Trade, built and seen in game the same day (`BotChat`,
-`BotChatLines`); milestone 3, Find Group, built, not watched yet.** Planned on 24 October at the user's request:
+`BotChatLines`); milestone 3, Find Group, and milestone 4, Region, built, not watched yet.** Planned on 24 October at the user's request:
 bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
@@ -66,7 +66,7 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
 
 ## Pace
 
-- Trade: a line every 20 to 40 s a map and faction (60 to 120 at first, too slow in game); Find Group the same, a faction; Region every 2 to 3 minutes a map, and only on a map a real player is on.
+- Trade: a line every 20 to 40 s a map and faction (60 to 120 at first, too slow in game); Find Group the same, a faction; Region the same, a map, and only on a map a real player of the faction is on.
 - Never the same bot twice in 20 minutes, never the same content twice in 30.
 - `//bot speech` covers the channels too (`off` silences everything); the rates are constants first, a config later if the testers want to tune.
 
@@ -84,7 +84,13 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
    Tests, arenas, Dredgions, legion barracks, Idgel Dome and the Ophidan Bridges are left out by name. An instance belongs to the Elyos if its
    id starts with 31, to the Asmodians with 32, to both otherwise; nothing else in the data says so. A line every 20 to 40 s a faction, as Trade (decided in
    game), an instance not called for again for 10 minutes, since a level suits only a handful. Instance names are the data's, in English.
-4. **Region**: the small talk, then the questions answered by a second bot.
+4. **Region, built**: a bot of the map, of the faction of a player on it, says one of five things. A greeting for the hour (morning from 5,
+   afternoon 12, evening 18, night 23), 15 in 100; the monster it fights and the named place it stands in, 25; how far it is from its next
+   level, 15; a question about a place another bot stands in, which that bot answers 4 to 15 s later (the level of its ground, that it is
+   there, or what it fights), and only if it is still there, 30; chatter true anywhere, the rest and whatever had nobody to say it truly.
+   Places are the data's `SUB` zones named as players say them (`BASFELT_VILLAGE_220030000` is Basfelt Village), working names with a digit
+   left out. A line every 20 to 40 s a map and faction, as the other channels (decided in game); a greeting or a place not taken up again on
+   the map for 10 minutes. Monster names are the data's, in English.
 5. **Watched in game** with the user: variety over an hour, pace, nothing absurd.
 
 ## Risks

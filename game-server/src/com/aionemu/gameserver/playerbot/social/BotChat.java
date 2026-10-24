@@ -1,5 +1,6 @@
 package com.aionemu.gameserver.playerbot.social;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -15,15 +16,22 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.Race;
+import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.InstanceCooltime;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
+import com.aionemu.gameserver.model.templates.zone.ZoneClassName;
+import com.aionemu.gameserver.model.templates.zone.ZoneTemplate;
 import com.aionemu.gameserver.model.trade.TradePSItem;
 import com.aionemu.gameserver.network.chatserver.ChatServer;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.economy.BotStoreStock;
+import com.aionemu.gameserver.playerbot.world.BotPlaces;
+import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.utils.PositionUtil;
+import com.aionemu.gameserver.utils.ThreadPoolManager;
 import com.aionemu.gameserver.world.World;
+import com.aionemu.gameserver.world.zone.ZoneInstance;
 
 /**
  * What bots say in the chat channels: Region, Trade and Find Group. See docs/chat-channels-plan.md.
@@ -54,6 +62,14 @@ public final class BotChat {
 	private static final int TRADE_SHORTEST = 20, TRADE_LONGEST = 40;
 	/** How long a bot that has spoken in a channel keeps quiet, and how long one thing is not offered again on a map, in milliseconds. */
 	private static final long QUIET_MILLIS = 20 * 60_000L, REPEAT_MILLIS = 30 * 60_000L;
+	/** How long between two Region lines on a map for a faction, in seconds: the same as the other channels, by decision. */
+	private static final int REGION_SHORTEST = 20, REGION_LONGEST = 40;
+	/** How long one subject is not taken up again on a map: a greeting, a place asked about. */
+	private static final long SUBJECT_REPEAT_MILLIS = 10 * 60_000L;
+	/** How long a bot takes to answer a question in Region, in seconds. */
+	private static final int ANSWER_SHORTEST = 4, ANSWER_LONGEST = 15;
+	/** The kinds of Region line, by weight out of a hundred: a greeting, what the speaker hunts, its progress, a question answered; chatter the rest. */
+	private static final int GREETING = 15, HUNTING = 25, PROGRESS = 15, QUESTION = 30;
 	/** How long between two Find Group lines for a faction, in seconds. */
 	private static final int GROUP_SHORTEST = 20, GROUP_LONGEST = 40;
 	/**
@@ -68,6 +84,8 @@ public final class BotChat {
 	private static final int INSTANCE_BAND = 10;
 	/** Six-member instances that are no PvE dungeon: tests, arenas, warfronts, legion barracks, and maps the data leaves unnamed. */
 	private static final Pattern NOT_A_DUNGEON = Pattern.compile("(?i).*(test|tag match|arena|training grounds|dredgion|legion's|idgel dome|ophidan bridge).*");
+	/** The first word of a zone's working name, which carries a digit ({@code DF1A}): a place players name never does. */
+	private static final Pattern WORKING_NAME = Pattern.compile(".*\\d.*");
 	/** Of a hundred Trade lines, how many offer one piece of a store; the rest call out the store itself. */
 	private static final int SELL_SHARE = 70;
 
@@ -85,6 +103,8 @@ public final class BotChat {
 
 	/** Every PvE group instance of the data, read on first use. */
 	private static volatile List<Dungeon> dungeons;
+	/** When each map and faction may read its next Region line, by {@link #key}. */
+	private static final Map<String, Long> nextRegion = new ConcurrentHashMap<>();
 	/** When each faction may read its next Find Group line. */
 	private static final Map<Race, Long> nextGroup = new ConcurrentHashMap<>();
 	/** When each map and faction may read its next Trade line, by {@link #key}. */
@@ -122,8 +142,8 @@ public final class BotChat {
 	}
 
 	/**
-	 * Says the next Find Group line of each faction and the next Trade line of each map and faction that are due one and have a player of that faction
-	 * to read them. Runs every {@link #REVIEW_MILLIS}.
+	 * Says the next Find Group line of each faction, and the next Region and Trade lines of each map and faction, that are due one and have a player
+	 * of that faction to read them. Runs every {@link #REVIEW_MILLIS}.
 	 * <p>
 	 * Every line is true of its speaker: a bot with its store open names a piece on its own shelf at the price its store asks now, or the store
 	 * itself, read from the store at the moment it is said, so a piece sold a minute ago is not offered.
@@ -136,6 +156,7 @@ public final class BotChat {
 		Map<String, List<Player>> keepers = new HashMap<>();
 		Map<String, Boolean> read = new HashMap<>();
 		Map<Race, List<Player>> seekers = new HashMap<>();
+		Map<String, List<Player>> locals = new HashMap<>();
 		for (Player player : World.getInstance().getAllPlayers()) {
 			if (!player.isSpawned())
 				continue;
@@ -148,6 +169,13 @@ public final class BotChat {
 			} else if (isSeeker(player, now)) {
 				seekers.computeIfAbsent(player.getRace(), k -> new ArrayList<>()).add(player);
 			}
+			if (player.isBot() && isLocal(player, now))
+				locals.computeIfAbsent(key, k -> new ArrayList<>()).add(player);
+		}
+		for (Map.Entry<String, List<Player>> entry : locals.entrySet()) {
+			String key = entry.getKey();
+			if (read.containsKey(key) && now >= nextRegion.getOrDefault(key, 0L) && regionLine(entry.getValue(), key, now))
+				nextRegion.put(key, now + ThreadLocalRandom.current().nextInt(REGION_SHORTEST, REGION_LONGEST + 1) * 1000L);
 		}
 		for (Map.Entry<Race, List<Player>> entry : seekers.entrySet()) {
 			Race race = entry.getKey();
@@ -168,6 +196,126 @@ public final class BotChat {
 			say(keeper, Channel.TRADE, line);
 			log.info("Bot {} says in trade: {}", keeper.getName(), line);
 		}
+	}
+
+	/** @return true for a bot of the map's own that may speak in Region: alive, quiet long enough, and no player's companion. */
+	private static boolean isLocal(Player bot, long now) {
+		return bot.getAi() instanceof PlayerBotAI ai && !ai.isOwned() && !bot.isDead() && now - spokeAt.getOrDefault(bot.getObjectId(), 0L) >= QUIET_MILLIS;
+	}
+
+	/**
+	 * Has one of the map's bots say something in Region: a greeting for the hour, what it is fighting and where, how far it is from its next level, a
+	 * question another bot standing at the place answers a few seconds later, or chatter that is true anywhere. A kind with nobody to say it truly
+	 * gives way to chatter.
+	 *
+	 * @return true, a line having been said.
+	 */
+	private static boolean regionLine(List<Player> bots, String key, long now) {
+		ThreadLocalRandom random = ThreadLocalRandom.current();
+		String map = DataManager.WORLD_MAPS_DATA.getTemplate(bots.getFirst().getWorldId()).getName();
+		int roll = random.nextInt(100);
+		if (roll < GREETING) {
+			if (fresh(key + "/greeting", now))
+				return speak(bots.get(random.nextInt(bots.size())), BotChatLines.greeting(random, LocalTime.now().getHour(), map), now);
+		} else if (roll < GREETING + HUNTING) {
+			List<Player> hunters = bots.stream().filter(bot -> preyOf(bot) != null && placeOf(bot) != null).toList();
+			if (!hunters.isEmpty()) {
+				Player hunter = hunters.get(random.nextInt(hunters.size()));
+				return speak(hunter, BotChatLines.hunting(random, preyOf(hunter).getName(), placeOf(hunter)), now);
+			}
+		} else if (roll < GREETING + HUNTING + PROGRESS) {
+			List<Player> climbers = bots.stream().filter(bot -> bot.getLevel() < 65 && bot.getCommonData().getExpNeed() > 0).toList();
+			if (!climbers.isEmpty()) {
+				Player climber = climbers.get(random.nextInt(climbers.size()));
+				long need = climber.getCommonData().getExpNeed(), shown = climber.getCommonData().getExpShown();
+				int left = (int) Math.max(1, Math.min(99, 100 - shown * 100 / need));
+				return speak(climber, BotChatLines.progress(random, left, climber.getLevel() + 1), now);
+			}
+		} else if (roll < GREETING + HUNTING + PROGRESS + QUESTION) {
+			if (askAndAnswer(bots, key, now))
+				return true;
+		}
+		return speak(bots.get(random.nextInt(bots.size())), BotChatLines.chatter(random, map), now);
+	}
+
+	/**
+	 * Has one bot ask about a place and another, standing there, answer a few seconds later: the level of the ground it stands on, that it is there,
+	 * or what it fights. The answer is only ever about where the answerer stands, so it is true when said.
+	 *
+	 * @return true if a question was asked.
+	 */
+	private static boolean askAndAnswer(List<Player> bots, String key, long now) {
+		ThreadLocalRandom random = ThreadLocalRandom.current();
+		List<Player> placed = bots.stream().filter(bot -> placeOf(bot) != null).toList();
+		if (placed.isEmpty())
+			return false;
+		Player answerer = placed.get(random.nextInt(placed.size()));
+		String place = placeOf(answerer);
+		List<Player> askers = bots.stream().filter(bot -> bot != answerer && !place.equals(placeOf(bot))).toList();
+		if (askers.isEmpty() || !fresh(key + "/place " + place, now))
+			return false;
+		Player asker = askers.get(random.nextInt(askers.size()));
+		Npc prey = preyOf(answerer);
+		String question, answer;
+		int kind = random.nextInt(3);
+		if (kind == 0 && !BotPresence.isTown(answerer.getWorldId())) {
+			int level = BotPlaces.levelAround(answerer.getWorldId(), answerer.getX(), answerer.getY());
+			question = BotChatLines.levelQuestion(random, place);
+			answer = BotChatLines.levelAnswer(random, place, Math.max(1, level - 1), level + 2);
+		} else if (kind == 1 && prey != null) {
+			question = BotChatLines.huntQuestion(random, place);
+			answer = BotChatLines.huntAnswer(random, prey.getName());
+		} else {
+			question = BotChatLines.whoQuestion(random, place);
+			answer = BotChatLines.whoAnswer(random, place);
+		}
+		speak(asker, question, now);
+		spokeAt.put(answerer.getObjectId(), now);
+		ThreadPoolManager.getInstance().schedule(() -> {
+			// still there to say it: an answer about a place the answerer has left would no longer be true
+			if (answerer.isSpawned() && !answerer.isDead() && place.equals(placeOf(answerer))) {
+				say(answerer, Channel.REGION, answer);
+				log.info("Bot {} says in region: {}", answerer.getName(), answer);
+			}
+		}, random.nextInt(ANSWER_SHORTEST, ANSWER_LONGEST + 1) * 1000L);
+		return true;
+	}
+
+	/** Says the line in Region and keeps the speaker quiet for a while. */
+	private static boolean speak(Player bot, String line, long now) {
+		spokeAt.put(bot.getObjectId(), now);
+		say(bot, Channel.REGION, line);
+		log.info("Bot {} says in region: {}", bot.getName(), line);
+		return true;
+	}
+
+	/** @return true, and the subject marked as taken, if it was not taken up on this map lately. */
+	private static boolean fresh(String subject, long now) {
+		if (now - offeredAt.getOrDefault(subject, 0L) < SUBJECT_REPEAT_MILLIS)
+			return false;
+		offeredAt.put(subject, now);
+		return true;
+	}
+
+	/** @return The monster the bot is fighting, or null. */
+	private static Npc preyOf(Player bot) {
+		return bot.getTarget() instanceof Npc npc && !npc.isDead() && bot.isEnemy(npc) && npc.getName() != null && !npc.getName().isBlank() ? npc : null;
+	}
+
+	/**
+	 * @return The named place the bot stands in, as players say it ({@code Basfelt Village}), or null outside one. The data's places are its
+	 *         {@code SUB} zones; those whose first word carries a digit ({@code DF1A_FZ_TOWN3}) are working names, not places.
+	 */
+	static String placeOf(Player bot) {
+		for (ZoneInstance zone : bot.findZones()) {
+			ZoneTemplate template = zone.getZoneTemplate();
+			if (template.getZoneType() != ZoneClassName.SUB || template.getName() == null)
+				continue;
+			String name = template.getName().name();
+			if (!WORKING_NAME.matcher(name.split("_")[0]).matches())
+				return BotChatLines.placeName(name);
+		}
+		return null;
 	}
 
 	/** Has one of the seekers look for a group for an instance its level suits and that was not asked for lately. */

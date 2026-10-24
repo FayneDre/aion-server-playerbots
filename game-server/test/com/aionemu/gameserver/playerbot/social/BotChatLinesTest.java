@@ -73,6 +73,32 @@ class BotChatLinesTest {
 	}
 
 	@Test
+	void aPlaceIsNamedAsPlayersSayIt() {
+		assertEquals("Basfelt Village", BotChatLines.placeName("BASFELT_VILLAGE_220030000"));
+		assertEquals("Altar of Tiamat", BotChatLines.placeName("ALTAR_OF_TIAMAT_220030000"));
+		assertEquals("Altgard Fortress Dungeon Entrance", BotChatLines.placeName("ALTGARD_FORTRESS_DUNGEON_ENTRANCE_220030000"));
+	}
+
+	@Test
+	void aGreetingFitsTheHour() {
+		Random random = new Random(17);
+		for (int i = 0; i < 200; i++) {
+			assertFalse(BotChatLines.greeting(random, 9, "Altgard").toLowerCase().matches(".*(bonsoir|bsr|nuit|soirée).*"), "a morning");
+			assertFalse(BotChatLines.greeting(random, 21, "Altgard").toLowerCase().matches(".*(bonjour|matin|aprem).*"), "an evening");
+		}
+	}
+
+	@Test
+	void anAnswerAboutLevelsGivesTheBand() {
+		Random random = new Random(19);
+		for (int i = 0; i < 200; i++) {
+			String answer = BotChatLines.levelAnswer(random, "Basfelt Village", 11, 14);
+			assertTrue(answer.contains("11") && answer.contains("14"), answer);
+			assertFalse(answer.contains("%"), answer);
+		}
+	}
+
+	@Test
 	void anAdvertNamesTheStoreAndTheTown() {
 		Random random = new Random(5);
 		for (int i = 0; i < 200; i++) {
