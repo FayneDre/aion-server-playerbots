@@ -154,6 +154,8 @@ resting on give-ups or pockets no longer counted, and the walking search moved t
 
 1. **Searches out of time in game.** Offline, the same give-ups find their route within budget; in game, under load, they run out of the 3 s. To measure
    first: time spent waiting for one of the four route threads, the same bot asking again for a destination already refused, goals on a rock top.
+   On 25 October, with the search on plain arrays, time in searches over a second fell from 1066 s to 692 s per 30 minutes, the heap held at 1.91 GB
+   after an hour, give-ups stayed at 78: searches answering "no way" average 4 s against a 3 s budget, so time is lost before the search runs.
 2. **Steps aside rose to 976** in 30 minutes: milestone 6 above, the walk against the plan.
 3. **Day plans given up, about 586** in 30 minutes: which step gives up, and whether it is the same place for many bots.
 4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
