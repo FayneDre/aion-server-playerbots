@@ -276,6 +276,7 @@ class BotPathFinderTest {
 		BotPathFinder.Route atop = BotPathFinder.provenIfPocket(ground, gaveUp, 12.75f, 12.75f, HEIGHT);
 		assertTrue(atop.isEmpty());
 		assertFalse(atop.gaveUp(), "nothing walks off the top of the rock, so the give-up is a proof");
+		assertTrue(atop.goalCutOff(), "and a proof against the goal, which says nothing of where the bot stands");
 	}
 
 	@Test

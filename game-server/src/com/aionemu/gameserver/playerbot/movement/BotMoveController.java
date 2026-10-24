@@ -188,10 +188,11 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile float noHeadwayX, noHeadwayY;
 	private volatile long noHeadwayUntil;
 	/**
-	 * Whether the refusal the bot is under rests only on searches that ran out of budget, rather than on a proof: a search that finished empty, a body
-	 * walled in or making no headway. The journey is given up either way; only a proof says anything about the spot the bot stands on, and counting
-	 * the others as proofs is what rescued bots that were not stuck: six residents of Altgard, given a hunting ground 1.8 km away whose searches
-	 * gave up, were judged to stand on ground that "leads nowhere" and teleported home 14 times in half an hour (24 October).
+	 * Whether the refusal the bot is under says nothing against the spot it stands on: searches that ran out of budget, or a goal proved to stand on
+	 * ground nothing walks onto (the top of a rock). Only a search that finished empty from here, a body walled in or making no headway says something
+	 * about here. The journey is given up either way; counting the others against the spot is what rescued bots that were not stuck: six residents of
+	 * Altgard, given a hunting ground 1.8 km away whose searches gave up, were judged to stand on ground that "leads nowhere" and teleported home 14
+	 * times in half an hour (24 October).
 	 */
 	private volatile boolean refusalUnproven, noHeadwayUnproven;
 	/** The destination the planner has been giving up on, and how many times in a row, so that a repeated give up can be read as the refusal it is. */
@@ -377,8 +378,8 @@ public class BotMoveController extends PlayerMoveController {
 	}
 
 	/**
-	 * @return true when the journey just refused was refused only because its searches ran out of budget: dropped, but no evidence that the bot stands
-	 *         anywhere it cannot leave.
+	 * @return true when the journey just refused was refused for reasons of its own -- its searches ran out of budget, or its goal is cut off --
+	 *         dropped, but no evidence that the bot stands anywhere it cannot leave.
 	 */
 	public boolean isRefusalUnproven() {
 		return refusalUnproven;
@@ -586,7 +587,8 @@ public class BotMoveController extends PlayerMoveController {
 				noRouteX = forX;
 				noRouteY = forY;
 				hasNoRoute = true;
-				refusalUnproven = answer.gaveUp(); // a long journey whose search gave up is dropped all the same, and proves nothing
+				// a long journey whose search gave up is dropped all the same, and proves nothing; a goal on a rock top is the goal's fault, not here's
+				refusalUnproven = answer.gaveUp() || answer.goalCutOff();
 				blocked = true;
 				hasGoal = false;
 				gaveUpCount = 0;

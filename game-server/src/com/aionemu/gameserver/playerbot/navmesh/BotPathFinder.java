@@ -77,10 +77,16 @@ public class BotPathFinder {
 	 * @param rides the indexes of the waypoints that are reached by a lift or a boat from the one before, each with how many seconds it takes
 	 * @param gaveUp true when the search ran out of budget rather than proving there is no way. The caller can retry in steps, or fall back to
 	 *          walking straight at the goal, but it must not conclude the place is unreachable.
+	 * @param goalCutOff Set on a proof that the goal stands on ground nothing walks onto (see {@link #provenIfPocket}): the refusal is the goal's, and
+	 *          says nothing against the spot the bot stands on.
 	 */
-	public record Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights, Map<Integer, Integer> rides) {
+	public record Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights, Map<Integer, Integer> rides, boolean goalCutOff) {
 
 		static final Route NONE = new Route(List.of(), true);
+
+		public Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights, Map<Integer, Integer> rides) {
+			this(waypoints, gaveUp, glides, flights, rides, false);
+		}
 
 		public Route(List<Vector3f> waypoints, boolean gaveUp) {
 			this(waypoints, gaveUp, Set.of(), Set.of());
@@ -138,7 +144,7 @@ public class BotPathFinder {
 	static Route provenIfPocket(Navmesh mesh, Route answer, float goalX, float goalY, float goalZ) {
 		if (!answer.isEmpty() || !answer.gaveUp() || !isPocket(mesh, goalX, goalY, goalZ, POCKET_CELLS))
 			return answer;
-		return new Route(List.of(), false);
+		return new Route(List.of(), false, Set.of(), Set.of(), Map.of(), true);
 	}
 
 	private static Route searchPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid,
