@@ -261,6 +261,33 @@ class BotPathFinderTest {
 		return mesh;
 	}
 
+	/** Open ground, with a patch of 10 by 10 cells at 21 to 30 walled round by a ring of solid cells: the top of a rock, for the mesh. */
+	private static int rockTop(int x, int y) {
+		boolean ring = x >= 20 && x <= 31 && y >= 20 && y <= 31 && (x == 20 || x == 31 || y == 20 || y == 31);
+		return ring ? SOLID : OPEN;
+	}
+
+	@Test
+	void aSearchThatGaveUpOnAGoalAtopARockIsAProof() throws IOException {
+		Navmesh ground = meshOf(BotPathFinderTest::rockTop);
+		BotPathFinder.Route gaveUp = new BotPathFinder.Route(List.of(), true);
+
+		// cells are half a metre: the middle of the patch is at 12.75 m
+		BotPathFinder.Route atop = BotPathFinder.provenIfPocket(ground, gaveUp, 12.75f, 12.75f, HEIGHT);
+		assertTrue(atop.isEmpty());
+		assertFalse(atop.gaveUp(), "nothing walks off the top of the rock, so the give-up is a proof");
+	}
+
+	@Test
+	void aSearchThatGaveUpOnOpenGroundStaysAGiveUp() throws IOException {
+		Navmesh ground = meshOf(BotPathFinderTest::rockTop);
+		BotPathFinder.Route gaveUp = new BotPathFinder.Route(List.of(), true);
+
+		assertTrue(BotPathFinder.provenIfPocket(ground, gaveUp, 50, 50, HEIGHT).gaveUp(), "the open ground leads everywhere: nothing is proved");
+		BotPathFinder.Route found = BotPathFinder.findPath(ground, 50, 50, HEIGHT, 40, 40, HEIGHT);
+		assertSame(found, BotPathFinder.provenIfPocket(ground, found, 40, 40, HEIGHT), "a route found is left as it is");
+	}
+
 	@Test
 	void theRoughRouteGoesRoundAStepTooHighToClimbEvenWhenBothSidesAreCloseInHeight() throws IOException {
 		Navmesh terraces = terracesMesh();

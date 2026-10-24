@@ -94,6 +94,50 @@ public final class RegionProof {
 		return falseProofs == 0 ? 0 : 1;
 	}
 
+	/**
+	 * {@code NavmeshTool <map> joins <file>}: for the journeys of the file the proof leaves to the search, whether the grid joins the two ends on foot or
+	 * only through links, and whether the search finds them with the budget given as {@code -Dnavmesh.maxNodes}. The ones it does not find are printed
+	 * with their length, for a grid that sees a join the search cannot walk.
+	 */
+	static int joins(int mapId, Path pairs) throws IOException {
+		Navmesh mesh = Navmesh.open(mapId);
+		int onFoot = 0, onFootFound = 0, byLinks = 0, byLinksFound = 0, pocketGoals = 0, pocketGoalsFound = 0;
+		for (String line : Files.readAllLines(pairs)) {
+			String[] parts = line.trim().split("\\s+");
+			if (parts.length < 4)
+				continue;
+			float x1 = Float.parseFloat(parts[0]), y1 = Float.parseFloat(parts[1]), x2 = Float.parseFloat(parts[2]), y2 = Float.parseFloat(parts[3]);
+			if (apart(mesh, x1, y1, x2, y2))
+				continue;
+			Set<Integer> from = regionsAround(mesh, x1, y1);
+			from.retainAll(regionsAround(mesh, x2, y2));
+			boolean walk = !from.isEmpty(), found = anyRoute(mesh, x1, y1, x2, y2);
+			if (goalIsPocket(mesh, x2, y2)) {
+				pocketGoals++;
+				pocketGoalsFound += found ? 1 : 0; // a route to a goal called a pocket would make the pocket a false proof
+			}
+			if (walk) {
+				onFoot++;
+				onFootFound += found ? 1 : 0;
+			} else {
+				byLinks++;
+				byLinksFound += found ? 1 : 0;
+			}
+			if (!found)
+				System.out.printf("NOT FOUND %s %.1f %.1f -> %.1f %.1f, %d m%n", walk ? "on foot" : "by links", x1, y1, x2, y2,
+					Math.round(Math.hypot(x2 - x1, y2 - y1)));
+		}
+		System.out.printf("Map %d: joined on foot %d (found %d), only by links %d (found %d); goals on a pocket %d (found %d)%n", mapId, onFoot,
+			onFootFound, byLinks, byLinksFound, pocketGoals, pocketGoalsFound);
+		return 0;
+	}
+
+	/** @return true when every floor a body can stand on at the goal is ground that leads nowhere, the same test the places are put through. */
+	static boolean goalIsPocket(Navmesh mesh, float x, float y) {
+		List<Float> floors = floors(mesh, x, y);
+		return !floors.isEmpty() && floors.stream().allMatch(z -> BotPathFinder.isPocket(mesh, x, y, z, 4_000));
+	}
+
 	private static boolean anyRoute(Navmesh mesh, float x1, float y1, float x2, float y2) {
 		for (float z1 : floors(mesh, x1, y1)) {
 			for (float z2 : floors(mesh, x2, y2)) {

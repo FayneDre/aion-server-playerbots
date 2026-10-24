@@ -120,6 +120,29 @@ public class BotPathFinder {
 	 * @param air whether the air along a glide is clear, asked only of links the plan would use
 	 */
 	static Route findPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid, GlideRoutes.AirTest air) {
+		return provenIfPocket(mesh, searchPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air), goalX, goalY, goalZ);
+	}
+
+	/**
+	 * How much ground the goal of a search that gave up may have round it and still be proved a pocket, in cells: the same bound the places are held to
+	 * ({@code NavmeshService.LIVEABLE_CELLS}).
+	 */
+	private static final int POCKET_CELLS = 4_000;
+
+	/**
+	 * @return The answer, turned into a proof when the search gave up and the goal stands on ground nothing walks off: the top of a rock, a crate, a
+	 *         plinth, where a creature or a corpse is often found. The search spends its whole budget on the large ground of the start before it can say
+	 *         so, and a short give-up sends the bot off at the goal anyway, into the rock, round it and to a rescue. Measured on 24 October against a
+	 *         search seven times as large, over 375 give-ups of five maps: 41 goals were pockets, none of them reached; 25 of Altgard's 56.
+	 */
+	static Route provenIfPocket(Navmesh mesh, Route answer, float goalX, float goalY, float goalZ) {
+		if (!answer.isEmpty() || !answer.gaveUp() || !isPocket(mesh, goalX, goalY, goalZ, POCKET_CELLS))
+			return answer;
+		return new Route(List.of(), false);
+	}
+
+	private static Route searchPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid,
+		GlideRoutes.AirTest air) {
 		Route walking = findWalkingPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
 		if (!walking.isEmpty() || !mesh.hasGlides())
 			return walking;
