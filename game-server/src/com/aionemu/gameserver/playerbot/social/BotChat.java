@@ -47,8 +47,8 @@ public final class BotChat {
 	private static final String FIND_GROUP_META = "PF";
 	/** How often the channels are looked at, in milliseconds. */
 	public static final long REVIEW_MILLIS = 5000;
-	/** How long between two Trade lines on a map for a faction, in seconds. */
-	private static final int TRADE_SHORTEST = 60, TRADE_LONGEST = 120;
+	/** How long between two Trade lines on a map for a faction, in seconds: about what forty keepers quiet for twenty minutes can keep up. */
+	private static final int TRADE_SHORTEST = 20, TRADE_LONGEST = 40;
 	/** How long a bot that has spoken in a channel keeps quiet, and how long one thing is not offered again on a map, in milliseconds. */
 	private static final long QUIET_MILLIS = 20 * 60_000L, REPEAT_MILLIS = 30 * 60_000L;
 	/** Of a hundred Trade lines, how many offer one piece of a store; the rest call out the store itself. */
