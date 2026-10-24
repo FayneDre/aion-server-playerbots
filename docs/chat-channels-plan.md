@@ -1,7 +1,7 @@
 # Bots in the chat channels
 
-**Status: milestone 0 nearly done (24 October): the chat server is switched on and the identifiers read on two Asmodian maps; the channel
-digit and the name suffix of a second account are still to confirm.** Planned on 24
+**Status: milestone 0 done (24 October): the chat server is switched on and the identifiers read on three maps of both factions. The name
+suffix of a second account and the channel digit are confirmed by milestone 1 or not at all.** Planned on 24
 October at the user's request: bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
@@ -36,10 +36,10 @@ a player outside the network gets no channels.
    for the bot (`ChatClient` with no connection, its name with the suffix the real clients use), log it as any line (`CHAT_LOG`) and broadcast it.
    Small and additive on both sides, so an upstream merge stays easy.
 2. **The map identifiers**, read on 24 October: the map's `cName` from `world_maps.xml` followed by a digit, `DC11` for Pandaemonium (`DC1`),
-   `DF1A1` for Altgard (`DF1A`); Find Group sends `PF1`. No table needed: the identifier is built from the data. The digit is taken to be the
+   `DF1A1` for Altgard (`DF1A`), `LC11` for Sanctum (`LC1`); Find Group sends `PF1`; the race is 0 Elyos, 1 Asmodian. No table needed: the identifier is built from the data. The digit is taken to be the
    map's channel (instance) number, still to confirm by changing channel in game.
-   The sender's name is `Name@1.1313818945` for the one account seen: server id, then a number of unknown origin, to compare with a second
-   account.
+   The sender's name is `Name@1.1313818945` for both characters seen, an Elyos and an Asmodian, but of one account: server id, then a number
+   of unknown origin. Bots use it as it is; milestone 1 shows whether a bot's name displays and can be whispered.
 3. **`BotChat`** in the bot module, beside `BotSpeech`: per faction, which line is due in which channel, who says it, and from what.
 4. **The speaker is a real bot of the faction, awake**, so that a name read in a channel can be whispered to, inspected and invited. Region lines
    come from bots on that map; a Trade line from the keeper whose shelf holds what it names; a Find Group line from a bot whose level the
