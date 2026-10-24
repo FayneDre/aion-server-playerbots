@@ -1,7 +1,7 @@
 # Bot store goods: what a bot store sells, and at what price
 
 **Status: not started.** Planned on 23 October from a price guide (broker prices remembered from live servers); the guide answered the
-questions on 24 October, which settled most of it and widened the scope to manastones and to two kinds of seller. Three prices are still asked
+questions on 24 October, which settled the prices and widened the scope to manastones and to two kinds of seller. One price is still to confirm
 (end of this page). The stores themselves are in [bot-stores-plan.md](bot-stores-plan.md).
 
 ## The names: why the first reading was wrong
@@ -70,6 +70,8 @@ stops there (today it falls to the npc floor, a few kinah for these goods).
 | L1 / L2 / L3 stone | 20-50k / 100-250k / 500k-1.5M |
 | L4 / L5 stone | 3-6M / 15-25M |
 | All-Powerful stone | 75M |
+| Evolution stone | 60 - 120M (a rare drop from the major instances' bosses) |
+| Holy Upgrade Serum | 50 - 90M, see the note below |
 | Bronze / Silver / Gold / Platinum / Mithril coin | 10-15k / 15-25k / 35-50k / 60-90k / 120-180k |
 | Ceramium coin | about 100k |
 | Silver / Gold medal | 10-20k / 40-70k |
@@ -85,9 +87,22 @@ stops there (today it falls to the npc floor, a few kinah for these goods).
 | niche defence | Strike Resist +11, Block +27/+29, Magic Resist +14 | 50 - 200k |
 | trash | Evasion +17, Parry +27, MP +95 | 10 - 25k |
 
-**Double-stat (composite) manastones**, by how well the two stats suit one class: tier 1 (Attack / Crit Strike, Magic Boost / Magical
-Accuracy, Crit Strike / Magical Accuracy) 80-150M; tier 2 (one of those with HP) 30-70M; tier 3 (stats at odds, physical with magical or with a
-weak defence) 10-25M. The guide finds these a little dear but closer than they remembered (one paid 70M for a single endgame stone).
+**Under level 60** these ranges halve for every ten levels: a level 50 stone at half, 40 a quarter, 30 an eighth (the guide asked for about a
+tenth at 30). Level 70 keeps the ranges as given, which the guide gave for 60 and 70 together.
+
+**Double-stat (composite) manastones**, by how well the two stats suit one class. The guide's source gave 80-150M, 30-70M and 10-25M, which
+the guide found a little dear (one paid 70M for a single endgame stone), so a notch under, agreed on 24 October:
+
+| tier | stats | range (kinah) |
+|---|---|---|
+| 1 | Attack / Crit Strike, Magic Boost / Magical Accuracy, Crit Strike / Magical Accuracy | 60 - 110M |
+| 2 | one of those with HP | 25 - 55M |
+| 3 | stats at odds (physical with magical, or with a weak defence) | 8 - 20M |
+
+The same halving under level 60 applies to them (composites exist from level 30).
+
+**The serum's price is for another item.** The guide's 50-90M is for stigma evolution serums, which 4.8 does not have; the Holy Upgrade
+Serum (166030005) upgrades accessories. Taken at that price until the guide says otherwise.
 
 Stacks: coins and medals 10 to 50, as players sell them; stones as today; ancient and composite manastones one or two, they are rare.
 
@@ -105,8 +120,4 @@ Stacks: coins and medals 10 to 50, as players sell them; stones as today; ancien
 
 ## Still asked of the guide
 
-1. **Evolution stone and Holy Upgrade Serum**: what price range?
-2. **Standard manastones under level 60**: the ranges given are for 60 and 70. Scale them down by level (a level 30 stone at a tenth of a 60),
-   or other figures?
-3. **Composite manastones**: keep the tiers as given (80-150M, 30-70M, 10-25M), or lower them, since the guide finds them dear? They are also
-   sold under level 60 (levels 30 to 70 in the data): the same tiers there, or less?
+1. **Holy Upgrade Serum**: the 50-90M given is a stigma serum's price. Right for an accessory serum too?
