@@ -33,6 +33,8 @@ public class DebugService {
 		for (Player player : World.getInstance().getAllPlayers()) {
 			// Check connection
 			AionConnection connection = player.getClientConnection();
+			if (connection == null && player.isBot())
+				continue; // a playerbot has no client by design, and naming each of them every half hour buried the warnings log in a thousand lines
 			if (connection == null) {
 				log.warn("[DEBUG SERVICE] Found {} without connection: Spawned {}", player, player.isSpawned());
 				continue;
