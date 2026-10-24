@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 
@@ -19,7 +20,7 @@ public final class BotStoreGoods {
 	/**
 	 * One kind of goods.
 	 *
-	 * @param ids The template, or one per faction where the data keeps a copy for each side; the store's faction filter keeps the keeper's own.
+	 * @param ids The template, or the Elyos copy then the Asmodian one where the data keeps one for each side.
 	 * @param fromLevel The lowest keeper level that stocks it.
 	 * @param low The bottom of the broker's range, where an unsold line stops falling.
 	 * @param high The top of the broker's range.
@@ -77,10 +78,16 @@ public final class BotStoreGoods {
 		return good != null && good.fromLevel() <= level;
 	}
 
-	/** @return true for a coin or medal a keeper of that level stocks. */
-	static boolean isCoinFor(ItemTemplate template, int level) {
+	/**
+	 * @return true for a coin or medal a keeper of that level and side stocks. The side is chosen here rather than left to the store's faction
+	 *         filter: the Asmodian copies say so in their model name ({@code coin_d_02}), the Elyos ones say nothing ({@code coin_02}), so an Elyos
+	 *         coin no source names reads as anybody's and an Asmodian keeper could have sold it.
+	 */
+	static boolean isCoinFor(ItemTemplate template, int level, Race race) {
 		Good good = COIN_IDS.get(template.getTemplateId());
-		return good != null && good.fromLevel() <= level;
+		if (good == null || good.fromLevel() > level)
+			return false;
+		return good.ids().size() == 1 || good.ids().get(race == Race.ASMODIANS ? 1 : 0) == template.getTemplateId();
 	}
 
 	/**

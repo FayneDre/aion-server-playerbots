@@ -24,9 +24,9 @@ class BotStoreGoodsDataTest {
 
 	private static final File ITEMS = new File("data/static_data/items/item_templates.xml");
 	private static final Pattern TEMPLATE = Pattern.compile("<item_template id=\"(\\d+)\" name=\"([^\"]*)\"[^>]*?mask=\"(\\d+)\"[^>]*>");
-	private static final Pattern GROUP = Pattern.compile("item_group=\"([A-Z_]+)\"");
+	private static final Pattern GROUP = Pattern.compile("item_group=\"([A-Z_]+)\""), MODEL = Pattern.compile("cName=\"([^\"]*)\"");
 
-	private record Template(String name, int mask, String group) {
+	private record Template(String name, int mask, String group, String model) {
 	}
 
 	private static final Map<Integer, Template> templates = new HashMap<>();
@@ -36,8 +36,9 @@ class BotStoreGoodsDataTest {
 		org.junit.jupiter.api.Assumptions.assumeTrue(ITEMS.isFile(), "no game data in this checkout");
 		Matcher matcher = TEMPLATE.matcher(Files.readString(ITEMS.toPath(), StandardCharsets.UTF_8));
 		while (matcher.find()) {
-			Matcher group = GROUP.matcher(matcher.group());
-			templates.put(Integer.parseInt(matcher.group(1)), new Template(matcher.group(2), Integer.parseInt(matcher.group(3)), group.find() ? group.group(1) : ""));
+			Matcher group = GROUP.matcher(matcher.group()), model = MODEL.matcher(matcher.group());
+			templates.put(Integer.parseInt(matcher.group(1)), new Template(matcher.group(2), Integer.parseInt(matcher.group(3)), group.find() ? group.group(1) : "",
+				model.find() ? model.group(1) : ""));
 		}
 	}
 
@@ -68,6 +69,16 @@ class BotStoreGoodsDataTest {
 				assertTrue(List.of("COINS", "MEDALS").contains(templates.get(id).group()), name + " (" + id + ") is no coin or medal");
 			}
 			assertFalse(name.startsWith("Iron") || name.matches("(Platinum|Mithril|Ceramium) Medal"), name + " is left out by decision");
+		}
+	}
+
+	@Test
+	void theElyosCopyComesFirstAndTheAsmodianSecond() {
+		for (BotStoreGoods.Good good : BotStoreGoods.COINS) {
+			if (good.ids().size() == 1)
+				continue;
+			assertFalse(templates.get(good.ids().get(0)).model().contains("_d_"), good.ids().get(0) + " is the Asmodian copy");
+			assertTrue(templates.get(good.ids().get(1)).model().contains("_d_"), good.ids().get(1) + " is not the Asmodian copy");
 		}
 	}
 

@@ -128,8 +128,6 @@ public final class BotStoreStock {
 			if (template == null || stocked.contains(template.getTemplateId()))
 				continue;
 			BotStoreGoods.Good good = BotStoreGoods.of(template);
-			if (good != null && stocked.stream().anyMatch(good.ids()::contains))
-				continue; // the other side's copy of a coin the faction filter could not tell apart
 			long count = good != null ? Rnd.get(good.minCount(), good.maxCount()) : switch (kindOf(template)) {
 				case GEAR -> 1;
 				case MANASTONE -> Rnd.get(5, 20);
@@ -191,14 +189,14 @@ public final class BotStoreStock {
 				Race faction = BotGearSources.factionOf(template);
 				if (faction.isAsmoOrEly() && faction != race)
 					continue;
-				if (fits(template, theme, forClass, level))
+				if (fits(template, theme, forClass, race, level))
 					found.add(template);
 			}
 			return theme == Theme.GEAR ? heaviestArmourOnly(found, BotGearFit.heaviestLearnedBy(forClass, race, level)) : List.copyOf(found);
 		});
 	}
 
-	private static boolean fits(ItemTemplate template, Theme theme, PlayerClass forClass, int level) {
+	private static boolean fits(ItemTemplate template, Theme theme, PlayerClass forClass, Race race, int level) {
 		ItemGroup group = template.getItemGroup();
 		return switch (theme) {
 			case GEAR -> (template.isWeapon() && BotGearFit.weaponsOfTrade(forClass).contains(group)
@@ -209,7 +207,7 @@ public final class BotStoreStock {
 				&& BotEquipManager.isPlayerGear(template);
 			case STONES -> group == ItemGroup.MANASTONE && template.getLevel() <= level && template.getLevel() >= level - 2 * LEVEL_SPREAD
 				|| BotStoreGoods.isUpgradeFor(template, level);
-			case COINS -> BotStoreGoods.isCoinFor(template, level);
+			case COINS -> BotStoreGoods.isCoinFor(template, level, race);
 		};
 	}
 

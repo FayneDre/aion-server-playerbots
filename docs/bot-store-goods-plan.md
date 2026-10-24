@@ -115,7 +115,8 @@ Stacks: coins and medals 10 to 50, as players sell them; stones as today; ancien
    the data.
 2. **Coins and medals, built**: a theme of its own ("Pièces et médailles") for a quarter of the keepers, read off a hash of its own so the
    others keep the theme they had; stocked by the level table; Ceramium coin included, Iron coins and the three untradeable medals out. Each
-   coin has an Elyos and an Asmodian copy in the data; the store's faction filter keeps the keeper's own.
+   coin has an Elyos and an Asmodian copy in the data (`coin_02`, `coin_d_02`); the keeper's own is chosen by race, since the Elyos copy
+   carries no marker the faction filter could read.
 3. **Manastones**: standard ones priced by stat class and level; composite ones by tier; ancient ones only at keepers of 60 and over, priced by
    quality. A test that sorts every manastone of the data into a stat class, so a stat the table forgets shows up.
 4. **Gear and jewellery from blue up**, eternal from 60.
