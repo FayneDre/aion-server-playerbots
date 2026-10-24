@@ -75,4 +75,18 @@ public final class BotStorePricing {
 		double asked = fairPrice(kind, templatePrice, quality, level) * temperament(keeperId) * Math.pow(UNSOLD_HOURLY, Math.max(0, hoursUnsold));
 		return Math.max(floor(templatePrice), Math.round(asked));
 	}
+
+	/**
+	 * What the keeper asks for goods a price guide named: its temperament places it in the broker's range, the cheapest keeper at the bottom and the
+	 * dearest at the top, and an unsold line falls by the hour as any other but stops at the bottom of the range. The npc floor is no floor for these:
+	 * a template price of 950 put an L1 enchantment stone at a few kinah, where a broker sold it at 20 000.
+	 *
+	 * @param hoursUnsold Full hours the piece has waited since it was stocked.
+	 * @return What the keeper asks for one of it.
+	 */
+	public static long price(BotStoreGoods.Good good, int keeperId, long hoursUnsold) {
+		double place = (temperament(keeperId) - (1 - TEMPERAMENT_SPREAD)) / (2 * TEMPERAMENT_SPREAD);
+		double asked = (good.low() + (good.high() - good.low()) * place) * Math.pow(UNSOLD_HOURLY, Math.max(0, hoursUnsold));
+		return Math.max(good.low(), Math.round(asked));
+	}
 }

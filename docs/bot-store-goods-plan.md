@@ -1,8 +1,8 @@
 # Bot store goods: what a bot store sells, and at what price
 
-**Status: not started.** Planned on 23 October from a price guide (broker prices remembered from live servers); the guide answered the
-questions on 24 October, which settled the prices and widened the scope to manastones and to two kinds of seller. One price is still to confirm
-(end of this page). The stores themselves are in [bot-stores-plan.md](bot-stores-plan.md).
+**Status: milestones 1 and 2 built on 24 October (`BotStoreGoods`), not watched in game; 3 to 6 not started.** Planned on 23 October from a
+price guide (broker prices remembered from live servers); the guide answered the questions on 24 October, which settled the prices and widened
+the scope to manastones and to two kinds of seller. The stores themselves are in [bot-stores-plan.md](bot-stores-plan.md).
 
 ## The names: why the first reading was wrong
 
@@ -102,22 +102,22 @@ the guide found a little dear (one paid 70M for a single endgame stone), so a no
 The same halving under level 60 applies to them (composites exist from level 30).
 
 **The serum's price is for another item.** The guide's 50-90M is for stigma evolution serums, which 4.8 does not have; the Holy Upgrade
-Serum (166030005) upgrades accessories. Taken at that price until the guide says otherwise.
+Serum (166030005) upgrades accessories. Taken at that price, decided on 24 October.
 
 Stacks: coins and medals 10 to 50, as players sell them; stones as today; ancient and composite manastones one or two, they are rare.
 
 ## Milestones
 
-1. **Upgrade items.** The stones theme keeps only the eight ids above; the price table by id; the decline stops at the range's bottom. A data
-   test that each id exists, is tradeable and keeps its group.
-2. **Coins and medals**, a theme of its own ("Pièces et médailles") stocked by the level table; Ceramium coin included, Iron coins and the
-   three untradeable medals out. Same data test.
+1. **Upgrade items, built.** The stones theme keeps only the eight ids above, half its lines upgrade items and half manastones (eight goods
+   against hundreds would otherwise almost never come out). A stone is stocked ten levels under the gear it is for, as the guide's manastones
+   are: L1 from 20, L2 30, L3 45, L4 50, L5 55; All-Powerful, evolution stone and serum from 60, and in about one stocking in ten. Remnant
+   stones still in a keeper's bag are thrown away when its shelf is rebuilt after a restart. `BotStoreGoodsDataTest` checks each id against
+   the data.
+2. **Coins and medals, built**: a theme of its own ("Pièces et médailles") for a quarter of the keepers, read off a hash of its own so the
+   others keep the theme they had; stocked by the level table; Ceramium coin included, Iron coins and the three untradeable medals out. Each
+   coin has an Elyos and an Asmodian copy in the data; the store's faction filter keeps the keeper's own.
 3. **Manastones**: standard ones priced by stat class and level; composite ones by tier; ancient ones only at keepers of 60 and over, priced by
    quality. A test that sorts every manastone of the data into a stat class, so a stat the table forgets shows up.
 4. **Gear and jewellery from blue up**, eternal from 60.
 5. **Dedicated and opportunist sellers**: the dedicated one a single category over every level, the opportunist a mix round its own level.
 6. **Watched in game**: one store of each kind in each capital, prices read in the store window.
-
-## Still asked of the guide
-
-1. **Holy Upgrade Serum**: the 50-90M given is a stigma serum's price. Right for an accessory serum too?

@@ -60,7 +60,8 @@ A store has **a theme**, as a player's does, which gives it its name. The theme 
 |---|---|---|
 | gear for a class | 6 to 8 | weapons and armour one class wears, of the keeper's faction, level within 5 of the keeper's |
 | accessories | 6 to 8 | earrings, necklaces, rings, belts, same rules |
-| stones | 5 to 8 | stacks of 5 to 20 of the band's manastones, and of 10 to 50 enchantment stones of grades from 30 under the keeper's level to 60 over |
+| stones | 5 to 8 | stacks of 5 to 20 of the band's manastones, and the upgrade items of [bot-store-goods-plan.md](bot-store-goods-plan.md) |
+| coins and medals | 5 to 8 | a quarter of the keepers, the others keeping their theme: the guide's coins and medals, by keeper level |
 
 Enchantment stones had a theme of their own at first: they come in grades about 30 apart, so such a store held one line. Stalls are looked for
 round the floor in front of a keeper's counter (`BotVendorManager.frontOf`): round its feet, 27 of 31 Pandaemonium merchants found no stall or no way
@@ -82,7 +83,9 @@ The data's only price is the template's `price`. An npc buys at **20%** of it an
 - **Floor**: 1.25 × what an npc pays (0.25 × template), so nothing bought from a bot sells to an npc at a profit.
 - **Gear**: what an npc pays × the quality factor: common 1.3, green 1.6, blue 2.5, gold 4, epic 6. A level 30 chestpiece (template 518 000): green
   165 000, blue 260 000, gold 415 000.
-- **Manastones**: 300 × the stone's level × the quality factor. **Enchantment stones**: 50 × the grade. Their template prices are meaningless.
+- **Manastones**: 300 × the stone's level × the quality factor; their template prices are meaningless. **Goods a price guide named**
+  (enchantment stones, coins, medals): the broker's range, the temperament placing the keeper in it, the unsold stopping at its bottom
+  ([bot-store-goods-plan.md](bot-store-goods-plan.md)).
 - **Temperament**: ±15% per keeper, by object id.
 - **Unsold**: 10% less per full hour since the piece was stocked, down to the floor, which a piece reaches within a day. A restart counts
   the hours again from nought.

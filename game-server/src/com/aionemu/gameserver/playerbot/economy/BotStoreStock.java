@@ -29,11 +29,16 @@ public final class BotStoreStock {
 	public enum Theme {
 		GEAR, ACCESSORIES,
 		/**
-		 * Manastones of the band and enchantment stones round the keeper's level. One theme rather than two: enchantment stones come in grades about 30
-		 * apart, so a store of them alone held one line, which is what two such stores showed on 20 October.
+		 * Manastones of the band and the upgrade items of {@link BotStoreGoods#UPGRADES} the keeper's level allows. One theme rather than two: a store of
+		 * enchantment stones alone held one line, which is what two such stores showed on 20 October.
 		 */
-		STONES
+		STONES,
+		/** Coins and medals, a theme of its own by the guide's wish (24 October), stocked by the keeper level each asks for. */
+		COINS
 	}
+
+	/** The themes before coins came, in the order a keeper's id was read against them. */
+	private static final Theme[] FIRST_THEMES = { Theme.GEAR, Theme.ACCESSORIES, Theme.STONES };
 
 	/** The classes a gear store is stocked for, with the name a French client shows for each. */
 	private static final Map<PlayerClass, String> CLASS_NAMES = Map.ofEntries(Map.entry(PlayerClass.GLADIATOR, "gladiateur"),
@@ -50,8 +55,6 @@ public final class BotStoreStock {
 	private static final Set<ItemGroup> ACCESSORY_GROUPS = Set.of(ItemGroup.EARRING, ItemGroup.RING, ItemGroup.NECKLACE, ItemGroup.BELT);
 	/** How far from the keeper's level the pieces it sells may be. */
 	private static final int LEVEL_SPREAD = 5;
-	/** How many grades under and over the keeper's level the enchantment stones it sells may be: a stone works best at or above the piece's level. */
-	private static final int ENCHANTMENT_GRADES_UNDER = 30, ENCHANTMENT_GRADES_OVER = 60;
 	/** Green, blue and gold, out of a hundred, before the level's ceiling cuts the top off. */
 	private static final int[] QUALITY_WEIGHTS = { 70, 25, 5 };
 	private static final ItemQuality[] QUALITIES = { ItemQuality.RARE, ItemQuality.LEGEND, ItemQuality.UNIQUE };
@@ -62,9 +65,15 @@ public final class BotStoreStock {
 	private BotStoreStock() {
 	}
 
-	/** @return The keeper's theme, the same every day. */
+	/**
+	 * @return The keeper's theme, the same every day. A quarter of the keepers keep coins, read off another hash, and the rest keep the theme they had
+	 *         before: reading the id against four themes instead of three would have handed nearly every keeper a new one, with a bag of the old
+	 *         one's goods nothing would sell.
+	 */
 	public static Theme themeOf(int keeperId) {
-		return Theme.values()[Math.floorMod(keeperId * 0x45D9F3B, Theme.values().length)];
+		if (Math.floorMod(keeperId * 0x1B873593, 4) == 0)
+			return Theme.COINS;
+		return FIRST_THEMES[Math.floorMod(keeperId * 0x45D9F3B, FIRST_THEMES.length)];
 	}
 
 	/** @return The class a gear store is stocked for, the same every day. */
@@ -79,6 +88,7 @@ public final class BotStoreStock {
 			case GEAR -> "Équipement " + CLASS_NAMES.get(classOf(keeper.getObjectId())) + " " + low + "-" + high;
 			case ACCESSORIES -> "Bijoux " + low + "-" + high;
 			case STONES -> "Pierres " + Math.max(1, keeper.getLevel() - 2 * LEVEL_SPREAD) + "-" + keeper.getLevel();
+			case COINS -> "Pièces et médailles";
 		};
 	}
 
@@ -103,13 +113,24 @@ public final class BotStoreStock {
 		List<Integer> stocked = new ArrayList<>();
 		if (pool.isEmpty())
 			return stocked;
+		// the rare goods, by about one store in ten: a stocking that draws none of them leaves them out of the pool altogether
+		if (Rnd.get(0, 9) != 0)
+			pool = pool.stream().filter(template -> BotStoreGoods.of(template) == null || !BotStoreGoods.of(template).rare()).toList();
+		if (pool.isEmpty())
+			return stocked;
 		int room = Math.min(lines, keeper.getInventory().getFreeSlots());
 		for (int attempt = 0; stocked.size() < room && attempt < room * 4; attempt++) {
-			// stones by an even draw: most manastones are common, and a draw by quality kept landing on the one green among them
-			ItemTemplate template = theme == Theme.STONES ? Rnd.get(pool) : draw(pool, BotOutfitter.bestQualityFor(keeper.getLevel()));
+			ItemTemplate template = switch (theme) {
+				case STONES -> drawStone(pool);
+				case COINS -> Rnd.get(pool);
+				default -> draw(pool, BotOutfitter.bestQualityFor(keeper.getLevel()));
+			};
 			if (template == null || stocked.contains(template.getTemplateId()))
 				continue;
-			long count = switch (kindOf(template)) {
+			BotStoreGoods.Good good = BotStoreGoods.of(template);
+			if (good != null && stocked.stream().anyMatch(good.ids()::contains))
+				continue; // the other side's copy of a coin the faction filter could not tell apart
+			long count = good != null ? Rnd.get(good.minCount(), good.maxCount()) : switch (kindOf(template)) {
 				case GEAR -> 1;
 				case MANASTONE -> Rnd.get(5, 20);
 				case ENCHANTMENT -> Rnd.get(10, 50);
@@ -123,6 +144,20 @@ public final class BotStoreStock {
 	/** @return true if the piece is something the keeper's store would stock, which is what a shelf forgotten by a restart is rebuilt from. */
 	public static boolean fitsTheme(Player keeper, ItemTemplate template) {
 		return candidatesFor(keeper, themeOf(keeper.getObjectId())).contains(template);
+	}
+
+	/**
+	 * @return A manastone or an upgrade item, even odds between the two, then an even draw within. Even rather than by quality, because most
+	 *         manastones are common and a draw by quality kept landing on the one green among them; and by halves, because the upgrade items are eight
+	 *         against hundreds of manastones and an even draw over all of them would almost never put one out.
+	 */
+	private static ItemTemplate drawStone(List<ItemTemplate> pool) {
+		List<ItemTemplate> upgrades = pool.stream().filter(template -> BotStoreGoods.of(template) != null).toList();
+		if (upgrades.isEmpty() || upgrades.size() == pool.size())
+			return Rnd.get(pool);
+		if (Rnd.get(0, 1) == 0)
+			return Rnd.get(upgrades);
+		return Rnd.get(pool.stream().filter(template -> BotStoreGoods.of(template) == null).toList());
 	}
 
 	/** @return A template of a drawn quality, falling back to the qualities under it when none is stocked; null when the pool has none at all. */
@@ -173,8 +208,8 @@ public final class BotStoreStock {
 			case ACCESSORIES -> ACCESSORY_GROUPS.contains(group) && Math.abs(template.getLevel() - level) <= LEVEL_SPREAD
 				&& BotEquipManager.isPlayerGear(template);
 			case STONES -> group == ItemGroup.MANASTONE && template.getLevel() <= level && template.getLevel() >= level - 2 * LEVEL_SPREAD
-				|| group == ItemGroup.ENCHANTMENT && template.getLevel() >= level - ENCHANTMENT_GRADES_UNDER
-					&& template.getLevel() <= level + ENCHANTMENT_GRADES_OVER && template.getName() != null && template.getName().endsWith("Enchantment Stone");
+				|| BotStoreGoods.isUpgradeFor(template, level);
+			case COINS -> BotStoreGoods.isCoinFor(template, level);
 		};
 	}
 

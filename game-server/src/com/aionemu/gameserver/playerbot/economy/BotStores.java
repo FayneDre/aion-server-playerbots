@@ -266,8 +266,12 @@ public final class BotStores {
 			// on the shelf, as freshly stocked.
 			long now = System.currentTimeMillis();
 			for (Item item : keeper.getInventory().getItems()) {
-				if (!item.isEquipped() && BotStoreStock.fitsTheme(keeper, item.getItemTemplate()))
+				if (item.isEquipped())
+					continue;
+				if (BotStoreStock.fitsTheme(keeper, item.getItemTemplate()))
 					shelf.stockedAt.put(item.getObjectId(), now);
+				else if (BotStoreGoods.isRemnantStone(item.getItemTemplate()))
+					keeper.getInventory().delete(item); // stocked before 24 October, and no player of 4.8 would have it to sell
 			}
 		}
 		List<Item> lines = linesOf(keeper, shelf);
@@ -287,7 +291,9 @@ public final class BotStores {
 		TradePSItem[] goods = lines.stream().limit(MAX_LINES).map(item -> {
 			ItemTemplate template = item.getItemTemplate();
 			long hours = (now - shelf.stockedAt.get(item.getObjectId())) / 3_600_000L;
-			long price = BotStorePricing.price(BotStoreStock.kindOf(template), template.getPrice(), template.getItemQuality(), template.getLevel(), keeper.getObjectId(), hours);
+			BotStoreGoods.Good good = BotStoreGoods.of(template);
+			long price = good != null ? BotStorePricing.price(good, keeper.getObjectId(), hours)
+				: BotStorePricing.price(BotStoreStock.kindOf(template), template.getPrice(), template.getItemQuality(), template.getLevel(), keeper.getObjectId(), hours);
 			return new TradePSItem(item.getObjectId(), item.getItemId(), item.getItemCount(), price);
 		}).toArray(TradePSItem[]::new);
 		PrivateStoreService.createStoreWithItems(keeper, goods);

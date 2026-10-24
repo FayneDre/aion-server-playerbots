@@ -57,6 +57,27 @@ class BotStorePricingTest {
 	}
 
 	@Test
+	void theGuidesGoodsSellWithinTheBrokersRange() {
+		BotStoreGoods.Good l4 = new BotStoreGoods.Good(java.util.List.of(166000194), 50, 3_000_000, 6_000_000, 2, 10, false);
+		long cheapest = Long.MAX_VALUE, dearest = 0;
+		for (int keeper = 0; keeper < 1000; keeper++) {
+			long price = BotStorePricing.price(l4, keeper, 0);
+			cheapest = Math.min(cheapest, price);
+			dearest = Math.max(dearest, price);
+		}
+		assertTrue(cheapest >= 3_000_000 && cheapest < 3_100_000, "cheapest " + cheapest);
+		assertTrue(dearest <= 6_000_000 && dearest > 5_900_000, "dearest " + dearest);
+	}
+
+	@Test
+	void theGuidesGoodsStopFallingAtTheBottomOfTheRange() {
+		BotStoreGoods.Good gold = new BotStoreGoods.Good(java.util.List.of(186000004), 31, 35_000, 50_000, 10, 50, false);
+		long fresh = BotStorePricing.price(gold, 7, 0);
+		assertEquals(Math.round(fresh * 0.9), BotStorePricing.price(gold, 7, 1), 1);
+		assertEquals(35_000, BotStorePricing.price(gold, 7, 24), "a day unsold is the bottom of the range, not the npc floor");
+	}
+
+	@Test
 	void theUnsoldGetCheaperByTheHour() {
 		long fresh = BotStorePricing.price(Kind.GEAR, CHESTPIECE, ItemQuality.LEGEND, 30, 7, 0);
 		long anHour = BotStorePricing.price(Kind.GEAR, CHESTPIECE, ItemQuality.LEGEND, 30, 7, 1);
