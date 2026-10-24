@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot.social;
 
 import java.util.List;
+import java.util.Map;
 import java.util.random.RandomGenerator;
 
 /**
@@ -18,7 +19,34 @@ final class BotChatLines {
 	private static final List<String> ADVERTS = List.of("Boutique « %s » ouverte à %s, venez voir !", "%s : stand ouvert à %s, passez !",
 		"Ouvert à %2$s : %1$s", "Boutique %s, les prix baissent chaque heure, à %s", "Stock renouvelé : %s, à %s", "Passez voir %s à %s, mp si besoin");
 
+	private static final List<String> GROUP_OPENINGS = List.of("LFG", "lfg", "Cherche groupe", "cherche grp", "Dispo pour", "Qui monte", "");
+	private static final List<String> GROUP_CLOSINGS = List.of("", "", "inv svp", "mp", "invitez-moi", "dispo de suite", "pst", "dispo toute la soirée",
+		"j'connais le donjon");
+	private static final Map<BotRole, List<String>> ROLE_WORDS = Map.of(BotRole.TANK, List.of("tank", "tank", "MT"),
+		BotRole.HEALER, List.of("heal", "soigneur", "healer"), BotRole.SUPPORT, List.of("support", "buff", "soutien"),
+		BotRole.DAMAGE, List.of("dps", "DD", "dégâts"));
+
 	private BotChatLines() {
+	}
+
+	/**
+	 * @param className The speaker's class as a French client names it, in lower case.
+	 * @return A line looking for a group for an instance: the class, the level and the role are the speaker's own.
+	 */
+	static String lookingForGroup(RandomGenerator random, String className, int level, BotRole role, String instance) {
+		String who = (random.nextBoolean() ? capitalised(className) : className) + " " + level;
+		String roleWord = pick(random, ROLE_WORDS.get(role));
+		String opening = pick(random, GROUP_OPENINGS);
+		String content = switch (random.nextInt(4)) {
+			case 0 -> who + " " + roleWord + " pour " + instance;
+			case 1 -> instance + ", " + who + " " + roleWord;
+			case 2 -> who + " (" + roleWord + ") " + instance;
+			default -> roleWord + " " + level + " pour " + instance;
+		};
+		String line = opening.isEmpty() ? capitalised(content) : opening.equals("Qui monte") ? "Qui monte " + instance + " ? " + who + " " + roleWord
+			: opening + " " + content;
+		String closing = pick(random, GROUP_CLOSINGS);
+		return closing.isEmpty() ? line : line + (random.nextBoolean() ? ", " : " ") + closing;
 	}
 
 	/**
@@ -60,6 +88,10 @@ final class BotChatLines {
 			return thousands + "k";
 		long tenths = Math.round(price / 100_000.0);
 		return tenths % 10 == 0 ? tenths / 10 + "M" : tenths / 10 + "," + tenths % 10 + "M";
+	}
+
+	private static String capitalised(String word) {
+		return word.isEmpty() ? word : Character.toUpperCase(word.charAt(0)) + word.substring(1);
 	}
 
 	private static String pick(RandomGenerator random, List<String> choices) {

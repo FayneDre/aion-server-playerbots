@@ -59,6 +59,20 @@ class BotChatLinesTest {
 	}
 
 	@Test
+	void aCallForAGroupSaysTheSpeakersOwnLevelRoleAndInstance() {
+		Random random = new Random(13);
+		Set<String> forms = new HashSet<>();
+		for (int i = 0; i < 1000; i++) {
+			String line = BotChatLines.lookingForGroup(random, "aède", 45, BotRole.SUPPORT, "Dark Poeta");
+			assertTrue(line.contains("45") && line.contains("Dark Poeta"), line);
+			assertTrue(line.matches("(?i).*(support|buff|soutien).*"), "its own role: " + line);
+			assertFalse(line.matches("(?i).*\\b(tank|heal|soigneur|dps)\\b.*"), "no other role: " + line);
+			forms.add(line);
+		}
+		assertTrue(forms.size() > 100, forms.size() + " forms only");
+	}
+
+	@Test
 	void anAdvertNamesTheStoreAndTheTown() {
 		Random random = new Random(5);
 		for (int i = 0; i < 200; i++) {

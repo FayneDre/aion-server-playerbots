@@ -1,8 +1,8 @@
 # Bots in the chat channels
 
 **Status: milestones 0 and 1 done (24 October): a bot's line seen in game in Region, Trade and Find Group (`//bot chat`). The name
-suffix is copied from a reader, so a second account needs nothing. Milestone 2, Trade, built the same day (`BotChat`, `BotChatLines`), not
-watched in game yet.** Planned on 24 October at the user's request:
+suffix is copied from a reader, so a second account needs nothing. Milestone 2, Trade, built and seen in game the same day (`BotChat`,
+`BotChatLines`); milestone 3, Find Group, built, not watched yet.** Planned on 24 October at the user's request:
 bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
@@ -79,7 +79,11 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
    (7 lines in 10) at the price its store asks, read at the moment it speaks, or calls out its store; a line every 20 to 40 s a map and
    faction, a keeper quiet for 20 minutes after, a piece not offered again on that map for 30. Items are named by the link `[item:id]` the
    client draws in its own language, the form the server's own system messages use. Lines are French, around a link any client reads.
-3. **Find Group**: class, role, level and instance, for the look of it.
+3. **Find Group, built**: a free bot of 20 and over (no group, no store, not in an instance) of a faction a player of which is online names its
+   class, level and role and a PvE instance for six whose levels it is of: from the entry level to the data's top, or ten over the entry.
+   Tests, arenas, Dredgions, legion barracks, Idgel Dome and the Ophidan Bridges are left out by name. An instance belongs to the Elyos if its
+   id starts with 31, to the Asmodians with 32, to both otherwise; nothing else in the data says so. A line every 60 to 120 s a faction, an
+   instance not called for again for 30 minutes. Instance names are the data's, in English.
 4. **Region**: the small talk, then the questions answered by a second bot.
 5. **Watched in game** with the user: variety over an hour, pace, nothing absurd.
 
