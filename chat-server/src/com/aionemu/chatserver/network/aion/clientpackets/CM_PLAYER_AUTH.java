@@ -3,7 +3,9 @@ package com.aionemu.chatserver.network.aion.clientpackets;
 import java.nio.charset.StandardCharsets;
 
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.slf4j.LoggerFactory;
 
+import com.aionemu.chatserver.configs.main.LoggingConfig;
 import com.aionemu.chatserver.network.aion.AbstractClientPacket;
 import com.aionemu.chatserver.network.netty.handler.ClientChannelHandler;
 import com.aionemu.chatserver.service.ChatService;
@@ -49,6 +51,8 @@ public class CM_PLAYER_AUTH extends AbstractClientPacket {
 	protected void runImpl() {
 		String nameIdentifier = new String(identifier, StandardCharsets.UTF_16LE); // Name@identifier
 		String charName = nameIdentifier.substring(0, nameIdentifier.lastIndexOf(identifierSeparator));
+		if (LoggingConfig.LOG_CHANNEL_REQUEST) // the suffix a channel message must name its sender with, which nothing else logs
+			LoggerFactory.getLogger(CM_PLAYER_AUTH.class).info("Player {} authenticates as {}", playerId, nameIdentifier);
 		ChatService.getInstance().registerPlayerConnection(playerId, token, identifier, charName, accountName, clientChannelHandler);
 	}
 }

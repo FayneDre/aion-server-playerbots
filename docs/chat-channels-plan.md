@@ -1,6 +1,7 @@
 # Bots in the chat channels
 
-**Status: not started, on hold.** Planned on 24 October at the user's request and set aside to be done later: bots speaking in the Trade, Find
+**Status: milestone 0 in progress (24 October): the chat server is switched on, the identifiers wait for a session in game.** Planned on 24
+October at the user's request: bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
 
@@ -20,6 +21,12 @@ bots at once.
 - A message is a channel, a sender (`ChatClient`: its id, its name as `Name@suffix` in UTF-16) and a text; `BroadcastService` sends it to every
   client in the channel (`SM_CHANNEL_MESSAGE`). The sender needs no connection of its own for that.
 - The game server sends the chat server four packets: auth, player auth, gag, logout (`network/chatserver`).
+
+**The chat server was off.** Upstream ships `gameserver.chatserver.enable = false` and an empty `gameserver.network.chat.password`, so no
+channel worked in game, even between players. Switched on in the installation's own `mygs.properties` on 24 October, with the chat server's
+password copied over (a mismatch is refused: "tried to register with an invalid password"). Configs are never deployed, so **every server
+that wants the channels sets both itself**, a tester's own included. The chat server tells clients its LAN address unless told otherwise:
+a player outside the network gets no channels.
 
 ## The design
 
@@ -59,7 +66,8 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
 
 ## Milestones
 
-0. **Read the identifiers**: Region map names and the name suffix, with `chatserver.log.channel.request` on for one session.
+0. **Read the identifiers**: Region map names and the name suffix, with `chatserver.log.channel.request` on for one session (set in the
+   installation's `mycs.properties`; `CM_PLAYER_AUTH` logs the `Name@suffix` a client authenticates with under the same switch).
 1. **The packet and the chat server side**, one fixed line from a bot, seen in each of the three channels in game.
 2. **Trade**: shelves and adverts, with the item link if the format allows.
 3. **Find Group**: class, role, level and instance, for the look of it.
