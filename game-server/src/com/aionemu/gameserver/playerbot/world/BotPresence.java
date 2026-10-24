@@ -155,6 +155,15 @@ public class BotPresence {
 		return cache.computeIfAbsent(worldId, id -> plan(id, busy, false));
 	}
 
+	/** Forgets the map's plans, worked out from its settlements, after one of them has been left out ({@link StrandedPlaces}). */
+	static void forget(int worldId) {
+		establishmentByMap.remove(worldId);
+		civicByMap.remove(worldId);
+		fieldByMap.remove(worldId);
+		busyFieldByMap.remove(worldId);
+		townByMap.remove(worldId);
+	}
+
 	/**
 	 * Keeps a share of a plan, spread over the places it names rather than taken from the front of it.
 	 * <p>

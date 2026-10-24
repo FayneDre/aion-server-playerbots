@@ -1712,8 +1712,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final float STRANDED_AT_HOME = 40;
 	/** How near the ground a rescue would put a bot on it must stand for the rescue to be no move at all, in metres. */
 	private static final float ALREADY_THERE = 5;
-	/** How far a bot shut in a pocket may be stepped out of it while a player watches: over a counter or a rail, not across a room. */
-	private static final float STEP_OUT_IN_SIGHT = 5;
+	/**
+	 * How far a bot on ground cut off from where it lives may be stepped off it while a player watches: over a counter or a rail, off the plinth of
+	 * an obelisk, not across a room. Five metres and pockets only until 24 October, when the floor round Altgard's obelisk, joined to nothing, kept a
+	 * bot "doing something else" in front of a player 25 times in half an hour, the ground it needed 10 m away.
+	 */
+	private static final float STEP_OUT_IN_SIGHT = 12;
 
 	/**
 	 * Puts a bot that cannot move at all back where it lives.
@@ -1744,13 +1748,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 		// its errand and picks another, and the rescue waits for nobody to be looking. Except in a player's group, where staying stuck is worse than
 		// being seen: the player is waiting for it, and a member left behind is a member lost.
 		if (!isolated && !isInAPlayersGroup(bot) && isSeenByAPlayer(bot)) {
-			// Except out of a pocket, onto floor a step away. Doing something else never ends there, since every something else is a route out: a bot
-			// shut behind a shop counter sat down and stood up every thirteen seconds in front of the player for as long as they stayed. A step over the
-			// counter is less of a sight than that.
+			// Except off ground that leads nowhere, onto floor a step away. Doing something else never ends there, since every something else is a route
+			// out: a bot shut behind a shop counter sat down and stood up every thirteen seconds in front of the player for as long as they stayed. A step
+			// over the counter is less of a sight than that. Any ground cut off from the bot's anchor, not only a pocket: toWalkableGround answers only
+			// for a bot that is trapped, and the floor round an obelisk joined to nothing is too large to be a pocket.
 			Vector3f step = BotLanding.toWalkableGround(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), anchor(), bot.getObjectId(), false);
-			if (step != null && PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), step.getX(), step.getY(), step.getZ()) <= STEP_OUT_IN_SIGHT
-				&& NavmeshService.getInstance().isPocket(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ())) {
-				log.info("Bot {} could not move at all from {} {}, shut in a pocket, and steps out onto {} {} {} in sight of a player", bot.getName(),
+			if (step != null && PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), step.getX(), step.getY(), step.getZ()) <= STEP_OUT_IN_SIGHT) {
+				log.info("Bot {} could not move at all from {} {}, on ground cut off from where it lives, and steps out onto {} {} {} in sight of a player", bot.getName(),
 					Math.round(bot.getX()), Math.round(bot.getY()), Math.round(step.getX()), Math.round(step.getY()), Math.round(step.getZ()));
 				forgetRefusals();
 				TeleportService.teleportTo(bot, bot.getWorldId(), step.getX(), step.getY(), step.getZ());

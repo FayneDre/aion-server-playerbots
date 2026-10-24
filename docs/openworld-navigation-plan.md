@@ -94,6 +94,11 @@ rule frees, and weighs 0.1 MB (Verteron) to 4.8 MB (Cygnea), Enshar 3.5 instead 
 the half minute it takes to build the ground: the stretches are numbered by the same computation from the same geometry. The generator still writes links
 for instances only. Nothing has been written for the open world yet: the first map is the user's call, then the obelisk audit and `nav-stats` measure it.
 
+**Lost on 18 October.** Rebuilding every open-world mesh (`navmesh.ps1 -OpenWorld`) erased Verteron's links: writing a mesh removes an
+open-world map's `.glide` (`NavmeshWriter` writes links for instances only), and the script asked which maps had links after the rebuild instead
+of before. Fixed on 24 October; no open-world map has glide links until they are written again, and the measure of that day shows what it costs:
+obelisks joined to nothing by walking, such as Altgard's, strand the bots that die near them.
+
 **Written for Verteron on 11 October.** 4 266 links, 0.13 MB; its stranded obelisk gets 3 routes of 3. The first glides were walked off the edge at a run,
 reported from in game at the Ardus Shrine camp; the mover now opens the wings (`switchToGliding`, the emote that starts a glide), flies the leg down at
 8 m/s and folds them on landing (`onStopGliding`), and only a daeva is given a glide. Five bots resurrected on the plateau glided 85 m down to the camp and

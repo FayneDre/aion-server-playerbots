@@ -25,6 +25,7 @@ import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.playerbot.world.BotQuestGrounds;
+import com.aionemu.gameserver.playerbot.world.StrandedPlaces;
 import com.aionemu.gameserver.playerbot.world.TownServices;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.World;
@@ -204,6 +205,11 @@ class BotDay {
 		if (++strandingsAtHome < DEATHS_BEFORE_MOVING || ai.isOwned() || home() == null || isAwayFromHome())
 			return null;
 		Player bot = ai.getOwner();
+		// A village's home is a post the director fills, and moving one villager off it left the post empty for the director to fill again, with the
+		// same villager as often as not: the village itself is what leads nowhere, so it is the village that goes, and the director moves its people
+		Vector3f village = BotPlaces.settlementAt(bot.getWorldId(), home());
+		if (village != null)
+			StrandedPlaces.strand(bot.getWorldId(), village, bot.getName() + " was freed " + strandingsAtHome + " times at its door");
 		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getRace(), home(), bot.getObjectId() + (int) now);
 		if (elsewhere == null || BotPlaces.isSamePlace(elsewhere, home()))
 			return null;

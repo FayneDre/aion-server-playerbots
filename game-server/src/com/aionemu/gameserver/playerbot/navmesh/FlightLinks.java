@@ -20,7 +20,7 @@ import java.util.Map;
  * <p>
  * Found from the floors alone, like the glide links: whether the air is clear is the server's question, asked of the game's geometry when the bot flies it.
  */
-final class FlightLinks {
+public final class FlightLinks {
 
 	/** The fewest surfaces an island needs to be flown from or onto: the open world's rule for a glide landing, so crumbs of ground are left out. */
 	static final int MIN_ISLAND_SURFACES = 2000;

@@ -197,9 +197,17 @@ public class BotPlaces {
 	private BotPlaces() {
 	}
 
-	/** @return The settlements of a map, largest first, or an empty list where nobody lives. */
+	/** @return The settlements of a map, largest first, or an empty list where nobody lives. Not the ones found stranded at run time ({@link StrandedPlaces}). */
 	public static List<Settlement> settlements(int worldId) {
-		return places(worldId).settlements();
+		List<Settlement> settlements = places(worldId).settlements();
+		if (settlements.stream().noneMatch(settlement -> StrandedPlaces.isStranded(worldId, settlement.centre())))
+			return settlements;
+		return settlements.stream().filter(settlement -> !StrandedPlaces.isStranded(worldId, settlement.centre())).toList();
+	}
+
+	/** Forgets the map's homes, worked out from its settlements, after one of them has been left out. */
+	static void forgetHomes(int worldId) {
+		homesByMap.remove(worldId);
 	}
 
 	/**

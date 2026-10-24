@@ -86,15 +86,20 @@ try {
         $ids = Get-ChildItem 'data/navmesh' -Filter '*.nav' | Where-Object { $_.BaseName -notlike '3*' } | ForEach-Object { $_.BaseName } | Sort-Object
         if (-not $ids) { throw 'No open-world mesh on this server to build again. Generate them one by one: .\tools\navmesh.ps1 <mapId>' }
         foreach ($id in $ids) {
+            # Which links the map has is read before the mesh is built, not after: writing a mesh clears an open-world map's .glide (NavmeshWriter writes
+            # links for instances only, and an empty list removes the file), so asking afterwards found none, and the glides of every map that had them
+            # were lost to the rebuild of 18 October without a word.
+            $kinds = [System.Collections.Generic.List[string[]]]::new()
+            foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'), @('ride', 'rides'))) {
+                if (Test-Path "data/navmesh/$id.$($links[0])") { $kinds.Add($links) }
+            }
             Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
             & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id
             if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
-            foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'), @('ride', 'rides'))) {
-                if (Test-Path "data/navmesh/$id.$($links[0])") {
-                    Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
-                    & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id $links[1]
-                    if ($LASTEXITCODE -ne 0) { throw "Writing the $($links[1]) of map $id failed (exit code $LASTEXITCODE)" }
-                }
+            foreach ($links in $kinds) {
+                Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
+                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id $links[1]
+                if ($LASTEXITCODE -ne 0) { throw "Writing the $($links[1]) of map $id failed (exit code $LASTEXITCODE)" }
             }
         }
         Write-Host "Done: $($ids.Count) maps. Start the server: .\tools\start-server.ps1 (the first start rebuilds the bots' places, several minutes)" -ForegroundColor Green

@@ -18,10 +18,10 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 3. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): store goods ([bot-store-goods-plan.md](bot-store-goods-plan.md))
    and bots in the Trade, Find Group and Region channels ([chat-channels-plan.md](chat-channels-plan.md)) built and liked in game on 24
    October; the channels' hour-long watch is the user's. Duels and pets on hold; ambience, buyers and the day's rhythm dropped.
-4. **Navigation leftovers**, measured on 24 October, per 10 minutes with ~940 bots: about 8200 routes found, 120 refused, 42 searches over a
-   second (down from 166 after the route queue, shop and errand fixes of 23-24 October, see [capital-life-plan.md](capital-life-plan.md)), 14 to
-   20 rescue teleports to watch over a longer measure, town spells refused (about 50). Fences and rails only the client draws (Pandaemonium's
-   statues, bridges) are not in the mesh. How a bot climbed onto nothing under Pandaemonium's dome (21 October) is unexplained.
+4. **Navigation leftovers**, measured with a player on 24 October (`game-server/log/bot-measures`): ~90 rescues a half hour, mostly from
+   obelisks joined to nothing by walking (Altgard), a village on an island (Reshanta) and ground reached only by air (Inggison). No open-world
+   map has glide links: Verteron's, the only ones, were erased by the rebuild of 18 October ([openworld-navigation-plan.md](openworld-navigation-plan.md)).
+   Fences and rails only the client draws are not in the mesh; a bot on nothing under Pandaemonium's dome (21 October) is unexplained.
 5. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
 6. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)): duels, friends and trading with one's companion
    built in `patch-2026-10-19-2`, to be watched in game.
@@ -36,7 +36,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 Last reviewed 2026-10-24 (patch `patch-2026-10-24-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
 for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
-routine, gear and stigmas, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with glide links,
+routine, gear and stigmas, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps (their glide links not written: see 4),
 flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, friends and trades with a companion, steering vetted by the mesh,
 capitals with a town routine, 40 bot stores each with broker prices, visitors of every level, shouted adverts and calls for a group, bots
 speaking in the chat channels, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
