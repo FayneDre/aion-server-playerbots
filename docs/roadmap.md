@@ -9,17 +9,15 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
-0. **Watch in game what is deployed** (`patch-2026-10-23`, `-2` and `patch-2026-10-24`): the 19 to 21 October fixes (resting before rejoining,
-   the cleric's heals, glide wings, following flights and teleports, line of sight, flight-only buffs, bots stranded in the air), the gladiator and
-   sorcerer playbooks with `//bot gate`; the capitals' visitors and speech were watched by the user on 23-24 October.
+0. **Watch in game what is deployed** (`patch-2026-10-23` and `-2`): the 19 to 21 October fixes (resting before rejoining, the cleric's heals,
+   glide wings, following flights and teleports, line of sight, flight-only buffs, bots stranded in the air), the gladiator and sorcerer playbooks.
 1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
    Arachne's room in Theobomos Lab. Left: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long, then bosses.
 2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
    (templar, chanter, ranger, cleric, gladiator, sorcerer). Damage that waits for the tank and group resurrection watched stay ours.
-3. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): store goods priced as on a live broker, with coins, medals,
-   manastones and two kinds of seller ([bot-store-goods-plan.md](bot-store-goods-plan.md)), built and looked over in game on 24 October. Visitors and shouted speech built 23-24 October;
-   ambience dropped (talking circles, waves) or on hold (duels, pets). Bots as buyers and the day's rhythm are dropped. Bots in the Trade,
-   Find Group and Region channels planned, on hold ([chat-channels-plan.md](chat-channels-plan.md)).
+3. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): store goods ([bot-store-goods-plan.md](bot-store-goods-plan.md))
+   and bots in the Trade, Find Group and Region channels ([chat-channels-plan.md](chat-channels-plan.md)) built and liked in game on 24
+   October; the channels' hour-long watch is the user's. Duels and pets on hold; ambience, buyers and the day's rhythm dropped.
 4. **Navigation leftovers**, measured on 24 October, per 10 minutes with ~940 bots: about 8200 routes found, 120 refused, 42 searches over a
    second (down from 166 after the route queue, shop and errand fixes of 23-24 October, see [capital-life-plan.md](capital-life-plan.md)), 14 to
    20 rescue teleports to watch over a longer measure, town spells refused (about 50). Fences and rails only the client draws (Pandaemonium's
@@ -35,12 +33,13 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-24 (patch `patch-2026-10-24`). **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-10-24 (patch `patch-2026-10-24-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
 for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
 routine, gear and stigmas, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with glide links,
 flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, friends and trades with a companion, steering vetted by the mesh,
-capitals with a town routine, 40 bot stores each, visitors of every level and shouted adverts and calls for a group, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
+capitals with a town routine, 40 bot stores each with broker prices, visitors of every level, shouted adverts and calls for a group, bots
+speaking in the chat channels, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
 a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron, and a squad crossing Reshanta's upper layer by air. **Watched with a
 player**: a Noschana run, Sanctum's town day, Pandaemonium's visitors and speech. **Not watched in game**: everything listed at 0 above, group
 resurrection, positioning against a boss. **Not started**: wild PvP, the broker and player shops, legions, gathering, RvR.
@@ -165,7 +164,8 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
 
 ## Gaps nobody had raised
 
-- **Bots speak in the capitals only**, by shout (store adverts, calls for a group, `//bot speech`); nowhere else, and never in a channel.
+- **The chat server is off upstream** (`gameserver.chatserver.enable = false`, no password): a server that wants channels, a tester's own
+  included, sets both in its `mygs.properties`.
 - **Bots do not yield to real players.** `BotTargetRegistry` stops two bots claiming one mob, but nothing yields to a person. Forty bots stripping a
   spawn or a gathering node make a worse server than none; this is a design rule to settle before a settled 2000.
 - **Gear does not keep up.** Bots are dressed at creation (enchanted, socketed, with stigmas) and wear what they loot; crossing 1 to 65 needs buying

@@ -198,9 +198,13 @@ public final class BotChat {
 		}
 	}
 
-	/** @return true for a bot of the map's own that may speak in Region: alive, quiet long enough, and no player's companion. */
+	/**
+	 * @return true for a bot of the map's own that may speak in Region: alive, quiet long enough, no player's companion, and not in an instance, whose
+	 *         copies all share one Region channel and whose places nobody outside asks about.
+	 */
 	private static boolean isLocal(Player bot, long now) {
-		return bot.getAi() instanceof PlayerBotAI ai && !ai.isOwned() && !bot.isDead() && now - spokeAt.getOrDefault(bot.getObjectId(), 0L) >= QUIET_MILLIS;
+		return bot.getAi() instanceof PlayerBotAI ai && !ai.isOwned() && !bot.isDead() && !bot.isInInstance()
+			&& now - spokeAt.getOrDefault(bot.getObjectId(), 0L) >= QUIET_MILLIS;
 	}
 
 	/**
