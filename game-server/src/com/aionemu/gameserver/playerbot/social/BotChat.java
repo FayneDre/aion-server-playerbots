@@ -55,7 +55,13 @@ public final class BotChat {
 	/** How long a bot that has spoken in a channel keeps quiet, and how long one thing is not offered again on a map, in milliseconds. */
 	private static final long QUIET_MILLIS = 20 * 60_000L, REPEAT_MILLIS = 30 * 60_000L;
 	/** How long between two Find Group lines for a faction, in seconds. */
-	private static final int GROUP_SHORTEST = 60, GROUP_LONGEST = 120;
+	private static final int GROUP_SHORTEST = 20, GROUP_LONGEST = 40;
+	/**
+	 * How long one instance is not called for again by a faction, in milliseconds. Shorter than the other repeats: there are some forty instances, a
+	 * level suits a handful, and at a line every half minute thirty minutes left most turns with nothing to say. Several players asking for the same
+	 * dungeon in a row is what a Find Group channel looks like anyway.
+	 */
+	private static final long DUNGEON_REPEAT_MILLIS = 10 * 60_000L;
 	/** The lowest level that looks for a group: under it a character is still in the starting valleys. */
 	private static final int GROUP_LEVEL = 20;
 	/** How far over an instance's entry level a speaker may be, where the data gives no top: the band its monsters are of. */
@@ -169,7 +175,8 @@ public final class BotChat {
 		ThreadLocalRandom random = ThreadLocalRandom.current();
 		Player seeker = seekers.get(random.nextInt(seekers.size()));
 		List<Dungeon> suited = dungeons().stream()
-			.filter(dungeon -> dungeon.suits(seeker) && now - offeredAt.getOrDefault(race + "/dungeon " + dungeon.worldId(), 0L) >= REPEAT_MILLIS).toList();
+			.filter(dungeon -> dungeon.suits(seeker) && now - offeredAt.getOrDefault(race + "/dungeon " + dungeon.worldId(), 0L) >= DUNGEON_REPEAT_MILLIS)
+			.toList();
 		if (suited.isEmpty())
 			return;
 		Dungeon dungeon = suited.get(random.nextInt(suited.size()));

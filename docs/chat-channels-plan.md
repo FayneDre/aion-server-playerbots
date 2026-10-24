@@ -66,7 +66,7 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
 
 ## Pace
 
-- Trade: a line every 20 to 40 s a map and faction (60 to 120 at first, too slow in game); Find Group every 60 to 120 s a faction; Region every 2 to 3 minutes a map, and only on a map a real player is on.
+- Trade: a line every 20 to 40 s a map and faction (60 to 120 at first, too slow in game); Find Group the same, a faction; Region every 2 to 3 minutes a map, and only on a map a real player is on.
 - Never the same bot twice in 20 minutes, never the same content twice in 30.
 - `//bot speech` covers the channels too (`off` silences everything); the rates are constants first, a config later if the testers want to tune.
 
@@ -82,8 +82,8 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
 3. **Find Group, built**: a free bot of 20 and over (no group, no store, not in an instance) of a faction a player of which is online names its
    class, level and role and a PvE instance for six whose levels it is of: from the entry level to the data's top, or ten over the entry.
    Tests, arenas, Dredgions, legion barracks, Idgel Dome and the Ophidan Bridges are left out by name. An instance belongs to the Elyos if its
-   id starts with 31, to the Asmodians with 32, to both otherwise; nothing else in the data says so. A line every 60 to 120 s a faction, an
-   instance not called for again for 30 minutes. Instance names are the data's, in English.
+   id starts with 31, to the Asmodians with 32, to both otherwise; nothing else in the data says so. A line every 20 to 40 s a faction, as Trade (decided in
+   game), an instance not called for again for 10 minutes, since a level suits only a handful. Instance names are the data's, in English.
 4. **Region**: the small talk, then the questions answered by a second bot.
 5. **Watched in game** with the user: variety over an hour, pace, nothing absurd.
 
