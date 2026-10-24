@@ -66,7 +66,7 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
 
 ## Pace
 
-- Trade: a line every 60 to 120 s a faction; Find Group the same; Region every 2 to 3 minutes a map, and only on a map a real player is on.
+- Trade: a line every 20 to 40 s a map and faction (60 to 120 at first, too slow in game); Find Group every 60 to 120 s a faction; Region every 2 to 3 minutes a map, and only on a map a real player is on.
 - Never the same bot twice in 20 minutes, never the same content twice in 30.
 - `//bot speech` covers the channels too (`off` silences everything); the rates are constants first, a config later if the testers want to tune.
 
@@ -76,7 +76,7 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
    installation's `mycs.properties`; `CM_PLAYER_AUTH` logs the `Name@suffix` a client authenticates with under the same switch).
 1. **The packet and the chat server side**, one fixed line from a bot, seen in each of the three channels in game.
 2. **Trade, built**: a keeper with its store open, of the map's faction where a player of that faction stands, offers a piece of its shelf
-   (7 lines in 10) at the price its store asks, read at the moment it speaks, or calls out its store; a line every 60 to 120 s a map and
+   (7 lines in 10) at the price its store asks, read at the moment it speaks, or calls out its store; a line every 20 to 40 s a map and
    faction, a keeper quiet for 20 minutes after, a piece not offered again on that map for 30. Items are named by the link `[item:id]` the
    client draws in its own language, the form the server's own system messages use. Lines are French, around a link any client reads.
 3. **Find Group**: class, role, level and instance, for the look of it.
