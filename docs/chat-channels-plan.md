@@ -1,10 +1,6 @@
 # Bots in the chat channels
 
-**Status: milestones 0 and 1 done (24 October): a bot's line seen in game in Region, Trade and Find Group (`//bot chat`). The name
-suffix is copied from a reader, so a second account needs nothing. Milestone 2, Trade, built and seen in game the same day (`BotChat`,
-`BotChatLines`); milestones 3, Find Group, and 4, Region, built and liked in game the same day: in 8
-minutes with one player, 20 Region, 15 Find Group and 2 Trade lines (the player was away from the capitals). Milestone 5, an hour's watch,
-is left.** Planned on 24 October at the user's request:
+**Status: built and validated in game on 24 October, every milestone (0 to 5), shipped in `patch-2026-10-24-2`.** Planned on 24 October at the user's request:
 bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
@@ -93,7 +89,7 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
    Places are the data's `SUB` zones named as players say them (`BASFELT_VILLAGE_220030000` is Basfelt Village), working names with a digit
    left out. A line every 20 to 40 s a map and faction, as the other channels (decided in game); a greeting or a place not taken up again on
    the map for 10 minutes. Monster names are the data's, in English.
-5. **Watched in game** with the user: variety over an hour, pace, nothing absurd.
+5. **Watched in game, validated** by the user on 24 October: variety, pace, nothing absurd.
 
 ## Risks
 
