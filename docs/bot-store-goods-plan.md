@@ -1,6 +1,6 @@
 # Bot store goods: what a bot store sells, and at what price
 
-**Status: milestones 1 to 5 built on 24 October (`BotStoreGoods`, `BotManastones`, `BotStoreStock`), 1 and 2 watched in game; 3 to 5 not.** Planned on 23 October from a
+**Status: built on 24 October (`BotStoreGoods`, `BotManastones`, `BotStoreStock`) and looked over in game the same day: prices judged consistent at a glance.** Planned on 23 October from a
 price guide (broker prices remembered from live servers); the guide answered the questions on 24 October, which settled the prices and widened
 the scope to manastones and to two kinds of seller. The stores themselves are in [bot-stores-plan.md](bot-stores-plan.md).
 
@@ -129,4 +129,4 @@ Stacks: coins and medals 10 to 50, as players sell them; stones as today; ancien
    20-45"), manastones of every level up to ten over its own ("Pierres 10-50"), every coin its level allows. The **opportunist**: of eight
    lines about 3 stones, 2 coins or medals, 2 jewels and 1 piece of gear, all within 5 levels (stones 10, coins 20) of its own, in stacks a
    quarter of a merchant's.
-6. **Watched in game**: one store of each kind in each capital, prices read in the store window.
+6. **Watched in game, 24 October**: the stores and their prices looked over by the user, consistent at a glance.

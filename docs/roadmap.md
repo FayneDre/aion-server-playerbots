@@ -17,7 +17,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
    (templar, chanter, ranger, cleric, gladiator, sorcerer). Damage that waits for the tank and group resurrection watched stay ours.
 3. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): store goods priced as on a live broker, with coins, medals,
-   manastones and two kinds of seller ([bot-store-goods-plan.md](bot-store-goods-plan.md)), answered by the guide on 24 October, ready to build. Visitors and shouted speech built 23-24 October;
+   manastones and two kinds of seller ([bot-store-goods-plan.md](bot-store-goods-plan.md)), built and looked over in game on 24 October. Visitors and shouted speech built 23-24 October;
    ambience dropped (talking circles, waves) or on hold (duels, pets). Bots as buyers and the day's rhythm are dropped. Bots in the Trade,
    Find Group and Region channels planned, on hold ([chat-channels-plan.md](chat-channels-plan.md)).
 4. **Navigation leftovers**, measured on 24 October, per 10 minutes with ~940 bots: about 8200 routes found, 120 refused, 42 searches over a
