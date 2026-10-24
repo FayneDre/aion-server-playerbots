@@ -67,9 +67,6 @@ public class BotPathFinder {
 	private BotPathFinder() {
 	}
 
-	private record Node(long key, float estimatedTotal) {
-	}
-
 	/**
 	 * @param waypoints From start to goal, empty when there is no route.
 	 * @param glides the indexes of the waypoints that are reached by gliding down from the one before, which is not a walk and is not planned as one
@@ -714,19 +711,17 @@ public class BotPathFinder {
 		if (start == -1 || goal == -1)
 			return new Route(List.of(), false);
 
-		Map<Long, Float> costSoFar = new HashMap<>();
-		Map<Long, Long> cameFrom = new HashMap<>();
-		PriorityQueue<Node> open = new PriorityQueue<>((a, b) -> Float.compare(a.estimatedTotal(), b.estimatedTotal()));
-		costSoFar.put(start, 0f);
-		open.add(new Node(start, 0));
+		SearchSpace space = new SearchSpace();
+		space.reach(start, 0f, start);
+		space.push(start, 0);
 
 		int expanded = 0;
-		while (!open.isEmpty() && expanded++ < MAX_NODES) {
-			long current = open.poll().key();
+		while (!space.isQueueEmpty() && expanded++ < MAX_NODES) {
+			long current = space.pop();
 			if (current == goal)
-				return new Route(smooth(mesh, rebuild(mesh, cameFrom, current, start), avoid), false);
+				return new Route(smooth(mesh, rebuild(mesh, space, current, start), avoid), false);
 
-			float cost = costSoFar.get(current);
+			float cost = space.cost(current);
 			int cellX = keyX(mesh, current), cellY = keyY(mesh, current);
 			float z = mesh.surfaceZ(cellX, cellY, keySurface(current));
 			for (int direction = 0; direction < NEIGHBOUR_X.length; direction++) {
@@ -743,12 +738,11 @@ public class BotPathFinder {
 					// ground the caller wants to keep out of costs more to cross, by the multiple it names, so the search goes round it when there is a round
 					float nearness = avoid.extra((nextX + 0.5f) * mesh.cellSize(), (nextY + 0.5f) * mesh.cellSize());
 					float stepCost = cost + (NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0 ? 1.41421f : 1) * mesh.cellSize() * (1 + nearness);
-					Float known = costSoFar.get(next);
-					if (known != null && known <= stepCost)
+					float known = space.cost(next);
+					if (!Float.isNaN(known) && known <= stepCost)
 						continue;
-					costSoFar.put(next, stepCost);
-					cameFrom.put(next, current);
-					open.add(new Node(next, stepCost + heuristic(mesh, nextX, nextY, goalX, goalY)));
+					space.reach(next, stepCost, current);
+					space.push(next, stepCost + heuristic(mesh, nextX, nextY, goalX, goalY));
 				}
 			}
 		}
@@ -774,9 +768,9 @@ public class BotPathFinder {
 	}
 
 	/** Walks the trail of predecessors back to the start, then turns each grid node into a world position. */
-	private static List<Vector3f> rebuild(Navmesh mesh, Map<Long, Long> cameFrom, long current, long start) {
+	private static List<Vector3f> rebuild(Navmesh mesh, SearchSpace space, long current, long start) {
 		List<Long> nodes = new ArrayList<>();
-		for (long node = current; node != start; node = cameFrom.get(node))
+		for (long node = current; node != start; node = space.parent(node))
 			nodes.add(node);
 		nodes.add(start);
 		Collections.reverse(nodes);
