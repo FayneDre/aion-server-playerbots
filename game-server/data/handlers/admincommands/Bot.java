@@ -9,6 +9,7 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 import com.aionemu.gameserver.playerbot.BotCommands;
 import com.aionemu.gameserver.playerbot.BotDiagnostics;
 import com.aionemu.gameserver.playerbot.BotPopulator;
+import com.aionemu.gameserver.playerbot.social.BotChat;
 import com.aionemu.gameserver.playerbot.social.BotSpeech;
 import com.aionemu.gameserver.utils.chathandlers.AdminCommand;
 
@@ -49,6 +50,7 @@ public class Bot extends AdminCommand {
 			version - The revision the server runs, to name in a report.
 			debug [combat|all|off] - Logs every cast and fight decision of the bots, until the next restart.
 			speech [on|off] - Reads or sets whether bots shout store adverts and calls for a group in the capitals, until the next restart.
+			chat <region|trade|group> [text] - Has the nearest bot of your faction on your map say a line in that channel, to test the chat link.
 			fly <name> [height] - Flies the bot straight up, holds it there and lands it again. Default 25 m, capped at 60 and at its fly zone's ceiling.
 			flyto <name> - Flies the bot to where you stand, over whatever is in the way. Within 300 m and inside its own fly zone.
 			land <name> - Brings a flying bot down now.
@@ -105,6 +107,7 @@ public class Bot extends AdminCommand {
 			case "version" -> sendInfo(admin, BotDiagnostics.version());
 			case "debug" -> sendInfo(admin, BotDiagnostics.debug(argument(params, 1)));
 			case "speech" -> sendInfo(admin, BotSpeech.command(argument(params, 1)));
+			case "chat" -> sendInfo(admin, BotChat.command(admin, params.length > 1 ? params[1] : null, argument(params, 2)));
 			default -> sendInfo(admin);
 		}
 	}

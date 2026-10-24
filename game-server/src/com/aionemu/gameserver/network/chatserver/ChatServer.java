@@ -13,6 +13,7 @@ import com.aionemu.commons.network.NioServer;
 import com.aionemu.gameserver.configs.network.NetworkConfig;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.network.chatserver.ChatServerConnection.State;
+import com.aionemu.gameserver.network.chatserver.serverpackets.SM_CS_BOT_MESSAGE;
 import com.aionemu.gameserver.network.chatserver.serverpackets.SM_CS_PLAYER_AUTH;
 import com.aionemu.gameserver.network.chatserver.serverpackets.SM_CS_PLAYER_GAG;
 import com.aionemu.gameserver.network.chatserver.serverpackets.SM_CS_PLAYER_LOGOUT;
@@ -112,6 +113,12 @@ public class ChatServer {
 	public void sendPlayerGagPacket(int playerObjId, long gagTime) {
 		if (isUp())
 			csCon.sendPacket(new SM_CS_PLAYER_GAG(playerObjId, gagTime));
+	}
+
+	/** Has the chat server say a playerbot's line in a channel of the bot's race; see {@link SM_CS_BOT_MESSAGE}. */
+	public void sendBotMessage(String channelType, int raceId, String channelMeta, int botId, String name, String text) {
+		if (isUp())
+			csCon.sendPacket(new SM_CS_BOT_MESSAGE(channelType, raceId, channelMeta, botId, name, text));
 	}
 
 	private static class SingletonHolder {

@@ -10,10 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.chatserver.configs.main.LoggingConfig;
+import com.aionemu.chatserver.model.ChannelType;
 import com.aionemu.chatserver.model.ChatClient;
 import com.aionemu.chatserver.model.Race;
 import com.aionemu.chatserver.model.channel.Channel;
 import com.aionemu.chatserver.model.channel.ChatChannels;
+import com.aionemu.chatserver.model.message.Message;
 import com.aionemu.chatserver.network.aion.serverpackets.SM_CHANNEL_RESPONSE;
 import com.aionemu.chatserver.network.aion.serverpackets.SM_PLAYER_AUTH_RESPONSE;
 import com.aionemu.chatserver.network.netty.handler.ClientChannelHandler;
@@ -100,6 +103,32 @@ public class ChatService {
 			else
 				log.warn("Received logout event without client authentication for player {}", playerId);
 		}
+	}
+
+	/**
+	 * Says a line in a channel for a character the game server drives, which has no chat client of its own. The line reaches whoever reads that
+	 * channel, as a player's would, and goes nowhere when nobody does.
+	 * <p>
+	 * The sender is named as the readers' own client names characters ({@code Name@suffix}): the suffix is copied from a reader rather than written
+	 * here, since the client makes it up and nothing on the server says what it means.
+	 *
+	 * @return true if the line was sent to someone.
+	 */
+	public boolean sendBotMessage(ChannelType channelType, Race race, String channelMeta, int botId, String name, String text) {
+		Channel channel = ChatChannels.find(channelType, GameServerService.GAMESERVER_ID, race, channelMeta);
+		if (channel == null)
+			return false;
+		ChatClient reader = BroadcastService.getInstance().anyListener(channel);
+		if (reader == null || reader.getIdentifier() == null)
+			return false;
+		String readerName = new String(reader.getIdentifier(), StandardCharsets.UTF_16LE);
+		ChatClient bot = new ChatClient(botId, null, null, name, race, (byte) 0);
+		bot.setIdentifier((name + readerName.substring(readerName.lastIndexOf('@'))).getBytes(StandardCharsets.UTF_16LE));
+		Message message = new Message(channel, text.getBytes(StandardCharsets.UTF_16LE), bot);
+		BroadcastService.getInstance().broadcastMessage(message);
+		if (LoggingConfig.LOG_CHAT)
+			LoggerFactory.getLogger("CHAT_LOG").info("[{}] {}: {}", channel.name(), name, text);
+		return true;
 	}
 
 	public void gagPlayer(int playerId, long gagTimeMillis) {

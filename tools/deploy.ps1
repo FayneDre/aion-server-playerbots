@@ -1,11 +1,12 @@
 <#
 .SYNOPSIS
-    Builds the game-server module and deploys it to a local server installation.
+    Builds the game-server and chat-server modules and deploys them to a local server installation.
 
 .DESCRIPTION
     Copies the two artifacts the server actually loads:
       - the compiled jars (game-server + commons) into <server>/game-server/libs
       - the handler sources (data/handlers) which the server compiles at startup
+      - the chat server's jar into <server>/chat-server/libs, when it changed
     Config files are never touched, so local settings (mygs.properties, credentials) survive a deploy.
 
 .PARAMETER ServerRoot
@@ -82,7 +83,7 @@ if (-not $SkipBuild) {
         # what every other build in this repo relies on -- but a test nothing runs is a test that rots, and the population director's two worst
         # faults of 2026-10-04 were each a ten line assertion over a pure function. Overridden for the one build whose output reaches a server.
         # quoted: PowerShell splits a bare -Dmaven.test.skip=false on the dots and hands Maven ".test.skip=false" as a lifecycle phase
-        & mvn -q -pl game-server -am package '-Dmaven.test.skip=false'
+        & mvn -q -pl game-server,chat-server -am package '-Dmaven.test.skip=false'
         if ($LASTEXITCODE -ne 0) { throw "Build failed (exit code $LASTEXITCODE)" }
     } finally {
         Pop-Location
@@ -108,6 +109,31 @@ Copy-Item $handlersSource $handlersTarget -Recurse -Force
 Write-Host '  data/handlers'
 
 Write-Host "Deployed to $targetGameServer" -ForegroundColor Green
+
+# The chat server carries the bots' channel lines (CM_BOT_MESSAGE) since 24 October, so it is built and deployed too, but only when its jar changed:
+# most deploys touch the game server alone. It holds nothing to save, so stopping it is safe, and a running game server reconnects to it by itself.
+$chatJar = Get-ChildItem (Join-Path $repoRoot 'chat-server\target\chat-server-*.jar') -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notmatch '-(sources|javadoc)\.jar$' } | Sort-Object LastWriteTime | Select-Object -Last 1
+$chatLibs = Join-Path $ServerRoot 'chat-server\libs'
+if ($chatJar -and (Test-Path $chatLibs)) {
+    $installedChatJar = Join-Path $chatLibs $chatJar.Name
+    $changed = -not (Test-Path $installedChatJar) -or
+        (Get-FileHash $chatJar.FullName).Hash -ne (Get-FileHash $installedChatJar).Hash
+    if ($changed) {
+        $chatProcess = Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like '*com.aionemu.chatserver.ChatServer*' }
+        if ($chatProcess -and -not $Restart) {
+            Write-Host "Chat server jar changed but the chat server is running: not deployed. Re-run with -Restart." -ForegroundColor Yellow
+        } else {
+            if ($chatProcess) {
+                Stop-Process -Id $chatProcess.ProcessId -Confirm:$false
+                Wait-Process -Id $chatProcess.ProcessId -Timeout 30 -ErrorAction SilentlyContinue
+            }
+            Copy-Item $chatJar.FullName $chatLibs -Force
+            Write-Host "  chat-server: $($chatJar.Name)"
+        }
+    }
+}
 
 # start.bat is deliberately not deployed: it carries the installation's own memory settings, and overwriting it would reset them on every deploy. But a
 # file nothing deploys is also a file nobody looks at, and that has a cost -- the installed game server ran on -Xmx8192m for days while the repo said

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.chatserver.network.gameserver.GsClientPacket;
 import com.aionemu.chatserver.network.gameserver.GsConnection;
 import com.aionemu.chatserver.network.gameserver.GsConnection.GameServerConnectionState;
+import com.aionemu.chatserver.network.gameserver.clientpackets.CM_BOT_MESSAGE;
 import com.aionemu.chatserver.network.gameserver.clientpackets.CM_CS_AUTH;
 import com.aionemu.chatserver.network.gameserver.clientpackets.CM_PLAYER_AUTH;
 import com.aionemu.chatserver.network.gameserver.clientpackets.CM_PLAYER_GAG;
@@ -37,6 +38,7 @@ public class GsPacketHandlerFactory {
 					case 0x01 -> msg = new CM_PLAYER_AUTH(data, client);
 					case 0x02 -> msg = new CM_PLAYER_LOGOUT(data, client);
 					case 0x03 -> msg = new CM_PLAYER_GAG(data, client);
+					case 0x04 -> msg = new CM_BOT_MESSAGE(data, client);
 					default -> logUnknownPacket(id, state);
 				}
 				break;

@@ -20,6 +20,7 @@
 
 	<build>
 		<sourceDirectory>src</sourceDirectory>
+		<testSourceDirectory>test</testSourceDirectory>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -51,6 +52,13 @@
 			<groupId>io.netty</groupId>
 			<artifactId>netty</artifactId>
 			<version>3.10.6.Final</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<version>6.0.1</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>

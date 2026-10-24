@@ -44,6 +44,18 @@ public class ChatChannels {
 	}
 
 	/**
+	 * @return The channel a client of that race on that game server would be given for this type and meta, or null when no client has asked for one:
+	 *         a channel nobody joined has nobody to read it. Never creates one, and never answers with a channel of the other race.
+	 */
+	public static Channel find(ChannelType channelType, int gameServerId, Race race, String channelMeta) {
+		for (Channel channel : channels.values()) {
+			if (channel.matches(channelType, gameServerId, race, channelMeta))
+				return channel;
+		}
+		return null;
+	}
+
+	/**
 	 * @param identifier
 	 *          - the identifier of the requested channel, e.g. @trade_Housing_barrack1.0.AION.KOR
 	 * @return Channel with this identifier or creates and returns a new channel if no channel with such identifier exists.<br>

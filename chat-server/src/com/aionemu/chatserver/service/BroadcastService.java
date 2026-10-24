@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.aionemu.chatserver.model.ChatClient;
+import com.aionemu.chatserver.model.channel.Channel;
 import com.aionemu.chatserver.model.message.Message;
 import com.aionemu.chatserver.network.aion.serverpackets.SM_CHANNEL_MESSAGE;
 
@@ -36,6 +37,15 @@ public class BroadcastService {
 			if (client.isInChannel(message.getChannel()))
 				sendMessage(client, message);
 		}
+	}
+
+	/** @return A client reading the channel, or null when nobody does. */
+	public ChatClient anyListener(Channel channel) {
+		for (ChatClient client : clients.values()) {
+			if (client.isInChannel(channel))
+				return client;
+		}
+		return null;
 	}
 
 	public void sendMessage(ChatClient chatClient, Message message) {
