@@ -147,6 +147,18 @@ Verified by the obelisk audit: the same routes, in less time. Needs every open-w
 335 steps aside in ten minutes say the walk does not always follow the plan. Logging, for each route, how far the bot ended from where it was going and how
 long it took against what the plan said, would show where the mover and the mesh disagree. That is a measurement first, and fixes after.
 
+## Open after 24 October
+
+Measured per 30 minutes with a player in game (`bot-measures/measure.sh`), after glide links on 24 maps, stranded villages retired, refusals
+resting on give-ups or pockets no longer counted, and the walking search moved to plain arrays. Rescues fell from about 90 to 42; what is left, by priority:
+
+1. **Searches out of time in game.** Offline, the same give-ups find their route within budget; in game, under load, they run out of the 3 s. To measure
+   first: time spent waiting for one of the four route threads, the same bot asking again for a destination already refused, goals on a rock top.
+2. **Steps aside rose to 976** in 30 minutes: milestone 6 above, the walk against the plan.
+3. **Day plans given up, about 586** in 30 minutes: which step gives up, and whether it is the same place for many bots.
+4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
+5. **The obelisk audit again** (`navmesh.ps1 -Obelisks`) now that glide links are written, and retiring hunting grounds refused by three bots or more.
+
 ## Rules carried over from the dungeons
 
 - Measure before and after every change, and present the figures before starting anything long.
