@@ -187,6 +187,13 @@ public class BotMoveController extends PlayerMoveController {
 	/** The last destination abandoned for lack of headway, and until when asking for it again is refused rather than tried afresh. */
 	private volatile float noHeadwayX, noHeadwayY;
 	private volatile long noHeadwayUntil;
+	/**
+	 * Whether the refusal the bot is under rests only on searches that ran out of budget, rather than on a proof: a search that finished empty, a body
+	 * walled in or making no headway. The journey is given up either way; only a proof says anything about the spot the bot stands on, and counting
+	 * the others as proofs is what rescued bots that were not stuck: six residents of Altgard, given a hunting ground 1.8 km away whose searches
+	 * gave up, were judged to stand on ground that "leads nowhere" and teleported home 14 times in half an hour (24 October).
+	 */
+	private volatile boolean refusalUnproven, noHeadwayUnproven;
 	/** The destination the planner has been giving up on, and how many times in a row, so that a repeated give up can be read as the refusal it is. */
 	private volatile float gaveUpX, gaveUpY;
 	private volatile int gaveUpCount;
@@ -260,13 +267,15 @@ public class BotMoveController extends PlayerMoveController {
 		// caller therefore never hears the refusal, asks again on the next tick, and gets "on its way" again: two bots stood in a pocket of the map
 		// asking for the same village sixty-six times in three minutes. Remembering the refusal is what turns it into an answer.
 		if (hasNoRoute && PositionUtil.getDistance(noRouteX, noRouteY, x, y) < SAME_JOURNEY_TOLERANCE)
-			return false;
+			return false; // under the refusal it was given, proven or not
 		// A destination just abandoned for lack of headway is refused for a while, instead of being set out for again as though it were new.
 		// Giving up calls stop(), which clears hasGoal, so the identical destination asked for on the next tick no longer counted as the same
 		// journey: the blocked flag was wiped, the attempt reported a move, and the caller's anti-stuck counter went back to zero. A bot wedged two
 		// metres from its goal rode that loop for five minutes without ever being rescued, because nothing above it was ever told anything was wrong.
-		if (System.currentTimeMillis() < noHeadwayUntil && PositionUtil.getDistance(noHeadwayX, noHeadwayY, x, y) < SAME_JOURNEY_TOLERANCE)
+		if (System.currentTimeMillis() < noHeadwayUntil && PositionUtil.getDistance(noHeadwayX, noHeadwayY, x, y) < SAME_JOURNEY_TOLERANCE) {
+			refusalUnproven = noHeadwayUnproven;
 			return false;
+		}
 		// as near as it gets, already found from here: standing still is the answer, and asking the planner again is the same answer twice a second
 		if (System.currentTimeMillis() < nearestUntil && PositionUtil.getDistance(nearestForX, nearestForY, x, y) < 1
 			&& PositionUtil.getDistance(nearestAtX, nearestAtY, owner.getX(), owner.getY()) < 1) {
@@ -365,6 +374,14 @@ public class BotMoveController extends PlayerMoveController {
 	/** @return true if the last route was abandoned because the bot could not find a way through. */
 	public boolean isBlocked() {
 		return blocked;
+	}
+
+	/**
+	 * @return true when the journey just refused was refused only because its searches ran out of budget: dropped, but no evidence that the bot stands
+	 *         anywhere it cannot leave.
+	 */
+	public boolean isRefusalUnproven() {
+		return refusalUnproven;
 	}
 
 	/**
@@ -569,6 +586,7 @@ public class BotMoveController extends PlayerMoveController {
 				noRouteX = forX;
 				noRouteY = forY;
 				hasNoRoute = true;
+				refusalUnproven = answer.gaveUp(); // a long journey whose search gave up is dropped all the same, and proves nothing
 				blocked = true;
 				hasGoal = false;
 				gaveUpCount = 0;
@@ -594,6 +612,7 @@ public class BotMoveController extends PlayerMoveController {
 				noHeadwayY = forY;
 				noHeadwayUntil = System.currentTimeMillis() + GAVE_UP_MEMORY;
 				gaveUpCount = 0;
+				refusalUnproven = noHeadwayUnproven = true;
 				blocked = true;
 				hasGoal = false;
 			}
@@ -764,6 +783,7 @@ public class BotMoveController extends PlayerMoveController {
 			// low obstacle they cannot see is to ask the mesh about this exact pair of points afterwards (NavmeshTool <mapId> path x1 y1 x2 y2)
 			log.info("Bot {} is walled in at {} and gives up moving towards {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
 				describe(goalX, goalY, goalZ));
+			refusalUnproven = false;
 			blocked = true;
 			hasGoal = false;
 			return false;
@@ -855,6 +875,7 @@ public class BotMoveController extends PlayerMoveController {
 			return true;
 		}
 		log.info("Bot {} does not fly across: {}", owner.getName(), refusal);
+		refusalUnproven = false;
 		blocked = true;
 		hasGoal = false;
 		return false;
@@ -923,6 +944,7 @@ public class BotMoveController extends PlayerMoveController {
 		if (PositionUtil.getDistance(nearestForX, nearestForY, finalX, finalY) < 1 && PositionUtil.getDistance(nearestAtX, nearestAtY, owner.getX(), owner.getY()) < 1) {
 			log.info("Bot {} is still as near as it gets to {} and gives it up", owner.getName(), String.format("%.1f %.1f", finalX, finalY));
 			nearestForX = Float.NaN;
+			refusalUnproven = noHeadwayUnproven = false;
 			blocked = true;
 			noHeadwayX = finalX;
 			noHeadwayY = finalY;
@@ -1168,6 +1190,7 @@ public class BotMoveController extends PlayerMoveController {
 	public void forgetRefusals() {
 		stop();
 		blocked = false;
+		refusalUnproven = false;
 		hasNoRoute = false;
 		noHeadwayUntil = 0;
 		nearestUntil = 0;
@@ -1326,6 +1349,7 @@ public class BotMoveController extends PlayerMoveController {
 		} else if (now - lastProgressTime > PROGRESS_TIMEOUT) {
 			log.info("Bot {} makes no headway from {} towards {} and gives up moving", owner.getName(),
 				describe(owner.getX(), owner.getY(), owner.getZ()), describe(goalX, goalY, goalZ));
+			refusalUnproven = noHeadwayUnproven = false;
 			blocked = true;
 			noHeadwayX = finalX;
 			noHeadwayY = finalY;

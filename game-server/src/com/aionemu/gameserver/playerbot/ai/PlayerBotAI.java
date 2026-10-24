@@ -1606,6 +1606,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	void destinationRefused() {
 		Player bot = getOwner();
+		if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isRefusalUnproven())
+			return; // a far place whose searches gave up says nothing about this one: see BotMoveController.refusalUnproven
 		Vector3f here = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
 		if (refusedFrom == null || PositionUtil.getDistance(refusedFrom.getX(), refusedFrom.getY(), refusedFrom.getZ(), here.getX(), here.getY(),
 			here.getZ()) > SAME_SPOT) {
@@ -1691,6 +1693,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			refusedMoves = 0;
 			return true;
 		}
+		if (moveController.isRefusalUnproven())
+			return false; // searches that ran out of budget: the journey is off, and nothing is known against the spot the bot stands on
 		if (++refusedMoves >= STUCK_REFUSALS)
 			freeItself(false);
 		return false;
