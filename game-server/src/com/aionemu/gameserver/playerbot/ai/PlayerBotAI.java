@@ -723,6 +723,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// drags its shelf through the town. Its questions are answered above, and a group it joins is followed only once the store is shut.
 			if (!following && day.keepsStore()) {
 				BotStores.renewIfDue(getOwner());
+				BotSkillManager.dismissServant(getOwner()); // one called up before the stall opened, by a server older than the rule
 				return;
 			}
 			BotStores.close(getOwner());
@@ -2032,6 +2033,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		if (getOwner().getSummon() == null && getOwner().getMoveController() instanceof BotMoveController moveController
 			&& moveController.isInMove())
 			return false;
+		if (day.keepsStore())
+			return false; // a merchant on its shift has no use for one, and keepTheStall sends away one it already has
 		return BotSkillManager.trySummonServant(getOwner());
 	}
 

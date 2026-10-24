@@ -424,8 +424,8 @@ class BotDay {
 				return refuseStall("no way to its stall", STALL_UNREACHABLE_MILLIS);
 			return true;
 		}
-		if (moves.isInMove() || ai.posture().standUp() || ai.posture().sheathe() || BotSkillManager.leaveRobot(bot))
-			return true; // the engine opens no store on a body that is moving, seated, holding its weapon or in its robot
+		if (moves.isInMove() || ai.posture().standUp() || ai.posture().sheathe() || BotSkillManager.leaveRobot(bot) || BotSkillManager.dismissServant(bot))
+			return true; // the engine opens no store on a body that is moving, seated, holding its weapon or in its robot; a servant just stands about
 		if (!BotStores.open(bot))
 			return refuseStall("nothing to sell", STALL_RETRY_MILLIS);
 		return true;

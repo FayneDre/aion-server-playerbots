@@ -10,12 +10,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.aionemu.gameserver.controllers.attack.AttackStatus;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.gameobjects.Creature;
+import com.aionemu.gameserver.model.gameobjects.Summon;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
+import com.aionemu.gameserver.model.summons.UnsummonType;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.services.summons.SummonsService;
 import com.aionemu.gameserver.skillengine.change.Change;
 import com.aionemu.gameserver.skillengine.condition.ChainCondition;
 import com.aionemu.gameserver.skillengine.condition.OnFlyCondition;
@@ -320,6 +323,20 @@ public class BotSkillManager {
 			return false;
 		}
 		return cast(bot, bot, skills(bot, BotSkillManager::isSummon));
+	}
+
+	/**
+	 * Sends the servant away, as its master's own order would: a merchant at its stall has nothing for one to do, and a spirit stood beside every
+	 * spirit master's store in town (tester, 24 October). Asked again while the release is under way, the engine ignores the second order.
+	 *
+	 * @return true if the bot still had a servant.
+	 */
+	public static boolean dismissServant(Player bot) {
+		Summon servant = bot.getSummon();
+		if (servant == null)
+			return false;
+		SummonsService.release(servant, UnsummonType.COMMAND);
+		return true;
 	}
 
 	private static boolean isSummon(Player bot, SkillTemplate template) {
