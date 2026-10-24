@@ -35,11 +35,12 @@ a player outside the network gets no channels.
    name, the text. On the chat server: find the existing channel that matches (none means nobody listens, and the line is dropped), build a sender
    for the bot (`ChatClient` with no connection, its name with the suffix the real clients use), log it as any line (`CHAT_LOG`) and broadcast it.
    Small and additive on both sides, so an upstream merge stays easy.
-2. **The map identifiers**, read on 24 October: the map's `cName` from `world_maps.xml` followed by a digit, `DC11` for Pandaemonium (`DC1`),
-   `DF1A1` for Altgard (`DF1A`), `LC11` for Sanctum (`LC1`); Find Group sends `PF1`; the race is 0 Elyos, 1 Asmodian. No table needed: the identifier is built from the data. The digit is taken to be the
-   map's channel (instance) number, still to confirm by changing channel in game.
+2. **The map identifiers**, read on 24 October: the map's `cName` from `world_maps.xml` as it is, `DC1` for Pandaemonium, `DF1A` for
+   Altgard, `LC1` for Sanctum; Find Group sends `PF`; the race is 0 Elyos, 1 Asmodian. The log reads `@public_DC11.1.AION.KOR`: the digit
+   after the code is the game server's id behind an invisible separator (`@job_Assassin1.1.AION.KOR` has it too), which was first taken for a
+   channel number and cost a round in game. No table needed: the identifier is built from the data.
    The sender's name is `Name@1.1313818945` for both characters seen, an Elyos and an Asmodian, but of one account: server id, then a number
-   of unknown origin. Bots use it as it is; milestone 1 shows whether a bot's name displays and can be whispered.
+   of unknown origin. The chat server copies it from a reader of the channel rather than writing it down.
 3. **`BotChat`** in the bot module, beside `BotSpeech`: per faction, which line is due in which channel, who says it, and from what.
 4. **The speaker is a real bot of the faction, awake**, so that a name read in a channel can be whispered to, inspected and invited. Region lines
    come from bots on that map; a Trade line from the keeper whose shelf holds what it names; a Find Group line from a bot whose level the

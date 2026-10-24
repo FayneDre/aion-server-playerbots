@@ -116,9 +116,10 @@ public class ChatService {
 	 */
 	public boolean sendBotMessage(ChannelType channelType, Race race, String channelMeta, int botId, String name, String text) {
 		Channel channel = ChatChannels.find(channelType, GameServerService.GAMESERVER_ID, race, channelMeta);
-		if (channel == null)
-			return false;
-		ChatClient reader = BroadcastService.getInstance().anyListener(channel);
+		ChatClient reader = channel == null ? null : BroadcastService.getInstance().anyListener(channel);
+		if (LoggingConfig.LOG_CHANNEL_REQUEST)
+			log.info("Bot {} says in {} {} {}: channel {}, reader {}", name, channelType, race, channelMeta, channel == null ? "none" : channel.getChannelId(),
+				reader);
 		if (reader == null || reader.getIdentifier() == null)
 			return false;
 		String readerName = new String(reader.getIdentifier(), StandardCharsets.UTF_16LE);

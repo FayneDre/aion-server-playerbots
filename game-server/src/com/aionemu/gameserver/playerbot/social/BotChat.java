@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot.social;
 
 import java.util.Comparator;
+import java.util.function.Predicate;
 
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -29,20 +30,21 @@ public final class BotChat {
 	}
 
 	/** What a Find Group request carries in place of a map: the channel is one a race, whatever this says. */
-	private static final String FIND_GROUP_META = "PF1";
+	private static final String FIND_GROUP_META = "PF";
 
 	private BotChat() {
 	}
 
 	/**
-	 * @return The identifier a client in the bot's place would ask the channel for: for Region and Trade the map's client name followed by its channel
-	 *         number, {@code DC11} for the first channel of Pandaemonium ({@code DC1}), as read in game on 24 October.
+	 * @return The identifier a client in the bot's place would ask the channel for: for Region and Trade the map's client name, {@code DC1} for
+	 *         Pandaemonium, as read in game on 24 October. The digit the log shows after it, {@code @public_DC11.1.AION.KOR}, is the game server's id
+	 *         behind an invisible separator, not a channel number: {@code @job_Assassin1.1.AION.KOR} has it too.
 	 */
 	static String metaOf(Channel channel, Player bot) {
 		if (channel == Channel.FIND_GROUP)
 			return FIND_GROUP_META;
 		WorldMapTemplate map = DataManager.WORLD_MAPS_DATA.getTemplate(bot.getWorldId());
-		return map.getCName() + bot.getInstanceId();
+		return map.getCName();
 	}
 
 	/**
@@ -57,7 +59,10 @@ public final class BotChat {
 		return true;
 	}
 
-	/** @return What {@code //bot chat} answers, having had the bot nearest the caller, of its race and on its map, say a line in the channel. */
+	/**
+	 * @return What {@code //bot chat} answers, having had a bot say a line in the channel: the caller's target if it is a bot of the caller's race on
+	 *         its map, the nearest such bot otherwise.
+	 */
 	public static String command(Player admin, String channelName, String text) {
 		Channel channel = switch (channelName == null ? "" : channelName.toLowerCase()) {
 			case "region" -> Channel.REGION;
@@ -67,9 +72,11 @@ public final class BotChat {
 		};
 		if (channel == null)
 			return "Usage: //bot chat <region|trade|group> [text]";
-		Player speaker = World.getInstance().getAllPlayers().stream()
-			.filter(player -> player.isBot() && player.isSpawned() && player.getRace() == admin.getRace() && player.getWorldId() == admin.getWorldId())
-			.min(Comparator.comparingDouble(player -> PositionUtil.getDistance(player, admin))).orElse(null);
+		Predicate<Player> maySpeak = player -> player.isBot() && player.isSpawned() && player.getRace() == admin.getRace()
+			&& player.getWorldId() == admin.getWorldId();
+		Player speaker = admin.getTarget() instanceof Player target && maySpeak.test(target) ? target
+			: World.getInstance().getAllPlayers().stream().filter(maySpeak).min(Comparator.comparingDouble(player -> PositionUtil.getDistance(player, admin)))
+				.orElse(null);
 		if (speaker == null)
 			return "No bot of your faction on this map.";
 		String line = text != null ? text : "Test du canal " + channelName.toLowerCase() + ", " + speaker.getName() + " au rapport.";
