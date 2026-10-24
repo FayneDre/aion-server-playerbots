@@ -27,6 +27,10 @@ public final class BotStoreGoods {
 	 * @param rare Stocked by about one store in ten: goods a live broker showed now and then, not on every shelf.
 	 */
 	public record Good(List<Integer> ids, int fromLevel, long low, long high, int minCount, int maxCount, boolean rare) {
+
+		BotStorePricing.Range range() {
+			return new BotStorePricing.Range(low, high);
+		}
 	}
 
 	/** The enchantment stones a 4.8 player obtains, the evolution stone and the accessories' serum: the stones store's upgrade items. */
@@ -70,6 +74,12 @@ public final class BotStoreGoods {
 	public static Good of(ItemTemplate template) {
 		Good good = UPGRADE_IDS.get(template.getTemplateId());
 		return good != null ? good : COIN_IDS.get(template.getTemplateId());
+	}
+
+	/** @return The broker's range for goods the guide priced, a named good or a manastone, or null for gear, which is priced off its template. */
+	public static BotStorePricing.Range rangeOf(ItemTemplate template) {
+		Good good = of(template);
+		return good != null ? good.range() : BotManastones.rangeOf(template);
 	}
 
 	/** @return true for an upgrade item a keeper of that level stocks. */

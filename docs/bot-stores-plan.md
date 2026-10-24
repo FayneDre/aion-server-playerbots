@@ -58,23 +58,27 @@ A store has **a theme**, as a player's does, which gives it its name. The theme 
 
 | theme | lines | content |
 |---|---|---|
-| gear for a class | 6 to 8 | weapons and armour one class wears, of the keeper's faction, level within 5 of the keeper's |
+| gear for a class | 6 to 8 | weapons and armour one class wears, of the keeper's faction, from 20 levels under the keeper's to 5 over |
 | accessories | 6 to 8 | earrings, necklaces, rings, belts, same rules |
-| stones | 5 to 8 | stacks of 5 to 20 of the band's manastones, and the upgrade items of [bot-store-goods-plan.md](bot-store-goods-plan.md) |
-| coins and medals | 5 to 8 | a quarter of the keepers, the others keeping their theme: the guide's coins and medals, by keeper level |
+| stones | 5 to 8 | manastones up to ten levels over the keeper's, and the upgrade items |
+| coins and medals | 5 to 8 | the guide's coins and medals, by keeper level |
+| bric-à-brac | 6 to 8 | a third of the keepers: a little of each of the others, round the keeper's level |
+
+What each theme holds and at what price since 24 October is in [bot-store-goods-plan.md](bot-store-goods-plan.md).
 
 Enchantment stones had a theme of their own at first: they come in grades about 30 apart, so such a store held one line. Stalls are looked for
 round the floor in front of a keeper's counter (`BotVendorManager.frontOf`): round its feet, 27 of 31 Pandaemonium merchants found no stall or no way
 to it on the first start, 20 October.
 
-- **Quality** is drawn: green 70, blue 25, gold 5, never above the level's ceiling ([bot-gear.md](bot-gear.md)).
+- **Quality** is drawn: blue 70, gold 25, eternal 5, eternal from level 60 only (the guide's rule of 24 October; green 70, blue 25, gold 5
+  under the bots' own ceiling before).
 - **Only reachable, tradeable gear** (`BotGearSources`, `BotGearFit.isObtainable`, `BotEquipManager.isPlayerGear`, `ItemTemplate.isTradeable`).
 - **Stock comes into the keeper's bag** through `ItemService.addItem`, as many lines as the bag has room for, up to 8 whenever the store
   opens or is renewed. The shelf is kept in memory; after a restart, what in the bag fits the keeper's
   theme goes back on it, as freshly stocked. Left out at first, it filled four Sanctum keepers' bags after a day of restarts, and they opened nothing.
-- **Names are in French**, since the testers play in French: "Équipement templier 30-35", "Bijoux 40-45", "Pierres 25-35".
-- **Quality is drawn for gear only**: stones are drawn evenly, since most manastones are common and a draw by quality kept landing on the one
-  green among them.
+- **Names are in French**, since the testers play in French: "Équipement templier 15-40", "Bijoux 20-45", "Pierres 10-50", "Pièces et
+  médailles", "Bric-à-brac 35-45".
+- **Quality is drawn for gear only**: stones are drawn by kind (upgrade items, single, two-stat, ancient), then evenly within.
 
 ## At what price (`BotStorePricing`)
 

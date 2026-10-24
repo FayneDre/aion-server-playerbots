@@ -291,9 +291,9 @@ public final class BotStores {
 		TradePSItem[] goods = lines.stream().limit(MAX_LINES).map(item -> {
 			ItemTemplate template = item.getItemTemplate();
 			long hours = (now - shelf.stockedAt.get(item.getObjectId())) / 3_600_000L;
-			BotStoreGoods.Good good = BotStoreGoods.of(template);
-			long price = good != null ? BotStorePricing.price(good, keeper.getObjectId(), hours)
-				: BotStorePricing.price(BotStoreStock.kindOf(template), template.getPrice(), template.getItemQuality(), template.getLevel(), keeper.getObjectId(), hours);
+			BotStorePricing.Range range = BotStoreGoods.rangeOf(template);
+			long price = range != null ? BotStorePricing.price(range, keeper.getObjectId(), hours)
+				: BotStorePricing.price(template.getPrice(), template.getItemQuality(), keeper.getObjectId(), hours);
 			return new TradePSItem(item.getObjectId(), item.getItemId(), item.getItemCount(), price);
 		}).toArray(TradePSItem[]::new);
 		PrivateStoreService.createStoreWithItems(keeper, goods);

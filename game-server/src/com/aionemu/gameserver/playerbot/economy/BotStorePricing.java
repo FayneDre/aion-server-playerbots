@@ -7,20 +7,26 @@ import com.aionemu.gameserver.services.trade.PricesService;
  * What a bot's store asks for a piece.
  * <p>
  * The data's only price is the template's, which an npc sells at and buys back at a fifth of, and which is the same for a green piece and a gold one
- * of the same level. So the template gives the scale and the floor, the quality gives the worth, and the keeper's temperament and the time the piece has
- * waited move it from there. The numbers are the ones written in docs/bot-stores-plan.md, decided on 20 October.
+ * of the same level. So for gear the template gives the scale and the floor, the quality gives the worth, and the keeper's temperament and the time
+ * the piece has waited move it from there, as written in docs/bot-stores-plan.md on 20 October. Stones, coins and medals are priced from a broker's
+ * range instead ({@link Range}, docs/bot-store-goods-plan.md).
  */
 public final class BotStorePricing {
 
-	/** What a piece is, as far as its price goes: gear is priced off its template, stones off their level, since their template prices mean nothing. */
-	public enum Kind {
-		GEAR, MANASTONE, ENCHANTMENT
+	/**
+	 * A live broker's range for goods a price guide named. Stones and coins are priced from these rather than from their templates, whose prices mean
+	 * nothing: a template price of 950 put an L1 enchantment stone at a few kinah, where a broker sold it at 20 000.
+	 */
+	public record Range(long low, long high) {
+
+		/** @return The range halved as many times. */
+		Range halved(int times) {
+			return new Range(low >> times, high >> times);
+		}
 	}
 
 	/** The floor, as a share of what an npc pays: under it a player buys from the bot and sells to an npc at a profit. */
 	private static final double FLOOR_OVER_BUYBACK = 1.25;
-	/** A manastone's worth per level of the stone, and an enchantment stone's per grade, before quality. A manastone's template price is about 1000. */
-	private static final long MANASTONE_PER_LEVEL = 300, ENCHANTMENT_PER_GRADE = 50;
 	/** How far either way a keeper's temperament moves its prices. */
 	private static final double TEMPERAMENT_SPREAD = 0.15;
 	/** What a piece loses for each full hour it has waited unsold. */
@@ -50,14 +56,9 @@ public final class BotStorePricing {
 		};
 	}
 
-	/** @return The price a piece is worth before anybody's temperament or any waiting. */
-	static long fairPrice(Kind kind, long templatePrice, ItemQuality quality, int level) {
-		long fair = switch (kind) {
-			case GEAR -> Math.round(npcBuysAt(templatePrice) * qualityFactor(quality));
-			case MANASTONE -> Math.round(MANASTONE_PER_LEVEL * level * qualityFactor(quality));
-			case ENCHANTMENT -> ENCHANTMENT_PER_GRADE * level;
-		};
-		return Math.max(fair, floor(templatePrice));
+	/** @return The price a piece of gear is worth before anybody's temperament or any waiting. */
+	static long fairPrice(long templatePrice, ItemQuality quality) {
+		return Math.max(Math.round(npcBuysAt(templatePrice) * qualityFactor(quality)), floor(templatePrice));
 	}
 
 	/** @return How much dearer or cheaper than fair this keeper sells, between 0.85 and 1.15, the same every day. */
@@ -69,24 +70,23 @@ public final class BotStorePricing {
 
 	/**
 	 * @param hoursUnsold Full hours the piece has waited since it was stocked.
-	 * @return What the keeper asks for one of it.
+	 * @return What the keeper asks for one piece of gear.
 	 */
-	public static long price(Kind kind, long templatePrice, ItemQuality quality, int level, int keeperId, long hoursUnsold) {
-		double asked = fairPrice(kind, templatePrice, quality, level) * temperament(keeperId) * Math.pow(UNSOLD_HOURLY, Math.max(0, hoursUnsold));
+	public static long price(long templatePrice, ItemQuality quality, int keeperId, long hoursUnsold) {
+		double asked = fairPrice(templatePrice, quality) * temperament(keeperId) * Math.pow(UNSOLD_HOURLY, Math.max(0, hoursUnsold));
 		return Math.max(floor(templatePrice), Math.round(asked));
 	}
 
 	/**
-	 * What the keeper asks for goods a price guide named: its temperament places it in the broker's range, the cheapest keeper at the bottom and the
-	 * dearest at the top, and an unsold line falls by the hour as any other but stops at the bottom of the range. The npc floor is no floor for these:
-	 * a template price of 950 put an L1 enchantment stone at a few kinah, where a broker sold it at 20 000.
+	 * What the keeper asks for goods priced by a broker's range: its temperament places it in the range, the cheapest keeper at the bottom and the
+	 * dearest at the top, and an unsold line falls by the hour as any other but stops at the bottom of the range rather than at the npc floor.
 	 *
 	 * @param hoursUnsold Full hours the piece has waited since it was stocked.
 	 * @return What the keeper asks for one of it.
 	 */
-	public static long price(BotStoreGoods.Good good, int keeperId, long hoursUnsold) {
+	public static long price(Range range, int keeperId, long hoursUnsold) {
 		double place = (temperament(keeperId) - (1 - TEMPERAMENT_SPREAD)) / (2 * TEMPERAMENT_SPREAD);
-		double asked = (good.low() + (good.high() - good.low()) * place) * Math.pow(UNSOLD_HOURLY, Math.max(0, hoursUnsold));
-		return Math.max(good.low(), Math.round(asked));
+		double asked = (range.low() + (range.high() - range.low()) * place) * Math.pow(UNSOLD_HOURLY, Math.max(0, hoursUnsold));
+		return Math.max(range.low(), Math.round(asked));
 	}
 }

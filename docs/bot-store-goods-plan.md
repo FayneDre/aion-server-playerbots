@@ -1,6 +1,6 @@
 # Bot store goods: what a bot store sells, and at what price
 
-**Status: milestones 1 and 2 built on 24 October (`BotStoreGoods`), not watched in game; 3 to 6 not started.** Planned on 23 October from a
+**Status: milestones 1 to 5 built on 24 October (`BotStoreGoods`, `BotManastones`, `BotStoreStock`), 1 and 2 watched in game; 3 to 5 not.** Planned on 23 October from a
 price guide (broker prices remembered from live servers); the guide answered the questions on 24 October, which settled the prices and widened
 the scope to manastones and to two kinds of seller. The stores themselves are in [bot-stores-plan.md](bot-stores-plan.md).
 
@@ -108,8 +108,7 @@ Stacks: coins and medals 10 to 50, as players sell them; stones as today; ancien
 
 ## Milestones
 
-1. **Upgrade items, built.** The stones theme keeps only the eight ids above, half its lines upgrade items and half manastones (eight goods
-   against hundreds would otherwise almost never come out). A stone is stocked ten levels under the gear it is for, as the guide's manastones
+1. **Upgrade items, built.** The stones theme keeps only the eight ids above. A stone is stocked ten levels under the gear it is for, as the guide's manastones
    are: L1 from 20, L2 30, L3 45, L4 50, L5 55; All-Powerful, evolution stone and serum from 60, and in about one stocking in ten. Remnant
    stones still in a keeper's bag are thrown away when its shelf is rebuilt after a restart. `BotStoreGoodsDataTest` checks each id against
    the data.
@@ -117,8 +116,17 @@ Stacks: coins and medals 10 to 50, as players sell them; stones as today; ancien
    others keep the theme they had; stocked by the level table; Ceramium coin included, Iron coins and the three untradeable medals out. Each
    coin has an Elyos and an Asmodian copy in the data (`coin_02`, `coin_d_02`); the keeper's own is chosen by race, since the Elyos copy
    carries no marker the faction filter could read.
-3. **Manastones**: standard ones priced by stat class and level; composite ones by tier; ancient ones only at keepers of 60 and over, priced by
-   quality. A test that sorts every manastone of the data into a stat class, so a stat the table forgets shows up.
-4. **Gear and jewellery from blue up**, eternal from 60.
-5. **Dedicated and opportunist sellers**: the dedicated one a single category over every level, the opportunist a mix round its own level.
+3. **Manastones, built** (`BotManastones`), read by the stats a stone adds, not its name. Sold: green single-stat stones (stacks of 5 to 20),
+   blue two-stat ones (1 to 3) and ancient ones (1 or 2, keepers of 60 and over); common stones are not. The stats the guide did not name are
+   placed with their kind: Crit Spell with the core stats; defence, healing, the other resistances and the PvP ratios with the niche ones;
+   flight time with the trash. An ancient stone's top is ours, twice the guide's bottom (300-600k, 500k-1M, 1-2M, eternal 2-10M); one at or
+   over the guide's best four values is 10-20M. A stones store's lines: upgrade items 4 in 10, single stones 3, two-stat 2, ancient 1, since
+   the two-stat stones outnumber the single ones six to one. `BotManastonesDataTest` prices every stone of the data.
+4. **Gear and jewellery from blue up, built**: blue 70, gold 25, eternal 5 in a hundred, eternal from level 60 only. The bots' own gear ceiling
+   ([bot-gear.md](bot-gear.md)) is not the store's: the guide's rule is blue at least whatever the level.
+5. **Dedicated and opportunist sellers, built.** A third of the keepers are opportunists ("Bric-à-brac 35-45"), read off a hash of their own so
+   the others keep their theme. The **dedicated** keeper's wide choice: gear and jewels from 20 levels under its own to 5 over ("Bijoux
+   20-45"), manastones of every level up to ten over its own ("Pierres 10-50"), every coin its level allows. The **opportunist**: of eight
+   lines about 3 stones, 2 coins or medals, 2 jewels and 1 piece of gear, all within 5 levels (stones 10, coins 20) of its own, in stacks a
+   quarter of a merchant's.
 6. **Watched in game**: one store of each kind in each capital, prices read in the store window.
