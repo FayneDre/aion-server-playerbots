@@ -1,6 +1,6 @@
 # Open world navigation: plan
 
-Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 measured and ready (8 of the 12 failing obelisks freed by glide links; the open world's own rule keeps every file under 5 MB), not written on any map yet. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
+Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 written on 24 maps on 24 October (575k links), after they had been lost on 18 October; what is left is under "Open after 24 October". Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
 obelisk audit went from 151 routes found to 173 with none lost. Each milestone below is verifiable on its own, in this order, and none needs the next.
 
 ## Where it stands
