@@ -1,8 +1,8 @@
 # Bots in the chat channels
 
-**Status: milestone 0 done (24 October): the chat server is switched on and the identifiers read on three maps of both factions. The name
-suffix of a second account and the channel digit are confirmed by milestone 1 or not at all.** Planned on 24
-October at the user's request: bots speaking in the Trade, Find
+**Status: milestones 0 and 1 done (24 October): a bot's line seen in game in Region, Trade and Find Group (`//bot chat`). The name
+suffix is copied from a reader, so a second account needs nothing. Next: milestone 2, Trade.** Planned on 24 October at the user's request:
+bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
 
