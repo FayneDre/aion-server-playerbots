@@ -75,6 +75,9 @@ public class NavmeshTool {
 			Flood.run(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Integer.parseInt(args[3]));
 			return;
 		}
+		if (args.length == 3 && args[1].equals("apart")) {
+			System.exit(RegionProof.validate(Integer.parseInt(args[0]), Path.of(args[2])));
+		}
 		if (args.length == 2 && args[1].equals("reach")) {
 			System.exit(InstanceReach.run(Integer.parseInt(args[0])));
 		}
