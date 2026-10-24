@@ -2,7 +2,9 @@
 
 **Status: milestones 0 and 1 done (24 October): a bot's line seen in game in Region, Trade and Find Group (`//bot chat`). The name
 suffix is copied from a reader, so a second account needs nothing. Milestone 2, Trade, built and seen in game the same day (`BotChat`,
-`BotChatLines`); milestone 3, Find Group, and milestone 4, Region, built, not watched yet.** Planned on 24 October at the user's request:
+`BotChatLines`); milestones 3, Find Group, and 4, Region, built and liked in game the same day: in 8
+minutes with one player, 20 Region, 15 Find Group and 2 Trade lines (the player was away from the capitals). Milestone 5, an hour's watch,
+is left.** Planned on 24 October at the user's request:
 bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
