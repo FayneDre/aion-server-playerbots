@@ -1,6 +1,7 @@
 # Bots in the chat channels
 
-**Status: milestone 0 in progress (24 October): the chat server is switched on, the identifiers wait for a session in game.** Planned on 24
+**Status: milestone 0 nearly done (24 October): the chat server is switched on and the identifiers read on two Asmodian maps; the channel
+digit and the name suffix of a second account are still to confirm.** Planned on 24
 October at the user's request: bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
@@ -16,8 +17,8 @@ bots at once.
 - A client connects to the chat server itself, after the game server registers it (`CM_PLAYER_AUTH` from the game server, then the client's own
   `CM_PLAYER_AUTH`). A bot has no client, so no chat session, and no way to speak in a channel.
 - Channels are created when a client asks for one (`ChatChannels.getOrCreate`), from an identifier such as `@ trade_<meta> 1.0.AION.KOR`:
-  type, meta, game server id, race. **Trade and Find Group are one channel a faction** (`RaceChannel.matches` ignores the meta); **Region is one a
-  map and faction**, matched on the map identifier the client sends.
+  type, meta, game server id, race. **Find Group is one channel a faction** (`RaceChannel.matches` ignores the meta); **Region and Trade are
+  one a map and faction** (`RegionChannel` and `TradeChannel` match the map identifier too): a Trade line is read only on the speaker's map.
 - A message is a channel, a sender (`ChatClient`: its id, its name as `Name@suffix` in UTF-16) and a text; `BroadcastService` sends it to every
   client in the channel (`SM_CHANNEL_MESSAGE`). The sender needs no connection of its own for that.
 - The game server sends the chat server four packets: auth, player auth, gag, logout (`network/chatserver`).
@@ -34,8 +35,11 @@ a player outside the network gets no channels.
    name, the text. On the chat server: find the existing channel that matches (none means nobody listens, and the line is dropped), build a sender
    for the bot (`ChatClient` with no connection, its name with the suffix the real clients use), log it as any line (`CHAT_LOG`) and broadcast it.
    Small and additive on both sides, so an upstream merge stays easy.
-2. **The map identifiers of the Region channels**: the client names its map itself. Read once with `chatserver.log.channel.request`, then a
-   table game server map id to identifier in the bot module.
+2. **The map identifiers**, read on 24 October: the map's `cName` from `world_maps.xml` followed by a digit, `DC11` for Pandaemonium (`DC1`),
+   `DF1A1` for Altgard (`DF1A`); Find Group sends `PF1`. No table needed: the identifier is built from the data. The digit is taken to be the
+   map's channel (instance) number, still to confirm by changing channel in game.
+   The sender's name is `Name@1.1313818945` for the one account seen: server id, then a number of unknown origin, to compare with a second
+   account.
 3. **`BotChat`** in the bot module, beside `BotSpeech`: per faction, which line is due in which channel, who says it, and from what.
 4. **The speaker is a real bot of the faction, awake**, so that a name read in a channel can be whispered to, inspected and invited. Region lines
    come from bots on that map; a Trade line from the keeper whose shelf holds what it names; a Find Group line from a bot whose level the
