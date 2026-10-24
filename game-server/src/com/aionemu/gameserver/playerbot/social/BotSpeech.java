@@ -22,9 +22,8 @@ import com.aionemu.gameserver.world.World;
 /**
  * What bots say aloud in the capitals: a store keeper calling out its store, a resident asking for a group. See {@code docs/capital-life-plan.md}.
  * <p>
- * By shout only, which the players round the speaker hear: the Region, Trade and Find Group channels are the chat server's, which a bot has no
- * session with, and the user chose not to reach them (23 October). Cheap and seen at once, and noisy if overdone, so a capital has one line every
- * few minutes of each kind, never from the same bot twice in half an hour, and none while no player is there to hear it.
+ * By shout, which the players round the speaker hear; the channels are {@link BotChat}'s. Cheap and seen at once, and noisy if overdone, so a
+ * capital has one line every few minutes of each kind, never from the same bot twice in half an hour, and none while no player is there to hear it.
  */
 public final class BotSpeech {
 
@@ -115,6 +114,11 @@ public final class BotSpeech {
 		return word.isEmpty() ? word : Character.toUpperCase(word.charAt(0)) + word.substring(1);
 	}
 
+	/** @return Whether bots speak at all, by shout or in the channels ({@link BotChat}). */
+	static boolean isEnabled() {
+		return enabled;
+	}
+
 	/** @return What {@code //bot speech} answers, having switched speech on or off when asked to. */
 	public static String command(String setting) {
 		if (setting != null) {
@@ -126,6 +130,6 @@ public final class BotSpeech {
 				}
 			}
 		}
-		return enabled ? "Bots speak in the capitals: store adverts and calls for a group, by shout." : "Bots are silent.";
+		return enabled ? "Bots speak: shouts in the capitals, and lines in the chat channels." : "Bots are silent, by shout and in the channels.";
 	}
 }

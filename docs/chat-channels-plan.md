@@ -1,7 +1,8 @@
 # Bots in the chat channels
 
 **Status: milestones 0 and 1 done (24 October): a bot's line seen in game in Region, Trade and Find Group (`//bot chat`). The name
-suffix is copied from a reader, so a second account needs nothing. Next: milestone 2, Trade.** Planned on 24 October at the user's request:
+suffix is copied from a reader, so a second account needs nothing. Milestone 2, Trade, built the same day (`BotChat`, `BotChatLines`), not
+watched in game yet.** Planned on 24 October at the user's request:
 bots speaking in the Trade, Find
 Group and Region channels, with far more variety than the shouts of [capital-life-plan.md](capital-life-plan.md), which stay. The user's answers
 are at the end.
@@ -74,7 +75,10 @@ invited still answers as any bot does (`BotRequests`), but nothing brings it to 
 0. **Read the identifiers**: Region map names and the name suffix, with `chatserver.log.channel.request` on for one session (set in the
    installation's `mycs.properties`; `CM_PLAYER_AUTH` logs the `Name@suffix` a client authenticates with under the same switch).
 1. **The packet and the chat server side**, one fixed line from a bot, seen in each of the three channels in game.
-2. **Trade**: shelves and adverts, with the item link if the format allows.
+2. **Trade, built**: a keeper with its store open, of the map's faction where a player of that faction stands, offers a piece of its shelf
+   (7 lines in 10) at the price its store asks, read at the moment it speaks, or calls out its store; a line every 60 to 120 s a map and
+   faction, a keeper quiet for 20 minutes after, a piece not offered again on that map for 30. Items are named by the link `[item:id]` the
+   client draws in its own language, the form the server's own system messages use. Lines are French, around a link any client reads.
 3. **Find Group**: class, role, level and instance, for the look of it.
 4. **Region**: the small talk, then the questions answered by a second bot.
 5. **Watched in game** with the user: variety over an hour, pace, nothing absurd.
