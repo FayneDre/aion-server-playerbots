@@ -6,6 +6,66 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-24-2 — 24/10/2026
+
+Révision `425eb6f`, celle que `//bot version` affiche (game server et serveur de chat). Les marchandises des boutiques d'après le guide, et les
+bots qui parlent dans les canaux. **Aucun maillage à régénérer, aucun changement de base.** **Le serveur de chat change aussi** : il faut
+déployer son jar (`deploy.ps1` le fait seul quand il a changé) et le redémarrer.
+
+**Action requise pour voir les canaux**
+
+Le chat est désactivé d'origine. Sans ces réglages, aucun canal (Commerce, Recherche de groupe, Région) ne fonctionne, même entre joueurs :
+- dans `game-server/config/mygs.properties` : `gameserver.chatserver.enable = true`, et `gameserver.network.chat.password = <le mot de passe>`,
+  le même que `chatserver.network.gameserver.password` dans `chat-server/config/network/network.properties` (sinon le serveur de chat refuse
+  le game server : « tried to register with an invalid password ») ;
+- redémarrer le game server, puis vérifier dans son log « Connected to chat server » ;
+- un joueur hors du réseau local du serveur : régler `chatserver.network.client.connect_address` (adresse publique) dans
+  `chat-server/config/mycs.properties`, sinon il n'a pas les canaux ;
+- les canaux s'ouvrent à partir du niveau 10.
+
+**Nouveau**
+- **Bots dans les canaux**, une ligne toutes les 20 à 40 s par canal, seulement si un joueur de la faction est là pour la lire. Jamais vu de
+  l'autre faction. Un bot qui a parlé se tait 20 minutes. Chaque ligne est vraie pour celui qui la dit :
+  - **Commerce** (capitales) : un marchand annonce un objet de son étal au prix affiché à ce moment-là, ou sa boutique. Lien d'objet
+    cliquable, affiché dans la langue du client.
+  - **Recherche de groupe** : un bot libre de niveau 20+ annonce sa classe, son niveau, son rôle et un donjon de groupe de son niveau.
+  - **Région** : salutation selon l'heure, ce qu'il combat et où, sa progression vers le niveau suivant, une question sur un lieu à laquelle
+    un bot qui s'y trouve répond quelques secondes plus tard, ou une petite phrase.
+- **`//bot chat <region|trade|group> [texte]`** : fait parler le bot ciblé (ou le plus proche) dans un canal, pour tester. `//bot speech off`
+  fait aussi taire les canaux.
+- **Pierres d'enchantement du guide** : seules les L1 à L5 (166000191 à 195), la All-Powerful (166020000), la pierre d'évolution (166500002)
+  et le Holy Upgrade Serum (166030005) sont vendus. Les anciennes pierres L1 à L190 encore dans les sacs des marchands sont supprimées.
+- **Boutique « Pièces et médailles »** : pièces de bronze à céramium, médailles d'argent et d'or, selon le niveau du marchand. Ni pièces de
+  fer, ni médailles de platine, mithril ou céramium.
+- **Prix de courtier** : fourchettes du guide, le caractère du marchand le place dedans ; un invendu baisse de 10 % par heure jusqu'au bas de
+  la fourchette. Pierres de mana au prix de leur stat (et palier pour les composites), divisé par deux tous les 10 niveaux sous le 60.
+- **Pierres de mana anciennes** pour les marchands de niveau 60+. Plus de pierres de mana blanches.
+- **Équipement et bijoux bleus au minimum**, éternels à partir du niveau 60.
+- **Deux sortes de marchands** : les spécialisés, sur un large choix de niveaux (« Bijoux 20-45 », « Pierres 10-50 »), et un tiers de
+  « Bric-à-brac », un peu de tout autour de leur niveau.
+
+**Corrigé**
+- **Spiritualistes marchands** : ils n'ont plus leur esprit invoqué à côté de leur boutique.
+
+**Connu, pas encore corrigé**
+- Noms des donjons et des monstres en anglais dans les canaux (les objets, eux, sont des liens traduits par le client) ; le reste des phrases est
+  en français.
+- Un bot chuchoté ne répond pas, par décision. Inviter un bot qui cherche un groupe ne le fait pas venir s'il est loin.
+- Les marchands devenus « Bric-à-brac » gardent dans leur sac les marchandises de leur ancien thème.
+- La All-Powerful est à prix fixe (75M) : elle ne baisse pas.
+
+**À tester**
+- Les trois canaux pendant une heure : variété, rythme, une phrase fausse ou absurde (une capture ou `//bot note` suffit).
+- Une boutique « Pierres » de niveau 60+ et un « Bric-à-brac » : prix et contenu.
+
+**À faire sur chaque serveur de test**
+1. `.\tools\stop-server.ps1`, puis `git pull`.
+2. Faire les réglages de « Action requise » ci-dessus (une seule fois : ils restent, les déploiements ne touchent pas à la configuration).
+3. `.\tools\deploy.ps1 -Restart` : il compile le game server et le serveur de chat, remplace le jar du serveur de chat et redémarre le tout.
+4. En jeu, avec un personnage de niveau 10+ : `//bot chat region` en ciblant un bot ; la ligne doit apparaître dans l'onglet Région.
+
+---
+
 ## patch-2026-10-24 — 24/10/2026
 
 Révision `89b459a`, celle que `//bot version` affiche. Les capitales vivantes : visiteurs et paroles, et une navigation plus fluide pour tous les
@@ -92,87 +152,6 @@ Révision `d0daa64`. Les retours du 19, 20 et 21/10, le gladiateur et le sorcier
 - Un gladiateur et un sorcier en groupe et en solo ; `//bot gate`.
 - Prendre un vol de transport et se téléporter avec un groupe de bots.
 - Les quatre marchés de Pandaemonium et le contenu des boutiques de classe.
-
----
-
-## patch-2026-10-20 — 20/10/2026
-
-Révision `a9e9ad4`, celle que `//bot version` affiche. Les capitales vivantes : Sanctum entier, une journée de ville, des boutiques tenues par les bots.
-**Maillages à régénérer** sur un autre serveur de test, serveur arrêté : `.\tools\navmesh.ps1 110010000,120010000,710010000`, puis, depuis le
-dossier `game-server` du serveur, `java -cp "libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool 110010000 rides` (le bateau de Sanctum).
-Une fois le serveur relancé, tapez **`//bot populate 0`** en vous tenant à Sanctum (la commande remplit la carte où vous êtes) pour créer les habitants qui lui manquaient.
-
-**Corrigé**
-- **Sanctum entier :** la moitié est de la ville (Artisans Hall, Divine Road…) était coupée du reste pour les bots, ses trois ponts centraux étant
-  pris pour des murs. Sanctum passe de 62 à 116 habitants.
-- **Allers-retours inutiles :** un bot qui va acheter des potions ne va plus chez un marchand qui n'en vend pas (il y retournait toutes les 10 minutes).
-
-**Nouveau**
-- **Le bateau de l'Airship Dock :** les bots le prennent pour aller à l'Outer Dock (Dionysia Tavern) et en revenir, et le quartier sud est de
-  nouveau habité. Un bot disparaît en montant à bord et réapparaît à l'arrivée trois minutes plus tard : le bateau n'existe que dans votre client.
-- **Une journée de ville :** à Sanctum, Pandaemonium et leurs annexes, les habitants ne « chassent » plus. Par tranches de 5 minutes, ils restent
-  chez eux, s'assoient, font une course (marchand, courtier, entrepôt, artisans, téléporteur, maître des stigmas, guérisseur d'âme) ou visitent un
-  autre quartier. Chacun a ses habitudes : la même chose à la même heure chaque jour. Une quinzaine bougent à tout moment à Sanctum.
-- **Boutiques privées des bots :** la moitié des habitants de niveau 20 et plus tiennent une boutique, 6 à 10 heures par jour, à toute heure : une
-  quinzaine ouvertes en permanence à Sanctum, au plus 40 par carte. À Sanctum, elles sont dans la rue de l'Exalted Path à l'Elyos Square, devant
-  le Hall of Prosperity et dedans. Trois sortes : équipement d'une classe, bijoux, pierres (mana et enchantement), au niveau du marchand.
-- **Prix :** jamais sous ce qu'un PNJ rachète plus un quart ; vert, bleu et or plus chers ; chaque marchand un peu plus cher ou moins cher qu'un
-  autre ; un objet invendu baisse de 10 % par heure. Chaque boutique se renouvelle toutes les heures environ : les invendus de plus de deux heures
-  partent, du stock neuf arrive.
-- Un marchand en boutique refuse les duels et les échanges, et ferme boutique s'il accepte une invitation de groupe.
-
-**Connu, pas encore corrigé**
-- La terrasse du Protectors Hall reste vide : son sol manque dans le maillage.
-- Pandaemonium n'a pas encore ses zones de marché : ses boutiques sont autour des courtiers et des entrepôts, et quelques marchands n'y arrivent pas.
-- Le prix d'un objet ne monte pas quand il part vite.
-
-**À tester**
-- Acheter dans une boutique de bot, puis revenir une heure plus tard pour voir l'étalage renouvelé.
-- Passer à Sanctum la nuit : il doit rester des boutiques ouvertes.
-- Regarder un bot embarquer sur le bateau : il doit disparaître au départ.
-
----
-
-## patch-2026-10-19-3 — 19/10/2026
-
-Révision `228691f`, celle que `//bot version` affiche. Le vol avec un bot, d'après les retours du 19/10 au soir. **Aucun maillage à régénérer.**
-Une fois le serveur relancé, tapez **`//bot regear all`** en jeu pour donner leurs parchemins aux bots déjà créés.
-
-**Corrigé**
-- **Atterrissage :** quand vous vous posez, un bot de votre groupe encore en vol vole jusqu'à vous et se pose à côté de vous, au lieu de se poser
-  là où il est (loin derrière, au milieu des monstres, ou au-dessus du vide).
-- **Le vide des Abysses tue :** un bot sans sol sous lui cherche l'île la plus proche que ses points de vol lui permettent d'atteindre ; s'il n'y en
-  a aucune, il tombe et meurt, comme un joueur. Avant, il restait suspendu en l'air puis était téléporté sur vous.
-- **Combat en vol :** un bot de votre groupe qui vous suit en vol attaque la cible du groupe, ou ce qui l'attaque, depuis les airs. Un soigneur
-  reste près de vous et soigne.
-- **PvP en vol :** un bot ennemi seul ne lâche plus le combat quand vous décollez. Il vous tire dessus si un sort porte jusqu'à vous, sinon il
-  décolle et vous poursuit ; si vous vous posez, il se pose à côté de vous et le combat continue au sol.
-
-**Nouveau**
-- **Anneaux d'accélération (Abysses) :** un bot qui vous suit passe dans l'anneau que vous venez de traverser, et reçoit le même bonus de vitesse.
-- **Sérums de vent :** un bot en vol en boit un sous la moitié de ses points de vol. Les bots en achètent chez les marchands qui en vendent.
-- **Parchemins :** chaque bot reçoit à sa création et au `//bot regear` 20 parchemins de chaque sorte (course, vol, vitesse d'attaque, vitesse
-  d'incantation), les meilleurs que son niveau permet (dès le niveau 10). Il lit le parchemin de vol en décollant, celui de course quand il a plus de
-  30 m de retard sur vous à pied, et celui d'attaque ou d'incantation quand un combat de groupe commence.
-
-**Connu, pas encore corrigé**
-- En vol, un bot ne lance pas ses buffs de groupe (ils attendent le sol) ; un soin avec temps d'incantation peut être interrompu s'il se déplace.
-- Les bots qui voyagent seuls dans les Abysses ne passent pas par les anneaux.
-- La chute dans le vide à l'entrée du Terminon Training Camp n'a pas été retrouvée dans le journal : si elle se reproduit, notez l'heure et le
-  nom du bot.
-
-**À tester**
-- Prendre de l'avance en vol puis vous poser dans un camp : le bot doit se poser à côté de vous.
-- Planer depuis un rebord au-dessus du vide avec un bot en groupe.
-- Traverser les anneaux de Primum ou de Teminon avec un bot.
-- Attaquer un monstre volant ou un ennemi en vol avec un bot dans le groupe.
-- Seul, provoquer un bot ennemi puis décoller.
-- Après `//bot regear all`, regarder un bot lire ses parchemins (icônes de buff).
-
-**À faire sur chaque serveur de test**
-1. `.\tools\stop-server.ps1`, puis `git pull` et `mvn -pl game-server -am package`.
-2. `.\tools\deploy.ps1`, puis `.\tools\start-server.ps1`.
-3. En jeu : `//bot regear all`.
 
 ---
 
