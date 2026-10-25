@@ -56,11 +56,8 @@ public class BotOutfitter {
 	 * are level 21. A bot still puts on an accessory it loots before then — this governs only what it is handed at creation.
 	 */
 	private static final int ACCESSORIES_FROM_LEVEL = 20;
-	/**
-	 * Below this no wings a player can come by exist, bar the event ones: the first are the level 20 quest reward (Gauon's Wings, Darina's Wing), which
-	 * are fabled, so wings are allowed one quality over the rest of the gear until 26 or they would be out of reach exactly where they start.
-	 */
-	private static final int WINGS_FROM_LEVEL = 20;
+	/** The first wings a merchant sells, Darrinerk's and Midnight Wing Feather, are level 30. */
+	private static final int WINGS_FROM_LEVEL = 30;
 	/**
 	 * @return The best quality a character of this level is allowed to be handed.
 	 *         <p>
@@ -405,12 +402,9 @@ public class BotOutfitter {
 		for (ItemTemplate template : DataManager.ITEM_DATA.getItemTemplates()) {
 			if ((template.getItemSlot() & slotMask) == 0 || !(template.isWeapon() || template.isArmor()))
 				continue;
-			ItemQuality ceiling = bestQualityFor(bot.getLevel());
-			if (slot == ItemSlot.WINGS && ceiling == ItemQuality.RARE)
-				ceiling = ItemQuality.LEGEND; // see WINGS_FROM_LEVEL
-			if (template.getItemQuality().getQualityId() > ceiling.getQualityId())
+			if (template.getItemQuality().getQualityId() > bestQualityFor(bot.getLevel()).getQualityId())
 				continue;
-			if (slot == ItemSlot.WINGS && (!BotGearFit.isOrdinaryWing(template) || BotGearFit.wingSide(template).isAsmoOrEly()
+			if (slot == ItemSlot.WINGS && (!BotGearSources.isSoldForKinah(template) || BotGearFit.wingSide(template).isAsmoOrEly()
 				&& BotGearFit.wingSide(template) != bot.getRace()))
 				continue;
 			if (!template.isClassSpecific(bot.getPlayerClass()))

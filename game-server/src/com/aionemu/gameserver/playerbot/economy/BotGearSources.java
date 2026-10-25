@@ -1,8 +1,10 @@
 package com.aionemu.gameserver.playerbot.economy;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +27,7 @@ import com.aionemu.gameserver.model.templates.quest.QuestItems;
 import com.aionemu.gameserver.model.templates.quest.Rewards;
 import com.aionemu.gameserver.model.templates.tradelist.TradeListTemplate;
 import com.aionemu.gameserver.model.templates.tradelist.TradeListTemplate.TradeTab;
+import com.aionemu.gameserver.model.templates.tradelist.TradeNpcType;
 
 /**
  * Where a piece of gear comes from, and therefore whether a bot may have it and whose side it belongs to.
@@ -63,6 +66,8 @@ public class BotGearSources {
 
 	/** Built once, on the first question asked, because every holder it reads must have finished loading. */
 	private static volatile Map<Integer, Source> sources;
+	/** What the kinah merchants sell, built the same way. */
+	private static volatile Set<Integer> soldForKinah;
 
 	private BotGearSources() {
 	}
@@ -79,6 +84,28 @@ public class BotGearSources {
 	public static int reachableFrom(ItemTemplate template) {
 		Source source = index().get(template.getTemplateId());
 		return source == null ? 0 : source.fromLevel();
+	}
+
+	/**
+	 * @return true if a merchant sells this for kinah: a trade list of the ordinary kind, not an abyss, coin, medal or legion one. The wings a bot wears
+	 *         are only these, the three pairs of each side at 30, 40 and 50, as the tester asked: not those a quest, an instance or the abyss gives.
+	 */
+	public static boolean isSoldForKinah(ItemTemplate template) {
+		Set<Integer> found = soldForKinah;
+		if (found == null) {
+			found = new HashSet<>();
+			for (TradeListTemplate tradeList : DataManager.TRADE_LIST_DATA.getTradeListTemplate().values()) {
+				if (tradeList.getTradeNpcType() != TradeNpcType.NORMAL)
+					continue;
+				for (TradeTab tab : tradeList.getTradeTablist()) {
+					GoodsList goods = DataManager.GOODSLIST_DATA.getGoodsListById(tab.getId());
+					if (goods != null && goods.getItemIdList() != null)
+						found.addAll(goods.getItemIdList());
+				}
+			}
+			soldForKinah = found = Set.copyOf(found);
+		}
+		return found.contains(template.getTemplateId());
 	}
 
 	/**
