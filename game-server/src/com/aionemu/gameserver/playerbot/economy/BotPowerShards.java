@@ -27,8 +27,13 @@ import com.aionemu.gameserver.utils.PacketSendUtility;
  */
 public final class BotPowerShards {
 
-	/** How many a bot carries after a purchase: a few evenings' fights at one or two shards a blow. */
-	static final int SHARDS_CARRIED = 200;
+	/**
+	 * How many a bot carries after a purchase. A bot that fights burns about ten a minute (measured on 25 October), so 200 sent it back to the merchant
+	 * every twenty minutes; a thousand is an hour and a half, and at most 220 000 kinah at level 50 for a purse of a million and a half.
+	 */
+	static final int SHARDS_CARRIED = 1000;
+	/** What a purse too light for the whole order buys instead. */
+	static final int SHARDS_AT_LEAST = 200;
 	/** From when a bot buys them. The first shard of the merchants' shelves, Lesser, is level 10. */
 	private static final int FROM_LEVEL = 10;
 	/**

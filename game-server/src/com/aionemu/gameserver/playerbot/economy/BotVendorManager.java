@@ -352,8 +352,17 @@ public class BotVendorManager {
 		}
 		bought += buySerums(bot, vendor, onSale); // after the flasks, which matter more and are paid for first
 		TradeList shards = new TradeList(); // an order of their own, for the reason the serums have one
-		if (BotPowerShards.addToOrder(bot, shards, onSale) && TradeService.performBuyFromShop(vendor, bot, shards))
-			bought++;
+		if (BotPowerShards.addToOrder(bot, shards, onSale)) {
+			if (TradeService.performBuyFromShop(vendor, bot, shards))
+				bought++;
+			else { // a purse too light for the whole order still buys a few
+				TradeList fewer = new TradeList();
+				for (TradeItem item : shards.getTradeItems())
+					fewer.addItem(item.getItemId(), Math.min(item.getCount(), BotPowerShards.SHARDS_AT_LEAST));
+				if (TradeService.performBuyFromShop(vendor, bot, fewer))
+					bought++;
+			}
+		}
 		return bought;
 	}
 
