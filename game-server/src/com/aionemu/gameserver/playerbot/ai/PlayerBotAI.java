@@ -51,6 +51,7 @@ import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.playerbot.world.BotLanding;
+import com.aionemu.gameserver.playerbot.world.HarmfulGround;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
@@ -145,6 +146,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private static final long RETREAT_AVOIDED_MILLIS = 30000;
 	/** Health below which the bot waits to regenerate instead of looking for a fight. */
 	private static final int MIN_ENGAGE_HP_PERCENT = 90;
+	/** How many times a bot walks off ground that hurts it before it rests there anyway: a mesh's lava is only known by standing in it. */
+	private static final int HARMFUL_GROUND_TRIES = 3;
 	/**
 	 * Mana below which the bot sits down rather than starting another fight.
 	 * <p>
@@ -306,6 +309,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile boolean checkLanding;
 	/** When the last fight ended, 0 once the weapon has been put away. */
 	private volatile long combatEndedAt;
+	/** How many times running the bot has walked off ground that hurts it to rest, 0 once it rests on ground that does not. */
+	private int harmfulGroundTries;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
 	/** How many times each monster was given up on as out of reach, so the next time it is left alone for longer. */
@@ -1944,6 +1949,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private void recover() {
 		if (getOwner().getMoveController().isInMove())
 			return;
+		if (leaveHarmfulGround())
+			return;
 		// The class's own answer to being hurt comes before sitting down. A chanter's Healing Light is its heal and the generic rule below has been told to
 		// leave it alone, and a bot is under the engage threshold at nine tenths of its health, which is where the class's own rules would otherwise never be asked.
 		if (BotPlaybooks.of(getOwner()).tend(getOwner()))
@@ -1960,6 +1967,35 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		}
 		posture.sitDown();
+	}
+
+	/**
+	 * Walks off lava, or any ground whose material hurts the bot, before it heals or sits down there, see {@link HarmfulGround}.
+	 *
+	 * @return true if the bot is getting up or on its way.
+	 */
+	private boolean leaveHarmfulGround() {
+		Player bot = getOwner();
+		if (!HarmfulGround.isUnder(bot)) {
+			harmfulGroundTries = 0;
+			return false;
+		}
+		if (harmfulGroundTries >= HARMFUL_GROUND_TRIES)
+			return false;
+		if (posture.standUp())
+			return true;
+		harmfulGroundTries++;
+		Vector3f safe = HarmfulGround.safeGroundNear(bot);
+		BotMoveController moves = moves();
+		if (safe == null || moves == null || !tryMoveTo(moves, safe.getX(), safe.getY(), safe.getZ())) {
+			log.info("Bot {} rests on ground that hurts it at {} {} {}: no ground that does not is in reach", bot.getName(), Math.round(bot.getX()),
+				Math.round(bot.getY()), Math.round(bot.getZ()));
+			harmfulGroundTries = HARMFUL_GROUND_TRIES;
+			return false;
+		}
+		log.info("Bot {} stands on ground that hurts it at {} {} {} and walks off it to {} {} {} before resting", bot.getName(), Math.round(bot.getX()),
+			Math.round(bot.getY()), Math.round(bot.getZ()), Math.round(safe.getX()), Math.round(safe.getY()), Math.round(safe.getZ()));
+		return true;
 	}
 
 	/**
