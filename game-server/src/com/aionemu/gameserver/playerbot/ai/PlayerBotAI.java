@@ -341,6 +341,24 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** Destinations given up on in a row from {@link #refusedFrom}. */
 	private int refusedFromThere;
 	/**
+	 * How many different destinations a bot may have its searches run out of budget for, from one spot and within {@link #LOST_WINDOW_MILLIS}, before it
+	 * is lost rather than unlucky.
+	 * <p>
+	 * One search out of budget says nothing about the spot, which is why those refusals count towards no rescue. Every one of them from the same
+	 * spot does: on 25 October a bot 600 m from its village in Cygnea gave up on 21 journeys in a few minutes, a new search every five seconds, and
+	 * nothing ever brought it back.
+	 */
+	private static final int LOST_DESTINATIONS = 4;
+	private static final long LOST_WINDOW_MILLIS = 5 * 60_000L;
+	/** How far apart two destinations must be to count as different ones, in metres. */
+	private static final float SAME_DESTINATION = 10;
+	/** Where the searches out of budget being counted were asked from, null when none is, and since when. */
+	private Vector3f lostFrom;
+	private long lostSince;
+	private final List<Vector3f> lostGoals = new ArrayList<>();
+	/** The destination of the last move refused for searches out of budget, which the caller reports afterwards through {@link #destinationRefused}. */
+	private Vector3f unprovenGoal;
+	/**
 	 * Whether this fight's opening has been tried. One attempt per fight and no more: an opening burst that will not go off now is on cooldown, which
 	 * is itself the answer, and retrying it every tick would spend it halfway through the fight where most of it is wasted.
 	 */
@@ -1606,9 +1624,13 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	void destinationRefused() {
 		Player bot = getOwner();
-		if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isRefusalUnproven())
-			return; // a far place whose searches gave up says nothing about this one: see BotMoveController.refusalUnproven
 		Vector3f here = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
+		if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isRefusalUnproven()) {
+			// a far place whose searches gave up says nothing about this one (see BotMoveController.refusalUnproven), but every place doing so does
+			if (isLost(here, unprovenGoal))
+				rescueFrom(here, "had its searches run out of budget for " + LOST_DESTINATIONS + " destinations");
+			return;
+		}
 		if (refusedFrom == null || PositionUtil.getDistance(refusedFrom.getX(), refusedFrom.getY(), refusedFrom.getZ(), here.getX(), here.getY(),
 			here.getZ()) > SAME_SPOT) {
 			refusedFrom = here;
@@ -1618,6 +1640,30 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		refusedFrom = null;
 		refusedFromThere = 0;
+		rescueFrom(here, "gave up on " + ISOLATED_REFUSALS + " destinations in a row");
+	}
+
+	/** @return true once enough different destinations have been given up for want of budget from this spot lately, the count then starting over. */
+	private boolean isLost(Vector3f here, Vector3f goal) {
+		long now = System.currentTimeMillis();
+		if (lostFrom == null || now - lostSince > LOST_WINDOW_MILLIS
+			|| PositionUtil.getDistance(lostFrom.getX(), lostFrom.getY(), lostFrom.getZ(), here.getX(), here.getY(), here.getZ()) > SAME_SPOT) {
+			lostFrom = here;
+			lostSince = now;
+			lostGoals.clear();
+		}
+		if (goal != null && lostGoals.stream().noneMatch(known -> PositionUtil.getDistance(known.getX(), known.getY(), goal.getX(), goal.getY()) < SAME_DESTINATION))
+			lostGoals.add(goal);
+		if (lostGoals.size() < LOST_DESTINATIONS)
+			return false;
+		lostFrom = null;
+		lostGoals.clear();
+		return true;
+	}
+
+	/** Frees a bot whose spot is the fault, unless it is already at home, where the stranding is the home's business. */
+	private void rescueFrom(Vector3f here, String why) {
+		Player bot = getOwner();
 		Vector3f home = day.home();
 		if (home == null)
 			return;
@@ -1625,8 +1671,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Vector3f doorstep = ground != null ? ground : home;
 		if (PositionUtil.getDistance(here.getX(), here.getY(), here.getZ(), doorstep.getX(), doorstep.getY(), doorstep.getZ()) < STRANDED_AT_HOME)
 			return;
-		log.info("Bot {} gave up on {} destinations in a row from {} {} {}, so it is the spot that leads nowhere", bot.getName(), ISOLATED_REFUSALS,
-			Math.round(here.getX()), Math.round(here.getY()), Math.round(here.getZ()));
+		log.info("Bot {} {} from {} {} {}, so it is the spot that leads nowhere", bot.getName(), why, Math.round(here.getX()), Math.round(here.getY()),
+			Math.round(here.getZ()));
 		freeItself(true);
 	}
 
@@ -1693,8 +1739,10 @@ public class PlayerBotAI extends AITemplate<Player> {
 			refusedMoves = 0;
 			return true;
 		}
-		if (moveController.isRefusalUnproven())
+		if (moveController.isRefusalUnproven()) {
+			unprovenGoal = new Vector3f(x, y, z); // weighed when the caller reports the refusal, see destinationRefused
 			return false; // searches that ran out of budget: the journey is off, and nothing is known against the spot the bot stands on
+		}
 		if (++refusedMoves >= STUCK_REFUSALS)
 			freeItself(false);
 		return false;
