@@ -162,6 +162,10 @@ resting on give-ups or pockets no longer counted, and the walking search moved t
    threads then: `findVendor`, `BotErrands.leadsBack`, `BotLanding.toWalkableGround`. Those that only want a proof against a place (shop trips,
    errands) now search 300 ms at most, every stage bound by it, and the slope is read once per map instead of per neighbour: frozen time 22 s, queue
    waits 28, journey give-ups 207, refused routes 653, day plans given up 527, rescues 31. Left: `visitSpotOf`, `BotLanding` (wants a yes, kept apart).
+   Journeys given up, replayed offline with their ends logged: almost none were impossible goals; repeats came from a refused loitering spot drawn
+   again (fixed), short journeys searched three times from where the bot stood (now refused on the second), and lost bots whose every journey
+   gave up and that nothing freed (freed after four destinations in five minutes). From 237 to 210, repeats 55 to 28, route queue waits 0, 19 bots
+   freed. Next: the link search of the capitals and Reshanta, 68 and 17 of the 210, which gives up even offline.
 2. **Steps aside rose to 976** in 30 minutes: milestone 6 above, the walk against the plan.
 3. **Day plans given up, about 586** in 30 minutes: which step gives up, and whether it is the same place for many bots.
 4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
