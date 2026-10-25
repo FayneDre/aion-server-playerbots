@@ -311,8 +311,8 @@ final class GlideRoutes {
 	private static final float NEAR_TAKE_OFF = 60, NEAR_DETOUR_FACTOR = 3;
 
 	/**
-	 * @return Whether a short walk joins the body to the nearest take-off of the stretch, by {@link #nearestEdge}'s measure: a capped search, refused in
-	 *         milliseconds where the full one gives up after a second.
+	 * @return Whether a short walk joins the body to the nearest take-off of the stretch, by {@link #nearestEdge}'s measure, when it is within
+	 *         {@link #NEAR_TAKE_OFF}: a capped search, refused in milliseconds where the full one gives up after a second.
 	 */
 	private static boolean isNearestTakeOffWithinWalk(Navmesh mesh, int region, float x, float y, float z) {
 		GlideLink nearest = null;
@@ -324,7 +324,8 @@ final class GlideRoutes {
 				nearest = link;
 			}
 		}
-		if (nearest == null)
+		// near ones only: a walk capped at hundreds of metres runs to the search's node budget, and a pocket of the capitals lists eleven floors
+		if (nearest == null || Math.hypot(nearest.fromX() - x, nearest.fromY() - y) >= NEAR_TAKE_OFF)
 			return false;
 		float maxLength = (float) Math.hypot(nearest.fromX() - x, nearest.fromY() - y) * TAKE_OFF_DETOUR_FACTOR + TAKE_OFF_DETOUR_METRES;
 		return BotPathFinder.isWithinWalk(mesh, x, y, z, nearest.fromX(), nearest.fromY(), nearest.fromZ(), maxLength);
