@@ -232,6 +232,8 @@ public class BotMoveController extends PlayerMoveController {
 	/** Whether this leg goes up, which decides how it is told to the clients -- see {@link #beginFlightVelocity}. */
 	private volatile boolean flightRising;
 	private long lastFlightTell;
+	/** Set while a cast holds the walk, so that the first step after it tells the clients the walk again: see {@link #moveToDestination}. */
+	private volatile boolean heldByCast;
 	/** Side the current detour passes obstacles on, kept so successive legs go around the same way instead of oscillating. */
 	private int detourSide;
 	private double closestToGoal;
@@ -1240,6 +1242,11 @@ public class BotMoveController extends PlayerMoveController {
 		}
 	}
 
+	/** Has the next step of the walk told to the clients again, after an instant spell cast on the way: a client stops a body for those too. */
+	public void tellWalkAfterCast() {
+		heldByCast = true;
+	}
+
 	/**
 	 * Ends the walk because a cast has just begun, without cancelling the cast.
 	 * <p>
@@ -1320,7 +1327,15 @@ public class BotMoveController extends PlayerMoveController {
 		if (owner.isCasting()) {
 			updateLastMove();
 			lastProgressTime = System.currentTimeMillis(); // standing to cast is not being stuck: a four second spell and a step made "no headway" otherwise
+			heldByCast = true;
 			return;
+		}
+		// A client stops a body that casts, and is not told the walk goes on afterwards: the destination has not changed, so nothing was resent. It
+		// kept the body where it cast while the server walked it on, and the next packet, often the fight's end, showed it jump the whole way: a group's
+		// cleric was seen casting from afar and then appearing in front of the dead monster, on 25 October.
+		if (heldByCast) {
+			heldByCast = false;
+			PacketSendUtility.broadcastToSightedPlayers(owner, new SM_MOVE(owner));
 		}
 
 		float x = owner.getX();

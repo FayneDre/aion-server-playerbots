@@ -973,6 +973,8 @@ public class BotSkillManager {
 					halted ? ", stopping its walk for it" : "");
 				if (template.isCharge())
 					releaseWhenCharged(bot, skill);
+				if (!halted && bot.getMoveController() instanceof BotMoveController walking && walking.isInMove())
+					walking.tellWalkAfterCast();
 				noteAttempt(bot, template);
 				if (template.hasAnyEffect(EffectType.DISPELDEBUFF, EffectType.DISPELDEBUFFMENTAL, EffectType.DISPELDEBUFFPHYSICAL))
 					noteCleanse(target, template, MAX_DISPEL_LEVEL);
