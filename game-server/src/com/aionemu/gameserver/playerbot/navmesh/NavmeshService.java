@@ -181,6 +181,32 @@ public class NavmeshService {
 	 *         a wall stands between an edge and the ground below it.
 	 */
 	private static boolean isAirClear(Player bot, GlideLink link) {
+		// Kept a while per link and instance. The ray was cast again for every link of every chain each search tried, for every bot: on 25 October a
+		// journey of Enshar found offline in 1.7 s with one glide gave up in game after five, asked by four bots up to seven times each. The air only
+		// changes where a door opens or shuts, hence an instance in the key and an answer that expires.
+		AirKey key = new AirKey(bot.getWorldId(), bot.getInstanceId(), link);
+		long now = System.currentTimeMillis();
+		AirAnswer known = airAnswers.get(key);
+		if (known != null && known.until() > now)
+			return known.clear();
+		if (airAnswers.size() >= MAX_AIR_ANSWERS)
+			airAnswers.clear(); // instances come and go, and their answers with them: a bound rather than a sweep
+		boolean clear = castAir(bot, link);
+		airAnswers.put(key, new AirAnswer(clear, now + AIR_ANSWER_MILLIS));
+		return clear;
+	}
+
+	private record AirKey(int worldId, int instanceId, GlideLink link) {
+	}
+
+	private record AirAnswer(boolean clear, long until) {
+	}
+
+	private static final Map<AirKey, AirAnswer> airAnswers = new ConcurrentHashMap<>();
+	private static final long AIR_ANSWER_MILLIS = 10 * 60_000L;
+	private static final int MAX_AIR_ANSWERS = 50_000; // some 100 bytes each
+
+	private static boolean castAir(Player bot, GlideLink link) {
 		// raised to a body's chest, and the first and last metre forgiven: the edge's own rail and the floor it lands on are what the body is leaving and reaching
 		Vector3f met = GeoService.getInstance().getClosestCollision(bot, link.fromX(), link.fromY(), link.fromZ() + 1.5f, link.toX(), link.toY(), link.toZ() + 1.5f, false,
 			CollisionIntention.DEFAULT_COLLISIONS.getId(), IgnoreProperties.ANY_RACE);
