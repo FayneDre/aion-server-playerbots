@@ -479,11 +479,11 @@ class BotDay {
 			Vector3f counter = keeper == null ? null : BotVendorManager.frontOf(bot.getWorldId(), keeper);
 			Vector3f around = counter != null ? counter : keeper;
 			Vector3f spot = around == null ? null
-				: BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
+				: BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
 			// Wider when the counter is crowded. Pandaemonium's brokers and warehouses stand in its markets since 23 October, and with store keepers
 			// at their stalls round them nothing was free within 6 m: two errands in three refused there, and visitors sent back to their teleporter.
 			if (spot == null && around != null)
-				spot = BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
+				spot = BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
 			if (spot == null || unreachable.contains(spot)) {
 				log.info("Bot {} finds no way to the {} keeper{}, and spends the spell {}", bot.getName(), spell.service(),
 					keeper == null ? " (none on the map)" : " at " + Math.round(keeper.getX()) + " " + Math.round(keeper.getY()) + " " + Math.round(keeper.getZ()),
@@ -614,7 +614,7 @@ class BotDay {
 		// Kept, because the answer for one bot and one place is always the same: the attempts are drawn from the bot's id. Worked out afresh on every
 		// spell of loitering it was up to twelve route searches each time, and the biggest thing on the bots' threads with 800 of them awake.
 		Vector3f known = restingSpot;
-		if (known != null && restingFor != null && restingFor.equals(place) && !isCrowded(known))
+		if (known != null && restingFor != null && restingFor.equals(place) && !isTakenOrRefused(known))
 			return known;
 		// No answer is kept too, for a while: it cost the most of all, every attempt a search that ran out of its budget. On 18 October one
 		// Pandaemonium home gave none, and its residents asked again at every spell of loitering, a two second search every few seconds on the bots' threads.
@@ -626,12 +626,31 @@ class BotDay {
 		// null rather than the centre of the place: everybody shares that point, and in a village it is the obelisk. The caller reads null as "no
 		// room here, go and work instead", which is the honest answer when a place is full. Only joined to the place, not searched for again from
 		// where the bot stands as well: spotAround already asks that of the place, and a bot that cannot walk to its own home is the rescue's business.
-		Vector3f found = BotPlaces.spotAround(bot.getWorldId(), place, spread, RESTING_SPOTS, bot.getObjectId(), this::isCrowded);
+		Vector3f found = BotPlaces.spotAround(bot.getWorldId(), place, spread, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
 		restingFor = place;
 		restingSpot = found;
 		if (found == null)
 			noRestingSpotUntil = System.currentTimeMillis() + NO_RESTING_SPOT_MILLIS;
 		return found;
+	}
+
+	/** How near a refused spot another may be and share its fate: the same corner of a place, drawn again a metre off. */
+	private static final float REFUSED_SPOT_RADIUS = 3;
+
+	/**
+	 * @return true if the spot is somebody else's or one this bot was already refused.
+	 *         <p>
+	 *         A spot is drawn from the bot's own id, so the same one comes up every time, and the cached one was handed back whatever the last walk to it
+	 *         had said: on 25 October bots of Enshar went back to the loitering spot they had been refused every five minutes, three searches of five
+	 *         seconds each time, 42 of the 148 journeys given up in half an hour being such repeats.
+	 */
+	private boolean isTakenOrRefused(Vector3f spot) {
+		return isRefused(spot) || isCrowded(spot);
+	}
+
+	private boolean isRefused(Vector3f spot) {
+		return unreachable.stream()
+			.anyMatch(refused -> PositionUtil.getDistance(refused.getX(), refused.getY(), refused.getZ(), spot.getX(), spot.getY(), spot.getZ()) < REFUSED_SPOT_RADIUS);
 	}
 
 	/**
