@@ -301,7 +301,7 @@ public class BotVendorManager {
 	public static boolean needsPotions(Player bot) {
 		return bot.getLevel() >= POTION_BUYING_LEVEL
 			&& (held(bot, BotPotionManager.RESTORES_MANA) * 2 < POTIONS_CARRIED
-				|| held(bot, BotPotionManager.RESTORES_HEALTH) * 2 < POTIONS_CARRIED);
+				|| held(bot, BotPotionManager.RESTORES_HEALTH) * 2 < POTIONS_CARRIED || BotPowerShards.needsShards(bot));
 	}
 
 	private static long held(Player bot, EffectType... effects) {
@@ -350,7 +350,11 @@ public class BotVendorManager {
 				bought = TradeService.performBuyFromShop(vendor, bot, smaller) ? kinds : 0;
 			}
 		}
-		return bought + buySerums(bot, vendor, onSale); // after the flasks, which matter more and are paid for first
+		bought += buySerums(bot, vendor, onSale); // after the flasks, which matter more and are paid for first
+		TradeList shards = new TradeList(); // an order of their own, for the reason the serums have one
+		if (BotPowerShards.addToOrder(bot, shards, onSale) && TradeService.performBuyFromShop(vendor, bot, shards))
+			bought++;
+		return bought;
 	}
 
 	/** @return What a keeper sells for kinah, or nothing when it does not take kinah at all. */

@@ -31,6 +31,7 @@ import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.combat.playbook.ClassPlaybook;
+import com.aionemu.gameserver.playerbot.economy.BotPowerShards;
 import com.aionemu.gameserver.playerbot.economy.BotStores;
 import com.aionemu.gameserver.playerbot.economy.BotTrades;
 import com.aionemu.gameserver.playerbot.lifecycle.BotMapChange;
@@ -877,6 +878,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			// drawing the weapon in the same breath as standing up leaves the client blending two poses, which shows as a floating character
 			scheduleAttackTick(gettingUp ? (int) DRAW_AFTER_STAND_MILLIS : 0);
 		}
+		if (!isOwned()) // a companion's bag is its owner's, shards included
+			BotPowerShards.switchOn(getOwner());
 		log.info("Bot {} starts attacking {}", getOwner().getName(), target.getName());
 	}
 
@@ -896,6 +899,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			combatEndedAt = System.currentTimeMillis();
 			getOwner().setTarget(null);
 		}
+		BotPowerShards.switchOff(getOwner());
 	}
 
 	/** @return When the bot was last seen crowd controlled, in milliseconds, or 0 if it has not been. */
