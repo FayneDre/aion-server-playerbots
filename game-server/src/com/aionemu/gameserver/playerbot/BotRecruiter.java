@@ -27,11 +27,13 @@ import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.lifecycle.BotMapChange;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
+import com.aionemu.gameserver.playerbot.social.BotInstances;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.playerbot.social.RecruitPlan;
 import com.aionemu.gameserver.playerbot.social.RecruitPlan.Candidate;
 import com.aionemu.gameserver.services.findgroup.FindGroupService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
+import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
  * Answers a player's offer in the Instance Groups tab of the Find Group window with bots, enough of them and of the right kinds.
@@ -57,6 +59,10 @@ public final class BotRecruiter {
 	/** How long an invited recruit has to join before it is given up on and sent home. A bot answers an invitation on its next tick. */
 	private static final long JOIN_WAIT_MILLIS = 30_000;
 	private static final int GROUP_SIZE = 6;
+	/** How far from the player who invited it a bot must be to be brought to the player's side rather than left to walk there, in metres. */
+	private static final float BRING_INVITED_BEYOND = 50;
+	/** The offer of a bot a player invited by hand, which answered none. */
+	private static final int NO_OFFER = -1;
 
 	/** The bots recruited and not yet sent home, by object id. */
 	private static final Map<Integer, Recruit> recruits = new ConcurrentHashMap<>();
@@ -212,6 +218,32 @@ public final class BotRecruiter {
 		}
 		Candidate chosen = RecruitPlan.choose(candidates, role, classes, level);
 		return chosen == null ? null : byId.get(chosen.playerId());
+	}
+
+	/**
+	 * Brings a bot that has just accepted a player's invitation to the player's side, when it is on another map or more than 50 m away: a player who
+	 * invites a bot by name from across the region wants it in the group, not walking there for minutes. Kept as a recruit with no offer, so that it
+	 * goes home when it leaves the group as a recruit does, rather than staying wherever the group broke up.
+	 * <p>
+	 * Left alone, as other teleports already deal with them: a recruit, brought before it was invited; a player or a bot in an instance, which
+	 * {@code BotInstances} follows; either of them dead.
+	 */
+	public static void bringInvited(Player bot, Player inviter) {
+		if (recruits.containsKey(bot.getObjectId()) || bot.isDead() || inviter.isDead() || bot.isInInstance() || inviter.isInInstance())
+			return;
+		if (bot.getWorldId() == inviter.getWorldId() && bot.getInstanceId() == inviter.getInstanceId()
+			&& PositionUtil.getDistance(bot, inviter) <= BRING_INVITED_BEYOND)
+			return;
+		int fromWorldId = bot.getWorldId();
+		long distance = fromWorldId == inviter.getWorldId() ? Math.round(PositionUtil.getDistance(bot, inviter)) : -1;
+		// a visitor already has its way home, which ends its visit; any other bot is sent back to where it lives
+		if (!BotVisitors.isVisitor(bot)) {
+			Vector3f home = BotRoster.homeOf(bot.getName());
+			recruits.put(bot.getObjectId(), new Recruit(fromWorldId, home != null ? home : new Vector3f(bot.getX(), bot.getY(), bot.getZ()), NO_OFFER, BotRole.of(bot)));
+		}
+		BotInstances.moveBeside(bot, inviter);
+		log.info("Bot {} accepted {}'s invitation {} and is brought beside the player", bot.getName(), inviter.getName(),
+			distance < 0 ? "from map " + fromWorldId : distance + " m away");
 	}
 
 	private static void invite(Player recruiter, Player bot, BotRole role, Set<PlayerClass> classes) {

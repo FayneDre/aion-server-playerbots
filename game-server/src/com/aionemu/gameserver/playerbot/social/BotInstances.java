@@ -136,7 +136,7 @@ public final class BotInstances {
 	}
 
 	/** Teleports the bot to its own place beside the player, on floor the player's ground joins, as {@link BotSquads} does for its members. */
-	static void moveBeside(Player bot, Player player) {
+	public static void moveBeside(Player bot, Player player) {
 		Vector3f spot = BotGroupManager.formationSpot(bot, player);
 		Vector3f ground = NavmeshService.getInstance().groundNear(player.getWorldId(), spot.getX(), spot.getY(), spot.getZ());
 		if (ground != null) {

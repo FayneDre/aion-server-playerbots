@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
+import com.aionemu.gameserver.playerbot.BotRecruiter;
 
 /**
  * Answers the questions a player asks a bot: an invitation, a duel, a friend request, a trade.
@@ -104,6 +105,8 @@ public final class BotRequests {
 			if (!bot.getResponseRequester().respond(kind.messageId(), yes ? 1 : 0))
 				continue; // answered meanwhile, by a command or a cancelled request
 			log.info("Bot {} {} the {} of {}", bot.getName(), yes ? "accepts" : "refuses", kind.name().toLowerCase(), requester.getName());
+			if (yes && (kind == Kind.GROUP || kind == Kind.ALLIANCE))
+				BotRecruiter.bringInvited(bot, asker);
 			if (yes && kind == Kind.DUEL) {
 				lastDuel.put(bot.getObjectId(), new long[] { asker.getObjectId(), System.currentTimeMillis() });
 				duelled = asker;
