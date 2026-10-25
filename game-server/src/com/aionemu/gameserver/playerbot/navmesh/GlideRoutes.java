@@ -53,7 +53,26 @@ final class GlideRoutes {
 		List<Integer> starts = regionsOf(mesh, startCell), goals = regionsOf(mesh, goalCell);
 		// in a tower the cells round the body list thirty floors, and tried in the grid's order the body's own came fifth, after the budget had run out on the others: the
 		// Illuminary Obelisk measured nothing reached. The floor whose edges are nearest, height counted most, is the body's own far more often than not
-		starts.sort(Comparator.comparingDouble(region -> nearestEdge(mesh, region, startX, startY, startZ)));
+		// the landings count as well as the take-offs: a glide that comes down beside the body names its floor better than any edge does. In Sanctum the body stood
+		// where a glide from the gallery 13 m above lands, and the gallery, its edge right overhead, came first and spent the budget
+		Map<Integer, Double> nearness = new HashMap<>();
+		for (int region : starts)
+			nearness.put(region, nearestEdge(mesh, region, startX, startY, startZ));
+		for (int region : starts) {
+			for (GlideLink link : mesh.glidesFrom(region)) {
+				if (nearness.containsKey(link.toRegion()))
+					nearness.merge(link.toRegion(), Math.hypot(link.toX() - startX, link.toY() - startY) + HEIGHT_WEIGHT * Math.abs(link.toZ() - startZ), Math::min);
+			}
+		}
+		starts.sort(Comparator.comparingDouble(nearness::get));
+		// and before them all, the floors whose nearest take-off a short walk reaches. Near on paper is not near on foot: in Sanctum a bridge 21 m overhead won by
+		// four points over the street the body stood on, and the two walks to its edges, a second each to give up, spent the whole budget before the street was tried
+		Set<Integer> walkedTo = new HashSet<>();
+		for (int region : starts) {
+			if (isNearestTakeOffWithinWalk(mesh, region, startX, startY, startZ))
+				walkedTo.add(region);
+		}
+		starts.sort(Comparator.comparing((Integer region) -> !walkedTo.contains(region)));
 		goals.sort(Comparator.comparingDouble(region -> nearestEdge(mesh, region, goalX, goalY, goalZ)));
 
 		// a 4 m cell can hold the ground the body stands on and ground above or below it, so which of them is the body's own is not known: each is tried as the start in turn
@@ -216,6 +235,18 @@ final class GlideRoutes {
 					blocked.add(link);
 					continue;
 				}
+				// From where the body stands, a take-off close by that no short walk reaches is on a floor above or below, not the body's own, and the full
+				// walk took a second to give up on it: in the capitals two of them spent the whole budget, on 25 October, before the floor the body was on
+				// came up. The link is left out for the rest of this plan: the whole stretch with it was quicker still, and lost two routes in 71 whose body was on it
+				if (hop == 0 && Math.hypot(link.fromX() - x, link.fromY() - y) < NEAR_TAKE_OFF && !BotPathFinder.isWithinWalk(mesh, x, y, z, link.fromX(), link.fromY(),
+					link.fromZ(), (float) Math.hypot(link.fromX() - x, link.fromY() - y) * NEAR_DETOUR_FACTOR + TAKE_OFF_DETOUR_METRES)) {
+					undecided = true;
+					blocked.add(link);
+					if (DEBUG)
+						System.out.printf("glide:   link %.1f %.1f %.1f: no short walk to it from %.1f %.1f %.1f, left out%n", link.fromX(), link.fromY(),
+							link.fromZ(), x, y, z);
+					continue;
+				}
 				BotPathFinder.Route walk = BotPathFinder.findWalkingPath(mesh, x, y, z, link.fromX(), link.fromY(), link.fromZ(), avoid);
 				if (walk.isEmpty()) {
 					undecided |= walk.gaveUp();
@@ -272,6 +303,31 @@ final class GlideRoutes {
 		for (GlideLink link : mesh.glidesFrom(region))
 			nearest = Math.min(nearest, Math.hypot(link.fromX() - x, link.fromY() - y) + HEIGHT_WEIGHT * Math.abs(link.fromZ() - z));
 		return nearest;
+	}
+
+	/** How much longer than the straight line the walk to a floor's nearest take-off may be for the floor to count as the body's own, and the metres added. */
+	private static final float TAKE_OFF_DETOUR_FACTOR = 1.5f, TAKE_OFF_DETOUR_METRES = 20;
+	/** Below this, in metres across, the first take-off of a chain is first asked for as a short walk of at most {@link #NEAR_DETOUR_FACTOR} its distance. */
+	private static final float NEAR_TAKE_OFF = 60, NEAR_DETOUR_FACTOR = 3;
+
+	/**
+	 * @return Whether a short walk joins the body to the nearest take-off of the stretch, by {@link #nearestEdge}'s measure: a capped search, refused in
+	 *         milliseconds where the full one gives up after a second.
+	 */
+	private static boolean isNearestTakeOffWithinWalk(Navmesh mesh, int region, float x, float y, float z) {
+		GlideLink nearest = null;
+		double best = Double.POSITIVE_INFINITY;
+		for (GlideLink link : mesh.glidesFrom(region)) {
+			double score = Math.hypot(link.fromX() - x, link.fromY() - y) + HEIGHT_WEIGHT * Math.abs(link.fromZ() - z);
+			if (score < best) {
+				best = score;
+				nearest = link;
+			}
+		}
+		if (nearest == null)
+			return false;
+		float maxLength = (float) Math.hypot(nearest.fromX() - x, nearest.fromY() - y) * TAKE_OFF_DETOUR_FACTOR + TAKE_OFF_DETOUR_METRES;
+		return BotPathFinder.isWithinWalk(mesh, x, y, z, nearest.fromX(), nearest.fromY(), nearest.fromZ(), maxLength);
 	}
 
 	/** Adds a stretch of the route, leaving out its first waypoint when it only repeats where the one before ended. */
