@@ -340,22 +340,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private Vector3f refusedFrom;
 	/** Destinations given up on in a row from {@link #refusedFrom}. */
 	private int refusedFromThere;
-	/**
-	 * How many different destinations a bot may have its searches run out of budget for, from one spot and within {@link #LOST_WINDOW_MILLIS}, before it
-	 * is lost rather than unlucky.
-	 * <p>
-	 * One search out of budget says nothing about the spot, which is why those refusals count towards no rescue. Every one of them from the same
-	 * spot does: on 25 October a bot 600 m from its village in Cygnea gave up on 21 journeys in a few minutes, a new search every five seconds, and
-	 * nothing ever brought it back.
-	 */
-	private static final int LOST_DESTINATIONS = 4;
-	private static final long LOST_WINDOW_MILLIS = 5 * 60_000L;
-	/** How far apart two destinations must be to count as different ones, in metres. */
-	private static final float SAME_DESTINATION = 10;
-	/** Where the searches out of budget being counted were asked from, null when none is, and since when. */
-	private Vector3f lostFrom;
-	private long lostSince;
-	private final List<Vector3f> lostGoals = new ArrayList<>();
+	/** The destinations given up for want of budget lately, which tell a bot that is lost. */
+	private final LostTrail lostTrail = new LostTrail();
 	/** The destination of the last move refused for searches out of budget, which the caller reports afterwards through {@link #destinationRefused}. */
 	private Vector3f unprovenGoal;
 	/**
@@ -1630,8 +1616,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 			Vector3f goal = unprovenGoal;
 			unprovenGoal = null; // weighed once: a later refusal that set none must not count this one again
 			// not isolated: a bot lost on open ground is no proof that the spot leads nowhere, and a player watching does not see it vanish
-			if (isLost(here, goal))
-				rescueFrom(here, "had its searches run out of budget for " + LOST_DESTINATIONS + " destinations", false);
+			if (lostTrail.gaveUp(here, goal, System.currentTimeMillis()))
+				rescueFrom(here, "had its searches run out of budget for " + LostTrail.DESTINATIONS + " destinations", false);
 			return;
 		}
 		if (refusedFrom == null || PositionUtil.getDistance(refusedFrom.getX(), refusedFrom.getY(), refusedFrom.getZ(), here.getX(), here.getY(),
@@ -1644,24 +1630,6 @@ public class PlayerBotAI extends AITemplate<Player> {
 		refusedFrom = null;
 		refusedFromThere = 0;
 		rescueFrom(here, "gave up on " + ISOLATED_REFUSALS + " destinations in a row", true);
-	}
-
-	/** @return true once enough different destinations have been given up for want of budget from this spot lately, the count then starting over. */
-	private boolean isLost(Vector3f here, Vector3f goal) {
-		long now = System.currentTimeMillis();
-		if (lostFrom == null || now - lostSince > LOST_WINDOW_MILLIS
-			|| PositionUtil.getDistance(lostFrom.getX(), lostFrom.getY(), lostFrom.getZ(), here.getX(), here.getY(), here.getZ()) > SAME_SPOT) {
-			lostFrom = here;
-			lostSince = now;
-			lostGoals.clear();
-		}
-		if (goal != null && lostGoals.stream().noneMatch(known -> PositionUtil.getDistance(known.getX(), known.getY(), goal.getX(), goal.getY()) < SAME_DESTINATION))
-			lostGoals.add(goal);
-		if (lostGoals.size() < LOST_DESTINATIONS)
-			return false;
-		lostFrom = null;
-		lostGoals.clear();
-		return true;
 	}
 
 	/**

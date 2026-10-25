@@ -50,29 +50,7 @@ final class GlideRoutes {
 		int goalCell = BotPathFinder.coarseCellNear(mesh, mesh.cellX(goalX) / factor, mesh.cellY(goalY) / factor);
 		if (startCell == -1 || goalCell == -1)
 			return new BotPathFinder.Route(List.of(), false);
-		List<Integer> starts = regionsOf(mesh, startCell), goals = regionsOf(mesh, goalCell);
-		// in a tower the cells round the body list thirty floors, and tried in the grid's order the body's own came fifth, after the budget had run out on the others: the
-		// Illuminary Obelisk measured nothing reached. The floor whose edges are nearest, height counted most, is the body's own far more often than not
-		// the landings count as well as the take-offs: a glide that comes down beside the body names its floor better than any edge does. In Sanctum the body stood
-		// where a glide from the gallery 13 m above lands, and the gallery, its edge right overhead, came first and spent the budget
-		Map<Integer, Double> nearness = new HashMap<>();
-		for (int region : starts)
-			nearness.put(region, nearestEdge(mesh, region, startX, startY, startZ));
-		for (int region : starts) {
-			for (GlideLink link : mesh.glidesFrom(region)) {
-				if (nearness.containsKey(link.toRegion()))
-					nearness.merge(link.toRegion(), Math.hypot(link.toX() - startX, link.toY() - startY) + HEIGHT_WEIGHT * Math.abs(link.toZ() - startZ), Math::min);
-			}
-		}
-		starts.sort(Comparator.comparingDouble(nearness::get));
-		// and before them all, the floors whose nearest take-off a short walk reaches. Near on paper is not near on foot: in Sanctum a bridge 21 m overhead won by
-		// four points over the street the body stood on, and the two walks to its edges, a second each to give up, spent the whole budget before the street was tried
-		Set<Integer> walkedTo = new HashSet<>();
-		for (int region : starts) {
-			if (isNearestTakeOffWithinWalk(mesh, region, startX, startY, startZ))
-				walkedTo.add(region);
-		}
-		starts.sort(Comparator.comparing((Integer region) -> !walkedTo.contains(region)));
+		List<Integer> starts = startsInOrder(mesh, startCell, startX, startY, startZ), goals = regionsOf(mesh, goalCell);
 		goals.sort(Comparator.comparingDouble(region -> nearestEdge(mesh, region, goalX, goalY, goalZ)));
 
 		// a 4 m cell can hold the ground the body stands on and ground above or below it, so which of them is the body's own is not known: each is tried as the start in turn
@@ -303,6 +281,37 @@ final class GlideRoutes {
 		for (GlideLink link : mesh.glidesFrom(region))
 			nearest = Math.min(nearest, Math.hypot(link.fromX() - x, link.fromY() - y) + HEIGHT_WEIGHT * Math.abs(link.fromZ() - z));
 		return nearest;
+	}
+
+	/**
+	 * @return The stretches round the body, in the order a plan tries them as the body's own: first those whose nearest take-off a short walk reaches, then
+	 *         by how near their nearest take-off or landing is, a metre of height counting as {@link #HEIGHT_WEIGHT} across.
+	 */
+	static List<Integer> startsInOrder(Navmesh mesh, int startCell, float startX, float startY, float startZ) {
+		List<Integer> starts = regionsOf(mesh, startCell);
+		// in a tower the cells round the body list thirty floors, and tried in the grid's order the body's own came fifth, after the budget had run out on the others: the
+		// Illuminary Obelisk measured nothing reached. The floor whose edges are nearest, height counted most, is the body's own far more often than not
+		// the landings count as well as the take-offs: a glide that comes down beside the body names its floor better than any edge does. In Sanctum the body stood
+		// where a glide from the gallery 13 m above lands, and the gallery, its edge right overhead, came first and spent the budget
+		Map<Integer, Double> nearness = new HashMap<>();
+		for (int region : starts)
+			nearness.put(region, nearestEdge(mesh, region, startX, startY, startZ));
+		for (int region : starts) {
+			for (GlideLink link : mesh.glidesFrom(region)) {
+				if (nearness.containsKey(link.toRegion()))
+					nearness.merge(link.toRegion(), Math.hypot(link.toX() - startX, link.toY() - startY) + HEIGHT_WEIGHT * Math.abs(link.toZ() - startZ), Math::min);
+			}
+		}
+		starts.sort(Comparator.comparingDouble(nearness::get));
+		// and before them all, the floors whose nearest take-off a short walk reaches. Near on paper is not near on foot: in Sanctum a bridge 21 m overhead won by
+		// four points over the street the body stood on, and the two walks to its edges, a second each to give up, spent the whole budget before the street was tried
+		Set<Integer> walkedTo = new HashSet<>();
+		for (int region : starts) {
+			if (isNearestTakeOffWithinWalk(mesh, region, startX, startY, startZ))
+				walkedTo.add(region);
+		}
+		starts.sort(Comparator.comparing((Integer region) -> !walkedTo.contains(region)));
+		return starts;
 	}
 
 	/** How much longer than the straight line the walk to a floor's nearest take-off may be for the floor to count as the body's own, and the metres added. */

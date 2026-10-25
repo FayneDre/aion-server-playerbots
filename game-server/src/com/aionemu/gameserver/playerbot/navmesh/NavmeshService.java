@@ -155,7 +155,7 @@ public class NavmeshService {
 	 * Every landing a plan looks at is asked whether one stands near it, and on Reshanta a list held 726 to 1875 of them: each landing walked the
 	 * whole list, for every link the chains of a crossing went through. The squares leave the nine round the landing to look at.
 	 */
-	private record Dangers(long at, List<Vector3f> spots, Map<Long, List<Vector3f>> bySquare) {
+	record Dangers(long at, List<Vector3f> spots, Map<Long, List<Vector3f>> bySquare) {
 
 		static final Dangers NONE = new Dangers(0, List.of(), Map.of());
 
