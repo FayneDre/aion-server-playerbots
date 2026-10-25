@@ -4,6 +4,39 @@ Moved out of [patch-notes.md](patch-notes.md) as it neared 200 lines. Newest fir
 
 ---
 
+## patch-2026-10-24 — 24/10/2026
+
+Révision `89b459a`, celle que `//bot version` affiche. Les capitales vivantes : visiteurs et paroles, et une navigation plus fluide pour tous les
+bots. **Aucun maillage à régénérer.** La base reçoit une colonne au démarrage (`playerbot_characters.visiting_from`), ajoutée seule.
+
+**Nouveau**
+- **Visiteurs en capitale :** quand un joueur entre à Sanctum ou Pandaemonium, 15 bots d'autres régions arrivent aux téléporteurs, surtout des
+  niveaux qui manquent en ville (50+). Ils regardent autour d'eux un moment, se promènent et font leurs courses 20 à 40 minutes, puis repartent
+  par le téléporteur. Ils restent 5 minutes après le départ du dernier joueur.
+- **Paroles en capitale :** les marchands crient le nom de leur boutique, les résidents de niveau 20+ cherchent un groupe (et acceptent
+  l'invitation). Un cri toutes les quelques minutes, seulement près d'un joueur. `//bot speech off` les fait taire jusqu'au redémarrage.
+- **Ville plus animée :** les résidents passent moins de temps chez eux ou assis, plus en courses et en promenades.
+
+**Corrigé**
+- **Trajets en attente :** un bot qui attendait un long trajet le redemandait toutes les 5 secondes ; la file se bouchait et des bots restaient
+  plantés des minutes. Avec les correctifs suivants, deux fois plus de trajets trouvés, et deux fois et demie moins de recherches lentes.
+- **Ventes de butin :** plus de boutique visée à 2 ou 3 km (800 m au plus), et une boutique injoignable pour plusieurs bots est laissée de côté.
+- **Courses en ville :** vers le devant du comptoir, pas les pieds du marchand ; place cherchée plus loin quand le marchand est entouré.
+- **Promenades en ville :** vers l'étage du quartier qu'on peut atteindre, pas un toit ou un balcon.
+- **Stands :** plus au bord des ponts ni dans l'enclos des statues de téléportation, et plus alignés en rangées.
+- **Démarrage du serveur :** les bots commencent leur journée étalés sur 4 minutes au lieu de tous en même temps.
+
+**Connu, pas encore corrigé**
+- Les grilles et rambardes du décor n'existent pas pour le serveur : un bot qui passe peut encore en traverser une.
+- Environ 15 bots secourus (téléportés chez eux) toutes les 10 minutes sur l'ensemble du monde, à mesurer plus longuement.
+- Duels entre bots et familiers en attente ; les prix des pierres d'enchantement attendent les réponses au plan des marchandises.
+
+**À tester**
+- Entrer dans une capitale : les visiteurs arrivent-ils vite, se dispersent-ils, repartent-ils par le téléporteur ?
+- Écouter les cris près des marchés, et inviter un bot qui cherche un groupe.
+
+---
+
 ## patch-2026-10-23-2 — 23/10/2026
 
 Révision `7e94c45`, celle que `//bot version` affiche. Les boutiques des bots, d'après les retours du 23/10. **Aucun maillage à régénérer.**

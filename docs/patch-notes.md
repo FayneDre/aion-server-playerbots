@@ -6,6 +6,52 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-25-2 — 25/10/2026
+
+Révision `42e6876`, celle que `//bot version` affiche. Les retours du 25/10 : les soins du clerc, les bots invités de loin, les pierres de
+puissance, les ailes, un clerc qui semblait se téléporter, le repos dans la lave. **Aucun maillage à régénérer, aucun changement de base ni de
+configuration, le serveur de chat ne change pas.** Si les liens de vol plané du patch précédent n'ont pas encore été écrits, le faire d'abord.
+
+**Précision sur le chat (patch du 24/10)** : les deux réglages peuvent aussi bien se mettre dans `game-server/config/mygs.properties` que
+directement dans `config/main/gameserver.properties` (`gameserver.chatserver.enable`) et `config/network/network.properties`
+(`gameserver.network.chat.password`) : le serveur lit ces fichiers, puis `mygs.properties` par-dessus.
+
+**Amélioré**
+- **Clerc, seuils de soin corrigés d'après le retour du testeur** : le seuil le plus bas passe en premier. Tank sous 30 % : Éclair de guérison
+  (canalisation, auparavant interdite) ; sous 50 % : L'éclair de la reprise ; sous 60 % : Cure radieuse (pas si un monstre frappe le clerc).
+  Deux membres blessés : Splendeur curative sous 30 %, Splendeur de la récupération sous 50 %, Vent de guérison sous 60 %, avant le soin du tank
+  tant qu'il garde 50 %. Un clerc sous 70 % se soigne par un soin de zone. Le salut en groupe avant 31 avec le mana sous 20 %. Seul, L'éclair de
+  la reprise sur soi sous 30 %.
+- **Lumière de rajeunissement** : posée sur le templier dès le début du combat et relancée à l'expiration. Elle ne l'était jamais : elle
+  attendait que le tank passe sous 95 %.
+- **Un bot qui accepte une invitation à plus de 50 m (ou sur une autre carte) est téléporté à côté du joueur**, et rentre chez lui quand il
+  quitte le groupe. Pas pour une recrue, déjà amenée, ni en instance, ni pour un compagnon (il reste avec son propriétaire).
+- **Pierres de puissance** : les bots achètent celles des marchands avec leurs kinahs (1000, ou 200 si la bourse est légère), les équipent
+  (les deux emplacements avec une arme à deux mains ou deux armes) et activent le mode en combat. Les marchands s'arrêtent au niveau 50 : au-delà,
+  c'est la Premium.
+- **Ailes** : les bots portent à partir du niveau 30 les ailes que les marchands vendent contre des kinahs (niveaux 30, 40 et 50, de leur
+  faction), jamais celles d'une quête, d'une instance, d'une récompense ou des Abysses. Données, pas achetées. Changées en montant de niveau.
+
+**Corrigé**
+- **Un clerc semblait se téléporter devant le monstre mort** : le client arrête un personnage qui lance un sort, et le serveur reprenait la
+  marche ensuite sans le redire. Le mouvement est maintenant renvoyé après chaque sort. C'est l'explication qui colle au retour, pas une cause vue.
+- **Un bot ne se repose plus dans la lave** (ou sur tout sol qui fait des dégâts) : il marche d'abord jusqu'au sol sain le plus proche.
+
+**À tester**
+- Clerc en groupe avec un templier : Lumière de rajeunissement dès le début, Éclair de guérison qui part bien au bout de la canalisation, plus de
+  « saut » à la fin des combats.
+- Inviter un bot à plus de 50 m : il doit apparaître à côté de vous, puis rentrer chez lui une fois sorti du groupe.
+- Ailes visibles sur les bots de niveau 30 et plus ; arme qui brille et pierres qui diminuent en combat.
+- Marais de soufre (Theobomos) : un bot qui combat les pierres de lave doit sortir de la lave avant de s'asseoir.
+
+**À faire sur chaque serveur de test**
+1. `.\tools\stop-server.ps1`, puis `git pull`.
+2. `.\tools\deploy.ps1 -Restart`.
+3. Au démarrage, quelques centaines de bots mettent leurs ailes (« wears new wings » dans le log) et beaucoup partent acheter leurs pierres :
+   les trajets vers les marchands montent les dix premières minutes, puis redescendent.
+
+---
+
 ## patch-2026-10-25 — 25/10/2026
 
 Révision `d91cda5`, celle que `//bot version` affiche. La navigation des bots, mesurée toute la journée avec un joueur en jeu : moins de trajets
@@ -116,39 +162,6 @@ Le chat est désactivé d'origine. Sans ces réglages, aucun canal (Commerce, Re
 2. Faire les réglages de « Action requise » ci-dessus (une seule fois : ils restent, les déploiements ne touchent pas à la configuration).
 3. `.\tools\deploy.ps1 -Restart` : il compile le game server et le serveur de chat, remplace le jar du serveur de chat et redémarre le tout.
 4. En jeu, avec un personnage de niveau 10+ : `//bot chat region` en ciblant un bot ; la ligne doit apparaître dans l'onglet Région.
-
----
-
-## patch-2026-10-24 — 24/10/2026
-
-Révision `89b459a`, celle que `//bot version` affiche. Les capitales vivantes : visiteurs et paroles, et une navigation plus fluide pour tous les
-bots. **Aucun maillage à régénérer.** La base reçoit une colonne au démarrage (`playerbot_characters.visiting_from`), ajoutée seule.
-
-**Nouveau**
-- **Visiteurs en capitale :** quand un joueur entre à Sanctum ou Pandaemonium, 15 bots d'autres régions arrivent aux téléporteurs, surtout des
-  niveaux qui manquent en ville (50+). Ils regardent autour d'eux un moment, se promènent et font leurs courses 20 à 40 minutes, puis repartent
-  par le téléporteur. Ils restent 5 minutes après le départ du dernier joueur.
-- **Paroles en capitale :** les marchands crient le nom de leur boutique, les résidents de niveau 20+ cherchent un groupe (et acceptent
-  l'invitation). Un cri toutes les quelques minutes, seulement près d'un joueur. `//bot speech off` les fait taire jusqu'au redémarrage.
-- **Ville plus animée :** les résidents passent moins de temps chez eux ou assis, plus en courses et en promenades.
-
-**Corrigé**
-- **Trajets en attente :** un bot qui attendait un long trajet le redemandait toutes les 5 secondes ; la file se bouchait et des bots restaient
-  plantés des minutes. Avec les correctifs suivants, deux fois plus de trajets trouvés, et deux fois et demie moins de recherches lentes.
-- **Ventes de butin :** plus de boutique visée à 2 ou 3 km (800 m au plus), et une boutique injoignable pour plusieurs bots est laissée de côté.
-- **Courses en ville :** vers le devant du comptoir, pas les pieds du marchand ; place cherchée plus loin quand le marchand est entouré.
-- **Promenades en ville :** vers l'étage du quartier qu'on peut atteindre, pas un toit ou un balcon.
-- **Stands :** plus au bord des ponts ni dans l'enclos des statues de téléportation, et plus alignés en rangées.
-- **Démarrage du serveur :** les bots commencent leur journée étalés sur 4 minutes au lieu de tous en même temps.
-
-**Connu, pas encore corrigé**
-- Les grilles et rambardes du décor n'existent pas pour le serveur : un bot qui passe peut encore en traverser une.
-- Environ 15 bots secourus (téléportés chez eux) toutes les 10 minutes sur l'ensemble du monde, à mesurer plus longuement.
-- Duels entre bots et familiers en attente ; les prix des pierres d'enchantement attendent les réponses au plan des marchandises.
-
-**À tester**
-- Entrer dans une capitale : les visiteurs arrivent-ils vite, se dispersent-ils, repartent-ils par le téléporteur ?
-- Écouter les cris près des marchés, et inviter un bot qui cherche un groupe.
 
 ---
 
