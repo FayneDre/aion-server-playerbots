@@ -9,8 +9,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
-0. **Watch in game what is deployed** (`patch-2026-10-23` and `-2`): the 19 to 21 October fixes (resting before rejoining, the cleric's heals,
-   glide wings, following flights and teleports, line of sight, flight-only buffs, bots stranded in the air), the gladiator and sorcerer playbooks.
+0. **Watch in game what is deployed**: `patch-2026-10-25-2` ([feedback-2026-10-25.md](feedback-2026-10-25.md): the cleric's thresholds, bots brought
+   on an invitation, power shards, wings, the cleric's seeming jump, lava), and still `patch-2026-10-23` and `-2` (gladiator, sorcerer, flight fixes).
 1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
    Arachne's room in Theobomos Lab. Left: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long, then bosses.
 2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
@@ -31,10 +31,10 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-25 (after `patch-2026-10-24-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-10-25 (after `patch-2026-10-25-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
 for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
-routine, gear and stigmas, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with their glide links,
+routine, gear and stigmas, merchants' wings and power shards, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with their glide links,
 flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, friends and trades with a companion, steering vetted by the mesh,
 capitals with a town routine, 40 bot stores each with broker prices, visitors of every level, shouted adverts and calls for a group, bots
 speaking in the chat channels, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
@@ -163,14 +163,14 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
 ## Gaps nobody had raised
 
 - **The chat server is off upstream** (`gameserver.chatserver.enable = false`, no password): a server that wants channels, a tester's own
-  included, sets both in its `mygs.properties`.
+  included, sets both in its `mygs.properties` (or in `gameserver.properties` and `network.properties`).
 - **Bots do not yield to real players.** `BotTargetRegistry` stops two bots claiming one mob, but nothing yields to a person. Forty bots stripping a
   spawn or a gathering node make a worse server than none; this is a design rule to settle before a settled 2000.
-- **Gear does not keep up.** Bots are dressed at creation (enchanted, socketed, with stigmas) and wear what they loot; crossing 1 to 65 needs buying
-  or crafting. Existing gunners keep their cannon until `//bot regear all` (two pistols since 17 October).
+- **Gear does not keep up.** Bots are dressed at creation (enchanted, socketed, with stigmas) and wear what they loot; only wings are renewed with
+  the level (25 October); crossing 1 to 65 needs buying or crafting. Existing gunners keep their cannon until `//bot regear all` (two pistols since 17 October).
 - **Ambient flights stall on fly-zone maps**: "flight has not moved, its leg is handed over again" comes up 14 to 100 times in forty minutes, mostly
   at heights of 100 to 300 on the open world maps. Older than the Abyss work; not looked into.
-- **352 tests on the bot module**, run on every deploy. The combat half of `PlayerBotAI` is still untested and unsplit, so a mistake there is
+- **397 tests on the game server**, run on every deploy. The combat half of `PlayerBotAI` is still untested and unsplit, so a mistake there is
   silent. Decisions written as pure functions of a situation record are what made the suites possible; keep writing them that way.
 
 ## Known limits, in order of how much they will bite
