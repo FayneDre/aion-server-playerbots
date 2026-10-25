@@ -25,6 +25,7 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MOVE;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_PLAYER_STATE;
 import com.aionemu.gameserver.services.teleport.TeleportService;
+import com.aionemu.gameserver.model.templates.zone.ZoneType;
 import com.aionemu.gameserver.playerbot.combat.BotRestManager;
 import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
 import com.aionemu.gameserver.playerbot.BotScheduler;
@@ -582,11 +583,17 @@ public class BotMoveController extends PlayerMoveController {
 				// ordinary refused journey again.
 				// and only for somewhere actually worth flying to: a proof is a proof at any distance, but a bot that cannot route to a spot under
 				// its own feet has a problem that leaving the ground does not solve
-				if (PositionUtil.getDistance(owner.getX(), owner.getY(), forX, forY) >= BotFlight.MIN_JOURNEY
-					&& BotFlight.tryFlyTo(owner, new Vector3f(forX, forY, finalZ))) {
-					hasGoal = false; // the flight owns the body now, and gives it back on the ground
-					gaveUpCount = 0;
-					return;
+				if (PositionUtil.getDistance(owner.getX(), owner.getY(), forX, forY) >= BotFlight.MIN_JOURNEY) {
+					String notFlying = BotFlight.flyToOrWhyNot(owner, new Vector3f(forX, forY, finalZ));
+					if (notFlying == null) {
+						hasGoal = false; // the flight owns the body now, and gives it back on the ground
+						gaveUpCount = 0;
+						return;
+					}
+					// said where flying is the rule: on Reshanta 33 journeys between islands gave up in half an hour on 25 October, and why none was flown
+					// was only ever said at debug
+					if (owner.isInsideZoneType(ZoneType.FLY))
+						log.info("Bot {} does not fly to {} {} {} instead: {}", owner.getName(), Math.round(forX), Math.round(forY), Math.round(finalZ), notFlying);
 				}
 				noRouteX = forX;
 				noRouteY = forY;
