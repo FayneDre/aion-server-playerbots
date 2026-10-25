@@ -165,7 +165,10 @@ resting on give-ups or pockets no longer counted, and the walking search moved t
    Journeys given up, replayed offline with their ends logged: almost none were impossible goals; repeats came from a refused loitering spot drawn
    again (fixed), short journeys searched three times from where the bot stood (now refused on the second), and lost bots whose every journey
    gave up and that nothing freed (freed after four destinations in five minutes). From 237 to 210, repeats 55 to 28, route queue waits 0, 19 bots
-   freed. Next: the link search of the capitals and Reshanta, 68 and 17 of the 210, which gives up even offline.
+   freed. Next: the link search of the capitals and Reshanta, 68 and 17 of the 210, which gives up even offline. In the capitals the glide plan took
+   the floor above the body for its own (an edge right overhead) and spent its budget walking up to it: landings beside the body now name its floor too,
+   near take-offs are tried by a short walk first. Offline 17 of 71 hard journeys found before, 37 after; in game the capitals went from 68 to 32
+   give-ups and all maps from 210 to 171. Reshanta (29) is next: its crossings between islands.
 2. **Steps aside rose to 976** in 30 minutes: milestone 6 above, the walk against the plan.
 3. **Day plans given up, about 586** in 30 minutes: which step gives up, and whether it is the same place for many bots.
 4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
