@@ -1627,8 +1627,11 @@ public class PlayerBotAI extends AITemplate<Player> {
 		Vector3f here = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
 		if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isRefusalUnproven()) {
 			// a far place whose searches gave up says nothing about this one (see BotMoveController.refusalUnproven), but every place doing so does
-			if (isLost(here, unprovenGoal))
-				rescueFrom(here, "had its searches run out of budget for " + LOST_DESTINATIONS + " destinations");
+			Vector3f goal = unprovenGoal;
+			unprovenGoal = null; // weighed once: a later refusal that set none must not count this one again
+			// not isolated: a bot lost on open ground is no proof that the spot leads nowhere, and a player watching does not see it vanish
+			if (isLost(here, goal))
+				rescueFrom(here, "had its searches run out of budget for " + LOST_DESTINATIONS + " destinations", false);
 			return;
 		}
 		if (refusedFrom == null || PositionUtil.getDistance(refusedFrom.getX(), refusedFrom.getY(), refusedFrom.getZ(), here.getX(), here.getY(),
@@ -1640,7 +1643,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		refusedFrom = null;
 		refusedFromThere = 0;
-		rescueFrom(here, "gave up on " + ISOLATED_REFUSALS + " destinations in a row");
+		rescueFrom(here, "gave up on " + ISOLATED_REFUSALS + " destinations in a row", true);
 	}
 
 	/** @return true once enough different destinations have been given up for want of budget from this spot lately, the count then starting over. */
@@ -1661,8 +1664,12 @@ public class PlayerBotAI extends AITemplate<Player> {
 		return true;
 	}
 
-	/** Frees a bot whose spot is the fault, unless it is already at home, where the stranding is the home's business. */
-	private void rescueFrom(Vector3f here, String why) {
+	/**
+	 * Frees a bot whose spot is the fault, unless it is already at home, where the stranding is the home's business.
+	 *
+	 * @param isolated Whether the spot is proved to lead nowhere, which lifts the bot even in a player's sight; see {@link #freeItself}.
+	 */
+	private void rescueFrom(Vector3f here, String why, boolean isolated) {
 		Player bot = getOwner();
 		Vector3f home = day.home();
 		if (home == null)
@@ -1673,7 +1680,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return;
 		log.info("Bot {} {} from {} {} {}, so it is the spot that leads nowhere", bot.getName(), why, Math.round(here.getX()), Math.round(here.getY()),
 			Math.round(here.getZ()));
-		freeItself(true);
+		freeItself(isolated);
 	}
 
 	/**
