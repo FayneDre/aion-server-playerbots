@@ -96,7 +96,7 @@ public class BotPlaces {
 				continue;
 			// joined to the place itself: a ledge or the far side of a wall is perfectly good ground that leads nowhere, and a resident put on one
 			// spends its life asking for a route out
-			if (navmesh.canReach(worldId, ground.getX(), ground.getY(), ground.getZ(), place.getX(), place.getY(), place.getZ()))
+			if (navmesh.canReachNearby(worldId, ground.getX(), ground.getY(), ground.getZ(), place.getX(), place.getY(), place.getZ()))
 				return ground;
 		}
 		return null;

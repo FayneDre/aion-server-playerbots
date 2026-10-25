@@ -250,6 +250,25 @@ public class NavmeshService {
 		return !route.isEmpty();
 	}
 
+	/** How much longer than the straight line a walk to a nearby spot may be, and the metres added for the corner of a house or a fence. */
+	private static final float NEARBY_DETOUR_FACTOR = 3, NEARBY_DETOUR_METRES = 20;
+
+	/**
+	 * Asks whether a spot near another is joined to it by a short walk: the question asked of a spot chosen round a place or an anchor.
+	 * <p>
+	 * {@link #canReach} answers it too, but proves a no only after the rough grid and the glides as well, seconds of search on a thread that runs other
+	 * bots. A spot reachable only by a detour several times its distance, or by a glide, is not one to post a bot on, and is refused here at once.
+	 *
+	 * @return true if a walk of at most three times the distance, plus twenty metres, joins the two, or if the map has no mesh to ask.
+	 */
+	public boolean canReachNearby(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return true;
+		float maxLength = (float) Math.hypot(toX - fromX, toY - fromY) * NEARBY_DETOUR_FACTOR + NEARBY_DETOUR_METRES;
+		return BotPathFinder.isWithinWalk(mesh, fromX, fromY, fromZ, toX, toY, toZ, maxLength);
+	}
+
 	/** A search that took longer than this is logged with its ends, which is what finding out why takes ({@code NavmeshTool <map> path}). */
 	private static final long SLOW_SEARCH_MILLIS = 1000;
 

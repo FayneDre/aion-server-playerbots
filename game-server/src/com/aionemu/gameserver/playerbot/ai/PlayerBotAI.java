@@ -1672,7 +1672,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 			return anchor; // no mesh for this map, or nothing walkable within reach of the offset
 		// Standable is not reachable: the far side of a wall is good ground that joins nothing, and a bot posted on one spends its life asking for a
 		// way out. The same question BotPlaces already asks when it scatters villagers around a village centre.
-		return navmesh.canReach(getOwner().getWorldId(), anchorX, anchorY, anchorZ, ground.getX(), ground.getY(), ground.getZ()) ? ground : anchor;
+		return navmesh.canReachNearby(getOwner().getWorldId(), anchorX, anchorY, anchorZ, ground.getX(), ground.getY(), ground.getZ()) ? ground : anchor;
 	}
 
 	/**

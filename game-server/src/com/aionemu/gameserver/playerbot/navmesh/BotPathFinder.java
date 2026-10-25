@@ -701,12 +701,30 @@ public class BotPathFinder {
 		return true;
 	}
 
+	/**
+	 * Whether a walk no longer than {@code maxLength} joins two spots, on foot and on the fine grid alone.
+	 * <p>
+	 * It answers the question asked of a spot near a place: is it joined to it, or is it the far side of a fence. Asked through {@link #findPath},
+	 * that question tried the fine grid, the rough grid and the glides before it could say no, and on 25 October some 300 of them took three and a half
+	 * seconds each, on the threads that run every bot. With a ceiling on the length, ground that cannot be reached within it is never explored, so a
+	 * spot round a long detour is refused in milliseconds, which is the answer the caller wanted for it anyway.
+	 */
+	public static boolean isWithinWalk(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, float maxLength) {
+		return !findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, SNAP_RANGE, Avoidance.NONE, maxLength).isEmpty();
+	}
+
 	private static Route findDirectPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid) {
 		return findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, SNAP_RANGE, avoid);
 	}
 
 	private static Route findDirectPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ,
 		float goalSnapRange, Avoidance avoid) {
+		return findDirectPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, goalSnapRange, avoid, Float.MAX_VALUE);
+	}
+
+	/** @param maxLength No cell is queued whose walk from the start plus its straight line to the goal is longer: the heuristic never overestimates. */
+	private static Route findDirectPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ,
+		float goalSnapRange, Avoidance avoid, float maxLength) {
 		long start = nodeAt(mesh, startX, startY, startZ, SNAP_RANGE), goal = nodeAt(mesh, goalX, goalY, goalZ, goalSnapRange);
 		if (start == -1 || goal == -1)
 			return new Route(List.of(), false);
@@ -741,8 +759,11 @@ public class BotPathFinder {
 					float known = space.cost(next);
 					if (!Float.isNaN(known) && known <= stepCost)
 						continue;
+					float priority = stepCost + heuristic(mesh, nextX, nextY, goalX, goalY);
+					if (priority > maxLength)
+						continue;
 					space.reach(next, stepCost, current);
-					space.push(next, stepCost + heuristic(mesh, nextX, nextY, goalX, goalY));
+					space.push(next, priority);
 				}
 			}
 		}

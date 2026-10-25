@@ -111,6 +111,16 @@ class BotPathFinderTest {
 	}
 
 	@Test
+	void aSpotBehindAWallIsWithinWalkOnlyWhenTheWayRoundFitsTheLength() throws IOException {
+		// the same wall, its gap at y=50: going round from 20 to 44 m is a walk of about 82 m for 24 m in a straight line
+		Navmesh walled = meshOf((x, y) -> wall(x, y) && y < 100 ? SOLID : OPEN);
+
+		assertTrue(BotPathFinder.isWithinWalk(walled, 20, 10, HEIGHT, 44, 10, HEIGHT, 100));
+		assertFalse(BotPathFinder.isWithinWalk(walled, 20, 10, HEIGHT, 44, 10, HEIGHT, 60), "the way round is longer than allowed");
+		assertTrue(BotPathFinder.isWithinWalk(walled, 20, 10, HEIGHT, 25, 40, HEIGHT, 35), "open ground on the same side");
+	}
+
+	@Test
 	void provesThereIsNoWayAcrossAWallWithNoGap() throws IOException {
 		Navmesh sealed = meshOf((x, y) -> wall(x, y) ? SOLID : OPEN);
 
