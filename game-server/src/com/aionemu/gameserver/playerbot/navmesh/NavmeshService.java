@@ -82,11 +82,13 @@ public class NavmeshService {
 		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
 		long began = System.currentTimeMillis();
 		long cpuBegan = cpuTime();
+		// read once: off the tick thread the bot walks on while the search runs, and the log must name the start the search was given
+		float startX = bot.getX(), startY = bot.getY(), startZ = bot.getZ();
 		List<Vector3f> dangers = dangersFor(bot);
 		// landings only: kept away from on foot as well, even at three times the cost, the search gave up after seven seconds on a journey of 900 m it
 		// planned in under one without them. The Abyss is dangerous to walk, and a bot meets what it meets; it does not fly down into it
 		Map<GlideLink, Boolean> landings = new HashMap<>();
-		BotPathFinder.Route route = BotPathFinder.findPath(mesh, bot.getX(), bot.getY(), bot.getZ(), goalX, goalY, goalZ, avoid, new GlideRoutes.AirTest() {
+		BotPathFinder.Route route = BotPathFinder.findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, new GlideRoutes.AirTest() {
 
 			@Override
 			public boolean isClear(GlideLink link) {
@@ -115,8 +117,10 @@ public class NavmeshService {
 		}
 		long took = System.currentTimeMillis() - began;
 		if (took >= SLOW_SEARCH_MILLIS)
-			log.info("Journey search for {} on map {} took {} ms ({}, {} ms of processor, on {})", bot.getName(), bot.getWorldId(), took,
-				!route.isEmpty() ? "found" : route.gaveUp() ? "gave up" : "no way", (cpuTime() - cpuBegan) / 1_000_000, Thread.currentThread().getName());
+			log.info("Journey search for {} on map {} took {} ms ({}, {} ms of processor, on {}, wings {}, {} creature(s) kept away from, avoiding {}): NavmeshTool {} path {} {} {} {} {} {}",
+				bot.getName(), bot.getWorldId(), took, !route.isEmpty() ? "found" : route.gaveUp() ? "gave up" : "no way", (cpuTime() - cpuBegan) / 1_000_000,
+				Thread.currentThread().getName(), canGlide, dangers.size(), avoid != Avoidance.NONE, bot.getWorldId(), String.format("%.1f", startX),
+				String.format("%.1f", startY), String.format("%.1f", startZ), String.format("%.1f", goalX), String.format("%.1f", goalY), String.format("%.1f", goalZ));
 		return route;
 	}
 
