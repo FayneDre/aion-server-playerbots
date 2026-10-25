@@ -16,6 +16,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
+import com.aionemu.gameserver.playerbot.economy.BotOutfitter;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.BotVisitors;
@@ -58,6 +59,8 @@ class BotErrands {
 	private volatile int pendingCorpse;
 	/** When the bot may next bother with its bag, after finding nothing in it that it could actually put on. */
 	private volatile long dressingIdleUntil;
+	/** The level the bot's wings were last brought up to, so that they are looked at again once a level is gained, and not on every tick. */
+	private int wingsCheckedAtLevel;
 	/** Shop spots that turned out to have no shop keeper standing on them, so the next trip goes somewhere else. */
 	private final Map<Vector3f, Long> ignoredVendors = new ConcurrentHashMap<>();
 	/**
@@ -154,6 +157,11 @@ class BotErrands {
 		// drops there seldom beats what it wears, and five seconds of standing still with the weapon away is five seconds the group goes without it.
 		if (bot.getCurrentTeam() != null && (bot.isInInstance() || bot.isInState(CreatureState.WEAPON_EQUIPPED)))
 			return false;
+		if (bot.getLevel() != wingsCheckedAtLevel && !bot.isFlying()) {
+			wingsCheckedAtLevel = bot.getLevel();
+			if (BotOutfitter.renewWings(bot))
+				log.info("Bot {} wears new wings for level {}", bot.getName(), bot.getLevel());
+		}
 		// A piece can score higher and still be unwearable for good — a mace a priest has no mastery for, a piece for the other race — and nothing
 		// short of trying says so. Without this the bot would stop and sheathe on every tick of its life for one such item sitting in its bag.
 		if (System.currentTimeMillis() < dressingIdleUntil || !BotEquipManager.hasUpgradeWaiting(bot))

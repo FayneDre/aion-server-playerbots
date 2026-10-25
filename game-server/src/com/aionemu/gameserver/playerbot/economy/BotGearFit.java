@@ -38,6 +38,40 @@ public class BotGearFit {
 	}
 
 	/**
+	 * Wings a player of this server could come by, among those {@link #isObtainable} already lets through: not the cash shop's ({@code cash} in the
+	 * model, a quest reward all the same), not a legion's, which its legion has to have earned, and not the pieces simply named "Test Item".
+	 */
+	static boolean isOrdinaryWing(ItemTemplate template) {
+		if ("Test Item".equals(template.getName()))
+			return false;
+		if (template.getCName() == null)
+			return true;
+		for (String segment : template.getCName().split("_")) {
+			if (segment.equalsIgnoreCase("cash") || segment.equalsIgnoreCase("legion") || segment.equalsIgnoreCase("shop"))
+				return false;
+		}
+		return true;
+	}
+
+	/**
+	 * @return Whose side a pair of wings is, by its model: {@code light} or {@code l} for the Elyos, {@code dark} or {@code d} for the Asmodians, and
+	 *         the gear's own markers otherwise. Most wings name their side only that way, which the vendor lists, sold on both sides, do not settle.
+	 */
+	static Race wingSide(ItemTemplate template) {
+		if (template.getCName() != null) {
+			for (String segment : template.getCName().split("_")) {
+				switch (segment.toLowerCase()) {
+					case "light", "l", "n":
+						return Race.ELYOS;
+					case "dark", "d":
+						return Race.ASMODIANS;
+				}
+			}
+		}
+		return Race.PC_ALL;
+	}
+
+	/**
 	 * Tells gear a character could really be handed from gear that merely exists in the table.
 	 * <p>
 	 * Four kinds are turned away, and each of them was reported from in game before it was excluded here:

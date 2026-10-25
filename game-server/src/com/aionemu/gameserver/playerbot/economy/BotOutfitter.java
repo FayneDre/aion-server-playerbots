@@ -57,6 +57,11 @@ public class BotOutfitter {
 	 */
 	private static final int ACCESSORIES_FROM_LEVEL = 20;
 	/**
+	 * Below this no wings a player can come by exist, bar the event ones: the first are the level 20 quest reward (Gauon's Wings, Darina's Wing), which
+	 * are fabled, so wings are allowed one quality over the rest of the gear until 26 or they would be out of reach exactly where they start.
+	 */
+	private static final int WINGS_FROM_LEVEL = 20;
+	/**
 	 * @return The best quality a character of this level is allowed to be handed.
 	 *         <p>
 	 *         This was {@code RARE} in a constant, on the grounds that a village of people in heroic armour reads as a costume party. True of a
@@ -123,6 +128,8 @@ public class BotOutfitter {
 					worn++;
 			}
 		}
+		if (isWinged(bot) && fill(bot, ItemSlot.WINGS))
+			worn++;
 		// Not a warning, and it took a screenshot of a console full of red to notice. Below level four there is barely any gear made for players at
 		// all, so this fires for perfectly ordinary characters — who are then wearing the training kit every character is created in, exactly like a
 		// real beginner. Nothing is wrong and nothing needs doing. It is worth a word only because an empty wardrobe at level twenty would not be.
@@ -156,6 +163,34 @@ public class BotOutfitter {
 		BotEquipManager.showAppearance(bot);
 		return bot.getName() + " took off " + stripped + " piece(s) it should not wear, put on " + worn + ", improved " + refined + " and was given "
 			+ scrollsAdded + " scroll(s)";
+	}
+
+	private static boolean isWinged(Player bot) {
+		return bot.getLevel() >= WINGS_FROM_LEVEL && bot.getCommonData().isDaeva();
+	}
+
+	/**
+	 * Puts on the wings of the bot's level when it wears none, or older ones than its level now allows. Asked when the bot's level changes, since
+	 * dressing happens at creation and wings come in level steps: none of the 1950 bots wore any before wings were dressed at all.
+	 *
+	 * @return true if new wings went on.
+	 */
+	public static boolean renewWings(Player bot) {
+		if (!isWinged(bot))
+			return false;
+		List<ItemTemplate> wearable = candidates.computeIfAbsent(key(bot, ItemSlot.WINGS), _ -> gatherFor(bot, ItemSlot.WINGS));
+		if (wearable.isEmpty())
+			return false;
+		Item worn = bot.getEquipment().getEquippedItemsWithoutStigma().stream().filter(item -> item.getEquipmentSlot() == ItemSlot.WINGS.getSlotIdMask())
+			.findFirst().orElse(null);
+		if (worn != null) {
+			if (worn.getItemTemplate().getLevel() >= wearable.getFirst().getLevel())
+				return false;
+			if (bot.getEquipment().unEquipItem(worn.getObjectId(), false) == null)
+				return false;
+			BotEquipManager.discard(bot, worn);
+		}
+		return fill(bot, ItemSlot.WINGS);
 	}
 
 	/**
@@ -370,7 +405,13 @@ public class BotOutfitter {
 		for (ItemTemplate template : DataManager.ITEM_DATA.getItemTemplates()) {
 			if ((template.getItemSlot() & slotMask) == 0 || !(template.isWeapon() || template.isArmor()))
 				continue;
-			if (template.getItemQuality().getQualityId() > bestQualityFor(bot.getLevel()).getQualityId())
+			ItemQuality ceiling = bestQualityFor(bot.getLevel());
+			if (slot == ItemSlot.WINGS && ceiling == ItemQuality.RARE)
+				ceiling = ItemQuality.LEGEND; // see WINGS_FROM_LEVEL
+			if (template.getItemQuality().getQualityId() > ceiling.getQualityId())
+				continue;
+			if (slot == ItemSlot.WINGS && (!BotGearFit.isOrdinaryWing(template) || BotGearFit.wingSide(template).isAsmoOrEly()
+				&& BotGearFit.wingSide(template) != bot.getRace()))
 				continue;
 			if (!template.isClassSpecific(bot.getPlayerClass()))
 				continue;
