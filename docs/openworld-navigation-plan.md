@@ -168,7 +168,9 @@ resting on give-ups or pockets no longer counted, and the walking search moved t
      ten are lost bots now freed; population per map unchanged. Left: Inggison (27), `visitSpotOf` and `BotLanding` on the tick threads, and
      `leadsBack`'s 300 ms, which may let a customer reach a counter it cannot walk back from (none seen yet).
 2. **Steps aside, about 900** in 30 minutes: milestone 6 above, the walk against the plan.
-3. **Day plans given up, about 475** in 30 minutes: which step gives up, and whether it is the same place for many bots.
+3. **Day plans given up, about 475** in 30 minutes. Measured 25 October 21:20-21:50 (554, each line now says map, ends and cause): long searches out of
+   budget 242, ends proven unjoined 202, goal cut off 37, short searches given up again 27; spread out (the worst place 9 times), Pandaemonium 135, Morheim
+   107, Sanctum 64; a few bots stand where even a 20 m walk home gives up (Pandaemonium near 1050 1190) or 500 m searches all do (Theobomos 2770 2128).
 4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
 5. **The obelisk audit again** (`navmesh.ps1 -Obelisks`) now that glide links are written, and retiring hunting grounds refused by three bots or more.
 
