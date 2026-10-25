@@ -131,6 +131,19 @@ class BotPathFinderTest {
 	}
 
 	@Test
+	void aSearchGivenNoTimeGivesUpWhereItWouldHaveFoundAWay() throws IOException {
+		// the way round through the gap at y=50 takes far more cells than the search may look at before it reads the clock
+		Navmesh walled = meshOf((x, y) -> wall(x, y) && y < 100 ? SOLID : OPEN);
+
+		BotPathFinder.Route hurried = BotPathFinder.within(0, () -> BotPathFinder.findPath(walled, 20, 10, HEIGHT, 44, 10, HEIGHT));
+		BotPathFinder.Route patient = BotPathFinder.findPath(walled, 20, 10, HEIGHT, 44, 10, HEIGHT);
+
+		assertTrue(hurried.isEmpty());
+		assertTrue(hurried.gaveUp(), "out of the caller's time, which proves nothing");
+		assertFalse(patient.isEmpty(), "the caller's deadline ends with the call");
+	}
+
+	@Test
 	void sharesGroundOnlyWhereThereIsAWayBetween() throws IOException {
 		assertTrue(BotPathFinder.shareGround(meshOf((x, y) -> wall(x, y) && y < 100 ? SOLID : OPEN), 20, 10, 44, 10));
 		assertFalse(BotPathFinder.shareGround(meshOf((x, y) -> wall(x, y) ? SOLID : OPEN), 20, 10, 44, 10));

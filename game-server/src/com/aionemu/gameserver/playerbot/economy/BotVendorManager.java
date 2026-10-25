@@ -181,12 +181,12 @@ public class BotVendorManager {
 			// anything but a proof is worth walking to: a mesh that gave up, or a map with no mesh at all, has said nothing against this shop, and
 			// the walk itself is the cheaper way to find out. A refusal there is caught by the mover and remembered with its own, shorter patience.
 			// And the trip goes to the front too. Sent to the keeper's feet instead, 243 trips of 268 failed in 23 minutes, against 91 of 122.
-			if (NavmeshService.getInstance().reach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), goal.x, goal.y,
-				goal.z) != NavmeshService.Reach.NO)
+			if (NavmeshService.getInstance().isNotProvedOutOfReach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), goal.x, goal.y,
+				goal.z))
 				return goal;
 			// a front on another floor proves nothing against the shop: the keeper's feet are asked as they always were
-			if (goal != spot && NavmeshService.getInstance().reach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y,
-				spot.z) != NavmeshService.Reach.NO)
+			if (goal != spot && NavmeshService.getInstance().isNotProvedOutOfReach(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y,
+				spot.z))
 				return spot;
 			whenUnreachable.accept(spot);
 		}

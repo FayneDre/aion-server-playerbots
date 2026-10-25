@@ -61,7 +61,7 @@ final class GlideRoutes {
 		// ran out of room, proves nothing. Answering "gave up" for any failed chain turned the routes up to Verteron's plateau, proved shut before the links, into undecided ones
 		boolean undecided = false;
 		boolean flown = mesh.hasFlights();
-		long deadline = System.currentTimeMillis() + (flown ? FLIGHT_BUDGET_MILLIS : BUDGET_MILLIS);
+		long deadline = BotPathFinder.deadlineIn(flown ? FLIGHT_BUDGET_MILLIS : BUDGET_MILLIS);
 		if (DEBUG)
 			System.out.printf("glide: starts %s goals %s%n", starts, goals);
 		// links found blocked are left out and the chains worked out again: a chain whose one link for a hop is blocked was the fewest hops and not the only

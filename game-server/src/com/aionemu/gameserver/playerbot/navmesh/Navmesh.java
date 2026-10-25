@@ -76,6 +76,8 @@ public class Navmesh {
 	private static final long TILE_BUDGET_BYTES = 32L << 20;
 
 	private final int mapId, width, height, tilesX, coarseFactor, coarseWidth;
+	/** Read once: asked for every neighbour of every cell a search expands, it read a system property twice and took a tangent each time. */
+	private final float slopeTangent;
 	private final float cellSize;
 	/**
 	 * The height the map's quantised zero stands for, in metres.
@@ -115,7 +117,7 @@ public class Navmesh {
 	private final FileChannel channel;
 	/** How steep a body walks up on this map, as the rise over the run; see {@link MapSlopes}. */
 	float slopeTangent() {
-		return MapSlopes.tangent(mapId);
+		return slopeTangent;
 	}
 
 	/** The glide links by the region they leave from. Filled once, while the mesh is opened, and only read afterwards. */
@@ -147,6 +149,7 @@ public class Navmesh {
 		this.coarseRegionOffsets = coarseRegionOffsets;
 		this.coarseRegionIds = coarseRegionIds;
 		this.mapId = mapId;
+		slopeTangent = MapSlopes.tangent(mapId);
 		this.width = width;
 		this.height = height;
 		this.cellSize = cellSize;

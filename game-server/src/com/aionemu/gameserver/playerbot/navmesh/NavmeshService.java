@@ -327,6 +327,28 @@ public class NavmeshService {
 		return route.gaveUp() ? Reach.UNKNOWN : Reach.NO;
 	}
 
+	/** How long a question that only looks for a proof against a place may search, on the thread that asked it. */
+	private static final long PROOF_BUDGET_MILLIS = 300;
+
+	/**
+	 * @return false only when a short search proves no walk joins the two spots; one that does not finish in {@value #PROOF_BUDGET_MILLIS} ms proves
+	 *         nothing, as a search out of budget never did.
+	 *         <p>
+	 *         For a caller that sends the bot anyway unless the place is proved out of reach. Asked with the full budgets instead, the shop trips and the
+	 *         errands spent about 250 s in 30 minutes on 25 October holding up the bots' own threads, only to give up and send the bot all the same; the
+	 *         journey itself is planned on a route thread, whose refusal the mover remembers.
+	 */
+	public boolean isNotProvedOutOfReach(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return true;
+		long began = System.currentTimeMillis();
+		long cpuBegan = cpuTime();
+		BotPathFinder.Route route = BotPathFinder.within(PROOF_BUDGET_MILLIS, () -> BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ));
+		logIfSlow(worldId, began, cpuBegan, fromX, fromY, fromZ, toX, toY, toZ, route);
+		return !route.isEmpty() || route.gaveUp();
+	}
+
 	/**
 	 * Plans a journey and hands the result back when it is ready.
 	 * <p>

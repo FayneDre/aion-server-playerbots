@@ -43,6 +43,8 @@ public class BotPathFinder {
 	 * movement threads; this only stops a hopeless one from running forever.
 	 */
 	private static final long PLAN_BUDGET_MILLIS = 3000;
+	/** The end a caller set on the whole of a search, every stage of it, sooner than their own budgets; see {@link #within}. */
+	private static final ScopedValue<Long> CALLER_DEADLINE = ScopedValue.newInstance();
 	/** Budget for the rough pass, which covers far more ground per node. */
 	private static final int MAX_COARSE_NODES = 500_000;
 	/** Past this, planning goes through the coarse grid first. Below it, fine A\* is quick enough on its own. */
@@ -147,7 +149,7 @@ public class BotPathFinder {
 	private static Route searchPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid,
 		GlideRoutes.AirTest air) {
 		Route walking = findWalkingPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
-		if (!walking.isEmpty() || !mesh.hasGlides())
+		if (!walking.isEmpty() || !mesh.hasGlides() || walking.gaveUp() && isPastCallerDeadline())
 			return walking;
 		// asked after a walk that gave up as well as after one that proved there is no way: on a large stretch of ground the walk never proves it, it runs out of room
 		// first, and asked only after a proof the glides were never tried. 310100000 has 206 of its 207 spots within walking and gliding of its arrival, and reached 80 %
@@ -186,7 +188,7 @@ public class BotPathFinder {
 
 		List<Vector3f> full = new ArrayList<>();
 		float fromX = startX, fromY = startY, fromZ = startZ;
-		long deadline = System.currentTimeMillis() + PLAN_BUDGET_MILLIS;
+		long deadline = deadlineIn(PLAN_BUDGET_MILLIS);
 		int next = 0;
 		while (next < guide.size()) {
 			if (System.currentTimeMillis() > deadline)
@@ -286,10 +288,11 @@ public class BotPathFinder {
 		costSoFar.put(start, 0f);
 		open.add(new int[] { start, 0 });
 
-		long deadline = System.currentTimeMillis() + LEVELLED_BUDGET_MILLIS;
+		long deadline = deadlineIn(LEVELLED_BUDGET_MILLIS);
 		int expanded = 0;
 		while (!open.isEmpty() && expanded++ < MAX_COARSE_NODES) {
-			if ((expanded & 1023) == 0 && System.currentTimeMillis() > deadline)
+			// every 64: a node here reads the levels of a whole coarse cell, and 1024 of them overran a 300 ms deadline by as much again
+			if ((expanded & 63) == 0 && System.currentTimeMillis() > deadline)
 				return OUT_OF_TIME;
 			int current = open.poll()[0];
 			if (current == goal)
@@ -702,6 +705,26 @@ public class BotPathFinder {
 	}
 
 	/**
+	 * Runs a search that must answer within {@code millis}, whatever stage it is in: past that it gives up, as it does past its own budgets.
+	 * <p>
+	 * For the questions that only want to know whether a place is proved out of reach, and treat a search that gave up as leave to go. Their full
+	 * budgets were seconds of a thread that runs other bots, spent on 25 October some 300 times in 30 minutes to reach that same leave.
+	 */
+	public static Route within(long millis, java.util.function.Supplier<Route> search) {
+		return ScopedValue.where(CALLER_DEADLINE, System.currentTimeMillis() + millis).call(search::get);
+	}
+
+	/** @return When a stage with this budget must stop: its own budget from now, or the caller's deadline when that comes first. */
+	static long deadlineIn(long budgetMillis) {
+		return Math.min(System.currentTimeMillis() + budgetMillis, CALLER_DEADLINE.orElse(Long.MAX_VALUE));
+	}
+
+	/** @return true once the end a caller set on the search has passed; never without one. */
+	private static boolean isPastCallerDeadline() {
+		return System.currentTimeMillis() > CALLER_DEADLINE.orElse(Long.MAX_VALUE);
+	}
+
+	/**
 	 * Whether a walk no longer than {@code maxLength} joins two spots, on foot and on the fine grid alone.
 	 * <p>
 	 * It answers the question asked of a spot near a place: is it joined to it, or is it the far side of a fence. Asked through {@link #findPath},
@@ -733,8 +756,12 @@ public class BotPathFinder {
 		space.reach(start, 0f, start);
 		space.push(start, 0);
 
+		// bounded by its nodes alone unless a caller set an end on the whole search
+		long deadline = CALLER_DEADLINE.orElse(Long.MAX_VALUE);
 		int expanded = 0;
 		while (!space.isQueueEmpty() && expanded++ < MAX_NODES) {
+			if ((expanded & 255) == 0 && System.currentTimeMillis() > deadline)
+				return new Route(List.of(), true);
 			long current = space.pop();
 			if (current == goal)
 				return new Route(smooth(mesh, rebuild(mesh, space, current, start), avoid), false);

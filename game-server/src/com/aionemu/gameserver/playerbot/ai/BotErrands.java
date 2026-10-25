@@ -363,7 +363,7 @@ class BotErrands {
 
 	/** @return false only when the mesh proves there is no walk from the spot back to {@code to}: a search that ran out of budget does not count against it. */
 	private static boolean leadsBack(NavmeshService mesh, int worldId, Vector3f spot, Vector3f to) {
-		return mesh.reach(worldId, spot.x, spot.y, spot.z, to.x, to.y, to.z) != NavmeshService.Reach.NO;
+		return mesh.isNotProvedOutOfReach(worldId, spot.x, spot.y, spot.z, to.x, to.y, to.z);
 	}
 
 	/**
