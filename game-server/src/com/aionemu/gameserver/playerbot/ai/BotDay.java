@@ -687,14 +687,26 @@ class BotDay {
 	void anchorRefused() {
 		if (occupation != Occupation.FARMING || occupationDestination == null)
 			return;
-		log.info("Bot {} cannot get to its hunting ground at {} {}, and does something else", ai.getOwner().getName(),
-			Math.round(occupationDestination.getX()), Math.round(occupationDestination.getY()));
+		log.info("Bot {} cannot get to its hunting ground at {} {}, and does something else ({})", ai.getOwner().getName(),
+			Math.round(occupationDestination.getX()), Math.round(occupationDestination.getY()), journey(occupationDestination));
 		unreachable.add(occupationDestination);
 		forget();
 		Vector3f where = home();
 		if (where != null)
 			ai.setAnchor(where.getX(), where.getY(), where.getZ());
 		ai.destinationRefused();
+	}
+
+	/**
+	 * @return The journey given up, for the line that says so: the map, where from, where to and why it was refused, so that the day plans given up can
+	 *         be counted by place and by cause. 475 of them a half hour on 25 October, said by activity alone.
+	 */
+	private String journey(Vector3f to) {
+		Player bot = ai.getOwner();
+		BotMoveController moves = ai.moves();
+		return String.format("map %d from %d %d %d to %s, %s", bot.getWorldId(), Math.round(bot.getX()), Math.round(bot.getY()), Math.round(bot.getZ()),
+			to == null ? "nowhere" : Math.round(to.getX()) + " " + Math.round(to.getY()) + " " + Math.round(to.getZ()),
+			moves == null ? "no controller" : moves.refusal());
 	}
 
 	/**
@@ -708,7 +720,8 @@ class BotDay {
 	private boolean giveUp() {
 		// in town the spell is what was refused: the occupation is whatever the bot did before it came, FARMING for a visitor
 		Object doing = spell != null && BotPresence.isTown(ai.getOwner().getWorldId()) ? spell.activity() : occupation;
-		log.info("Bot {} cannot get to where {} would take it, and does something else", ai.getOwner().getName(), doing);
+		log.info("Bot {} cannot get to where {} would take it, and does something else ({})", ai.getOwner().getName(), doing,
+			journey(occupationDestination != null ? occupationDestination : ai.anchor()));
 		ai.destinationRefused();
 		// Remembered, not merely abandoned. The place a bot is sent to is chosen the same way every time — the nearest village, the next place along
 		// the list — so forgetting a refusal means choosing the same unreachable place on the next tick, for ever. One bot standing in a pocket of

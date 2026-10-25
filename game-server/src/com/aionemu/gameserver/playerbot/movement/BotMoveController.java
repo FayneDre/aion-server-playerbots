@@ -198,6 +198,8 @@ public class BotMoveController extends PlayerMoveController {
 	 * times in half an hour (24 October).
 	 */
 	private volatile boolean refusalUnproven, noHeadwayUnproven;
+	/** Why the last journey was refused, in a word or two, for the lines of whoever gives up on it: see {@link #refusal}. */
+	private volatile String refusal = "none";
 	/** The destination the planner has been giving up on, and how many times in a row, so that a repeated give up can be read as the refusal it is. */
 	private volatile float gaveUpX, gaveUpY;
 	private volatile int gaveUpCount;
@@ -377,6 +379,14 @@ public class BotMoveController extends PlayerMoveController {
 
 	private static String describe(float x, float y, float z) {
 		return String.format("%.1f %.1f %.1f", x, y, z);
+	}
+
+	/**
+	 * @return Why the last journey was refused: no way, goal cut off, a search that gave up, walled in, no headway, as near as it gets, a crossing not
+	 *         flown. Kept until the next refusal, so a refusal remembered and answered again names the one that earned it.
+	 */
+	public String refusal() {
+		return refusal;
 	}
 
 	/** @return true if the last route was abandoned because the bot could not find a way through. */
@@ -600,6 +610,7 @@ public class BotMoveController extends PlayerMoveController {
 				noRouteX = forX;
 				noRouteY = forY;
 				hasNoRoute = true;
+				refusal = answer.gaveUp() ? "search gave up, long" : answer.goalCutOff() ? "goal cut off" : "no way";
 				// a long journey whose search gave up is dropped all the same, and proves nothing; a goal on a rock top is the goal's fault, not here's
 				refusalUnproven = answer.gaveUp() || answer.goalCutOff();
 				blocked = true;
@@ -632,6 +643,7 @@ public class BotMoveController extends PlayerMoveController {
 				noHeadwayY = forY;
 				noHeadwayUntil = System.currentTimeMillis() + GAVE_UP_MEMORY;
 				gaveUpCount = 0;
+				refusal = "search gave up again";
 				refusalUnproven = noHeadwayUnproven = true;
 				blocked = true;
 				hasGoal = false;
@@ -803,6 +815,7 @@ public class BotMoveController extends PlayerMoveController {
 			// low obstacle they cannot see is to ask the mesh about this exact pair of points afterwards (NavmeshTool <mapId> path x1 y1 x2 y2)
 			log.info("Bot {} is walled in at {} and gives up moving towards {}", owner.getName(), describe(owner.getX(), owner.getY(), owner.getZ()),
 				describe(goalX, goalY, goalZ));
+			refusal = "walled in";
 			refusalUnproven = false;
 			blocked = true;
 			hasGoal = false;
@@ -895,6 +908,7 @@ public class BotMoveController extends PlayerMoveController {
 			return true;
 		}
 		log.info("Bot {} does not fly across: {}", owner.getName(), refusal);
+		this.refusal = "crossing not flown";
 		refusalUnproven = false;
 		blocked = true;
 		hasGoal = false;
@@ -964,6 +978,7 @@ public class BotMoveController extends PlayerMoveController {
 		if (PositionUtil.getDistance(nearestForX, nearestForY, finalX, finalY) < 1 && PositionUtil.getDistance(nearestAtX, nearestAtY, owner.getX(), owner.getY()) < 1) {
 			log.info("Bot {} is still as near as it gets to {} and gives it up", owner.getName(), String.format("%.1f %.1f", finalX, finalY));
 			nearestForX = Float.NaN;
+			refusal = "as near as it gets";
 			refusalUnproven = noHeadwayUnproven = false;
 			blocked = true;
 			noHeadwayX = finalX;
@@ -1383,6 +1398,7 @@ public class BotMoveController extends PlayerMoveController {
 			log.info("Bot {} makes no headway from {} towards {} and gives up moving", owner.getName(),
 				describe(owner.getX(), owner.getY(), owner.getZ()), describe(goalX, goalY, goalZ));
 			refusalUnproven = noHeadwayUnproven = false;
+			refusal = "no headway";
 			blocked = true;
 			noHeadwayX = finalX;
 			noHeadwayY = finalY;
