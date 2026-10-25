@@ -40,9 +40,10 @@ public class BotPathFinder {
 	private static final int MAX_NODES = Integer.getInteger("navmesh.maxNodes", 150_000);
 	/**
 	 * How long a whole journey may be planned for. A 1.4 km crossing of Poeta takes about 1.4 s, which is why long journeys are planned off the
-	 * movement threads; this only stops a hopeless one from running forever.
+	 * movement threads; this only stops a hopeless one from running forever. The property {@code navmesh.planBudget} raises it in the offline tools,
+	 * as {@code navmesh.levelledBudget} and {@code navmesh.glideBudget} do theirs, to tell a journey short of time from one that is lost.
 	 */
-	private static final long PLAN_BUDGET_MILLIS = 3000;
+	private static final long PLAN_BUDGET_MILLIS = Long.getLong("navmesh.planBudget", 3000);
 	/** The end a caller set on the whole of a search, every stage of it, sooner than their own budgets; see {@link #within}. */
 	private static final ScopedValue<Long> CALLER_DEADLINE = ScopedValue.newInstance();
 	/** Budget for the rough pass, which covers far more ground per node. */
@@ -260,7 +261,7 @@ public class BotPathFinder {
 	 * ground before it could say so: 12 to 14 seconds a search, on the thread that thinks for eight bots, while the old one had answered in a fraction of
 	 * that by way of a shortcut that did not exist.
 	 */
-	private static final long LEVELLED_BUDGET_MILLIS = 1500;
+	private static final long LEVELLED_BUDGET_MILLIS = Long.getLong("navmesh.levelledBudget", 1500);
 	/** What {@link #levelledRoute} answers when it ran out of time, told apart from an empty guide by being this very list. */
 	private static final List<Vector3f> OUT_OF_TIME = Collections.unmodifiableList(new ArrayList<>());
 

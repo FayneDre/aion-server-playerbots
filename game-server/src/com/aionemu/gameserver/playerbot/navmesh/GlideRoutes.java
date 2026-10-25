@@ -29,7 +29,7 @@ final class GlideRoutes {
 	 * How long, in milliseconds, one plan may spend trying chains before it gives up. Every chain tried is several walking searches, and a goal no chain reaches would otherwise try them all:
 	 * the generator's own check of random journeys went from seconds to an hour on one map for want of this.
 	 */
-	private static final long BUDGET_MILLIS = 2000;
+	private static final long BUDGET_MILLIS = Long.getLong("navmesh.glideBudget", 2000);
 	/** The same where the links are flights: a crossing of Reshanta's upper layer lands beside a walk of 700 m, which takes three seconds on its own. */
 	private static final long FLIGHT_BUDGET_MILLIS = 5000;
 	/** How many metres across one metre of height counts for, when telling which floor round the body is its own: floors stacked in a tower are close across and far apart in height. */

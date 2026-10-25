@@ -171,6 +171,12 @@ resting on give-ups or pockets no longer counted, and the walking search moved t
 3. **Day plans given up, about 475** in 30 minutes. Measured 25 October 21:20-21:50 (554, each line now says map, ends and cause): long searches out of
    budget 242, ends proven unjoined 202, goal cut off 37, short searches given up again 27; spread out (the worst place 9 times), Pandaemonium 135, Morheim
    107, Sanctum 64; a few bots stand where even a 20 m walk home gives up (Pandaemonium near 1050 1190) or 500 m searches all do (Theobomos 2770 2128).
+   Replayed offline (budgets now raised by `navmesh.planBudget`, `navmesh.levelledBudget`, `navmesh.glideBudget`): of 125 long give-ups 57 found at the game's
+   budget (the 3 s run out on a loaded server), 39 with no guide between the bot's level and the goal's, 15 failing only on the last stretch (the goal on a
+   rock), 6 in the middle, 8 proven; ten times the budget found 3 more. Of the "no way" and "again" refusals about half are found, mostly with glide links.
+   And every give-up, proven or not, puts the place in `BotDay.unreachable` for good. **Next, agreed 25 October**: walk the stretches planned when time runs
+   out and plan the rest on the way; stop at the nearest reachable point for a hunting ground or a stroll; no `unreachable` without a proof; then the levels
+   apart and the glides refused in game. Measure 30 minutes after.
 4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
 5. **The obelisk audit again** (`navmesh.ps1 -Obelisks`) now that glide links are written, and retiring hunting grounds refused by three bots or more.
 
