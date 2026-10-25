@@ -77,6 +77,8 @@ public class BotMoveController extends PlayerMoveController {
 	private static final int GIVE_UPS_BEFORE_REFUSING = 3;
 	/** How long a destination given up on that often is left alone. Longer than {@link #NO_HEADWAY_MEMORY}: three searches is dearer evidence. */
 	private static final long GAVE_UP_MEMORY = 300000;
+	/** How near the start of the last search that gave up another one must be asked from to be the same search, in metres. */
+	private static final float SAME_START = 3;
 	/** A new destination this close to the previous one continues the same journey, typically a target that moved a little. */
 	private static final float SAME_JOURNEY_TOLERANCE = 10f;
 	/**
@@ -198,6 +200,8 @@ public class BotMoveController extends PlayerMoveController {
 	/** The destination the planner has been giving up on, and how many times in a row, so that a repeated give up can be read as the refusal it is. */
 	private volatile float gaveUpX, gaveUpY;
 	private volatile int gaveUpCount;
+	/** Where the last search that gave up was asked from. */
+	private volatile float gaveUpFromX, gaveUpFromY;
 	private volatile boolean hasGoal;
 	/**
 	 * How often a climbing body is told where it is, in milliseconds.
@@ -599,12 +603,17 @@ public class BotMoveController extends PlayerMoveController {
 			// puts a bot up the rock wall round Verteron. It climbs, wedges, is rescued home to the brazier, picks the same spot again -- because
 			// the only thing that ever recorded a refusal was a proof, and no proof was coming.
 			if (PositionUtil.getDistance(gaveUpX, gaveUpY, forX, forY) < SAME_JOURNEY_TOLERANCE) {
-				gaveUpCount++;
+				// asked again from where the last one gave up, it is the same search and gives up the same way: the walk in between is what
+				// earns another try. A bot of Cygnea standing still asked for a shop three times in eight seconds on 25 October, each search 3.5 s
+				boolean sameStart = PositionUtil.getDistance(gaveUpFromX, gaveUpFromY, fromX, fromY) < SAME_START;
+				gaveUpCount = sameStart ? GIVE_UPS_BEFORE_REFUSING : gaveUpCount + 1;
 			} else {
 				gaveUpX = forX;
 				gaveUpY = forY;
 				gaveUpCount = 1;
 			}
+			gaveUpFromX = fromX;
+			gaveUpFromY = fromY;
 			if (gaveUpCount >= GIVE_UPS_BEFORE_REFUSING) {
 				log.info("Bot {} gave up on {} {} times running and leaves it alone", owner.getName(),
 					String.format("%.1f %.1f", forX, forY), gaveUpCount);
