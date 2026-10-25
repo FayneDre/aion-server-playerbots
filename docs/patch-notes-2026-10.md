@@ -4,6 +4,62 @@ Moved out of [patch-notes.md](patch-notes.md) as it neared 200 lines. Newest fir
 
 ---
 
+## patch-2026-10-23-2 — 23/10/2026
+
+Révision `7e94c45`, celle que `//bot version` affiche. Les boutiques des bots, d'après les retours du 23/10. **Aucun maillage à régénérer.**
+
+**Corrigé**
+- **Boutiques de classe :** elles ne vendaient que de la plaque. Chaque classe a maintenant son armure : plaque pour gladiateur et templier,
+  mailles pour clerc, aède et éthertech, cuir pour assassin, rôdeur et pistolero, robe pour sorcier, spiritualiste et barde.
+- **40 boutiques par capitale, à toute heure :** les marchands tiennent boutique à tour de rôle, 44 en service à la fois. Avant, leur nombre
+  dépendait du hasard et de la taille de la ville : 16 à Sanctum, 21 à Pandaemonium. Un marchand qui ne peut pas rejoindre les marchés laisse
+  son tour au suivant.
+- **Boutiques moins serrées :** 6 m entre deux stands au lieu de 3, des marchés plus larges, et un sixième marché à Sanctum autour de l'Elyos Square.
+
+**Connu, pas encore corrigé**
+- Après un redémarrage, il faut environ 15 minutes pour atteindre les 40 boutiques : les marchands des quartiers éloignés marchent ou prennent
+  le bateau jusqu'au marché.
+- Le message « fusion de serveurs » à la sélection des personnages (compte avec les deux factions) vient du client : le serveur ne peut pas le
+  désactiver.
+- Les prix des pierres d'enchantement, et la vente de pièces et de médailles, attendent les réponses au plan des marchandises.
+
+**À tester**
+- Une boutique de chaque classe : la bonne armure, sans bouclier hors templier et clerc.
+- Compter les boutiques à Sanctum et à Pandaemonium, et leur espacement.
+
+---
+
+## patch-2026-10-23 — 23/10/2026
+
+Révision `d0daa64`. Les retours du 19, 20 et 21/10, le gladiateur et le sorcier d'après leurs guides. **Aucun maillage à régénérer.**
+
+**Corrigé**
+- **Groupe :** un membre mort se repose avant de vous rejoindre au lieu de mourir en route ; le clerc ne se bloque plus à se défendre au lieu de soigner.
+- **Plané :** les bots qui vous suivent en planant ont l'animation des ailes.
+- **Vols et téléportations :** un bot de votre groupe attend pendant votre vol de transport ou un courant aérien, et vous rejoint après une téléportation.
+- **Ligne de vue :** un bot à distance ne tire plus à travers les murs ; il se place pour voir sa cible.
+- **Buffs de vol :** les sorts qui ne servent qu'en vol ne sont plus lancés au sol.
+- **Bot dans les airs :** un bot coincé en l'air (vu à Pandaemonium) est reposé au sol au démarrage, et secouru en jeu s'il ne peut plus aller nulle part.
+- **Boutiques de classe :** plus de casques en tissu ou en cuir ni de boucliers dans une boutique gladiateur ; les bots ne portent plus non plus de
+  casque d'une autre armure ni de bouclier s'ils n'en utilisent pas (seuls templier et clerc).
+
+**Nouveau**
+- **Gladiateur et sorcier** jouent selon leurs guides : posture, survie, enchaînements, zones sans réveiller les voisins (toutes classes), sorts au
+  sol, multicasts, contrôle d'un second ennemi ; le sorcier se repose jusqu'à sa mana pleine et cesse d'attaquer s'il garde l'aggro en groupe.
+- **`//bot gate`** : un sorcier de votre groupe ouvre un portail.
+- **Marchés de Pandaemonium :** Vifrost Bridge, Market Street, Pandaemonium Plaza et Temple of Gold, 10 boutiques chacun.
+
+**Connu, pas encore corrigé**
+- Les capitales ont peu de bots de niveau 50+ : des visiteurs de tous niveaux sont prévus plus tard.
+- On ne sait pas encore comment le bot de Pandaemonium est monté sous la coupole.
+
+**À tester**
+- Un gladiateur et un sorcier en groupe et en solo ; `//bot gate`.
+- Prendre un vol de transport et se téléporter avec un groupe de bots.
+- Les quatre marchés de Pandaemonium et le contenu des boutiques de classe.
+
+---
+
 ## patch-2026-10-20 — 20/10/2026
 
 Révision `a9e9ad4`, celle que `//bot version` affiche. Les capitales vivantes : Sanctum entier, une journée de ville, des boutiques tenues par les bots.

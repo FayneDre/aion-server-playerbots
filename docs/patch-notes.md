@@ -6,6 +6,59 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-25 — 25/10/2026
+
+Révision `d91cda5`, celle que `//bot version` affiche. La navigation des bots, mesurée toute la journée avec un joueur en jeu : moins de trajets
+abandonnés, des bots qui ne se figent plus, moins de mémoire. **Aucun maillage à régénérer, aucun changement de base ni de configuration, le
+serveur de chat ne change pas.** Mais **les liens de vol plané du monde ouvert sont à écrire une fois** (voir « À faire »).
+
+**Action requise : les liens de vol plané du monde ouvert**
+
+Les fichiers `.glide` des cartes du monde ouvert avaient été effacés par la régénération des maillages du 18 octobre, et ne sont pas dans le dépôt
+(ils sont produits sur chaque serveur). Sans eux, les bots ne savent pas descendre d'une falaise ou d'une galerie en planant, et beaucoup de leurs
+trajets échouent (capitales, Reshanta, Inggison, Enshar). Serveur arrêté, une seule fois, depuis le dépôt :
+`.\tools\navmesh.ps1 110010000,120010000,120020000,120080000,210010000,210020000,210030000,210040000,210050000,210060000,210070000,210090000,220010000,220020000,220030000,220040000,220050000,220070000,220080000,220100000,400010000,600010000,600090000,600100000 -Glides`
+Compter un moment (17 Mo de liens au total). Le maillage lui-même n'est pas touché.
+
+**Amélioré**
+- **Les bots ne se figent plus en pleine action.** Certaines vérifications (« ce point près du village est-il atteignable ? », « ce marchand
+  est-il accessible ? ») tournaient sur les fils qui font agir les bots et prenaient jusqu'à 4 s, figeant une centaine de bots à chaque fois :
+  environ 960 s par demi-heure, contre quelques secondes maintenant.
+- **Moins de trajets abandonnés** : 345 à 148 par demi-heure sur l'ensemble des cartes, plans de journée abandonnés 621 à 475.
+  - Dans **Sanctum et Pandaemonium**, la recherche ne prend plus la galerie ou le pont au-dessus du bot pour son étage (68 à 32 abandons).
+  - À **Reshanta**, les recherches ne s'épuisent plus à comparer chaque atterrissage à 1 500 monstres (29 à 13).
+  - Un bot ne retourne plus sans cesse vers un point de flânerie qui lui a été refusé, et un court trajet raté n'est plus recherché trois fois
+    depuis le même endroit.
+- **Les bots perdus sont ramenés** : un bot dont tous les trajets échouent depuis le même endroit (4 destinations différentes en 5 minutes)
+  rentre chez lui. Jamais sous les yeux d'un joueur : il fait alors un pas de côté ou change d'activité.
+- **Villages sans issue** : un village dont les habitants restent coincés à la porte (3 fois en 10 minutes) n'est plus peuplé, ses habitants
+  sont relogés ailleurs sur la même carte. Il redevient habitable dès que le maillage ou les liens de la carte changent.
+- **Un bot coincé à côté d'un joueur** (autour d'un obélisque, derrière une barrière) fait un pas jusqu'à 12 m au lieu de rester sur place.
+- **Mémoire** : la recherche de chemin est plus légère (environ 200 Mo de moins mesurés juste après un démarrage, sans plus de recul).
+
+**Corrigé**
+- Le journal des avertissements ne liste plus chaque bot comme « joueur sans connexion » toutes les demi-heures.
+
+**Connu, pas encore corrigé**
+- À Reshanta, une dizaine de trajets par demi-heure vers des îlots plus hauts ou plus bas échouent encore : le vol direct est refusé au-delà de
+  300 m ou sous un toit. Inggison est désormais la carte qui abandonne le plus de trajets.
+- Un bot qui va vendre peut en principe se retrouver derrière un comptoir d'où il ne sait pas revenir (aucun cas vu) : signaler un bot téléporté
+  juste après une vente.
+- Les pas de côté (environ 900 par demi-heure) n'ont pas bougé.
+
+**À tester**
+- Se promener dans Sanctum et Pandaemonium : des bots figés, qui tournent en rond ou qui disparaissent sous vos yeux ?
+- Reshanta : des bots qui volent d'un îlot à l'autre, ou au contraire qui restent plantés au bord ?
+- Un bot qui vient de vendre et qui est téléporté chez lui juste après (`//bot note` sur place).
+
+**À faire sur chaque serveur de test**
+1. `.\tools\stop-server.ps1`, puis `git pull`.
+2. Écrire les liens de vol plané avec la commande de « Action requise » ci-dessus (une seule fois).
+3. `.\tools\deploy.ps1 -Restart`.
+4. Vérifier qu'il y a bien un fichier `.glide` par carte de la liste dans `game-server/data/navmesh` du serveur (24 fichiers, 17 Mo en tout).
+
+---
+
 ## patch-2026-10-24-2 — 24/10/2026
 
 Révision `425eb6f`, celle que `//bot version` affiche (game server et serveur de chat). Les marchandises des boutiques d'après le guide, et les
@@ -96,62 +149,6 @@ bots. **Aucun maillage à régénérer.** La base reçoit une colonne au démarr
 **À tester**
 - Entrer dans une capitale : les visiteurs arrivent-ils vite, se dispersent-ils, repartent-ils par le téléporteur ?
 - Écouter les cris près des marchés, et inviter un bot qui cherche un groupe.
-
----
-
-## patch-2026-10-23-2 — 23/10/2026
-
-Révision `7e94c45`, celle que `//bot version` affiche. Les boutiques des bots, d'après les retours du 23/10. **Aucun maillage à régénérer.**
-
-**Corrigé**
-- **Boutiques de classe :** elles ne vendaient que de la plaque. Chaque classe a maintenant son armure : plaque pour gladiateur et templier,
-  mailles pour clerc, aède et éthertech, cuir pour assassin, rôdeur et pistolero, robe pour sorcier, spiritualiste et barde.
-- **40 boutiques par capitale, à toute heure :** les marchands tiennent boutique à tour de rôle, 44 en service à la fois. Avant, leur nombre
-  dépendait du hasard et de la taille de la ville : 16 à Sanctum, 21 à Pandaemonium. Un marchand qui ne peut pas rejoindre les marchés laisse
-  son tour au suivant.
-- **Boutiques moins serrées :** 6 m entre deux stands au lieu de 3, des marchés plus larges, et un sixième marché à Sanctum autour de l'Elyos Square.
-
-**Connu, pas encore corrigé**
-- Après un redémarrage, il faut environ 15 minutes pour atteindre les 40 boutiques : les marchands des quartiers éloignés marchent ou prennent
-  le bateau jusqu'au marché.
-- Le message « fusion de serveurs » à la sélection des personnages (compte avec les deux factions) vient du client : le serveur ne peut pas le
-  désactiver.
-- Les prix des pierres d'enchantement, et la vente de pièces et de médailles, attendent les réponses au plan des marchandises.
-
-**À tester**
-- Une boutique de chaque classe : la bonne armure, sans bouclier hors templier et clerc.
-- Compter les boutiques à Sanctum et à Pandaemonium, et leur espacement.
-
----
-
-## patch-2026-10-23 — 23/10/2026
-
-Révision `d0daa64`. Les retours du 19, 20 et 21/10, le gladiateur et le sorcier d'après leurs guides. **Aucun maillage à régénérer.**
-
-**Corrigé**
-- **Groupe :** un membre mort se repose avant de vous rejoindre au lieu de mourir en route ; le clerc ne se bloque plus à se défendre au lieu de soigner.
-- **Plané :** les bots qui vous suivent en planant ont l'animation des ailes.
-- **Vols et téléportations :** un bot de votre groupe attend pendant votre vol de transport ou un courant aérien, et vous rejoint après une téléportation.
-- **Ligne de vue :** un bot à distance ne tire plus à travers les murs ; il se place pour voir sa cible.
-- **Buffs de vol :** les sorts qui ne servent qu'en vol ne sont plus lancés au sol.
-- **Bot dans les airs :** un bot coincé en l'air (vu à Pandaemonium) est reposé au sol au démarrage, et secouru en jeu s'il ne peut plus aller nulle part.
-- **Boutiques de classe :** plus de casques en tissu ou en cuir ni de boucliers dans une boutique gladiateur ; les bots ne portent plus non plus de
-  casque d'une autre armure ni de bouclier s'ils n'en utilisent pas (seuls templier et clerc).
-
-**Nouveau**
-- **Gladiateur et sorcier** jouent selon leurs guides : posture, survie, enchaînements, zones sans réveiller les voisins (toutes classes), sorts au
-  sol, multicasts, contrôle d'un second ennemi ; le sorcier se repose jusqu'à sa mana pleine et cesse d'attaquer s'il garde l'aggro en groupe.
-- **`//bot gate`** : un sorcier de votre groupe ouvre un portail.
-- **Marchés de Pandaemonium :** Vifrost Bridge, Market Street, Pandaemonium Plaza et Temple of Gold, 10 boutiques chacun.
-
-**Connu, pas encore corrigé**
-- Les capitales ont peu de bots de niveau 50+ : des visiteurs de tous niveaux sont prévus plus tard.
-- On ne sait pas encore comment le bot de Pandaemonium est monté sous la coupole.
-
-**À tester**
-- Un gladiateur et un sorcier en groupe et en solo ; `//bot gate`.
-- Prendre un vol de transport et se téléporter avec un groupe de bots.
-- Les quatre marchés de Pandaemonium et le contenu des boutiques de classe.
 
 ---
 
