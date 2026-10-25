@@ -84,7 +84,7 @@ public class NavmeshService {
 		long cpuBegan = cpuTime();
 		// read once: off the tick thread the bot walks on while the search runs, and the log must name the start the search was given
 		float startX = bot.getX(), startY = bot.getY(), startZ = bot.getZ();
-		List<Vector3f> dangers = dangersFor(bot);
+		Dangers dangers = dangersFor(bot);
 		// landings only: kept away from on foot as well, even at three times the cost, the search gave up after seven seconds on a journey of 900 m it
 		// planned in under one without them. The Abyss is dangerous to walk, and a bot meets what it meets; it does not fly down into it
 		Map<GlideLink, Boolean> landings = new HashMap<>();
@@ -97,21 +97,20 @@ public class NavmeshService {
 
 			@Override
 			public boolean mayLand(GlideLink link) {
-				return landings.computeIfAbsent(link, l -> NavmeshService.this.mayLand(bot, l) && dangers.stream()
-					.noneMatch(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, l.toX(), l.toY(), l.toZ()) < DANGER_RADIUS));
+				return landings.computeIfAbsent(link, l -> NavmeshService.this.mayLand(bot, l) && !dangers.isNear(l.toX(), l.toY(), l.toZ()));
 			}
 		});
-		if (route.isEmpty() && !route.gaveUp() && !dangers.isEmpty()) {
+		if (route.isEmpty() && !route.gaveUp() && !dangers.spots().isEmpty()) {
 			// a proof that may be the creatures' doing rather than the ground's: how many stand round the goal tells the two apart
-			long nearGoal = dangers.stream().filter(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, goalX, goalY, goalZ) < DANGER_RADIUS * 3).count();
+			long nearGoal = dangers.spots().stream().filter(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, goalX, goalY, goalZ) < DANGER_RADIUS * 3).count();
 			log.info("Path search for {} found no way to {} {}, keeping away from {} creature(s), {} of them within {} m of it", bot.getName(),
-				Math.round(goalX), Math.round(goalY), dangers.size(), nearGoal, Math.round(DANGER_RADIUS * 3));
+				Math.round(goalX), Math.round(goalY), dangers.spots().size(), nearGoal, Math.round(DANGER_RADIUS * 3));
 		}
 		if (route.isEmpty() && route.gaveUp()) {
 			// in the log on a map flown everywhere, where the creatures kept away from are a cost the search pays and the one way to tell it was
-			if (!dangers.isEmpty())
+			if (!dangers.spots().isEmpty())
 				log.info("Path search for {} gave up short of {} {} after {} ms, keeping away from {} creature(s)", bot.getName(), Math.round(goalX),
-					Math.round(goalY), System.currentTimeMillis() - began, dangers.size());
+					Math.round(goalY), System.currentTimeMillis() - began, dangers.spots().size());
 			else
 				log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		}
@@ -119,7 +118,7 @@ public class NavmeshService {
 		if (took >= SLOW_SEARCH_MILLIS)
 			log.info("Journey search for {} on map {} took {} ms ({}, {} ms of processor, on {}, wings {}, {} creature(s) kept away from, avoiding {}): NavmeshTool {} path {} {} {} {} {} {}",
 				bot.getName(), bot.getWorldId(), took, !route.isEmpty() ? "found" : route.gaveUp() ? "gave up" : "no way", (cpuTime() - cpuBegan) / 1_000_000,
-				Thread.currentThread().getName(), canGlide, dangers.size(), avoid != Avoidance.NONE, bot.getWorldId(), String.format("%.1f", startX),
+				Thread.currentThread().getName(), canGlide, dangers.spots().size(), avoid != Avoidance.NONE, bot.getWorldId(), String.format("%.1f", startX),
 				String.format("%.1f", startY), String.format("%.1f", startZ), String.format("%.1f", goalX), String.format("%.1f", goalY), String.format("%.1f", goalZ));
 		return route;
 	}
@@ -129,27 +128,64 @@ public class NavmeshService {
 	 *         level gap above it. Asked of the living world rather than of the spawn data, because the worst of them are not in it: a squad of level 40
 	 *         flew onto Reshanta's upper layer beside dread remnants of level 65, Balaur elites a fortress puts there, and died to a man.
 	 */
-	private List<Vector3f> dangersFor(Player bot) {
+	private Dangers dangersFor(Player bot) {
 		WorldMap map = World.getInstance().getWorldMap(bot.getWorldId());
 		if (map == null || !map.isFlightAllowed() || bot.getPosition() == null || bot.getPosition().getWorldMapInstance() == null)
-			return List.of();
+			return Dangers.NONE;
 		// a walk over every npc of the map, asked by every route of every bot: remembered a few seconds per map, side and level, which is what it turns on
 		String key = bot.getWorldId() + ":" + bot.getPosition().getInstanceId() + ":" + bot.getRace() + ":" + bot.getLevel();
 		Dangers known = dangerCache.get(key);
 		long now = System.currentTimeMillis();
 		if (known != null && now - known.at() < DANGERS_KEPT_MILLIS)
-			return known.spots();
+			return known;
 		List<Vector3f> found = new ArrayList<>();
 		bot.getPosition().getWorldMapInstance().forEachNpc(npc -> {
 			if (npc.isSpawned() && !npc.isDead() && npc.getLevel() > bot.getLevel() + BotTargetSelector.MAX_LEVEL_GAP && bot.isEnemy(npc)
 				&& TribeRelationService.isAggressive(npc, bot))
 				found.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
 		});
-		dangerCache.put(key, new Dangers(now, List.copyOf(found)));
-		return found;
+		Dangers dangers = Dangers.of(now, found);
+		dangerCache.put(key, dangers);
+		return dangers;
 	}
 
-	private record Dangers(long at, List<Vector3f> spots) {
+	/**
+	 * The creatures a bot cannot fight, and the same filed by squares of {@link #DANGER_RADIUS}.
+	 * <p>
+	 * Every landing a plan looks at is asked whether one stands near it, and on Reshanta a list held 726 to 1875 of them: each landing walked the
+	 * whole list, for every link the chains of a crossing went through. The squares leave the nine round the landing to look at.
+	 */
+	private record Dangers(long at, List<Vector3f> spots, Map<Long, List<Vector3f>> bySquare) {
+
+		static final Dangers NONE = new Dangers(0, List.of(), Map.of());
+
+		static Dangers of(long at, List<Vector3f> spots) {
+			Map<Long, List<Vector3f>> bySquare = new HashMap<>();
+			for (Vector3f spot : spots)
+				bySquare.computeIfAbsent(square(spot.getX(), spot.getY()), s -> new ArrayList<>()).add(spot);
+			return new Dangers(at, List.copyOf(spots), bySquare);
+		}
+
+		/** @return true if one of the creatures stands within {@link #DANGER_RADIUS} of the spot. */
+		boolean isNear(float x, float y, float z) {
+			int squareX = (int) Math.floor(x / DANGER_RADIUS), squareY = (int) Math.floor(y / DANGER_RADIUS);
+			for (int dx = -1; dx <= 1; dx++) {
+				for (int dy = -1; dy <= 1; dy++) {
+					List<Vector3f> near = bySquare.get(key(squareX + dx, squareY + dy));
+					if (near != null && near.stream().anyMatch(danger -> PositionUtil.getDistance(danger.x, danger.y, danger.z, x, y, z) < DANGER_RADIUS))
+						return true;
+				}
+			}
+			return false;
+		}
+
+		private static long square(float x, float y) {
+			return key((int) Math.floor(x / DANGER_RADIUS), (int) Math.floor(y / DANGER_RADIUS));
+		}
+
+		private static long key(int squareX, int squareY) {
+			return (long) squareX << 32 | squareY & 0xFFFFFFFFL;
+		}
 	}
 
 	/**
@@ -168,8 +204,7 @@ public class NavmeshService {
 	private static boolean isLinkClear(Player bot, GlideLink link) {
 		if (link.ride())
 			return true; // carried, not flown: the air has nothing to say
-		boolean clear = link.flight() ? BotFlight.crossing(bot, new Vector3f(link.fromX(), link.fromY(), link.fromZ()), new Vector3f(link.toX(), link.toY(), link.toZ())) != null
-			: isAirClear(bot, link);
+		boolean clear = isAirClear(bot, link);
 		if (!clear && log.isDebugEnabled())
 			log.debug("Bot {} finds the air blocked on the {} {} {} {} -> {} {} {}", bot.getName(), link.flight() ? "crossing" : "glide", Math.round(link.fromX()),
 				Math.round(link.fromY()), Math.round(link.fromZ()), Math.round(link.toX()), Math.round(link.toY()), Math.round(link.toZ()));
@@ -177,13 +212,14 @@ public class NavmeshService {
 	}
 
 	/**
-	 * @return Whether the air between the two ends of a glide holds nothing solid, asked of the game's own geometry. The links were found from the floors alone, which cannot say whether
-	 *         a wall stands between an edge and the ground below it.
+	 * @return Whether the air between the two ends of a glide or a crossing holds nothing solid, asked of the game's own geometry. The links were found from the floors alone, which cannot
+	 *         say whether a wall stands between an edge and the ground below it.
 	 */
 	private static boolean isAirClear(Player bot, GlideLink link) {
 		// Kept a while per link and instance. The ray was cast again for every link of every chain each search tried, for every bot: on 25 October a
 		// journey of Enshar found offline in 1.7 s with one glide gave up in game after five, asked by four bots up to seven times each. The air only
 		// changes where a door opens or shuts, hence an instance in the key and an answer that expires.
+		// A crossing of Reshanta was not kept at all, and it casts three rays at each height it tries.
 		AirKey key = new AirKey(bot.getWorldId(), bot.getInstanceId(), link);
 		long now = System.currentTimeMillis();
 		AirAnswer known = airAnswers.get(key);
@@ -191,7 +227,9 @@ public class NavmeshService {
 			return known.clear();
 		if (airAnswers.size() >= MAX_AIR_ANSWERS)
 			airAnswers.clear(); // instances come and go, and their answers with them: a bound rather than a sweep
-		boolean clear = castAir(bot, link);
+		boolean clear = link.flight()
+			? BotFlight.crossing(bot, new Vector3f(link.fromX(), link.fromY(), link.fromZ()), new Vector3f(link.toX(), link.toY(), link.toZ())) != null
+			: castAir(bot, link);
 		airAnswers.put(key, new AirAnswer(clear, now + AIR_ANSWER_MILLIS));
 		return clear;
 	}
