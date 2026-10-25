@@ -155,7 +155,11 @@ resting on give-ups or pockets no longer counted, and the walking search moved t
 1. **Searches out of time in game.** Offline, the same give-ups find their route within budget; in game, under load, they run out of the 3 s. To measure
    first: time spent waiting for one of the four route threads, the same bot asking again for a destination already refused, goals on a rock top.
    On 25 October, with the search on plain arrays, time in searches over a second fell from 1066 s to 692 s per 30 minutes, the heap held at 1.91 GB
-   after an hour, give-ups stayed at 78: searches answering "no way" average 4 s against a 3 s budget, so time is lost before the search runs.
+   after an hour, give-ups stayed at 78. Those lines were reach questions, not journeys: with the asker logged, nine in ten ran on a tick thread,
+   about 960 s per 30 minutes of every bot on it frozen, led by spots round a place or an anchor (216). Asked as a short walk on foot capped at three
+   times the distance plus 20 m (replayed: 8 ms instead of 3.5 s, the only answers turned to no needed a glide), they fell to 0; frozen time to 340 s,
+   route queue waits from 516 to 98, journey give-ups from 345 to 276, rescues from 41 to 26, population per map unchanged. Still on the tick
+   threads: `findVendor`, `BotErrands.leadsBack`, `BotLanding.toWalkableGround`.
 2. **Steps aside rose to 976** in 30 minutes: milestone 6 above, the walk against the plan.
 3. **Day plans given up, about 586** in 30 minutes: which step gives up, and whether it is the same place for many bots.
 4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
