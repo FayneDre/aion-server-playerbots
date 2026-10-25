@@ -2,11 +2,13 @@ package com.aionemu.gameserver.playerbot;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,11 +45,13 @@ public class BotScheduler {
 	private static final Logger log = LoggerFactory.getLogger(BotScheduler.class);
 	/** Share of the processors the bots may use for their ticks, rounded down, never fewer than two. */
 	private static final float PROCESSOR_SHARE = 0.5f;
+	/** A route search that waited longer than this for a thread is logged. */
+	private static final long SLOW_QUEUE_MILLIS = 1000;
 
 	private static final BotScheduler INSTANCE = new BotScheduler();
 
 	private final ScheduledExecutorService pool;
-	private final ExecutorService routePool;
+	private final ThreadPoolExecutor routePool;
 	private final ExecutorService lifecyclePool;
 
 	private BotScheduler() {
@@ -58,7 +62,7 @@ public class BotScheduler {
 		executor.setRemoveOnCancelPolicy(true);
 		pool = executor;
 		int routeThreads = Math.max(1, threads / 2);
-		routePool = Executors.newFixedThreadPool(routeThreads, threadsNamed("PlayerBotRoute"));
+		routePool = new ThreadPoolExecutor(routeThreads, routeThreads, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), threadsNamed("PlayerBotRoute"));
 		lifecyclePool = Executors.newSingleThreadExecutor(threadsNamed("PlayerBotLifecycle"));
 		log.info("Bot scheduler running on {} tick thread(s), {} route thread(s) and one lifecycle thread", threads, routeThreads);
 	}
@@ -130,7 +134,15 @@ public class BotScheduler {
 	/** Runs a route search, which belongs in its own lane: it is the longest thing a bot does and must block neither ticks nor the engine. */
 	public void planRoute(Runnable search) {
 		try {
-			routePool.execute(reporting(search));
+			long queued = System.currentTimeMillis();
+			routePool.execute(reporting(() -> {
+				// how long a search waited for a thread, which the search's own timing cannot see: logged to tell a queue that falls behind from searches
+				// that are slow by themselves
+				long waited = System.currentTimeMillis() - queued;
+				if (waited >= SLOW_QUEUE_MILLIS)
+					log.info("Route search waited {} ms for a route thread, {} more queued", waited, routePool.getQueue().size());
+				search.run();
+			}));
 		} catch (RejectedExecutionException e) {
 			// shutting down; the caller is a bot that will not be walking anywhere
 		}

@@ -1,6 +1,8 @@
 package com.aionemu.gameserver.playerbot.navmesh;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -79,6 +81,7 @@ public class NavmeshService {
 		// only a daeva has wings: anyone else is given no glide, and the planner answers as though the links were not there
 		boolean canGlide = bot.getCommonData().isDaeva() && !bot.getTransformModel().cantFly();
 		long began = System.currentTimeMillis();
+		long cpuBegan = cpuTime();
 		List<Vector3f> dangers = dangersFor(bot);
 		// landings only: kept away from on foot as well, even at three times the cost, the search gave up after seven seconds on a journey of 900 m it
 		// planned in under one without them. The Abyss is dangerous to walk, and a bot meets what it meets; it does not fly down into it
@@ -110,6 +113,10 @@ public class NavmeshService {
 			else
 				log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		}
+		long took = System.currentTimeMillis() - began;
+		if (took >= SLOW_SEARCH_MILLIS)
+			log.info("Journey search for {} on map {} took {} ms ({}, {} ms of processor, on {})", bot.getName(), bot.getWorldId(), took,
+				!route.isEmpty() ? "found" : route.gaveUp() ? "gave up" : "no way", (cpuTime() - cpuBegan) / 1_000_000, Thread.currentThread().getName());
 		return route;
 	}
 
@@ -237,20 +244,38 @@ public class NavmeshService {
 		if (mesh == null)
 			return true;
 		long began = System.currentTimeMillis();
+		long cpuBegan = cpuTime();
 		BotPathFinder.Route route = BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ);
-		logIfSlow(worldId, began, fromX, fromY, fromZ, toX, toY, toZ, route);
+		logIfSlow(worldId, began, cpuBegan, fromX, fromY, fromZ, toX, toY, toZ, route);
 		return !route.isEmpty();
 	}
 
 	/** A search that took longer than this is logged with its ends, which is what finding out why takes ({@code NavmeshTool <map> path}). */
 	private static final long SLOW_SEARCH_MILLIS = 1000;
 
-	private static void logIfSlow(int worldId, long began, float fromX, float fromY, float fromZ, float toX, float toY, float toZ, BotPathFinder.Route route) {
+	private static void logIfSlow(int worldId, long began, long cpuBegan, float fromX, float fromY, float fromZ, float toX, float toY, float toZ,
+		BotPathFinder.Route route) {
 		long took = System.currentTimeMillis() - began;
+		// the asker and the processor time are there because on 25 October nine slow searches in ten ran on a tick thread, holding up every bot on it,
+		// and the line could not say who had asked; a processor time well under the wall time says the search waited for the machine, not for the ground
 		if (took >= SLOW_SEARCH_MILLIS)
-			log.info("Path search on map {} took {} ms ({}): NavmeshTool {} path {} {} {} {} {} {}", worldId, took,
-				!route.isEmpty() ? "found" : route.gaveUp() ? "gave up" : "no way", worldId, String.format("%.1f", fromX), String.format("%.1f", fromY),
-				String.format("%.1f", fromZ), String.format("%.1f", toX), String.format("%.1f", toY), String.format("%.1f", toZ));
+			log.info("Path search on map {} took {} ms ({}, {} ms of processor, asked by {}): NavmeshTool {} path {} {} {} {} {} {}", worldId, took,
+				!route.isEmpty() ? "found" : route.gaveUp() ? "gave up" : "no way", (cpuTime() - cpuBegan) / 1_000_000, asker(), worldId,
+				String.format("%.1f", fromX), String.format("%.1f", fromY), String.format("%.1f", fromZ), String.format("%.1f", toX), String.format("%.1f", toY),
+				String.format("%.1f", toZ));
+	}
+
+	/** @return The processor time of the calling thread in nanoseconds, or 0 where the platform does not measure it. */
+	static long cpuTime() {
+		ThreadMXBean threads = ManagementFactory.getThreadMXBean();
+		return threads.isCurrentThreadCpuTimeSupported() ? threads.getCurrentThreadCpuTime() : 0;
+	}
+
+	/** @return The first caller outside this class, as {@code Class.method:line}. Walked only for a search already slow, so its cost does not matter. */
+	private static String asker() {
+		return StackWalker.getInstance().walk(frames -> frames.filter(frame -> !frame.getClassName().equals(NavmeshService.class.getName())).findFirst()
+			.map(frame -> frame.getClassName().substring(frame.getClassName().lastIndexOf('.') + 1) + "." + frame.getMethodName() + ":" + frame.getLineNumber())
+			.orElse("?"));
 	}
 
 	/** What a reachability question came back with, for a caller that means to remember the answer. */
@@ -275,8 +300,9 @@ public class NavmeshService {
 		if (mesh == null)
 			return Reach.UNKNOWN; // a map with no mesh refuses nothing: its bots walk without a plan, which is not the same as having nowhere to go
 		long began = System.currentTimeMillis();
+		long cpuBegan = cpuTime();
 		BotPathFinder.Route route = BotPathFinder.findPath(mesh, fromX, fromY, fromZ, toX, toY, toZ);
-		logIfSlow(worldId, began, fromX, fromY, fromZ, toX, toY, toZ, route);
+		logIfSlow(worldId, began, cpuBegan, fromX, fromY, fromZ, toX, toY, toZ, route);
 		if (!route.isEmpty())
 			return Reach.YES;
 		return route.gaveUp() ? Reach.UNKNOWN : Reach.NO;
