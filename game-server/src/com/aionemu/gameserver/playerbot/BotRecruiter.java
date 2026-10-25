@@ -231,13 +231,17 @@ public final class BotRecruiter {
 	public static void bringInvited(Player bot, Player inviter) {
 		if (recruits.containsKey(bot.getObjectId()) || bot.isDead() || inviter.isDead() || bot.isInInstance() || inviter.isInInstance())
 			return;
+		if (bot.getCurrentTeam() == null)
+			return; // the acceptance did not take, a full group for one: nothing to be brought to
 		if (bot.getWorldId() == inviter.getWorldId() && bot.getInstanceId() == inviter.getInstanceId()
 			&& PositionUtil.getDistance(bot, inviter) <= BRING_INVITED_BEYOND)
 			return;
 		int fromWorldId = bot.getWorldId();
 		long distance = fromWorldId == inviter.getWorldId() ? Math.round(PositionUtil.getDistance(bot, inviter)) : -1;
-		// a visitor already has its way home, which ends its visit; any other bot is sent back to where it lives
-		if (!BotVisitors.isVisitor(bot)) {
+		// a visitor already has its way home, which ends its visit, and a companion goes back to its owner, not to the house it once lived in; any other
+		// bot is sent back to where it lives
+		boolean owned = bot.getAi() instanceof PlayerBotAI ai && ai.isOwned();
+		if (!BotVisitors.isVisitor(bot) && !owned) {
 			Vector3f home = BotRoster.homeOf(bot.getName());
 			recruits.put(bot.getObjectId(), new Recruit(fromWorldId, home != null ? home : new Vector3f(bot.getX(), bot.getY(), bot.getZ()), NO_OFFER, BotRole.of(bot)));
 		}

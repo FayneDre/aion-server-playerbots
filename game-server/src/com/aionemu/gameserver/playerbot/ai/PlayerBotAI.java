@@ -311,7 +311,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	/** When the last fight ended, 0 once the weapon has been put away. */
 	private volatile long combatEndedAt;
 	/** How many times running the bot has walked off ground that hurts it to rest, 0 once it rests on ground that does not. */
-	private int harmfulGroundTries;
+	private volatile int harmfulGroundTries;
 	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
 	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
 	/** How many times each monster was given up on as out of reach, so the next time it is left alone for longer. */
@@ -863,6 +863,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	public void startAttacking(Creature target) {
 		combatEndedAt = 0; // fighting again, so the pending sheathe is off
+		harmfulGroundTries = 0; // the next rest is somewhere else, and gets its own tries
 		openingSpent = false;
 		approachSpent = false;
 		pulledFromAfar = false;

@@ -81,16 +81,21 @@ public final class BotPowerShards {
 	}
 
 	/**
-	 * Switches the mode on as a fight begins, first filling the shard places from the bag. Both places for a weapon in each hand or one in both, the
-	 * right one only for a single one handed weapon, which is the only one the engine boosts then.
+	 * Fills the shard places from the bag: both for a weapon in each hand or one in both, the right one only for a single one handed weapon, which is the
+	 * only one the engine boosts then. On the bot's own tick, after a purchase and in the calm between fights, never as a fight begins: a fight is
+	 * begun from whatever thread the blow that started it came on, and the bag and the equipment are the tick's to change.
 	 */
-	public static void switchOn(Player bot) {
+	public static void load(Player bot) {
 		Equipment equipment = bot.getEquipment();
 		if (equipment.getMainHandPowerShard() == null)
 			wear(bot, ItemSlot.POWER_SHARD_RIGHT);
 		if (equipment.getOffHandPowerShard() == null && wantsBoth(bot))
 			wear(bot, ItemSlot.POWER_SHARD_LEFT);
-		if (!equipment.isPowerShardEquipped() || bot.isInState(CreatureState.POWERSHARD))
+	}
+
+	/** Switches the mode on as a fight begins, when shards are worn. */
+	public static void switchOn(Player bot) {
+		if (!bot.getEquipment().isPowerShardEquipped() || bot.isInState(CreatureState.POWERSHARD))
 			return;
 		bot.setState(CreatureState.POWERSHARD);
 		PacketSendUtility.broadcastPacket(bot, new SM_EMOTION(bot, EmotionType.POWERSHARD_ON, 0, 0));
@@ -116,6 +121,8 @@ public final class BotPowerShards {
 	 * stack into a place.
 	 */
 	private static void wear(Player bot, ItemSlot slot) {
+		if (bot.getLevel() < FROM_LEVEL)
+			return;
 		Item stack = strongestInBag(bot);
 		Item right = bot.getEquipment().getMainHandPowerShard();
 		if (stack == null && slot == ItemSlot.POWER_SHARD_LEFT && right != null && right.getItemCount() >= 2) {

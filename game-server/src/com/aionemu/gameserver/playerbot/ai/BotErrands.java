@@ -17,6 +17,7 @@ import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.economy.BotEquipManager;
 import com.aionemu.gameserver.playerbot.economy.BotOutfitter;
+import com.aionemu.gameserver.playerbot.economy.BotPowerShards;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.BotVisitors;
@@ -49,6 +50,10 @@ class BotErrands {
 	private final PlayerBotAI ai;
 	/** How long a bot waits before walking to a shop for flasks again, after one that sold it none. */
 	private static final long FLASK_TRIP_COOLDOWN_MILLIS = 600000;
+	/** How long a bot leaves shards alone after a shop that did not sell it enough of them. */
+	private static final long SHARDLESS_SHOP_MILLIS = 3_600_000;
+	/** How often the calm between fights fills the shard places from the bag. */
+	private static final long SHARD_LOAD_MILLIS = 30_000;
 	/**
 	 * How long a bot leaves shops alone after a walk that could not be planned. Shorter than {@link #EMPTY_SHOP_MILLIS}: a shop spot that is wrong
 	 * stays wrong, whereas a route may be refused because of where the bot happens to be standing, and it moves.
@@ -78,6 +83,13 @@ class BotErrands {
 	private volatile boolean sellingOnDemand;
 	/** Until when this bot stops making the walk for flasks, after a shop that had none to sell it. */
 	private volatile long noFlasksUntil;
+	/**
+	 * And the wait after a shop that left the bot short of shards. Its own, and long: not every keeper of flasks sells shards, and a bot with its flasks
+	 * full went back to one every ten minutes for shards it never had.
+	 */
+	private volatile long noShardsUntil;
+	/** When the shard places were last filled from the bag, so the bag is not read on every calm tick. */
+	private long shardsLoadedAt;
 	/** Until when this bot stops setting out for a shop at all, after a walk the map refused. */
 	private volatile long noShopUntil;
 	/** The keeper {@link #keeperSpot} was chosen for this trip, 0 before one is in sight. */
@@ -157,6 +169,10 @@ class BotErrands {
 		// drops there seldom beats what it wears, and five seconds of standing still with the weapon away is five seconds the group goes without it.
 		if (bot.getCurrentTeam() != null && (bot.isInInstance() || bot.isInState(CreatureState.WEAPON_EQUIPPED)))
 			return false;
+		if (System.currentTimeMillis() - shardsLoadedAt >= SHARD_LOAD_MILLIS && !bot.isInState(CreatureState.POWERSHARD)) {
+			shardsLoadedAt = System.currentTimeMillis();
+			BotPowerShards.load(bot);
+		}
 		if (bot.getLevel() != wingsCheckedAtLevel && !bot.isFlying()) {
 			wingsCheckedAtLevel = bot.getLevel();
 			if (BotOutfitter.renewWings(bot))
@@ -197,7 +213,8 @@ class BotErrands {
 
 	/** @return true if the bot wants flasks and is not serving out a wait from a shop that had none for it. */
 	private boolean wantsFlasks(Player bot) {
-		return System.currentTimeMillis() >= noFlasksUntil && BotVendorManager.needsPotions(bot);
+		long now = System.currentTimeMillis();
+		return now >= noFlasksUntil && (BotVendorManager.needsPotions(bot) || now >= noShardsUntil && BotPowerShards.needsShards(bot));
 	}
 
 	/**
@@ -256,6 +273,9 @@ class BotErrands {
 			// And one that sold it some is not either: a bot whose purchase still left it wanting flasks turned round on the spot and bought again,
 			// once a second, ten times in a minute in Cygnea on 18 October.
 			noFlasksUntil = System.currentTimeMillis() + FLASK_TRIP_COOLDOWN_MILLIS;
+			BotPowerShards.load(bot);
+			if (BotPowerShards.needsShards(bot))
+				noShardsUntil = System.currentTimeMillis() + SHARDLESS_SHOP_MILLIS;
 			if (sold > 0 || bought > 0)
 				log.info("Bot {} sold {} stack(s) and bought {} kind(s) of flask", bot.getName(), sold, bought);
 			vendorDestination = null;

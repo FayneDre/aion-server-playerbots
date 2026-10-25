@@ -301,7 +301,7 @@ public class BotVendorManager {
 	public static boolean needsPotions(Player bot) {
 		return bot.getLevel() >= POTION_BUYING_LEVEL
 			&& (held(bot, BotPotionManager.RESTORES_MANA) * 2 < POTIONS_CARRIED
-				|| held(bot, BotPotionManager.RESTORES_HEALTH) * 2 < POTIONS_CARRIED || BotPowerShards.needsShards(bot));
+				|| held(bot, BotPotionManager.RESTORES_HEALTH) * 2 < POTIONS_CARRIED);
 	}
 
 	private static long held(Player bot, EffectType... effects) {
