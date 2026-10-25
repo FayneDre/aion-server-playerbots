@@ -42,9 +42,14 @@ final class ClericPlaybook implements ClassPlaybook {
 	/** Health under which a member of a group is healed with the standard heal. */
 	static final int GROUP_HEAL_BELOW_PERCENT = 80;
 	/** Health under which the big heal replaces the standard one, "the lowest threshold at the moment of decision takes the step". */
-	static final int BIG_HEAL_BELOW_PERCENT = 40;
-	/** Health under which the instant heal is cast in reaction. */
-	static final int INSTANT_HEAL_BELOW_PERCENT = 30;
+	static final int BIG_HEAL_BELOW_PERCENT = 60;
+	/** Health under which the instant heal is cast in reaction in a group, and {@code SOLO_INSTANT_HEAL_BELOW_PERCENT} on itself alone. */
+	static final int INSTANT_HEAL_BELOW_PERCENT = 50;
+	static final int SOLO_INSTANT_HEAL_BELOW_PERCENT = 30;
+	/** Health of the tank under which the seven second channelled heal is begun, before any other. */
+	static final int CHANNEL_HEAL_BELOW_PERCENT = 30;
+	/** Health of the tank under which its own heal comes before the area heals; above it, two members hurt are healed together first. */
+	static final int TANK_FIRST_BELOW_PERCENT = 50;
 	/** Health of the tank under which Saving Grace is put on it. */
 	static final int SAVING_GRACE_BELOW_PERCENT = 60;
 	/** Health of a mate that outranks the tank and the cleric themselves when they are not in real danger. */
@@ -52,19 +57,22 @@ final class ClericPlaybook implements ClassPlaybook {
 	/** Health under which two members make the area heal worth its mana: the guide's "at least two members", read as hurt. */
 	static final int AREA_HEAL_BELOW_PERCENT = 60;
 	/** And the area heal that needs contact, kept for members that are worse off. */
-	static final int CONTACT_HEAL_BELOW_PERCENT = 30;
-	/** Health above which a cleric that is hurt heals itself through an area heal on the others, when it has one. */
-	static final int SELF_THROUGH_AREA_ABOVE_PERCENT = 70;
+	static final int CONTACT_HEAL_BELOW_PERCENT = 50;
+	/** And the channelled area heal, for members about to die. */
+	static final int CHANNEL_AREA_HEAL_BELOW_PERCENT = 30;
+	/** Health under which a cleric that is hurt heals itself through an area heal on the others, when it has one. */
+	static final int SELF_THROUGH_AREA_BELOW_PERCENT = 70;
 	/** Health under which a cleric alone stops fighting and heals itself back to full. */
 	static final int SOLO_HEAL_BELOW_PERCENT = 40;
 	/** Health under which a cleric alone raises Blessed Shield, and then heals. */
 	static final int SHIELD_BELOW_PERCENT = 30;
 	/** Health under which a cleric alone spends Salvation, which costs divine power. */
 	static final int SALVATION_BELOW_PERCENT = 20;
+	/** Mana under which a cleric in a group spends Salvation on itself, and only below {@code SALVATION_GROUP_BEFORE_LEVEL}. */
+	static final int SALVATION_GROUP_MANA_BELOW_PERCENT = 20;
+	static final int SALVATION_GROUP_BEFORE_LEVEL = 31;
 	/** Health of a cleric alone, after a fight, under which Healing Light is cast. */
 	static final int SOLO_REST_BELOW_PERCENT = 90;
-	/** Health the tank must be under for the heal over time to be kept on it: any hurt at all. */
-	static final int HOT_BELOW_PERCENT = 95;
 	/** Health a cleric alone must hold for Life Curtain, the guide's "above 70 %"; in a group it asks for 50 % health or 30 % mana. */
 	static final int LIFE_CURTAIN_SOLO_ABOVE_PERCENT = 70;
 	static final int LIFE_CURTAIN_GROUP_HEALTH_PERCENT = 50;
@@ -109,12 +117,11 @@ final class ClericPlaybook implements ClassPlaybook {
 	static final String SHOCK_CHAIN = "ALL_CHAINA_1TH";
 
 	/**
-	 * What a cleric never casts: Word of Destruction, the two seven second channels, Land's Bargain, which costs health for damage and which the guide says is
+	 * What a cleric never casts: Word of Destruction, Land's Bargain, which costs health for damage and which the guide says is
 	 * "to be seen", and Reverse Condition, which swaps health and mana and which the tester called dangerous. Claimed, so that the generic order never takes
 	 * them for what they look like. Also the two bandage skills every class knows, which would otherwise be what the generic heal falls back on.
 	 */
-	static final List<String> FORBIDDEN_GROUPS = List.of("PR_GODSVOICE", "PR_HOLYLIGHT", "PR_HOLYLIGHTWAVE", "PR_HOLYEXPLOSION", "PR_REVERSECONDITION", "MENDING",
-		"AROMATHERAPY");
+	static final List<String> FORBIDDEN_GROUPS = List.of("PR_GODSVOICE", "PR_HOLYEXPLOSION", "PR_REVERSECONDITION", "MENDING", "AROMATHERAPY");
 	/** The stigmas the guide lists ("Sigma"), by the sockets they fill: Saving Grace, Sympathetic Heal and Noble Grace, and not Reverse Condition. */
 	static final List<String> REGULAR_STIGMAS = List.of("PR_RESTORELIFE", "PR_BINDINGHEAL", "PR_HEALINGGRACE");
 
@@ -147,6 +154,9 @@ final class ClericPlaybook implements ClassPlaybook {
 		HEALING_WIND("PR_MASSHEAL", true),
 		LIGHT_OF_RECOVERY("PR_EMERGENTHEAL", true),
 		SPLENDOR_OF_RECOVERY("PR_MASSEMERGENTHEAL", true),
+		/** The two seven second channels, released at their top stage by the skill manager. */
+		FLASH_OF_HEALING("PR_HOLYLIGHT", true),
+		HEALING_SPLENDOR("PR_HOLYLIGHTWAVE", true),
 		SAVING_GRACE("PR_RESTORELIFE", true),
 		SYMPATHETIC_HEAL("PR_BINDINGHEAL", true),
 		CLEANSE("PR_PURIFY", true),
@@ -206,7 +216,8 @@ final class ClericPlaybook implements ClassPlaybook {
 	 * @param assailed Whether an enemy is hitting the cleric: the big heal is a three second cast and is not begun then.
 	 * @param hasTank Whether the group has a tank in reach; {@code tankHp} its health.
 	 * @param hasMember Whether there is a member that is neither the tank nor the cleric, the most hurt of whom has {@code memberHp}.
-	 * @param hurtUnder60 How many of the group, the cleric included, are under the area heal's bar, and {@code hurtUnder30} under the contact heal's.
+	 * @param hurtUnder60 How many of the group, the cleric included, are under the area heal's bar, {@code hurtUnder50} under the contact heal's and
+	 *          {@code hurtUnder30} under the channelled one's.
 	 * @param othersUnder90 How many members other than the cleric are hurt at all.
 	 * @param debuffedCount How many of the group, the cleric included, carry something a cleanse can reach; {@code hasDebuffedMember} says whether one of
 	 *          them is neither the cleric nor the tank.
@@ -221,7 +232,7 @@ final class ClericPlaybook implements ClassPlaybook {
 	 * @param ready The moves the cleric knows and that are off cooldown.
 	 */
 	record Situation(int hp, int mp, int level, int dp, boolean inTeam, boolean inFight, boolean assailed, boolean hasTank, int tankHp, boolean tankHasRejuvenation,
-		boolean tankHasSavingGrace, boolean hasMember, int memberHp, int hurtUnder60, int hurtUnder30, int othersUnder90, boolean selfHasRejuvenation, boolean penanceUp,
+		boolean tankHasSavingGrace, boolean hasMember, int memberHp, int hurtUnder60, int hurtUnder50, int hurtUnder30, int othersUnder90, boolean selfHasRejuvenation, boolean penanceUp,
 		boolean shieldUp, boolean shroudUp, boolean amplificationUp, boolean focusUp, boolean selfDebuffed, boolean tankDebuffed, boolean hasDebuffedMember,
 		int debuffedCount, boolean controlled, boolean shockChainOpen, boolean justControlled, boolean hasMateToRaise, boolean hasDeadMate, int deadCount,
 		boolean chanterInGroup, boolean inInstance, int tankLoss, int membersLosing, boolean mending, boolean hasOtherEnemy, boolean hasAssailant,
@@ -370,7 +381,8 @@ final class ClericPlaybook implements ClassPlaybook {
 		PlayerBotAI ai = bot.getAi() instanceof PlayerBotAI own ? own : null;
 
 		Player tank = null, member = null, debuffedMember = null;
-		int tankHp = -1, memberHp = -1, hurtUnder60 = hp < AREA_HEAL_BELOW_PERCENT ? 1 : 0, hurtUnder30 = hp < CONTACT_HEAL_BELOW_PERCENT ? 1 : 0, othersUnder90 = 0;
+		int tankHp = -1, memberHp = -1, hurtUnder60 = hp < AREA_HEAL_BELOW_PERCENT ? 1 : 0;
+		int hurtUnder50 = hp < CONTACT_HEAL_BELOW_PERCENT ? 1 : 0, hurtUnder30 = hp < CHANNEL_AREA_HEAL_BELOW_PERCENT ? 1 : 0, othersUnder90 = 0;
 		boolean selfDebuffed = ready.contains(Move.CLEANSE) && BotSkillManager.hasDispellableDebuff(bot, DISPEL_LEVEL), tankDebuffed = false, chanter = false;
 		int debuffedCount = selfDebuffed ? 1 : 0, tankLoss = 0, membersLosing = 0;
 		boolean tankHasRejuvenation = false, tankHasSavingGrace = false;
@@ -393,6 +405,8 @@ final class ClericPlaybook implements ClassPlaybook {
 				if (mateHp < AREA_HEAL_BELOW_PERCENT)
 					hurtUnder60++;
 				if (mateHp < CONTACT_HEAL_BELOW_PERCENT)
+					hurtUnder50++;
+				if (mateHp < CHANNEL_AREA_HEAL_BELOW_PERCENT)
 					hurtUnder30++;
 				if (mateHp < NO_HEAL_ABOVE_PERCENT)
 					othersUnder90++;
@@ -446,7 +460,7 @@ final class ClericPlaybook implements ClassPlaybook {
 		Player deadMate = deadCount > 0 ? BotGroupManager.deadMemberWithin(bot, AREA_RESURRECTION_RANGE) : null;
 		boolean inInstance = bot.getPosition().getWorldMapInstance() != null && bot.getPosition().getWorldMapInstance().getParent().isInstanceType();
 		Situation situation = new Situation(hp, bot.getLifeStats().getMpPercentage(), bot.getLevel(), bot.getCommonData().getDp(), inTeam, inFight, assailed, tank != null,
-			tankHp, tankHasRejuvenation, tankHasSavingGrace, member != null, memberHp, hurtUnder60, hurtUnder30, othersUnder90,
+			tankHp, tankHasRejuvenation, tankHasSavingGrace, member != null, memberHp, hurtUnder60, hurtUnder50, hurtUnder30, othersUnder90,
 			BotSkillManager.isCovered(bot, bot, Move.REJUVENATION.group), BotSkillManager.isUp(bot, Move.PENANCE.group),
 			BotSkillManager.isUp(bot, Move.BLESSED_SHIELD.group), BotSkillManager.isUp(bot, Move.IMMORTAL_SHROUD.group),
 			BotSkillManager.isUp(bot, Move.AMPLIFICATION.group), BotSkillManager.isUp(bot, Move.PRAYER_OF_FOCUS.group), selfDebuffed, tankDebuffed, debuffedMember != null,
@@ -520,11 +534,12 @@ final class ClericPlaybook implements ClassPlaybook {
 		// the guide's "when the health is under 40 %, heal to full": it goes on until it is, and the instant spells lead because a long cast is the one that is interrupted
 		if (hp < SOLO_HEAL_BELOW_PERCENT || situation.mending()) {
 			for (Move move : situation.inFight() ? FIGHT_LADDER : REST_LADDER) {
-				if (ready.contains(move))
+				// the instant heal has a 30 s cooldown and is kept for when the cleric is nearly dead
+				if (ready.contains(move) && (move != Move.FLASH_OF_RECOVERY || hp < SOLO_INSTANT_HEAL_BELOW_PERCENT))
 					return self(move);
 			}
 		}
-		if (situation.inFight() && !situation.selfHasRejuvenation() && hp < NO_HEAL_ABOVE_PERCENT && ready.contains(Move.REJUVENATION))
+		if (situation.inFight() && !situation.selfHasRejuvenation() && ready.contains(Move.REJUVENATION))
 			return self(Move.REJUVENATION);
 		if (!situation.inFight() && hp < SOLO_REST_BELOW_PERCENT && ready.contains(Move.HEALING_LIGHT))
 			return self(Move.HEALING_LIGHT);
@@ -544,22 +559,26 @@ final class ClericPlaybook implements ClassPlaybook {
 			&& ready.contains(Move.ACQUITTAL) && situation.membersLosing() >= ACQUITTAL_MEMBERS)
 			return self(Move.ACQUITTAL);
 
+		if (situation.inFight() && situation.level() < SALVATION_GROUP_BEFORE_LEVEL && situation.mp() < SALVATION_GROUP_MANA_BELOW_PERCENT
+			&& situation.dp() >= SALVATION_DP && ready.contains(Move.SALVATION))
+			return self(Move.SALVATION);
+
 		Who who = whoNeedsAHeal(situation);
 		if (who == null)
 			return decideGroupUpkeep(situation);
 		int target = who == Who.TANK ? situation.tankHp() : who == Who.SELF ? hp : situation.memberHp();
 		if (who == Who.TANK && target < SAVING_GRACE_BELOW_PERCENT && ready.contains(Move.SAVING_GRACE) && !situation.tankHasSavingGrace())
 			return new Decision(Move.SAVING_GRACE, Who.TANK);
-		if (situation.hurtUnder30() >= 2 && ready.contains(Move.SPLENDOR_OF_RECOVERY))
-			return self(Move.SPLENDOR_OF_RECOVERY);
-		if (situation.hurtUnder60() >= 2 && ready.contains(Move.HEALING_WIND))
-			return self(Move.HEALING_WIND);
-		if (target < INSTANT_HEAL_BELOW_PERCENT && ready.contains(Move.FLASH_OF_RECOVERY))
-			return new Decision(Move.FLASH_OF_RECOVERY, who);
-		if (target < BIG_HEAL_BELOW_PERCENT && !situation.assailed() && ready.contains(Move.HEALING_GRACE))
-			return new Decision(Move.HEALING_GRACE, who);
-		// a cleric that is hurt and not in danger heals itself by healing the others, which an area heal does
-		if (who == Who.SELF && hp > SELF_THROUGH_AREA_ABOVE_PERCENT && situation.othersUnder90() >= 1 && ready.contains(Move.HEALING_WIND))
+		// the area heals go first while the tank holds half its health, the tank's own heal first below that
+		Decision single = decideSingleHeal(situation, who, target), area = decideAreaHeal(situation);
+		boolean tankFirst = who == Who.TANK && target < TANK_FIRST_BELOW_PERCENT;
+		Decision first = tankFirst ? single : area, then = tankFirst ? area : single;
+		if (first != null)
+			return first;
+		if (then != null)
+			return then;
+		// a cleric that is hurt heals itself by healing the others, which an area heal does
+		if (who == Who.SELF && hp < SELF_THROUGH_AREA_BELOW_PERCENT && situation.othersUnder90() >= 1 && ready.contains(Move.HEALING_WIND))
 			return self(Move.HEALING_WIND);
 		Decision hot = decideHealOverTime(situation);
 		if (hot != null)
@@ -573,12 +592,36 @@ final class ClericPlaybook implements ClassPlaybook {
 		return null;
 	}
 
-	/** The heal over time that is kept on the tank in a fight, and on the cleric after Penance has taken its health. */
+	/** The heals aimed at one, the lowest threshold first: the channel under 30 % (the tank only), the instant heal under 50 %, the big heal under 60 %. */
+	private static Decision decideSingleHeal(Situation situation, Who who, int target) {
+		Set<Move> ready = situation.ready();
+		if (who == Who.TANK && target < CHANNEL_HEAL_BELOW_PERCENT && ready.contains(Move.FLASH_OF_HEALING))
+			return new Decision(Move.FLASH_OF_HEALING, Who.TANK);
+		if (target < INSTANT_HEAL_BELOW_PERCENT && ready.contains(Move.FLASH_OF_RECOVERY))
+			return new Decision(Move.FLASH_OF_RECOVERY, who);
+		if (target < BIG_HEAL_BELOW_PERCENT && !situation.assailed() && ready.contains(Move.HEALING_GRACE))
+			return new Decision(Move.HEALING_GRACE, who);
+		return null;
+	}
+
+	/** The area heals, for two members hurt or more, the lowest threshold first: the channel under 30 %, the contact heal under 50 %, the wind under 60 %. */
+	private static Decision decideAreaHeal(Situation situation) {
+		Set<Move> ready = situation.ready();
+		if (situation.hurtUnder30() >= 2 && ready.contains(Move.HEALING_SPLENDOR))
+			return self(Move.HEALING_SPLENDOR);
+		if (situation.hurtUnder50() >= 2 && ready.contains(Move.SPLENDOR_OF_RECOVERY))
+			return self(Move.SPLENDOR_OF_RECOVERY);
+		if (situation.hurtUnder60() >= 2 && ready.contains(Move.HEALING_WIND))
+			return self(Move.HEALING_WIND);
+		return null;
+	}
+
+	/** The heal over time kept on the tank in a fight, from its first moment and again as it ends, and on the cleric after Penance has taken its health. */
 	private static Decision decideHealOverTime(Situation situation) {
 		Set<Move> ready = situation.ready();
 		if (!ready.contains(Move.REJUVENATION))
 			return null;
-		if (situation.inFight() && situation.hasTank() && !situation.tankHasRejuvenation() && situation.tankHp() < HOT_BELOW_PERCENT)
+		if (situation.inFight() && situation.hasTank() && !situation.tankHasRejuvenation())
 			return new Decision(Move.REJUVENATION, Who.TANK);
 		if (situation.penanceUp() && !situation.selfHasRejuvenation() && situation.hp() < NO_HEAL_ABOVE_PERCENT)
 			return self(Move.REJUVENATION);

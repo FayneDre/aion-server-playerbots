@@ -21,7 +21,7 @@ class ClericPlaybookTest {
 	/** A mutable stand-in for a {@link Situation}, calm and alone at full health, to be changed by the test and then built. */
 	private static final class S {
 
-		int hp = 100, mp = 100, level = 60, dp = 0, tankHp = -1, memberHp = -1, hurtUnder60, hurtUnder30, othersUnder90, debuffedCount, deadCount, tankLoss, membersLosing;
+		int hp = 100, mp = 100, level = 60, dp = 0, tankHp = -1, memberHp = -1, hurtUnder60, hurtUnder50, hurtUnder30, othersUnder90, debuffedCount, deadCount, tankLoss, membersLosing;
 		boolean inTeam, inFight, assailed, hasTank, tankHasRejuvenation, tankHasSavingGrace, hasMember, selfHasRejuvenation, penanceUp, shieldUp, shroudUp, amplificationUp,
 			focusUp, selfDebuffed, tankDebuffed, hasDebuffedMember, controlled, shockChainOpen, justControlled, hasMateToRaise, hasDeadMate, chanterInGroup, inInstance,
 			mending, hasOtherEnemy, hasAssailant, targetInMelee;
@@ -43,7 +43,7 @@ class ClericPlaybookTest {
 
 		Situation build() {
 			return new Situation(hp, mp, level, dp, inTeam, inFight, assailed, hasTank, tankHp, tankHasRejuvenation, tankHasSavingGrace, hasMember, memberHp, hurtUnder60,
-				hurtUnder30, othersUnder90, selfHasRejuvenation, penanceUp, shieldUp, shroudUp, amplificationUp, focusUp, selfDebuffed, tankDebuffed, hasDebuffedMember,
+				hurtUnder50, hurtUnder30, othersUnder90, selfHasRejuvenation, penanceUp, shieldUp, shroudUp, amplificationUp, focusUp, selfDebuffed, tankDebuffed, hasDebuffedMember,
 				debuffedCount, controlled, shockChainOpen, justControlled, hasMateToRaise, hasDeadMate, deadCount, chanterInGroup, inInstance, tankLoss, membersLosing, mending,
 				hasOtherEnemy, hasAssailant, targetInMelee, onTarget, ready);
 		}
@@ -58,9 +58,13 @@ class ClericPlaybookTest {
 	}
 
 	private static void assertCasts(Move move, Who who, Decision decision) {
-		assertNotNull(decision, "expected " + move + " on " + who);
-		assertEquals(move, decision.move());
-		assertEquals(who, decision.who());
+		assertCasts(move, who, decision, "");
+	}
+
+	private static void assertCasts(Move move, Who who, Decision decision, String why) {
+		assertNotNull(decision, "expected " + move + " on " + who + ": " + why);
+		assertEquals(move, decision.move(), why);
+		assertEquals(who, decision.who(), why);
 	}
 
 	// --- in a group -------------------------------------------------------------------------------------------------------------------------------------
@@ -83,25 +87,78 @@ class ClericPlaybookTest {
 	}
 
 	@Test
-	void theTankUnderFortyGetsTheBigHealAndNotTheStandardOne() {
-		S s = new S().group(38).ready(HEALING_LIGHT, HEALING_GRACE);
+	void theTankUnderSixtyGetsTheBigHealAndNotTheStandardOne() {
+		S s = new S().group(51).ready(HEALING_LIGHT, HEALING_GRACE, FLASH_OF_RECOVERY);
 
 		assertCasts(HEALING_GRACE, Who.TANK, heal(s));
 	}
 
 	@Test
 	void theBigHealIsNotBegunWhileSomethingIsHittingTheCleric() {
-		S s = new S().group(38).ready(HEALING_LIGHT, HEALING_GRACE);
+		S s = new S().group(55).ready(HEALING_LIGHT, HEALING_GRACE);
 		s.assailed = true;
 
 		assertCasts(HEALING_LIGHT, Who.TANK, heal(s));
 	}
 
 	@Test
-	void theTankAboutToDieGetsTheInstantHealFirst() {
-		S s = new S().group(25).ready(HEALING_LIGHT, HEALING_GRACE, FLASH_OF_RECOVERY);
+	void theTankUnderHalfGetsTheInstantHealFirst() {
+		S s = new S().group(45).ready(HEALING_LIGHT, HEALING_GRACE, FLASH_OF_RECOVERY);
 
 		assertCasts(FLASH_OF_RECOVERY, Who.TANK, heal(s));
+	}
+
+	@Test
+	void theTankUnderThirtyGetsTheChannelBeforeAnythingElse() {
+		S s = new S().group(25).ready(FLASH_OF_HEALING, FLASH_OF_RECOVERY, HEALING_GRACE, HEALING_WIND);
+		s.hurtUnder60 = 3;
+		assertCasts(FLASH_OF_HEALING, Who.TANK, heal(s));
+
+		s.ready.remove(FLASH_OF_HEALING);
+		assertCasts(FLASH_OF_RECOVERY, Who.TANK, heal(s));
+	}
+
+	@Test
+	void theAreaHealGoesFirstWhileTheTankHoldsHalfItsHealthAndTheTankFirstBelow() {
+		S s = new S().group(55).ready(HEALING_WIND, HEALING_GRACE);
+		s.hurtUnder60 = 2;
+		assertCasts(HEALING_WIND, Who.SELF, heal(s));
+
+		s.tankHp = 45;
+		assertCasts(HEALING_GRACE, Who.TANK, heal(s));
+
+		s.ready.remove(HEALING_GRACE);
+		assertCasts(HEALING_WIND, Who.SELF, heal(s), "the area heal still, when the tank's own is not ready");
+	}
+
+	@Test
+	void theAreaHealsGoLowestThresholdFirst() {
+		S s = new S().group(55).ready(HEALING_SPLENDOR, SPLENDOR_OF_RECOVERY, HEALING_WIND);
+		s.hurtUnder60 = 3;
+		s.hurtUnder50 = 2;
+		s.hurtUnder30 = 2;
+		assertCasts(HEALING_SPLENDOR, Who.SELF, heal(s));
+
+		s.hurtUnder30 = 1;
+		assertCasts(SPLENDOR_OF_RECOVERY, Who.SELF, heal(s));
+
+		s.hurtUnder50 = 1;
+		assertCasts(HEALING_WIND, Who.SELF, heal(s));
+	}
+
+	@Test
+	void inAGroupSalvationIsForTheClericOutOfManaBeforeLevelThirtyOne() {
+		S s = new S().group(100).ready(SALVATION);
+		s.level = 25;
+		s.dp = 2000;
+		s.mp = 15;
+		assertCasts(SALVATION, Who.SELF, heal(s));
+
+		s.mp = 25;
+		assertNull(heal(s));
+		s.mp = 15;
+		s.level = 31;
+		assertNull(heal(s));
 	}
 
 	@Test
@@ -144,21 +201,21 @@ class ClericPlaybookTest {
 	}
 
 	@Test
-	void aHurtClericThatIsNotInDangerHealsItselfThroughTheAreaHeal() {
+	void aClericUnderSeventyHealsItselfThroughTheAreaHeal() {
 		S s = new S().group(100).ready(HEALING_WIND, HEALING_LIGHT);
-		s.hp = 75;
+		s.hp = 65;
 		s.othersUnder90 = 1;
 
 		assertCasts(HEALING_WIND, Who.SELF, heal(s));
 
-		s.hp = 50; // in danger now: the standard heal, on itself
+		s.hp = 75; // above it: the standard heal, on itself
 		assertCasts(HEALING_LIGHT, Who.SELF, heal(s));
 	}
 
 	@Test
 	void theHealOverTimeIsKeptOnTheTankInAFightAndNotRecastWhileItIsOn() {
-		S s = new S().group(90).ready(REJUVENATION);
-		assertCasts(REJUVENATION, Who.TANK, heal(s));
+		S s = new S().group(100).ready(REJUVENATION);
+		assertCasts(REJUVENATION, Who.TANK, heal(s), "from the fight's first moment, the tank unhurt");
 
 		s.tankHasRejuvenation = true;
 		assertNull(heal(s));
@@ -173,6 +230,7 @@ class ClericPlaybookTest {
 		S s = new S().group(100).ready(REJUVENATION);
 		s.penanceUp = true;
 		s.hp = 85;
+		s.tankHasRejuvenation = true; // the tank's comes first
 
 		assertCasts(REJUVENATION, Who.SELF, heal(s));
 	}
@@ -285,8 +343,11 @@ class ClericPlaybookTest {
 	void aClericAloneUnderFortyHealsToFullWithTheInstantSpellsFirst() {
 		S s = new S().ready(FLASH_OF_RECOVERY, LIGHT_OF_RECOVERY, HEALING_LIGHT, HEALING_GRACE);
 		s.inFight = true;
-		s.hp = 35;
+		s.hp = 25;
 		assertCasts(FLASH_OF_RECOVERY, Who.SELF, heal(s));
+
+		s.hp = 35;
+		assertCasts(LIGHT_OF_RECOVERY, Who.SELF, heal(s), "the instant heal is kept for under 30 %");
 
 		s.ready.remove(FLASH_OF_RECOVERY);
 		assertCasts(LIGHT_OF_RECOVERY, Who.SELF, heal(s));
@@ -340,8 +401,7 @@ class ClericPlaybookTest {
 	void aClericAloneKeepsTheHealOverTimeOnItselfInAFight() {
 		S s = new S().ready(REJUVENATION);
 		s.inFight = true;
-		s.hp = 80;
-		assertCasts(REJUVENATION, Who.SELF, heal(s));
+		assertCasts(REJUVENATION, Who.SELF, heal(s), "unhurt as well");
 
 		s.selfHasRejuvenation = true;
 		assertNull(heal(s));

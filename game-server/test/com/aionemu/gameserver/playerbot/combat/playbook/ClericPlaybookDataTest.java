@@ -62,7 +62,8 @@ class ClericPlaybookDataTest {
 		assertTrue(claimed("CL_HEAL"));
 		assertTrue(claimed("PR_GREATHEAL"));
 		assertTrue(claimed("PR_GODSVOICE"), "Word of Destruction is forbidden");
-		assertTrue(claimed("PR_HOLYLIGHT"), "and so is the seven second channel");
+		assertTrue(claimed("PR_HOLYLIGHT"), "the seven second channel is the playbook's, under 30 %");
+		assertTrue(claimed("PR_HOLYLIGHTWAVE"));
 		assertFalse(claimed("PR_PURGATORY"), "Earth's Wrath is cast first by the playbook and may be cast by the generic order too");
 		assertFalse(claimed("PR_DIVINEBOLT"), "Slashing Wind stays with the generic order");
 	}

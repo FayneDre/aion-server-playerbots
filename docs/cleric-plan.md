@@ -1,6 +1,7 @@
 # Cleric: implementation plan
 
-Status: milestones 0 to 8 are built and unit tested (204 tests pass), none watched in game: the naming, the seam (`ClassPlaybook.heal`), the heals, the cleanses, the buffs, the resurrections, the offence, the divine power and the stigmas. What is left is what only play can say: whether the thresholds read as the guide meant them, which the open points below list. Source: the guide's document "Clerc 101" (eleven pages, in
+Status: milestones 0 to 8 are built and unit tested, and the heal thresholds were corrected by the tester on 25 October after a first run in game (below).
+Built: the naming, the seam (`ClassPlaybook.heal`), the heals, the cleanses, the buffs, the resurrections, the offence, the divine power and the stigmas. What is left is what only play can say: whether the thresholds read as the guide meant them, which the open points below list. Source: the guide's document "Clerc 101" (eleven pages, in
 French, with the tester's comments in the margin): the cleric is the game's main healer, keeps the group in health and adds to the damage; alone it kills with
 magic and heals itself, and what limits it is mana. The pattern is the templar's and the chanter's ([templar-plan.md](templar-plan.md),
 [chanter-plan.md](chanter-plan.md)): a `ClassPlaybook`, rules by skill **group**, a pure `decide` over a `Situation`, a data test. This file is the distance
@@ -40,17 +41,17 @@ cooldowns are in seconds. Levels 1 to 9 are in the **priest** tree (`classId="PR
 | Amplification | Amplification | `PR_PREPAREHOLYWAR` | 51 | 180 | Damage and heal. In combat when ready |
 | Bouclier de vide | Life Curtain | `PR_CLOAKOFREMEDY` | 57 | 120 | Heals HP and MP, weak shield. Conditions unclear: see open points |
 | Lumière de guérison | Healing Light | `CL_HEAL` | 1 | 0 | The standard heal |
-| Lumière de rajeunissement | Light of Rejuvenation | `PR_RAPIDREGENERATION` | 10 | 5 | HoT. Solo: on self in combat. Group: on the tank in combat |
+| Lumière de rajeunissement | Light of Rejuvenation | `PR_RAPIDREGENERATION` | 10 | 5 | HoT. Solo: on self in combat. Group: on the tank from the start of each fight, recast as it ends |
 | Lumière de résurrection | Light of Resurrection | `CL_REVIVE` | 10 | 0 | Single revive. See milestone 5 |
 | Nettoyer / Splendeur de la purification | Cleanse / Splendor of Purification | `PR_PURIFY` / `PR_MASSDISPEL` | 13 / 42 | 0.5 / 10 | Cleanse; the area one first when several members need it |
-| Cure radieuse | Healing Grace | `PR_GREATHEAL` | 19 | 6 | Big heal, 3 s cast |
-| L'éclair de la reprise | Flash of Recovery | `PR_FIRSTAID` | 24 | 30 | Instant, medium |
+| Cure radieuse | Healing Grace | `PR_GREATHEAL` | 19 | 6 | Big heal, 3 s cast. Tank under 60 % |
+| L'éclair de la reprise | Flash of Recovery | `PR_FIRSTAID` | 24 | 30 | Instant, medium. Group under 50 %, self alone under 30 % |
 | Vent de guérison | Healing Wind | `PR_MASSHEAL` | 28 | 3 | Area, 3.5 s cast |
 | La lumière du rétablissement | Light of Recovery | `PR_EMERGENTHEAL` | 31 | 2 | Flash heal, 1 s. **Solo**, avoided in a group |
 | Loci de résurrection | Resurrection Loci | `PR_CALLRESURRECTION` | 37 | 30 | Area revive, 6 s cast. Only for the exception below |
-| Splendeur de la récupération | Splendor of Recovery | `PR_MASSEMERGENTHEAL` | 40 | 60 | Area heal and HoT, 2 s, **range 1 m**: group only |
-| Éclair de guérison / Splendeur curative | Flash of Healing / Healing Splendor | `PR_HOLYLIGHT` / `PR_HOLYLIGHTWAVE` | 54 / 65 | 2 / 3 | 7 s channel (`skillcharge`). "Ne pas utiliser pour l'instant": **never** |
-| Le salut (2000 ED) | Salvation | `PR_SECRETPRECEPT` | 10 | 60 | Gives 50 % HP and MP back to the target. Solo, in a critical situation |
+| Splendeur de la récupération | Splendor of Recovery | `PR_MASSEMERGENTHEAL` | 40 | 60 | Area heal and HoT, 2 s, **range 1 m**: group only, two members under 50 % |
+| Éclair de guérison / Splendeur curative | Flash of Healing / Healing Splendor | `PR_HOLYLIGHT` / `PR_HOLYLIGHTWAVE` | 54 / 65 | 2 / 3 | 7 s channel (`skillcharge`), released at the top stage. Tank under 30 %, first of all / two members under 30 % |
+| Le salut (2000 ED) | Salvation | `PR_SECRETPRECEPT` | 10 | 60 | Gives 50 % HP and MP back to the target. Solo under 20 %; in a group before 31, on self with mana under 20 % |
 | Acquittement (2000 ED) | Acquittal | `PR_HOLYGRAIL` | 31 | 1800 | Cleanse and 20 % per 2 s for 10 s on the group |
 | Une protection brillante (4000 ED) | Brilliant Protection | `PR_HOLYCIRCLE` | 50 | 1800 | +30 % HP and heal on the group, +healing power, auto-revive 1 minute |
 | Saving Grace / Sympathetic Heal / Noble Grace / Reverse Condition | same | `PR_RESTORELIFE` / `PR_BINDINGHEAL` / `PR_HEALINGGRACE` / `PR_REVERSECONDITION` | 20 | 122 / 10 / 184 / 612 | The guide's stigmas ("Sigma"): all four are regular ones |
@@ -71,12 +72,12 @@ cast to change spell: once started, it ends. Stay in heal range of the tank, and
 
 | Moment | Cast |
 |---|---|
-| Tank under 40 % (the lowest threshold at decision time wins) | Healing Grace, not Healing Light; not when an enemy is hitting the cleric |
+| The lowest threshold wins | Tank under 30 % Flash of Healing, under 50 % Flash of Recovery, under 60 % Healing Grace (not when an enemy is hitting the cleric) |
+| Area or single | Two members hurt: the area heal first while the tank is at 50 % or more, the tank's own heal first under 50 % |
+| Two members hurt | Under 30 % Healing Splendor, under 50 % Splendor of Recovery, under 60 % Healing Wind |
 | A member under 80 % | Healing Light |
-| In combat | Light of Rejuvenation kept on the tank |
-| Tank at risk, in reaction | Flash of Recovery (instant, 30 s) |
-| Two members hurt | Healing Wind; Splendor of Recovery from 40 if two are in reach |
-| Cleric hurt, health above 70 % | Heals another member with an area heal, which heals it too |
+| In combat | Light of Rejuvenation on the tank from the first moment, recast as it ends |
+| Cleric hurt, health under 70 % | Heals another member with an area heal, which heals it too |
 | Tank under 60 % | Saving Grace (one-minute buff, 2 min cooldown) |
 | Cleanse | Self or tank first, then the others if mana is above 50 %; the area cleanse when several need it |
 | Light of Recovery | Avoided: poor mana efficiency |
@@ -117,11 +118,12 @@ template through `claimsSkill` and checks every group named exists). What each o
 
 0. **Name the skills.** *Done from the data* (table above).
 1. **The seam.** *Built.* `ClassPlaybook.heal(bot)`, default false, called first in `tendToTheGroup` and, after `act`, in `useBestSkill`. `BotPlaybooks` maps `CLERIC`.
-2. **Heals as the guide rations them.** *Built: `decideHeal`.* Group: nobody above 90 %; under 80 % Healing Light; the tank under 40 % Healing Grace unless something is hitting the
-   cleric; the instant heal under 30 %; Saving Grace on the tank under 60 % once; the area heal for two members under 60 % (Splendor of Recovery under 30 %); a hurt cleric above
-   70 % heals itself through the area heal when another member is hurt; the heal over time kept on the tank in a fight. **Who first:** the tank and the cleric are one rank and the lower
+2. **Heals as the guide rations them.** *Built: `decideHeal`.* Group (the tester's thresholds of 25 October): nobody above 90 %; under 80 % Healing Light; on the tank, the lowest threshold first: the
+   channel under 30 %, the instant heal under 50 %, Healing Grace under 60 % unless something is hitting the cleric; Saving Grace on the tank under 60 % once; for two members, the
+   channelled area heal under 30 %, Splendor of Recovery under 50 %, Healing Wind under 60 %, ahead of the tank's own heal unless the tank is under 50 %; a cleric under 70 % heals
+   itself through the area heal when another member is hurt; the heal over time on the tank from a fight's first moment; Salvation on itself before 31 with mana under 20 %. **Who first:** the tank and the cleric are one rank and the lower
    goes first, then the others, and a mate under 30 % outranks them while neither is under 50 %: that last clause is the code's, the guide only says "tank = cleric > the rest".
-   Sympathetic Heal and the instant heal are fallbacks when Healing Light is not ready. Alone: under 40 % heals to full (the instant ones first in a fight, and it goes on to 100 % through
+   Sympathetic Heal and the instant heal are fallbacks when Healing Light is not ready. Alone: under 40 % heals to full (the instant ones first in a fight, Flash of Recovery only under 30 %, and it goes on to 100 % through
    `mendingToFull`), Healing Light after a fight under 90 %, Blessed Shield under 30 %, Salvation under 20 % with 2000 DP, the heal over time on itself in a fight, Life Curtain. The
    heal is never interrupted: the decision tick does nothing while `isCasting()`, and `BotSkillManager.cast` refuses to start a second cast. The two bandage skills every class knows
    (`MENDING`, `AROMATHERAPY`) are claimed so that the generic heal cannot fall back on them.
@@ -136,7 +138,7 @@ template through `claimsSkill` and checks every group named exists). What each o
    over both; Resurrection Loci on a dead member within 30 m when more than three are dead in an instance, in a fight or out of one. The engine side is the chanter's.
 6. **Offence.** *Built: `decideOffence`.* The servant (`trySummonServant`), then the damage over time spells (Earth's Wrath, Aero Snare, Chastise) when not already on the target; in a
    group only with mana above 50 %. The rest of the damage is the generic order's, which `hasManaToSpare` now holds to the same 50 % (it was 60). Hallowed Strike and Slowing Hammer
-   only alone and only when the monster is within 3 m. Forbidden and claimed: Word of Destruction, Flash of Healing, Healing Splendor, Land's Bargain, Reverse Condition. The opening
+   only alone and only when the monster is within 3 m. Forbidden and claimed: Word of Destruction, Land's Bargain, Reverse Condition. The opening
    "servant, Smite, Flashbolt, Slashing Wind, Earth's Wrath, Infernal Blaze" is not a coded order: the servant and the damage over time come first and the generic order, which
    casts the strongest first, does the rest.
 7. **DP.** *Built.* Acquittal from 31 to 50 when two members have each lost 100 % in 30 s (`HealthRecord`, one reading a second per member, the sum of the drops); Brilliant Protection
@@ -146,10 +148,8 @@ template through `claimsSkill` and checks every group named exists). What each o
 
 ## Open points for the guide's author
 
-1. **The sign of seven thresholds.** The guide writes "HP > x %" for rules that only make sense as "below": Flash of Recovery (">30 %", self solo and tank grouped),
-   Healing Wind ("two members > 60 %"), Splendor of Recovery ("two members > 30 %"), Salvation ("> 20 %", "situation critique"), Life Curtain ("> 70 %" solo, ">50 %
-   or MP > 30 %" grouped). Planned reading: **below**, apart from Life Curtain, which the data says heals HP and MP and shields, so a healthy-but-low-mana cast is
-   plausible. Confirm each.
+1. **The sign of the thresholds.** *Settled by the tester on 25 October*: every "HP > x %" was "below", and the self-through-area rule is "under 70 %". The
+   corrected values are in the tables above. Life Curtain is still read as written ("> 70 %" solo, "> 50 % or MP > 30 %" grouped).
 2. **Reverse Condition** swaps HP and MP (`switchhpmp`); the guide highlights it without a rule and the tester calls it dangerous. Planned: never cast.
 3. **Béguin = Smite** and **Bouclier de vide = Life Curtain** are matched by level and description, not by name.
 4. **Penance** is "HP for MP over time": the data shows only an MP heal; check what it costs before relying on the guide's "offset with Rejuvenation".
@@ -158,7 +158,7 @@ template through `claimsSkill` and checks every group named exists). What each o
 
 ## Traps to check before trusting a rule
 
-- Charge skills (Flash of Healing, Healing Splendor): the bot releases them itself; never cast, so never relevant, but the data test must still go through them.
+- Charge skills (Flash of Healing, Healing Splendor): `BotSkillManager.releaseWhenCharged` lets them go as the top stage begins. Cast since 25 October: check in game that the heal lands at the top stage and is not cut short by the cleric moving.
 - Area heals have `first_target="ME"` and a range: the engine heals the members **within it of the caster** (Splendor of Recovery 1 m), not the whole party.
 - A one second cooldown buff is "ready" every second (the ranger's lesson): Penance, Prayer of Focus and Blessed Shield need an "already on" test.
 - The chanter's buff shares an effect id with Blessing of Guardianship: use `coversTheSameEffect`, or two bots cast at each other for ever.
@@ -169,4 +169,4 @@ template through `claimsSkill` and checks every group named exists). What each o
 
 ## Where this stands
 
-Built and unit tested, not watched. The next step is a run in game with a cleric in a group, reading the debug log (`ClericPlaybook` logs every cast with the health and mana it was made at) against the guide: the tank under 40 % and the big heal, the cleric hurt and the area heal, a stun and Remove Shock followed by the veil or the storm.
+Built and unit tested. A first run in game (25 October) found the heal over time never put on an unhurt tank, and moved the thresholds; both fixed, not yet watched again. The next step is a run in game with a cleric in a group, reading the debug log (`ClericPlaybook` logs every cast with the health and mana it was made at) against the guide: the tank under 40 % and the big heal, the cleric hurt and the area heal, a stun and Remove Shock followed by the veil or the storm.
