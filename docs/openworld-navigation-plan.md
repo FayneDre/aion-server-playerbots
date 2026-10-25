@@ -159,7 +159,9 @@ resting on give-ups or pockets no longer counted, and the walking search moved t
    about 960 s per 30 minutes of every bot on it frozen, led by spots round a place or an anchor (216). Asked as a short walk on foot capped at three
    times the distance plus 20 m (replayed: 8 ms instead of 3.5 s, the only answers turned to no needed a glide), they fell to 0; frozen time to 340 s,
    route queue waits from 516 to 98, journey give-ups from 345 to 276, rescues from 41 to 26, population per map unchanged. Still on the tick
-   threads: `findVendor`, `BotErrands.leadsBack`, `BotLanding.toWalkableGround`.
+   threads then: `findVendor`, `BotErrands.leadsBack`, `BotLanding.toWalkableGround`. Those that only want a proof against a place (shop trips,
+   errands) now search 300 ms at most, every stage bound by it, and the slope is read once per map instead of per neighbour: frozen time 22 s, queue
+   waits 28, journey give-ups 207, refused routes 653, day plans given up 527, rescues 31. Left: `visitSpotOf`, `BotLanding` (wants a yes, kept apart).
 2. **Steps aside rose to 976** in 30 minutes: milestone 6 above, the walk against the plan.
 3. **Day plans given up, about 586** in 30 minutes: which step gives up, and whether it is the same place for many bots.
 4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
