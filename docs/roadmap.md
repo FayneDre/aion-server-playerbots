@@ -18,10 +18,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 3. **Living capitals** ([living-capitals-plan.md](living-capitals-plan.md)): store goods ([bot-store-goods-plan.md](bot-store-goods-plan.md))
    and bots in the Trade, Find Group and Region channels ([chat-channels-plan.md](chat-channels-plan.md)) built and liked in game on 24
    October; the channels' hour-long watch is the user's. Duels and pets on hold; ambience, buyers and the day's rhythm dropped.
-4. **Navigation leftovers**, measured with a player on 24 October (`game-server/log/bot-measures`): ~90 rescues a half hour, mostly from
-   obelisks joined to nothing by walking (Altgard), a village on an island (Reshanta) and ground reached only by air (Inggison). No open-world
-   map has glide links: Verteron's, the only ones, were erased by the rebuild of 18 October ([openworld-navigation-plan.md](openworld-navigation-plan.md)).
-   Fences and rails only the client draws are not in the mesh; a bot on nothing under Pandaemonium's dome (21 October) is unexplained.
+4. **Navigation leftovers** ([openworld-navigation-plan.md](openworld-navigation-plan.md), "Open after 24 October"): on 25 October journeys given up fell
+   from 237 to 148 a half hour and the bots' threads stopped freezing; left: Inggison, Reshanta between islands, steps aside, day plans given up.
 5. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
 6. **What a player does with a bot** ([player-interactions-plan.md](player-interactions-plan.md)): duels, friends and trading with one's companion
    built in `patch-2026-10-19-2`, to be watched in game.
@@ -33,10 +31,10 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-24 (patch `patch-2026-10-24-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-10-25 (after `patch-2026-10-24-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
 for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
-routine, gear and stigmas, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps (their glide links not written: see 4),
+routine, gear and stigmas, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with their glide links,
 flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, friends and trades with a companion, steering vetted by the mesh,
 capitals with a town routine, 40 bot stores each with broker prices, visitors of every level, shouted adverts and calls for a group, bots
 speaking in the chat channels, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
@@ -182,9 +180,8 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
    this project does not control and the one a player feels.
 2. **Memory**: about 800 awake bots fill a 2560 MB heap (90% old generation), which is why the two housing maps (Oriel, Pernon) are not populated.
    The machine has little left besides: a long background wait of the tooling was killed for low memory on 17 October.
-3. **Only maps with a mesh are planned on.** 26 open-world maps and 45 dungeons have one (`tools/navmesh.ps1 <mapId>`, then `-Obelisks`); only
-   Reshanta has flight links (`NavmeshTool <mapId> flights`, with the server stopped). The Cloister of Kaisinel cannot (no heightmap and almost no
-   geometry); Panesterra lacks a heightmap too.
+3. **Only maps with a mesh are planned on**: 26 open-world maps and 45 dungeons (`tools/navmesh.ps1 <mapId>`, then `-Obelisks`); flight links on Reshanta
+   alone (`NavmeshTool <mapId> flights`, server stopped). The Cloister of Kaisinel and Panesterra have no heightmap.
 4. **The mesh is not the geometry**: props placed at run time (gatherables, doors) are not in it. Walls are, at a body's width since 18 October
    (erosion per surface, every open-world mesh generated again; a test server runs `tools/navmesh.ps1 -OpenWorld` once). What is left of the steps aside is the berth round gatherables, which the client does
    need: a body does not walk through one (checked in game, 18 October; [obstacle-steering-plan.md](obstacle-steering-plan.md)).

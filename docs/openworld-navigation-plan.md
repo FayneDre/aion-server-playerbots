@@ -1,6 +1,6 @@
 # Open world navigation: plan
 
-Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 written on 24 maps on 24 October (575k links), after they had been lost on 18 October; what is left is under "Open after 24 October". Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
+Status: milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 written on 24 maps on 24 October (575k links), after they had been lost on 18 October; what is left is under "Open after 24 October", searches out of time worked through on 25 October. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](long-walk-planner.md)) and the
 obelisk audit went from 151 routes found to 173 with none lost. Each milestone below is verifiable on its own, in this order, and none needs the next.
 
 ## Where it stands
@@ -152,25 +152,23 @@ long it took against what the plan said, would show where the mover and the mesh
 Measured per 30 minutes with a player in game (`bot-measures/measure.sh`), after glide links on 24 maps, stranded villages retired, refusals
 resting on give-ups or pockets no longer counted, and the walking search moved to plain arrays. Rescues fell from about 90 to 42; what is left, by priority:
 
-1. **Searches out of time in game.** Offline, the same give-ups find their route within budget; in game, under load, they run out of the 3 s. To measure
-   first: time spent waiting for one of the four route threads, the same bot asking again for a destination already refused, goals on a rock top.
-   On 25 October, with the search on plain arrays, time in searches over a second fell from 1066 s to 692 s per 30 minutes, the heap held at 1.91 GB
-   after an hour, give-ups stayed at 78. Those lines were reach questions, not journeys: with the asker logged, nine in ten ran on a tick thread,
-   about 960 s per 30 minutes of every bot on it frozen, led by spots round a place or an anchor (216). Asked as a short walk on foot capped at three
-   times the distance plus 20 m (replayed: 8 ms instead of 3.5 s, the only answers turned to no needed a glide), they fell to 0; frozen time to 340 s,
-   route queue waits from 516 to 98, journey give-ups from 345 to 276, rescues from 41 to 26, population per map unchanged. Still on the tick
-   threads then: `findVendor`, `BotErrands.leadsBack`, `BotLanding.toWalkableGround`. Those that only want a proof against a place (shop trips,
-   errands) now search 300 ms at most, every stage bound by it, and the slope is read once per map instead of per neighbour: frozen time 22 s, queue
-   waits 28, journey give-ups 207, refused routes 653, day plans given up 527, rescues 31. Left: `visitSpotOf`, `BotLanding` (wants a yes, kept apart).
-   Journeys given up, replayed offline with their ends logged: almost none were impossible goals; repeats came from a refused loitering spot drawn
-   again (fixed), short journeys searched three times from where the bot stood (now refused on the second), and lost bots whose every journey
-   gave up and that nothing freed (freed after four destinations in five minutes). From 237 to 210, repeats 55 to 28, route queue waits 0, 19 bots
-   freed. Next: the link search of the capitals and Reshanta, 68 and 17 of the 210, which gives up even offline. In the capitals the glide plan took
-   the floor above the body for its own (an edge right overhead) and spent its budget walking up to it: landings beside the body now name its floor too,
-   near take-offs are tried by a short walk first. Offline 17 of 71 hard journeys found before, 37 after; in game the capitals went from 68 to 32
-   give-ups and all maps from 210 to 171. Reshanta (29) is next: its crossings between islands.
-2. **Steps aside rose to 976** in 30 minutes: milestone 6 above, the walk against the plan.
-3. **Day plans given up, about 586** in 30 minutes: which step gives up, and whether it is the same place for many bots.
+1. **Searches out of time in game: worked through on 25 October**, each step measured over 30 minutes with a player (figures before, after):
+   - The slow-search lines were reach questions on the bots' own tick threads, nine in ten, freezing every bot of the thread: about 960 s a half
+     hour. Spots round a place or an anchor are now asked as a walk capped at three times the distance plus 20 m (8 ms instead of 3.5 s), and
+     questions that only want a proof against a place (shop trips, errands) search 300 ms at most, every stage bound by it: 960 s to about 5 s.
+   - Journeys given up, replayed offline with their ends logged: almost no goal was impossible. A refused loitering spot was drawn again (fixed),
+     short journeys were searched three times from where the bot stood (refused on the second), and lost bots whose every journey gave up were
+     never freed (freed after four destinations in five minutes, `LostTrail`, not in a player's sight).
+   - The capitals' glide plans took the floor overhead for the body's own and spent the budget walking up to it: a landing beside the body now
+     names its floor, near take-offs are tried by a short walk first (offline 17 of 71 hard journeys found, then 37; capitals 68 to 32).
+   - Reshanta's plans walked 700 to 1875 creatures per landing and cast every crossing's rays again: creatures filed by 40 m squares, crossings
+     kept like glides (Reshanta 29 to 13). Its other give-ups are islands above or below the bot that no link joins; flying there instead is
+     refused as too far (over 300 m) or under a roof, so the way on is hunting grounds chosen on the bot's own island.
+   - All maps: give-ups 345 to 148 a half hour, route queue waits 516 to 0, day plans given up 621 to 475; rescues 41 to about 40, of which some
+     ten are lost bots now freed; population per map unchanged. Left: Inggison (27), `visitSpotOf` and `BotLanding` on the tick threads, and
+     `leadsBack`'s 300 ms, which may let a customer reach a counter it cannot walk back from (none seen yet).
+2. **Steps aside, about 900** in 30 minutes: milestone 6 above, the walk against the plan.
+3. **Day plans given up, about 475** in 30 minutes: which step gives up, and whether it is the same place for many bots.
 4. **Deaths near obelisks with strong monsters** (Pyrirwyn in Morheim): a bot sent home beside monsters above its level.
 5. **The obelisk audit again** (`navmesh.ps1 -Obelisks`) now that glide links are written, and retiring hunting grounds refused by three bots or more.
 
