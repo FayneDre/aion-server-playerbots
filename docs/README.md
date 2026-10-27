@@ -80,6 +80,7 @@ Assassin, spirit master, bard, gunner and aethertech have no plan yet ([roadmap.
 
 | File | Status |
 |---|---|
+| [navigation-backlog.md](navigation/navigation-backlog.md) | **What is left, as seen in game** (27 October): sliding, obstacles, long journeys, gliding, parasitic moves, dungeons. Not started. |
 | [navigation-prototype.md](navigation/navigation-prototype.md) | How a bot moves: mesh versus probes, legs, detours, the anti-stuck bounds. Reference. |
 | [navmesh-plan.md](navigation/navmesh-plan.md) | Path planning on a generated grid (N0 to N6). Done. |
 | [long-walk-planner.md](navigation/long-walk-planner.md) | Routes over 150 m: a rough route, then stretches. Built. |

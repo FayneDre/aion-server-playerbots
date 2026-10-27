@@ -18,8 +18,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 3. **Living capitals** ([living-capitals-plan.md](capitals/living-capitals-plan.md)): store goods ([bot-store-goods-plan.md](capitals/bot-store-goods-plan.md))
    and bots in the Trade, Find Group and Region channels ([chat-channels-plan.md](social/chat-channels-plan.md)) built and liked in game on 24
    October; the channels' hour-long watch is the user's. Duels and pets on hold; ambience, buyers and the day's rhythm dropped.
-4. **Navigation leftovers** ([openworld-navigation-plan.md](navigation/openworld-navigation-plan.md), "Open after 24 October"): on 25 October journeys given up fell
-   from 237 to 148 a half hour and the bots' threads stopped freezing; left: Inggison, Reshanta between islands, steps aside, day plans given up.
+4. **Navigation**, the priority once the module structure plan is done: the user's six points in
+   [navigation-backlog.md](navigation/navigation-backlog.md), long journeys first (agreed 25 October).
 5. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
 6. **What a player does with a bot** ([player-interactions-plan.md](social/player-interactions-plan.md)): duels, friends and trading with one's companion
    built in `patch-2026-10-19-2`, to be watched in game.
