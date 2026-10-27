@@ -11,8 +11,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 0. **Feedback as it comes**: the user reports from the game while playing; each plan's Status line says what has been seen. On 27 October
    everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion.
-1. **The module structure plan** ([module-structure-plan.md](architecture/module-structure-plan.md)): steps 1 to 4 built, step 4 deployed and
-   measured on 27 October; step 5 (`PlayerBotAI` cut into its parts) on its branch, to deploy and measure.
+1. **The module structure plan** ([module-structure-plan.md](architecture/module-structure-plan.md)): steps 1 to 4 built, step 4 deployed and being
+   measured on 27 October; step 5 (`PlayerBotAI` cut into its parts) on its branch, to deploy and measure on 28 October.
 2. **Navigation**, the user's priority after it: the six points in [navigation-backlog.md](navigation/navigation-backlog.md), long journeys first
    (agreed 25 October), then sliding, obstacles, gliding, parasitic moves, dungeons.
 3. **A world alive with or without a player**, a lead to explore within the 2560 MB heap: density independent of who is online, sleepers living
