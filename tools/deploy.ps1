@@ -80,8 +80,13 @@ if ($docProblems) {
 if (-not $SkipBuild) {
     # Allowed, since most deploys are a change being tried; but the jar's revision will end in -DIRTY, which no one can check out, so a build meant for a
     # tester is made from a clean tree and tagged (tools/tag-patch.ps1).
+    # From a clean tree the build starts from nothing: Maven repackages no jar when no source changed, so a deploy right after committing what was
+    # tried kept the -DIRTY jar of the try, twice, and //bot version named a revision nobody can check out. A dirty tree is a try: kept incremental.
+    $phases = @('package')
     if (git -C $repoRoot status --porcelain) {
         Write-Host 'Uncommitted changes: this build will be revision -DIRTY. Commit first if it is going to a tester.' -ForegroundColor Yellow
+    } else {
+        $phases = @('clean', 'package')
     }
     Write-Host 'Building...' -ForegroundColor Cyan
     Push-Location $repoRoot
@@ -90,7 +95,7 @@ if (-not $SkipBuild) {
         # what every other build in this repo relies on -- but a test nothing runs is a test that rots, and the population director's two worst
         # faults of 2026-10-04 were each a ten line assertion over a pure function. Overridden for the one build whose output reaches a server.
         # quoted: PowerShell splits a bare -Dmaven.test.skip=false on the dots and hands Maven ".test.skip=false" as a lifecycle phase
-        & mvn -q -pl game-server,chat-server -am package '-Dmaven.test.skip=false'
+        & mvn -q -pl game-server,chat-server -am @phases '-Dmaven.test.skip=false'
         if ($LASTEXITCODE -ne 0) { throw "Build failed (exit code $LASTEXITCODE)" }
     } finally {
         Pop-Location
