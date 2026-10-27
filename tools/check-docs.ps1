@@ -69,7 +69,9 @@ try {
     if ($lastTag) {
         $changed = @(git diff --name-only "$lastTag" HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot') + @(git diff --name-only HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot')
         $classes = @($changed | Where-Object { $_ -like '*.java' } | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) } | Sort-Object -Unique)
-        $touched = @(git diff --name-only "$lastTag" HEAD -- docs) + @(git diff --name-only HEAD -- docs) | ForEach-Object { $_.Replace('/', '\') }
+        # a doc not yet committed counts as touched too: a plan written today names classes changed today, and is not stale for it
+        $touched = @(git diff --name-only "$lastTag" HEAD -- docs) + @(git diff --name-only HEAD -- docs) + @(git ls-files --others --exclude-standard -- docs) |
+            ForEach-Object { $_.Replace('/', '\') }
         foreach ($plan in $files | Where-Object { $_.Name -like '*-plan.md' }) {
             if ($touched -contains (Get-Relative $plan.FullName).Replace('/', '\')) { continue }
             $text = [IO.File]::ReadAllText($plan.FullName)
