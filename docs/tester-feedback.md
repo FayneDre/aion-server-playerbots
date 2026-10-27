@@ -1,7 +1,7 @@
 # Tester feedback: what a useful report holds
 
 A report is turned into a fix by finding the moment in the server log and the rule in the code. Each of the items below removes one round of questions;
-the tooling behind them is in [test-harness-plan.md](test-harness-plan.md).
+the tooling behind them is in [test-harness-plan.md](architecture/test-harness-plan.md).
 
 ## During the session
 
@@ -16,7 +16,7 @@ the tooling behind them is in [test-harness-plan.md](test-harness-plan.md).
 
 - **On the tester's server:** `tools\collect-feedback.ps1` writes a zip of the minutes around every note, a few hundred kilobytes. Send it with the report.
   Without the script, the whole `game-server\log\server_console.log` will do, as long as it is from that session: it is replaced on each start.
-- **Skill names:** French as in your client is fine. [skill-glossary.md](skill-glossary.md) maps them to the data; a name that is not there gets added
+- **Skill names:** French as in your client is fine. [skill-glossary.md](classes/skill-glossary.md) maps them to the data; a name that is not there gets added
   once it is settled, so it is never asked twice.
 
 ## The template

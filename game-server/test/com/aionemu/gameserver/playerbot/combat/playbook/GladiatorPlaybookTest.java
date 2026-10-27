@@ -11,7 +11,7 @@ import com.aionemu.gameserver.playerbot.combat.playbook.GladiatorPlaybook.Move;
 import com.aionemu.gameserver.playerbot.combat.playbook.GladiatorPlaybook.Situation;
 
 /**
- * The gladiator's rules, decided without a world. See {@code docs/gladiator-plan.md}.
+ * The gladiator's rules, decided without a world. See {@code docs/classes/gladiator-plan.md}.
  */
 class GladiatorPlaybookTest {
 

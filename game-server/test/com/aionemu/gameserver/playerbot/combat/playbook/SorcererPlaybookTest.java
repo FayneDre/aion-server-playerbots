@@ -8,7 +8,7 @@ import com.aionemu.gameserver.playerbot.combat.playbook.SorcererPlaybook.Move;
 import com.aionemu.gameserver.playerbot.combat.playbook.SorcererPlaybook.Situation;
 
 /**
- * The sorcerer's rules, decided without a world. See {@code docs/sorcerer-plan.md}.
+ * The sorcerer's rules, decided without a world. See {@code docs/classes/sorcerer-plan.md}.
  */
 class SorcererPlaybookTest {
 

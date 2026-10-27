@@ -7,7 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Which levels visit a capital. See {@code docs/capital-life-plan.md}.
+ * Which levels visit a capital. See {@code docs/capitals/capital-life-plan.md}.
  */
 class BotVisitorsTest {
 

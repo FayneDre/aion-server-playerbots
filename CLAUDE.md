@@ -40,71 +40,31 @@ game-server/src/com/aionemu/gameserver/playerbot/
 - **Programmatic skill casting**: `SkillEngine.java` (`game-server/src/com/aionemu/gameserver/skillengine/SkillEngine.java`) — `getSkillFor(...)` then `skill.useSkill()`, no packet parsing involved. Already used this way by NPC AI.
 - **Groups**: `game-server/src/com/aionemu/gameserver/model/team/group/` (`PlayerGroup`, `PlayerGroupService`, loot rules in `team/common/legacy/LootGroupRules.java`) — operates on `Player` objects, not sockets; a headless `Player` in a group should follow the same rules as a real member.
 
-### Main obstacle: no pathfinding
+### Navigation: built on a generated navmesh
 
-`geoEngine` (`game-server/src/com/aionemu/gameserver/geoEngine/`) only provides collision/raycasting (line of sight, ground height) — no path planning. The only existing "paths" are fixed scripted waypoints (`spawnengine/WalkerGroup.java`) or fixed flight paths.
+`geoEngine` (`game-server/src/com/aionemu/gameserver/geoEngine/`) only provides collision/raycasting (line of sight, ground height) — no path planning.
+The bot module therefore generates its own grid navmesh offline (`tools/navmesh.ps1`) and plans on it with A\* (`BotPathFinder`): 26 open-world maps
+and 45 dungeons, with glide, ride and flight links. Raycast steering is only the fallback where no mesh answers. See
+[docs/navigation/navigation-prototype.md](docs/navigation/navigation-prototype.md) and the rest of that folder.
 
-Bots currently use **reactive steering** built on those raycasts: it handles open ground, slopes and single obstacles, and gives up on anything that needs real planning. A navmesh plus A\* is the next stage, and still gates the outdoor PvP and RvR phases. See [docs/navigation-prototype.md](docs/navigation-prototype.md).
+### Headless `Player` lifecycle: built
+
+No upstream code path constructs a `Player` without an `AionConnection`; `lifecycle/` does, and `Player.isOnline()` now means "is present", so
+whatever needs the socket tests the socket. See [docs/built.md](docs/built.md) and [docs/traps/](docs/traps/) before touching either.
 
 ### Design docs
 
-- [docs/roadmap.md](docs/roadmap.md) — **start here**: what is left, by category, with what blocks each one.
+[docs/README.md](docs/README.md) is the index: every document by topic, with each plan's status. The ones to open first:
+
+- [docs/roadmap.md](docs/roadmap.md) — **start here**: what is left, by priority, with what blocks each one.
 - [docs/built.md](docs/built.md) — what already works, and the reasoning most of it was paid for twice.
-- [docs/population.md](docs/population.md) — how a world gets its inhabitants: the flow, the three kinds of presence, where each one stands.
-- [docs/population-director.md](docs/population-director.md) — the pool and the director: how a region is kept holding the people it should.
-- [docs/population-churn-followup.md](docs/population-churn-followup.md) — what the 2026-10-04 churn uncovered and fixed, with the measurements: places no walker can reach, the equality audit, the watchdog.
-- [docs/bot-careers.md](docs/bot-careers.md) — how a bot gains levels, where it lives as it grows, and what keeps it out of trouble.
-- [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command and what it does, plus the one number that decides who may run them.
-- [docs/engine-traps.md](docs/engine-traps.md) — what this engine does to a bot that no documentation warns about: questions it asks that a bot cannot see, actions anything cancels, and methods whose names promise one thing and answer another.
-- [docs/test-harness-plan.md](docs/test-harness-plan.md) — the tooling for test sessions: notes in the log, feedback zips, patch tags, debug on demand, bot-only squads, the command inbox.
-- [docs/patch-notes.md](docs/patch-notes.md) — every test patch, in French for the testers, newest first, by its git tag; `tag-patch.ps1` refuses a patch without its entry.
-- [docs/tester-feedback.md](docs/tester-feedback.md) — what a useful tester report holds, the commands to type during a session, and the template.
-- [docs/skill-glossary.md](docs/skill-glossary.md) — French skill names from guides and testers mapped to skill groups, one file per class from the gladiator on, taken from the French client; `skill-lookup.ps1 -Name` reads them all.
-- [docs/skill-traps.md](docs/skill-traps.md) — what the skill engine decides about buffs and areas that the obvious question gets wrong: one buff under two names, areas measured from the caster.
-- [docs/world-and-data-traps.md](docs/world-and-data-traps.md) — the other half: geometry two systems describe differently, objects handed over half built, and templates that rewrite themselves as you read them.
-- [docs/playerbot-architecture.md](docs/playerbot-architecture.md) — module layout, the two core patches (`Creature.setAi()` / `setMoveController()`) and their justification, reuse map, risks.
-- [docs/combat-prototype.md](docs/combat-prototype.md) — milestone-by-milestone plan for the first combat prototype, with verification steps and known traps.
-- [docs/combat-skills.md](docs/combat-skills.md) — how a bot chooses a skill: the in-fight order, upkeep versus abilities kept in hand, class openers.
-- [docs/bot-gear.md](docs/bot-gear.md) — what a bot wears: the stats that rank a piece, the quality ceiling, and the right kind of piece for a class.
-- [docs/bot-gear-obtainability.md](docs/bot-gear-obtainability.md) — where gear can be reached from, what is vetoed outright, and whose faction a piece is.
-- [docs/bot-gear-upgrades.md](docs/bot-gear-upgrades.md) — making a chosen piece better than it is: enchantment and manastones.
-- [docs/stigmas.md](docs/stigmas.md) — how a bot gets its stigma stones, and what the engine demands before one can be socketed.
-- [docs/group-roles.md](docs/group-roles.md) — what tank, healer, support and damage change about how a bot fights in a group.
-- [docs/templar-plan.md](docs/templar-plan.md) — plan for playing the templar as the guide describes it: its skills mapped to the data, what disagrees with today's code, the marking system, milestones.
-- [docs/chanter-plan.md](docs/chanter-plan.md) — plan for playing the chanter as the guide describes it: skills mapped to the data (some still to confirm), mantra order, resurrection, DP, milestones.
-- [docs/ranger-plan.md](docs/ranger-plan.md) — plan for playing the ranger as the guide describes it: skills mapped to the data, personal buffs, openers, not becoming the target, traps, open questions.
-- [docs/cleric-plan.md](docs/cleric-plan.md) — plan for playing the cleric as the guide describes it: skills mapped to the data, the rules solo and grouped, how heals are rationed, DP, open points about the guide's thresholds.
-- [docs/gladiator-plan.md](docs/gladiator-plan.md) — plan for playing the gladiator as the guide describes it: skills and chains mapped to the data, the posture, survival, knocking down, areas without bystanders, DP, questions for the guide.
-- [docs/sorcerer-plan.md](docs/sorcerer-plan.md) — plan for playing the sorcerer as the guide describes it: skills mapped to the data, upkeep, mana, defence, the fire rotation, ground spells, control, the flight, questions for the guide.
-- [docs/group-positioning-plan.md](docs/group-positioning-plan.md) — plan for where each class stands in a group fight: in front, behind, back or in heal range, and out of the aggro of every other pack.
-- [docs/navigation-prototype.md](docs/navigation-prototype.md) — how bots move: geo primitives, corridor probing, detours, the anti-stuck bounds and their limits.
-- [docs/navigation-stuck-plan.md](docs/navigation-stuck-plan.md) — why bots end up stuck and teleported home: the obelisk pockets found in the logs, and the milestones.
-- [docs/obstacle-steering-plan.md](docs/obstacle-steering-plan.md) — bots walking into walls and rails and stepping or teleporting through them: the measure, the cause (rays blind under a metre, detours that never ask the mesh) and the milestones.
-- [docs/navmesh-plan.md](docs/navmesh-plan.md) — design for real path planning, to replace reactive steering.
-- [docs/openworld-navigation-plan.md](docs/openworld-navigation-plan.md) — plan for open-world navigation: measuring it, not going back to what could not be reached, glide and portal links, flight, the rough grid in the mesh.
-- [docs/long-walk-planner.md](docs/long-walk-planner.md) — how a long route is planned: the rough route over stretches of ground per 4 m cell, the stretches it is refined in, and what each fault cost.
-- [docs/instance-navmesh-list.md](docs/instance-navmesh-list.md) — the 110 instance maps (dungeons, arenas, warfronts, housing, tests) a navmesh is wanted for, by category, with which ones share their geometry.
-- [docs/dungeon-navmesh-plan.md](docs/dungeon-navmesh-plan.md) — plan for building navmeshes for the PvE dungeons: what an interior asks that the open world did not (floors, doors, no obelisk), and the milestones.
-- [docs/moving-a-body.md](docs/moving-a-body.md) — driving a body from the server: what a movement packet carries, how often, and the task manager that stops ticking a body that says it arrived.
-- [docs/flight-plan.md](docs/flight-plan.md) — how bots get off the ground: what the engine already does, what it leaves to the server, and the milestones in verifiable order.
-- [docs/abyss-crossing-plan.md](docs/abyss-crossing-plan.md) — flight milestone 5: Reshanta's 16210 islands, flight links written offline, routes that fly across open air.
-- [docs/flying-with-a-player-plan.md](docs/flying-with-a-player-plan.md) — the 19 October report: landing where the leader landed, the void, serums and scrolls, rings, fighting in the air.
-- [docs/feedback-2026-10-20.md](docs/feedback-2026-10-20.md) — the 19 and 20 October reports: resting before rejoining, the cleric's heal loop, the glide's missing wings, following flights and teleports, line of sight, flight-only buffs.
-- [docs/feedback-2026-10-21.md](docs/feedback-2026-10-21.md) — the 21 October report on the capitals: a bot standing in the air, stores bunched in Pandaemonium, no high levels in town, helmets and shields of the wrong class.
-- [docs/feedback-2026-10-25.md](docs/feedback-2026-10-25.md) — the 25 October report: the cleric's heal thresholds, bots brought on an invitation, power shards, wings, a cleric seeming to jump, resting in lava.
-- [docs/player-interactions-plan.md](docs/player-interactions-plan.md) — what a player does with a bot: trades with a companion, friends, duels; one reading of who asks, then milestones.
-- [docs/living-capitals-plan.md](docs/living-capitals-plan.md) — plan for capitals that feel lived in: decisions, milestones (the capital day,
-  stores, ambience, speech, bots as buyers), risks. What milestones 0 and 1 found is in
-  [docs/living-capitals-findings.md](docs/living-capitals-findings.md): Sanctum's bridges and rides, the crowd test, the town routine.
-- [docs/bot-stores-plan.md](docs/bot-stores-plan.md) — bots' private stores: who keeps one and when, where the stalls stand, themed stock, prices.
-- [docs/chat-channels-plan.md](docs/chat-channels-plan.md) — bots in the Trade, Find Group and Region channels: a game server to chat server packet, true lines in many forms, pace.
-- [docs/capital-life-plan.md](docs/capital-life-plan.md) — visitors of every level, speech by shout, groups, waves and duels in the capitals: living capitals milestones 3 to 5.
-- [docs/bot-store-goods-plan.md](docs/bot-store-goods-plan.md) — enchantment stones priced as on a live broker, coins and medals for sale: what 4.8 has of the guide's goods.
-- [docs/cohort-plan.md](docs/cohort-plan.md) — bots in a cohort (alliance): acting as a member of one's own group of six, following into alliance instances, recruiting.
+- [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command.
+- [docs/patch-notes.md](docs/patch-notes.md) — every test patch, in French for the testers, by git tag; `tag-patch.ps1` refuses a patch without its entry.
+- [docs/traps/](docs/traps/) — what the engine, the world data and the skill engine do to a bot that no documentation warns about.
 
-### Secondary obstacle: headless `Player` lifecycle
-
-No existing code path constructs a `Player` without an `AionConnection`. The world-entry flow (login, character selection, client-side group UI sync, `SM_*` packet sends) will need to be audited for implicit non-null connection assumptions.
+Folders: `architecture/` (module layout, moving a body, test harness), `traps/`, `population/`, `combat/`, `classes/` (one plan per class guide,
+and the French skill glossaries `skill-lookup.ps1 -Name` reads), `gear/`, `navigation/`, `flight/`, `capitals/`, `social/` (chat, player
+interactions, cohorts), `feedback/` (one file per tester report). A new document goes in the folder of its topic and gets a line in the index.
 
 ## Dev environment
 
@@ -137,7 +97,7 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
 
 ## Documentation conventions
 
-- Keep each doc file (CLAUDE.md, `.claude/*`, `docs/*`) under ~200 lines.
+- Keep each doc file (CLAUDE.md, `.claude/*`, `docs/**`) under ~200 lines. `docs/README.md` indexes every doc by folder: a new doc gets its line there.
 - Split into multiple topic-focused files instead of letting one grow indefinitely.
 - Every `//bot` command must appear in [docs/bot-commands.md](docs/bot-commands.md). `tools/check-bot-docs.ps1` compares the handler's switch with
   the doc and names what is missing; `deploy.ps1` runs it and refuses to deploy while the two disagree, and an editor hook reports it sooner. The

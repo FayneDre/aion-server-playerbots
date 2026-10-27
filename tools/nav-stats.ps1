@@ -3,9 +3,9 @@
     Sums up how the bots moved, from the game server's log: fights started and given up for want of a way, routes planned and refused, bots wedged.
 
 .DESCRIPTION
-    The figures the open world plan is measured by (docs/openworld-navigation-plan.md, milestone 0). The give-ups are counted per bot and per target as well
+    The figures the open world plan is measured by (docs/navigation/openworld-navigation-plan.md, milestone 0). The give-ups are counted per bot and per target as well
     as in total, because a total hides what the first count of them showed: one bot made 404 of 594, going round three monsters it could not reach.
-    Steps aside and rescue teleports are broken down the same way (docs/obstacle-steering-plan.md, milestone 0): per minute, by kind of leg, by
+    Steps aside and rescue teleports are broken down the same way (docs/navigation/obstacle-steering-plan.md, milestone 0): per minute, by kind of leg, by
     length, by bot and by 20 m square, and the teleports by whether a real player saw them.
 
 .PARAMETER Since
@@ -77,7 +77,7 @@ if ($giveUps) {
     $giveUps | Group-Object { "$($_.Bot) -> $($_.Target)" } | Sort-Object Count -Descending | Select-Object -First $Top | ForEach-Object { "  {0,6}  {1}" -f $_.Count, $_.Name }
 }
 
-# Steps aside and rescue teleports, the figures docs/obstacle-steering-plan.md is judged by
+# Steps aside and rescue teleports, the figures docs/navigation/obstacle-steering-plan.md is judged by
 $minutes = [math]::Max(1.0, ([timespan]::Parse($last) - [timespan]::Parse($first)).TotalMinutes)
 $steps = @($lines | Where-Object { $_ -match 'BotMoveController - Bot (\S+) steps aside at (\S+) (\S+) \S+ to (\S+) (\S+) \S+, heading for [^(]+(\((.+)\))?$' } | ForEach-Object {
     # the server writes its decimals in the machine's locale, which here puts a comma where the point goes

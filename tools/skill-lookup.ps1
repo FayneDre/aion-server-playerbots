@@ -13,7 +13,7 @@
     With -Class the class's skill tree is read as well, which is where the level and the stigma tier (1 regular, 2 and 3 advanced, 4 linked) live.
 
 .PARAMETER Name
-    A regular expression matched against the skill's name, case insensitive. French names are looked up in docs/skill-glossary.md first, accents
+    A regular expression matched against the skill's name, case insensitive. French names are looked up in docs/classes/skill-glossary.md first, accents
     ignored, and the skills of every group found there are listed too.
 
 .PARAMETER Group
@@ -90,7 +90,7 @@ function Remove-Accents([string]$Text) {
 }
 $glossaryGroups = @()
 # the glossary is split by class, skill-glossary.md and one skill-glossary-<class>.md per class added since, to keep each file readable
-$glossaries = @(Get-ChildItem (Join-Path (Split-Path -Parent $PSScriptRoot) 'docs') -Filter 'skill-glossary*.md' | ForEach-Object { $_.FullName })
+$glossaries = @(Get-ChildItem (Join-Path (Split-Path -Parent $PSScriptRoot) 'docs\classes') -Filter 'skill-glossary*.md' | ForEach-Object { $_.FullName })
 if ($Name -and $glossaries.Count -gt 0) {
     $wanted = Remove-Accents $Name
     foreach ($row in (Get-Content $glossaries -Encoding UTF8)) {

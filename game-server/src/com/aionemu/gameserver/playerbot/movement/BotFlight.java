@@ -38,7 +38,7 @@ import com.aionemu.gameserver.world.zone.ZoneInstance;
  * <p>
  * <b>It decides the phases and moves nothing.</b> The body is flown by {@link BotMoveController}, on the movement tick the engine already runs for
  * every moving creature: this hands over a leg, waits for it to be reached, and hands over the next. It used to step the body itself, in a loop of its
- * own, and that loop then had its first step wait 7.8 seconds behind eighty bots thinking. Moving a body is movement; see {@code docs/flight-plan.md}.
+ * own, and that loop then had its first step wait 7.8 seconds behind eighty bots thinking. Moving a body is movement; see {@code docs/flight/flight-plan.md}.
  * <p>
  * <b>And coming down is the hard half.</b> Falling is entirely client side: {@code CM_MOVE} is what sets {@code MovementMask.FALL} and calls
  * {@code updateFalling}, and no server code moves anything downwards. A bot that runs out of flight points at height does not fall — it hangs there,
@@ -657,7 +657,7 @@ public class BotFlight {
 	 * <p>
 	 * {@code FlyController.startFly} refuses for six different reasons and reports each one as a system message to the player's client — which a bot
 	 * does not have, so to a bot every refusal is the same silent {@code false}. A caller that cannot tell them apart retries the one that will never
-	 * succeed, which is how the buff loop happened. See {@code docs/engine-traps.md}.
+	 * succeed, which is how the buff loop happened. See {@code docs/traps/engine-traps.md}.
 	 */
 	private static String whyNot(Player bot, List<Vector3f> legs, boolean hovers, boolean pursuing) {
 		if (!bot.isSpawned())

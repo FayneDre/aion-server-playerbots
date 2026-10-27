@@ -27,7 +27,7 @@ import com.aionemu.gameserver.world.World;
  * <p>
  * The engine's store is a player's, so everything a player's client does around it is done here: walking to a spot, putting the goods out, naming the
  * store, and closing it before going anywhere. Leaving the world does not close a store in the engine, which a real player's logout never needs, so a
- * bot's departure closes it here. See docs/bot-stores-plan.md.
+ * bot's departure closes it here. See docs/capitals/bot-stores-plan.md.
  */
 public final class BotStores {
 

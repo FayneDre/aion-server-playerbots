@@ -158,7 +158,7 @@ public class BotRoster {
 	 * Every inhabitant the world owns, awake or asleep, which is the pool the population director draws on.
 	 * <p>
 	 * Deliberately not held in memory. Which characters exist is the database's answer and nothing else's, and a copy of it kept alongside would be a
-	 * second truth to go stale — see {@code docs/engine-traps.md}. Which of these is in the world right now is a different question, answered by the
+	 * second truth to go stale — see {@code docs/traps/engine-traps.md}. Which of these is in the world right now is a different question, answered by the
 	 * set of spawned bots, so "the pool" is this list minus that set rather than a thing either of them has to maintain.
 	 * <p>
 	 * Both halves of the ownership test are applied, not just the obvious one. {@code owner_id = 0} alone would let through a character sitting on a

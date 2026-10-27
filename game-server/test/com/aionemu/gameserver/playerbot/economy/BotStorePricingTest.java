@@ -9,7 +9,7 @@ import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.playerbot.economy.BotStorePricing.Range;
 
 /**
- * The prices of docs/bot-stores-plan.md: nothing under what an npc pays plus a quarter, quality worth what the plan says, a keeper a little dearer or
+ * The prices of docs/capitals/bot-stores-plan.md: nothing under what an npc pays plus a quarter, quality worth what the plan says, a keeper a little dearer or
  * cheaper than another, and the unsold cheaper by the hour down to the floor.
  */
 class BotStorePricingTest {

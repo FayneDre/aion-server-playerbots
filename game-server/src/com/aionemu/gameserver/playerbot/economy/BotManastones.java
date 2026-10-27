@@ -11,7 +11,7 @@ import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 
 /**
- * Which manastones a store sells and what a live broker sold them for, from a price guide's figures of 24 October. See docs/bot-store-goods-plan.md.
+ * Which manastones a store sells and what a live broker sold them for, from a price guide's figures of 24 October. See docs/capitals/bot-store-goods-plan.md.
  * <p>
  * A stone is read by the stats it adds rather than by its name, since the names are the server's and not the client's the guide reads from. A single
  * stat is priced by how much players wanted it; two stats by how well the pair suits one class; an ancient stone by its quality, the best of them

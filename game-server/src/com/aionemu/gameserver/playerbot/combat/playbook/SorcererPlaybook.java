@@ -23,7 +23,7 @@ import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
- * How a sorcerer plays, after the guide's "Sorcier 101". The plan, milestone by milestone, is {@code docs/sorcerer-plan.md}.
+ * How a sorcerer plays, after the guide's "Sorcier 101". The plan, milestone by milestone, is {@code docs/classes/sorcerer-plan.md}.
  * <p>
  * A ranged caster that never swings and never stops a cast it has begun: its upkeep (Stone Skin, a robe, the wisdom), its mana (Gain Mana, the drains,
  * resting to full), its defences, a damage order after the guide's sequence, ground spells at the target's feet, control of a second enemy, holding its

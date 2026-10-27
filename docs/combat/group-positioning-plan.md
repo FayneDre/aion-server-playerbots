@@ -1,0 +1,165 @@
+# Group positioning: plan
+
+Status: milestones 1 to 5 built and unit tested, none yet watched in game; since the second group tests it applies to bosses only by default (`//bot position auto|standard|spread`, see the last section). The before and after figures of milestone 2 are still to be taken. Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
+Where the module stands today is in [group-roles.md](group-roles.md) and [navigation-prototype.md](../navigation/navigation-prototype.md); this file is the distance
+between that and what it describes. Step 0, the measuring, is done and its figures are below.
+
+## What it asks for
+
+The aim: every class uses its skills in the best conditions. The constraint over everything: **a bot's position must not draw new enemies.**
+
+| Where | Classes (its names, then the engine's) | Why |
+|---|---|---|
+| In front of the enemy, on the side **opposite the rest of the group** | templar `TEMPLAR`, Ethertech `RIDER` | Enemies hold their attention on the tank, so they turn their back on everyone else. A cleave (a cone in front of the enemy) then hits only the tank |
+| In contact, **behind** the enemy | assassin `ASSASSIN`, aède `CHANTER`, gladiator `GLADIATOR` | Melee classes out of the cone, and the assassin's skills that need its back to the enemy |
+| At a good distance, never in melee, never in front | spiritualiste `SPIRIT_MASTER`, sorcier `SORCERER`, barde `BARD`, rôdeur `RANGER`, pistolero `GUNNER` | Enemy area attacks; a ranged class in melee is a class being hit |
+| At a good distance, **every member within heal range** | clerc `CLERIC` | Its job is to survive and keep the group healthy |
+
+In its diagram: the tank under the enemies, the enemies facing it, the melee just behind the enemies, the ranged further back, the healer off to one side,
+and grey circles for the detection radius of the packs that are not part of the fight, which nobody may enter.
+
+## Answered by the guide's author
+
+1. **Distances and sizes come from the data**, the skills' and the server's, not from figures of its own.
+2. **The aggro rules are the engine's own**, not the general ones on its third page.
+3. **The tank does not walk round the enemy in the middle of a fight.** It chooses its side once, as it closes in to engage.
+4. **"Behind" is the engine's `isBehind`**: what lets the assassin cast the skills that ask for its back.
+
+## What the data says (step 0)
+
+**Aggro**, over the 57 000 monster templates that have a range (`srange`, `sangle`):
+
+- Range: median 10 m, three quarters at 15 m or less, nine tenths at 20 m or less, 100 m at the extreme. Most common: 10 m, then 20, 8, 7, 15.
+- Angle: **34 000 of them state none and see all round (360°)**. Of the rest, 240° is by far the commonest (14 700), then 300°, 270°, 140°. 3 400 have 0° and
+  never notice anyone. Inside the cone they notice from the full range; outside it only within a short radius, 4 m (half the range when that is under 8 m).
+- A monster ignores a player ten or more levels above it, guards excepted. Its third page has that right and the rest approximately.
+- So a pack that states a 240° cone has a blind sector of 120° straight behind it, and a pack that states nothing has none: **a zone is read per monster,
+  not assumed.**
+
+**Enemy cleaves and area attacks**, over the 3 100 skills monsters actually use, 1 474 of which hit an area of enemies:
+
+- **233 are cones from the caster**, in front of it unless the data says `BACK`: 240° (115 of them), 120° (61), 90°, 180°, 60°. Reach: median 7 m, nine
+  tenths 20 m or less.
+- 1 224 are circles: median radius 7 m, three quarters 15 m or less, nine tenths 25 to 30 m. Most (792) are centred on the **target**, which is the tank, so
+  whoever stands near the tank is in them; 431 are centred on the monster.
+- 16 are bolts, a strip in front of the caster.
+
+**Reach**, from the items and from the class skill trees:
+
+- Weapon: bow, harp and cannon 25 m; gun 20; spellbook 15; orb 2.5, staff 2 and keyblade 2, which is to say melee. Swords, maces, daggers 1.5 to 2 m.
+- Spells: sorcerer, spirit master, bard and cleric all cast single target skills from 25 m. Ranger skills range from 1 to 30 m with the bow's 25 added on
+  top. Rider (Ethertech) 6 to 20 m.
+- Healing: single target heals reach 23 to 25 m.
+- Skills that ask for the caster to be behind: eight of the assassin's, none of any other class.
+
+**Facing:** a monster turns towards its target on each attack and when it changes target (`SimpleAttackManager`, `NpcController`), so an enemy fighting the
+tank does face the tank, which is what the whole scheme rests on.
+
+**Not measured:** how often today's bots swing from the front, or stand in melee range when ranged. That needs the server running, and is the "before" the
+later steps are judged against.
+
+## Where the bots stand today
+
+- Followers stand in slots around the leader (`BotGroupManager.formationSpot`), in world directions.
+- In a fight, melee and ranged alike walk to the target's own position (`PlayerBotAI.chase`) and stop at weapon range, wherever that is relative to the way
+  it faces. Casters stay put if a skill reaches. A healer holds position beside the group and does not close in.
+- Nothing reads the enemy's facing, the other packs, or the group's shape. `PositionUtil.isBehind` and `isInFrontOf` exist and are unused by the module.
+
+## Design
+
+**A table of where, and a function of what.** `BotPosition` (authored, like `BotRole`): `FRONT`, `BEHIND`, `RANGED`, `HEALER`. It is not `BotRole`: a chanter and
+a bard are both `SUPPORT` there and stand in different places here.
+
+**One mechanism for all four.** Around the group's target (the skull, else the weakest enemy: [group-roles.md](group-roles.md)), lay candidate points on a ring
+whose radius is the role's, keep those that satisfy the role's angle, drop the unsafe ones, take the nearest to where the bot stands.
+
+| Role | Radius | Angle, from the enemy's facing | Also |
+|---|---|---|---|
+| `FRONT` | contact | the side away from the group's centre | chosen once, as it closes in; never reconsidered mid fight |
+| `BEHIND` | contact | within 45° of straight behind | inside the engine's `isBehind` (±90°), and inside the free sector of a 240° cone (±60°) |
+| `RANGED` | 15 m or its reach less 2 m, whichever is nearer | the half away from the tank | 15 m is the radius three quarters of enemy circles stay under |
+| `HEALER` | within 23 m of every member (heal reach less a margin) | the half away from the tank | out of the 15 m too, where the group's spread allows |
+
+"Behind within 45°" is stricter than the engine's ±90° on purpose: a 240° cone leaves only ±60° free, and 240° is the commonest state. Both numbers are
+this plan's choice and are revisited with the figures from step 2.
+
+**Safe** means inside no aggro zone of an enemy that is not already fighting the group, read from that monster's own `srange`, `sangle` and short radius,
+and the ten level rule for the bot's own level. A pure function over a list of zones, tested with made up numbers.
+
+**Pure first.** The geometry takes a record (enemy position and heading, tank position, group centre, zones, role) and returns a point or nothing, the same
+shape as `TemplarPlaybook.decide`: argued in a test, not in a play session.
+
+**Calm.** A bot moves only when it is outside a tolerance of its spot, and recomputes only when the enemy has moved a few metres, as `chase` already does
+with `RETARGET_STEP`. Without it every bot dances whenever an enemy takes a step, and every move is a packet ([moving-a-body.md](../architecture/moving-a-body.md)).
+A cast roots a bot, so casters reposition between casts.
+
+**Group fights only.** A solo bot is untouched, as everywhere else.
+
+## Milestones, in verifiable order
+
+0. **Measured**, apart from the "before" figures; see above.
+1. **The table and the geometry, no behaviour change.** *Built: `positioning/BotPosition`, `AggroZone`, `CombatSpots`, 20 tests; nothing calls them yet.* `BotPosition`, the spot function, the safety function, unit tests for each role on made up coordinates.
+2. **Melee behind, ranged back.** *Built, behind `gameserver.playerbot.positioning` (default on). The "before" is the same server with it off: every 200 looks at a grouped melee or ranged bot in a fight, the log says how many were placed, per role (`Positioning BEHIND: 71 of 200 samples well placed`). A bot is placed when it is within 60 degrees of straight behind and in weapon reach (melee), or in the half behind the enemy and between 8 m and its reach (ranged).* `chase` aims at the spot instead of the target for `BEHIND` and `RANGED`. In game: the share of melee swings from behind, the
+   distance of the ranged, both against the "before" figures taken first.
+3. **The healer.** *Built: runs on the decision tick, because a healer takes no part in the fight loop (`takeHealerStation`); placed means in the half behind the enemy, 6 m or more from it and within the heal reach less 1 m of every member, which is looser than the spot it is sent to so that arriving always ends the walk. Standing where it should, it holds rather than going back to its slot. The zones of other packs are not part of "placed" yet.* The heal range band. In game: no member out of its reach, and no healer walking into the fight.
+4. **The tank.** *Built in the chase only (`PlayerBotAI.approachPoint`): while a templar or Ethertech closes in on an enemy it aims at the contact spot on the side away from the group instead of at the enemy; once in reach nothing moves it, and an enemy that is already on it from the group's side is simply fought where it stands. Placed means the group lies within 60 degrees of straight opposite across the enemy. The walk to the far side can cross the enemy and its cone; that is step 5.* The side it engages from is the one opposite the group, chosen as it closes in and kept. In game: the enemy's back to the group in a
+   stabilised fight, as in its diagram.
+5. **Routes that respect aggro zones.** *Built: `navmesh/Avoidance`, a cost per point that the A* multiplies a step by (15 times its length for ground inside another pack's notice); path smoothing never cuts a corner across such ground; the move controller takes it for one journey (`avoid`), and the three station walks (melee and ranged, healer, tank closing in) ask for it. It is a cost and not a wall, so a bot with no other way still goes. Known gaps: the coarse pass for journeys over 150 m does not know of it, a route planned before a pack moved is kept, and the zones are those of monsters in the bot's own known list.* Until now only the destination is checked; the walk there may still cut through a pack's cone. The path search has no
+   cost for ground, so this needs one, and it is the likeliest piece to be larger than it looks. Decided after 2 to 4 have been seen.
+
+Two refinements came out of a review of the code afterwards. The range an enemy notices people at is measured **between edges**, not between centres, so each
+aggro zone carries both bodies' radii as padding; and the ring a melee bot stands on is the enemy's own body radius further out, so that a large monster does
+not have its attackers standing inside it. A ranged class whose reach is under 10 m (nothing that reaches further than a spear) is not given a rule at all, since
+there is nowhere for it to stand back to.
+
+## What step 2 does in the AI
+
+`PlayerBotAI.fight` asks `takeStation` first: for a grouped melee or ranged bot that is not placed, it walks to `BotStations.spotFor` instead of to the
+enemy, and a route under way is left alone for 1.5 s. A ranged bot that is placed and has nothing to cast now waits, where it used to walk up to the
+enemy (`holdsStation`). Where there is no spot, or none reachable, the old chase decides. The tank, the healer and every solo bot are untouched.
+
+One consequence to watch: a ranged class whose weapon reaches only 2.5 m (a spirit master's orb) now never auto attacks from 15 m, so it lives on its skills
+and on its mana. Before, it walked into melee to swing.
+
+## Risks
+
+- **Dancing.** An enemy that follows the tank moves the whole formation. Tolerances and the recompute step are the defence, and they are guesses until step 2.
+- **Reactive steering.** Closing in from the far side is the sort of move that gets a bot stuck on a rock ([navigation-prototype.md](../navigation/navigation-prototype.md)).
+- **Packs.** With several enemies on the tank, the anchor is the marked one and the others are wherever they stand. Good enough for a pull of two or three.
+- **Walls.** Indoors, the side opposite the group may be stone. A candidate with no ground is dropped, and a role with no candidate stays where it is.
+- **The tank still reaches the far side by walking there**, through a pack's cone if that is the way. Until step 5 that is the one place a bot can draw a new
+  enemy on its own account.
+
+## What the first group tests showed (10 October)
+
+Reported by a tester playing with bots, before any of this had been seen in a group, and what was done about each:
+
+- **Without a templar, bots ran in circles behind the boss, with the boss on them, and pulled other packs on the way.** The place behind an enemy is only safe because the tank holds it, so
+  positioning is now asked of a bot only when a tank is alive in the group (`BotStations.hasTank`), and a bot the enemy is hitting stays where it is (`isHeldByEnemy`, no longer the chanter's alone).
+  A group with no tank fights as it did before positioning existed.
+- **No positioning in instances.** There was no mesh for any instance. The group dungeons have one now, built by `tools
+avmesh.ps1 -Dungeons`; a server needs to run it once
+  ([dungeon-navmesh-plan.md](../navigation/dungeon-navmesh-plan.md)). Without a mesh `spotFor` finds no ground and the bot does what it did before.
+- **The healer did not position.** Three causes in the decision loop, each fixed in `PlayerBotAI`: the walk came only after the healer had found nothing to cast (a hurt mate or a missing buff came first on every tick);
+  a healer attacking with spare mana was never visited by the decision tick again and the fight loop did not place healers; and a healer short of mana sat down where it stood. It now walks first
+  (`healerTakesItsPlace`) unless a mate is under half health, in all three places. When it has no place to stand the log says so, with the mesh and the heal reach, once in thirty seconds.
+- **The mark** the group follows was brand id 14, typed `/Brand 15` and drawn as a shield with a 1; the skull is `/Brand 14`, brand id 13, and the code now uses it (see [group-roles.md](group-roles.md)).
+
+Not yet seen in a group again: all of the above is unit tested only in the parts that can be, and the loop changes are not.
+
+## What the second group tests showed (14 October)
+
+Farming an instance with a group: **placing every bot against every monster is not efficient at all.** Each walk round an enemy is time not spent
+hitting it, and the walks regularly pulled other packs. A normal monster or an elite dies before any of it pays off; only a boss, or a few specific
+monsters, last long enough for cleaves and facing to matter.
+
+So the placing is now decided per target, by `PositioningMode` (`gameserver.playerbot.positioning`, `//bot position`):
+
+| Mode | Placing |
+|---|---|
+| `AUTO`, the default | Against a boss only: `Npc.isBoss()`, a hero or legendary rating. Straight at anything else. |
+| `STANDARD` | Never: melee walks into contact by the shortest way, ranged classes close to their reach, the healer stays in the formation. What bots did before this plan. |
+| `SPREAD` | Always, as milestones 2 to 5 describe. |
+
+Considered and left out for now: also placing against an elite that has a cone among its skills (233 monster skills are cones). The tester's point was
+precisely that ordinary elites do not need it; to be added if a specific monster is shown to.

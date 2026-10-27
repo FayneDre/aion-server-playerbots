@@ -23,7 +23,7 @@ import com.aionemu.gameserver.services.item.ItemService;
  * <p>
  * Generated, by decision of 20 October: a town resident does not hunt and a field bot sells its drops where it hunts, so nothing a bot really loots
  * reaches a capital. Only what a player could come by goes on a shelf — reachable, of the keeper's faction, tradeable — so a store never shows what the
- * world itself does not hand out. See docs/bot-stores-plan.md and docs/bot-store-goods-plan.md.
+ * world itself does not hand out. See docs/capitals/bot-stores-plan.md and docs/capitals/bot-store-goods-plan.md.
  * <p>
  * Two kinds of keeper, as a price guide described live servers on 24 October: the <b>dedicated</b> one sells one category over a wide spread of
  * levels, the <b>opportunist</b> a little of everything round its own level, as a player sells what a session left in the bag.

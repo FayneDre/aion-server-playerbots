@@ -383,7 +383,7 @@ plus les murs, et tous les maillages du monde ouvert ont été régénérés pou
 ## patch-2026-10-18 — 18/10/2026
 
 Révision `3652dfc`, celle que `//bot version` affiche. Les bots traversent les Abysses en volant d'île en île, et Reshanta est peuplée sur ses deux
-couches. Mesuré par demi-heure, sans joueur, avec une escouade de six bots sur la couche haute ([abyss-crossing-plan.md](abyss-crossing-plan.md)).
+couches. Mesuré par demi-heure, sans joueur, avec une escouade de six bots sur la couche haute ([abyss-crossing-plan.md](flight/abyss-crossing-plan.md)).
 
 **Voler dans les Abysses**
 - **Traversées par les airs :** un bot qui doit aller sur une autre île décolle au bord de la sienne, monte, traverse en palier et se pose, puis reprend son chemin à pied. Il attend au bord s'il manque de points de vol. Environ 20 000 liaisons entre îles sur Reshanta, jusqu'à 180 m d'écart et 200 m de dénivelé.
@@ -448,7 +448,7 @@ grande AoE lancée.
 
 Révision `2f9cec8`, celle que `//bot version` affiche. Les bots qui rentrent dans le décor, glissent le long des murs, traversent une rambarde « en deux
 pas de côté » ou se téléportent : mesuré par demi-heure sur 24 cartes et environ 800 bots, sans joueur connecté
-([obstacle-steering-plan.md](obstacle-steering-plan.md)).
+([obstacle-steering-plan.md](navigation/obstacle-steering-plan.md)).
 
 **Déplacements**
 - **Le navmesh contrôle les petits déplacements :** un pas de côté ou les derniers mètres vers une cible ne traversent plus une rambarde, un muret ou le pied d'un objet du décor, que les anciens rayons ne voyaient pas.
@@ -506,7 +506,7 @@ comprises dans celle-ci.
 - `//bot note <texte>` : marque le moment dans le journal, avec l'état de chaque bot du groupe.
 - `//bot debug combat` : tous les sorts des bots dans le journal, jusqu'au prochain redémarrage.
 - `tools\collect-feedback.ps1` : un zip des minutes autour de chaque note, à joindre au retour.
-- Les noms de compétences en français sont acceptés ([skill-glossary.md](skill-glossary.md)).
+- Les noms de compétences en français sont acceptés ([skill-glossary.md](classes/skill-glossary.md)).
 
 **Connu, pas encore corrigé**
 - Le templier qui « lâche l'affaire » : il faut le journal de la séance (ou l'heure et le nom du bot).

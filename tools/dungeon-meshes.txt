@@ -1,5 +1,5 @@
 # The group dungeons that get a navmesh: one line per geometry, the id that is built first and then the ids that share it (the file is copied under each).
-# Read by tools/navmesh.ps1 -Dungeons. See docs/dungeon-navmesh-plan.md.
+# Read by tools/navmesh.ps1 -Dungeons. See docs/navigation/dungeon-navmesh-plan.md.
 300030000
 300040000
 300050000

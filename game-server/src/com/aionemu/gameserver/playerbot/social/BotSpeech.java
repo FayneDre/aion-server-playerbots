@@ -20,7 +20,7 @@ import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.World;
 
 /**
- * What bots say aloud in the capitals: a store keeper calling out its store, a resident asking for a group. See {@code docs/capital-life-plan.md}.
+ * What bots say aloud in the capitals: a store keeper calling out its store, a resident asking for a group. See {@code docs/capitals/capital-life-plan.md}.
  * <p>
  * By shout, which the players round the speaker hear; the channels are {@link BotChat}'s. Cheap and seen at once, and noisy if overdone, so a
  * capital has one line every few minutes of each kind, never from the same bot twice in half an hour, and none while no player is there to hear it.

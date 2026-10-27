@@ -1,15 +1,17 @@
 # What is built, and what it cost to learn
 
 What works today and the reasoning behind it, kept because most of these decisions were paid for twice. For what is **left**, see
-[roadmap.md](roadmap.md); for how things work, see [playerbot-architecture.md](playerbot-architecture.md),
-[population.md](population.md), [combat-prototype.md](combat-prototype.md), [navigation-prototype.md](navigation-prototype.md) and
-[navmesh-plan.md](navmesh-plan.md).
+[roadmap.md](roadmap.md); for how things work, see [playerbot-architecture.md](architecture/playerbot-architecture.md),
+[population.md](population/population.md), [combat-prototype.md](combat/combat-prototype.md), [navigation-prototype.md](navigation/navigation-prototype.md) and
+[navmesh-plan.md](navigation/navmesh-plan.md).
 
 ## Where it stands
 
 Bots are real `Player` objects with no connection, driven by `PlayerBotAI`. They load from the database, spawn visible to real clients, fight with class skills, chase, loot, rest, die and resurrect, work a 60 m camp, and plan routes over a generated navmesh. Several run at once without interfering.
 
-Verified in game. Run `//bot` for the command list.
+Verified in game. Run `//bot` for the command list. This file holds the foundations, built up to mid October; what came after has its own plan,
+which says what it cost: flight and the Abyss ([flight/](flight/)), dungeons ([dungeon-navmesh-plan.md](navigation/dungeon-navmesh-plan.md)), the
+class playbooks ([classes/](classes/)), the capitals ([capitals/](capitals/)) and the chat ([social/](social/)). The index is [README.md](README.md).
 
 ## Done: the vendor run
 
@@ -29,7 +31,7 @@ The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops foreve
 
 A weapon is only ever weighed against a weapon and armour against armour. Slots overlap in ways that make a free-for-all dangerous — a shield and a two handed weapon claim the same hand, so a shield that merely scored higher would strip the weapon and the weapon would not win it back. Anything finer than that is too strict: the first attempt insisted on the same item group, which is the *material*, and it blocked every real upgrade, since levelling gear crosses from leather to cloth and back with whatever drops.
 
-**Worthwhile gear is bound to the bot before it is worn**, and this is what kept three attempts at equipping wearing nothing at all — `equipItem` does not refuse a soul bound piece, it asks about it and returns null. See [engine-traps.md](engine-traps.md); it is the clearest example of the whole family.
+**Worthwhile gear is bound to the bot before it is worn**, and this is what kept three attempts at equipping wearing nothing at all — `equipItem` does not refuse a soul bound piece, it asks about it and returns null. See [engine-traps.md](traps/engine-traps.md); it is the clearest example of the whole family.
 
 **A piece that scores higher can still be unwearable for good** — a mace a priest has no mastery for, a piece for the other race — and nothing short of trying says so. After a fruitless look the bot leaves its bag alone for a minute, or it would stop and sheathe on every tick of its life for one such item.
 
@@ -43,7 +45,7 @@ Which piece is better is judged on its level first and its quality second. That 
 
 ## Then
 
-**Skill rotation (M7), started.** Bots heal, buff, cast from a skill's own range rather than walking into melee first, shield themselves when a fight turns, and open with a burst — they open with a class's own move — a leap, or a walk in under stealth — and they no longer pick the attacks that leap backwards. They follow their skill chains, do not re-apply a debuff already on the target, and chanters run their mantras. See [combat-skills.md](combat-skills.md). They lead with their strongest skill rather than their newest, which the id ordering had badly wrong. Still missing: an authored rotation per class — what exists is a set of tiers read from the data.
+**Skill rotation (M7).** Bots heal, buff, cast from a skill's own range rather than walking into melee first, shield themselves when a fight turns, and open with a burst — they open with a class's own move — a leap, or a walk in under stealth — and they no longer pick the attacks that leap backwards. They follow their skill chains, do not re-apply a debuff already on the target, and chanters run their mantras. See [combat-skills.md](combat/combat-skills.md). They lead with their strongest skill rather than their newest, which the id ordering had badly wrong. On top of those tiers read from the data, six classes now have an authored playbook from a guide ([classes/](classes/)); the other five still play the tiers alone.
 
 ## Done: groups
 
@@ -65,7 +67,7 @@ The leader's target is taken first so a group converges instead of each member h
 
 **A group mate's attacker is assisted, not just the leader's selection.** Reading `getTarget()` alone left a bot standing by while its leader was being eaten, because a player whose selection is elsewhere — or who never clicked the mob that jumped them — is being attacked all the same. The mob's aggro list is asked instead: it remembers who it is fighting whatever anyone has selected. The leader's attacker comes first, then any member's.
 
-**Healing and buffing reach the group.** The bot uses the same skills it heals and buffs itself with, aimed at a group mate — minus those that cannot leave their caster, which the data says and the engine does not: aimed elsewhere, a skill marked `first_target="ME"` is not refused but quietly turned back on the caster, and reported as a success. Over five thousand skills are marked that way, including the Bandage Heal every character knows, so every class kept "healing" its ally by bandaging itself. See [engine-traps.md](engine-traps.md). Allies are healed below 75%, a higher bar than the bot uses for itself, because a bot can sit down and regenerate what it does not heal while an ally it leaves hurt stays hurt. In a fight an ally's life comes before the bot's damage but after the bot's own survival.
+**Healing and buffing reach the group.** The bot uses the same skills it heals and buffs itself with, aimed at a group mate — minus those that cannot leave their caster, which the data says and the engine does not: aimed elsewhere, a skill marked `first_target="ME"` is not refused but quietly turned back on the caster, and reported as a success. Over five thousand skills are marked that way, including the Bandage Heal every character knows, so every class kept "healing" its ally by bandaging itself. See [engine-traps.md](traps/engine-traps.md). Allies are healed below 75%, a higher bar than the bot uses for itself, because a bot can sit down and regenerate what it does not heal while an ally it leaves hurt stays hurt. In a fight an ally's life comes before the bot's damage but after the bot's own survival.
 
 **Selecting a target is not fighting it.** Players click mobs to read their level, and a group whose bots pull whatever the leader looks at is unusable, so the mob's own aggro list decides: it holds a grudge against whoever hit it, and equally against whoever it chose to attack, which means a leader under attack is assisted too.
 
@@ -83,18 +85,18 @@ A bot that catches up from far away **appears rather than walks into view** for 
 
 A bot is passed over when a group looks for a new leader — leading means answering invitations and setting loot rules. That has a tail: a team keeps its leader field when that member leaves, and nothing replaces a leader a bot may not become, so the group of a player who has just walked out still names them. Bots followed that ghost until `leaderToFollow` started checking the leader is still a member. A group with no player left in it is then left outright, rather than leaving bots counting each other as team mates for targeting and loot for ever.
 
-**Left for later:** nothing makes a bot follow through a teleporter, and a group of bots alone has no one to decide for it.
+**Left for later:** a group of bots alone has no one to decide for it, short of a `//bot squad`. A bot cut off from its player by a teleporter, a lift or a door is put beside them after about 13 s (`PlayerBotAI.freeItself`, 19 October), and one that accepts an invitation from over 50 m is brought to the player (25 October).
 
 **Economy.** Selling is the first step. Then the broker (`BrokerService`), then player shops. (`PvpService` no longer throws when a bot kills a real player: that dereference was guarded along with the rest of the `isOnline()` work.)
 
-**Bot population.** A map populates itself on first startup, from one configuration line, with its own navmesh generated if missing and its database schema brought up to date if it lacks anything. Bots live on reserved accounts from id 900000, keep a home, a level drawn from where they live and a face of their own. See [population.md](population.md).
+**Bot population.** A map populates itself on first startup, from one configuration line, with its own navmesh generated if missing and its database schema brought up to date if it lacks anything. Bots live on reserved accounts from id 900000, keep a home, a level drawn from where they live and a face of their own. See [population.md](population/population.md).
 
 **Saving.** Spawned bots are written every 5 minutes, and on a clean shutdown. Nothing else writes them: the engine's `PeriodicSaveService` covers legion warehouses only, and real players are saved when they log out, a door a bot never uses. This matters more than it used to, now that bots gain levels and skills unattended over hours.
 
 ## Done: the pool
 
 Inhabitants are created asleep and the director wakes them, which is what makes a world of two thousand something that can be tried rather than only
-calculated — every bot used to be awake from the moment it was created. The model and the numbers are in [population.md](population.md); what the building
+calculated — every bot used to be awake from the moment it was created. The model and the numbers are in [population.md](population/population.md); what the building
 of it cost is here.
 
 **Attention could not be applied to the whole population, and the reason was geometric.** The design scaled every region's target by how much it was being
@@ -107,12 +109,12 @@ was busy, only the hunting grounds did.
 **Three things were wrong before any of this and only became visible once something other than an operator decided when a bot leaves.** `delete()` despawns
 with `FADE_OUT`, so every departure was watched; the departure did not leave its group, so a player kept a ghost in their party window; and `cancel(false)`
 does not stop a tick that has begun, so a bot could be removed from the world in the middle of deciding something and then try to walk. All three are in
-[engine-traps.md](engine-traps.md) or fixed at the source.
+[engine-traps.md](traps/engine-traps.md) or fixed at the source.
 
 **Creating a character asleep nearly dressed it in nothing.** Dressing used to happen after entering the world, and the comment said why: equipping was
 believed to ask whether its wearer was spawned. It does not — a broadcast to a non-spawned object reaches its empty known list and stops. The real
 dependency was the opposite way round and quieter: the outfitter refuses armour to a character that does not hold its mastery, and a character read back
-from the database holds level-1 skills whatever its level, because teaching happened on the way in ([world-and-data-traps.md](world-and-data-traps.md)).
+from the database holds level-1 skills whatever its level, because teaching happened on the way in ([world-and-data-traps.md](traps/world-and-data-traps.md)).
 Teach, then dress.
 
 **Verified in game, on Poeta.** A cleared map repopulated to 36 inhabitants over **29 distinct homes** — against 16, twelve of them in Akarios, before
@@ -140,20 +142,16 @@ arrival — "these and nobody else" is the safer statement for a population crea
 
 A bot used to be one of two things, and a resident gained no experience so that its region kept inhabitants of its own level. It worked, and it was
 the wrong answer: it produced two species, and a resident was not really a character. Replaced by one kind of bot that levels and travels, with a
-stationary *flow* rather than stationary individuals — see [population.md](population.md).
+stationary *flow* rather than stationary individuals — see [population.md](population/population.md).
 
 What the model got right and kept: a level belongs to a region rather than to a camp, a bot has a home that is not simply the nearest place, and
 settlements are read from the world rather than authored. What it got wrong is recorded in [roadmap.md](roadmap.md) under the density rule.
 
-## Known limits, in order of how much they will bite
+## Known limits
 
-1. **Obstacles under a metre are invisible to the engine's own probes**, so wherever the navmesh does not answer — an ungenerated map, the last few metres to a creature — a bot can still wedge itself on one. Along a planned route it no longer applies: those legs are walked on the mesh, which sees them.
-2. **Walkable ground comes in islands.** A route between two of them does not exist. Check with `NavmeshTool <mapId> components` before suspecting the search.
-3. **Only maps with a generated file are planned on.** Run `tools/navmesh.ps1 <mapId>`; the rest fall back to reactive steering. 26 are generated, Poeta (210010000) among them, and since 2026-10-09 Sanctum (110010000) and Reshanta (400010000), built from placed meshes alone because the data ships no heightmap for them. The Cloister of Kaisinel cannot have one for the same reason.
-4. **Crossing maps is not a navigation problem.** It needs teleporters and flight paths, like a player.
-5. **A crash loses at most 5 minutes of what bots did.** That is the periodic save interval; nothing writes them between two sweeps.
-6. **Bots never flee.** They heal, drink and shield themselves, and otherwise sit down to regenerate, but nothing makes them run from a fight they are losing.
-7. **Bots cannot leave the map they are on.** No teleporter, no flight path, so a group that changes zone leaves its bots behind.
+Kept in one place, [roadmap.md](roadmap.md) ("Known limits"), where they are reviewed with each patch. Three that this file used to list are gone:
+bots flee a fight they are losing (`retreatIfLosing`, never in a group), follow their player into an instance or are put beside them when cut off,
+and fly; and the probes' blindness under a metre no longer applies along a planned route, which is walked on the mesh.
 
 ## `isOnline()` means "is present", not "has a socket"
 
@@ -178,5 +176,5 @@ Three of those were already broken before any of this: they walk the world playe
 
 ## Traps
 
-Moved to [engine-traps.md](engine-traps.md) and [world-and-data-traps.md](world-and-data-traps.md), which are where to look first when a bot does
+Moved to [engine-traps.md](traps/engine-traps.md) and [world-and-data-traps.md](traps/world-and-data-traps.md), which are where to look first when a bot does
 nothing and says nothing about why. The first is what the engine does; the second is what the world and its data are.

@@ -28,7 +28,7 @@ import com.aionemu.gameserver.utils.PositionUtil;
  * An ordinary bot cannot lead: {@link BotGroupManager#leaveIfLeaderless} walks bots out of a group with no player in it, and
  * {@link BotGroupManager#leaderToFollow} never follows a bot. A squad is the one exception to both. Its leader goes on playing as it would alone, picking
  * fights round its camp, and waits before each pull for the squad to have recovered; the members follow it and assist it as they would a player.
- * The plan is {@code docs/test-harness-plan.md}.
+ * The plan is {@code docs/architecture/test-harness-plan.md}.
  */
 public final class BotSquads {
 

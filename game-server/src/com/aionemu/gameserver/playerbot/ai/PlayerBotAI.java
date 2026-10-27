@@ -1346,7 +1346,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 	 */
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
-		// The class gets first refusal, and what it declines falls through to the order below. See docs/templar-plan.md for the templar's.
+		// The class gets first refusal, and what it declines falls through to the order below. See docs/classes/templar-plan.md for the templar's.
 		if (BotPlaybooks.of(bot).act(bot, target) || BotPlaybooks.of(bot).heal(bot))
 			return true;
 		boolean healer = BotRole.of(bot) == BotRole.HEALER;

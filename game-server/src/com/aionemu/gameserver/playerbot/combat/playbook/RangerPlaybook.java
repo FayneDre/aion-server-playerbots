@@ -24,7 +24,7 @@ import com.aionemu.gameserver.skillengine.model.SkillType;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
- * How a ranger plays, after the guide's "Rôdeur 101". The plan, milestone by milestone, is {@code docs/ranger-plan.md}.
+ * How a ranger plays, after the guide's "Rôdeur 101". The plan, milestone by milestone, is {@code docs/classes/ranger-plan.md}.
  * <p>
  * The guide's rule for a ranger is distance: kill before the enemy arrives, and in a group never become the target. So the playbook prepares (the personal
  * buffs, two of the four one minute ones at most), opens with the handicap that suits the enemy, keeps a hand on its own health with Seizure Arrow, and in a

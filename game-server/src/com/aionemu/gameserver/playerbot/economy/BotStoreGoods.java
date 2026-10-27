@@ -9,7 +9,7 @@ import com.aionemu.gameserver.model.templates.item.ItemTemplate;
 import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 
 /**
- * The goods a price guide named, by id, with the keeper level each asks for and the range a live broker sold it in. See docs/bot-store-goods-plan.md.
+ * The goods a price guide named, by id, with the keeper level each asks for and the range a live broker sold it in. See docs/capitals/bot-store-goods-plan.md.
  * <p>
  * By id because the server's data and the client name these things differently: the client's L1 to L5 Enchantment Stones are Alpha to Epsilon here,
  * its All-Powerful stone is the Omega one, and a name looked up from the guide found nothing, or found the wrong thing. The ids are the guide's own,

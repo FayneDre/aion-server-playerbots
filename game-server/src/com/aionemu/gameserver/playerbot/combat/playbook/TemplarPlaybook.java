@@ -22,7 +22,7 @@ import com.aionemu.gameserver.skillengine.properties.TargetRangeAttribute;
 import com.aionemu.gameserver.skillengine.properties.TargetRelationAttribute;
 
 /**
- * How a templar plays, after the guide's "Templier 101". The plan, milestone by milestone, is {@code docs/templar-plan.md}.
+ * How a templar plays, after the guide's "Templier 101". The plan, milestone by milestone, is {@code docs/classes/templar-plan.md}.
  * <p>
  * The exclusions are the guide's "do not use" list: Stubborn Spirit, Bodyguard, and area attacks in a group. The defensives hold in a group and alone alike, which the guide confirmed. The aggro rules are a group's business: a templar alone has nobody to
  * protect and nothing to peel, and taunting the monster already hitting it is a wasted cast.
