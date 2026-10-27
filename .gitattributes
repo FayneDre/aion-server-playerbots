@@ -1,0 +1,2 @@
+# Docs stay LF in the working copy too: scripted edits of mixed CRLF and LF files went wrong more than once.
+*.md text eol=lf
