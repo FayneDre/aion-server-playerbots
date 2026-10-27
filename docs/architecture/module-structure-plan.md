@@ -1,6 +1,6 @@
 # Module structure: plan
 
-Status: all five steps built on 27 October 2026. Step 4 deployed and being measured; step 5 on the branch `structure/step5-ai`, to be measured on its own after it. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
+Status: all five steps built on 27 October 2026; steps 1 to 4 deployed, step 4 measured and validated that evening. Step 5 on the branch `structure/step5-ai`, to deploy and measure on its own. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
 (one accessor for `instanceof PlayerBotAI`, one thread owning each bot's state, tuning constants as properties) are kept for later, on evidence.
 
 Why: navigation is far from finished and has to become very stable and fast, and the five class playbooks still to write must be testable before
@@ -98,7 +98,10 @@ ground, whose ground, whether a crossing flies, the route lane), and `BotFlight`
 take-off buffs and scroll, the class's rule in the air, serums). Both are installed first thing in `PlayerBotService.onStartUp` and throw when
 missing rather than plan as though the world held no danger. `BotRestManager` (sit, stand) moved to `movement`. `navmesh` imports nothing of the
 module now, `movement` only `navmesh` and the scheduler; `ModuleLayersTest` holds both (checked by putting a `world` and a root import back).
-Measured: see the figures below once taken.
+Measured 21:40-22:10 against two baselines of the code before (20:15 and 20:45, a player in game), per 30 minutes: 14 of 17 counters
+inside the band; out of it, slightly, planned glides 4 (9 and 13), could not move 43 (22 and 38) and rescues 52 (37 and 43), both under the 25
+October highs (41 and 51). The rescues are of the same kinds in the same shares in all three windows; the only new line is five "a player has it
+in sight", which follows where the player stands. Flights and crossings 1 to 2 a window in all three, glides flown 0, 3 and 4. **Validated.**
 
 **Step 5, built 27 October** on its own branch, so that step 4 is measured alone. `PlayerBotAI` went from 2481 lines to 1803 (1999 after the
 rescue, 1792 after the chase, plus four anchor readers):
