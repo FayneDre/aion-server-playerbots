@@ -1,4 +1,4 @@
-package com.aionemu.gameserver.playerbot.ai;
+package com.aionemu.gameserver.playerbot.combat;
 
 import static org.junit.jupiter.api.Assertions.*;
 

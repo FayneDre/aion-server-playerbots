@@ -14,8 +14,8 @@ import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.team.group.PlayerGroup;
-import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
+import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
@@ -600,7 +600,7 @@ final class GladiatorPlaybook implements ClassPlaybook {
 
 	private static Situation inFight(Player bot, Creature target, boolean secondToPull) {
 		Set<Move> ready = ready(bot);
-		long lastControlledAt = bot.getAi() instanceof PlayerBotAI ai ? ai.lastControlledAt() : 0;
+		long lastControlledAt = BotCombatMemory.of(bot) instanceof BotCombatMemory memory ? memory.lastControlledAt() : 0;
 		boolean controlled = BotSkillManager.isCrowdControlled(bot);
 		boolean recentlyControlled = !controlled && lastControlledAt != 0 && System.currentTimeMillis() - lastControlledAt <= RECENTLY_CONTROLLED_MILLIS;
 		boolean wallUp = BotSkillManager.isUp(bot, Move.WALL_OF_STEEL.group), armorUp = BotSkillManager.isUp(bot, Move.ARMOR_OF_ATTRITION.group);

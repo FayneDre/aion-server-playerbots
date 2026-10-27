@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
-import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotRole;
@@ -204,9 +204,9 @@ final class ChanterPlaybook implements ClassPlaybook {
 		if (aimedAt == null)
 			return false;
 		boolean cast = BotSkillManager.tryCastGroup(bot, aimedAt, move.group);
-		// the sequence's first step is what says "until full", and the memory is kept in the bot's own AI: see PlayerBotAI.mendingToFull
-		if (cast && inFight && isCriticalStep(move) && bot.getAi() instanceof PlayerBotAI ai)
-			ai.setMendingToFull(true);
+		// the sequence's first step is what says "until full", and the memory is kept with the bot: see BotCombatMemory.mendingToFull
+		if (cast && inFight && isCriticalStep(move) && BotCombatMemory.of(bot) instanceof BotCombatMemory memory)
+			memory.setMendingToFull(true);
 		if (cast)
 			log.debug("Chanter {} casts {} at {}% health", bot.getName(), move, bot.getLifeStats().getHpPercentage());
 		return cast;
@@ -230,10 +230,10 @@ final class ChanterPlaybook implements ClassPlaybook {
 		boolean mateToRaise = inTeam && ready.contains(Move.LIGHT_OF_RESURRECTION) && BotGroupManager.mateToResurrect(bot, RESURRECTION_RANGE) != null;
 		int hurtCount = ready.contains(Move.WORD_OF_LIFE) ? hurtAround(bot, hp) : 0;
 		boolean mending = false;
-		if (bot.getAi() instanceof PlayerBotAI ai) {
+		if (BotCombatMemory.of(bot) instanceof BotCombatMemory memory) {
 			if (hp >= 100 || inTeam)
-				ai.setMendingToFull(false); // done, or it is a group's chanter now, which heals nobody but itself with Stamina Restoration
-			mending = ai.isMendingToFull();
+				memory.setMendingToFull(false); // done, or it is a group's chanter now, which heals nobody but itself with Stamina Restoration
+			mending = memory.isMendingToFull();
 		}
 		return new Situation(hp, bot.getLifeStats().getMpPercentage(), bot.getLevel(), bot.getCommonData().getDp(), inTeam, inTeam ? tankHealth(bot) : -1, debuffed,
 			BotSkillManager.isUp(bot, Move.PROTECTIVE_WARD.group), BotSkillManager.isUp(bot, Move.ASCENSION_SPELL.group),

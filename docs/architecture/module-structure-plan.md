@@ -1,6 +1,6 @@
 # Module structure: plan
 
-Status: step 1 built on 27 October 2026 (not deployed); steps 2 to 5 not started. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
+Status: steps 1 and 2 built on 27 October 2026 (not deployed); steps 3 to 5 not started. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
 (one accessor for `instanceof PlayerBotAI`, one thread owning each bot's state, tuning constants as properties) are kept for later, on evidence.
 
 Why: navigation is far from finished and has to become very stable and fast, and the five class playbooks still to write must be testable before
@@ -74,3 +74,11 @@ convalescence, target claims, flights; by their owner: visitors, recruits) or re
 mana). Four owners gained a `forget(Player)`, all called from `PlayerBotLeaveWorldService`: `BotSkillManager` (casts that did not go through),
 the sorcerer's three states (through `ClassPlaybook.forget`), `BotTransports` and `BotInstances`. `BotMemoryTest` reads the sources and fails on a
 static map keyed by an id that nobody has classified, or on a forgotten one its class's `forget` does not clear (checked by removing a line). 398 tests.
+
+**Step 2, built 27 October.** Correction to what the plan said: the playbooks' *decisions* were already pure, `mending` and the hold were in their
+`Situation`; the AI was read where the situation is read and after a cast, which is the dependency the wrong way round rather than a hole in the
+tests. The five values (`lastControlledAt`, `mendingToFull`, the hold's two times, `openedOn`) and `HealthRecord` moved from `PlayerBotAI` to
+`combat/BotCombatMemory`, which the AI owns and hands over through `BotCombatMemory.Holder`; the playbooks ask `BotCombatMemory.of(bot)`. Same
+fields, same `volatile`, same reads and writes: nothing a bot does changes, so no measurement was taken. `ModuleLayersTest` reads the imports and
+fails when `combat` imports `ai` (checked by putting one back); step 4 adds its rules there. 399 tests. This is also the first piece of step 5:
+`BotCombatState` is now `BotCombatMemory`.

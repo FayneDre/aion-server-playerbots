@@ -70,7 +70,7 @@ Read from the code and the data, not watched:
 `RangerPlaybook` beside the chanter's: `act` in a fight, `tend` before one (the buffs go on before the target is chosen, which is where `tend` is called),
 `claims` for what it times itself, `preferredStigmas` for the sigmas. Two things are new:
 
-1. **A hold-fire memory**, in `PlayerBotAI` as `lastControlledAt` and `mendingToFull` are: set when the ranger's target turns on it in a group, read by the
+1. **A hold-fire memory**, in `BotCombatMemory` (in `PlayerBotAI` until 27 October) as `lastControlledAt` and `mendingToFull` are: set when the ranger's target turns on it in a group, read by the
    attack loop to not shoot for 5 s or until it is no longer the target, and Calming Whisper first. This changes the loop, not only a skill choice, so it
    needs the one hook `ClassPlaybook.holdsFire(bot, target)`.
 2. **An enemy kind**: melee or caster, which decides between Entangling and Silence Arrow. The data should say (an NPC that casts versus one that only hits);
@@ -86,7 +86,7 @@ Read from the code and the data, not watched:
    (solo only, if at all); Bow of Blessing; Focused Shots in place of Aiming; Speed of the Wind right after; Devotion in combat before the first damage; the
    Transformation in combat with 2000 DP; Breath of Nature once after login or resurrection. Done when the unit tests of the order pass and a ranger holds two
    of the four and does not cast the third.
-3. **Openers and handicaps.** *Built: Silence Arrow on a caster, Entangling Shot on a melee enemy, once per enemy (`PlayerBotAI.openedOn`), alone; Shackle Arrow within 2.5 m, alone; Sleep Arrow on another enemy than the main one, grouped (`BotGroupManager.otherEnemyOnTheGroup`); Seizure Arrow under 75 %, Focused Evasion before it when targeted under 50 % and never alone; Remove Shock then Finishing Arrow. An enemy is a caster if its skill list has a magical attack, melee if its attack range is 3 m or less, and neither otherwise.* Solo, at the start of the fight: Entangling Shot against a melee enemy, Silence Arrow against a caster. Shackle Arrow when an
+3. **Openers and handicaps.** *Built: Silence Arrow on a caster, Entangling Shot on a melee enemy, once per enemy (`BotCombatMemory.openedOn`), alone; Shackle Arrow within 2.5 m, alone; Sleep Arrow on another enemy than the main one, grouped (`BotGroupManager.otherEnemyOnTheGroup`); Seizure Arrow under 75 %, Focused Evasion before it when targeted under 50 % and never alone; Remove Shock then Finishing Arrow. An enemy is a caster if its skill list has a magical attack, melee if its attack range is 3 m or less, and neither otherwise.* Solo, at the start of the fight: Entangling Shot against a melee enemy, Silence Arrow against a caster. Shackle Arrow when an
    enemy is at 1 m. Sleep Arrow, grouped, on a target that is not the main one with two or more enemies. Seizure Arrow under 75 % health, with Focused
    Evasion first under 50 % when targeted (to be settled with the guide). Remove Shock when controlled, then Finishing Arrow, as the chanter's Backshock.
 4. **Not becoming the target.** *Built: `nextHold`, a pure rule. A grouped ranger whose target aims at it casts Calming Whisper and stops shooting for five seconds or until the target looks away, and will not hold again for ten; the fight loop is not touched, `act` answers "I did something" and so the swing is not taken. The state is in `PlayerBotAI` (`holdingFireSince`, `holdFireRearmAt`).* The hold-fire hook above; positioning in the back of the enemy already exists.

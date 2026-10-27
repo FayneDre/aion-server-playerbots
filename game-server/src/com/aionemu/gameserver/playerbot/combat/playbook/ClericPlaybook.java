@@ -13,9 +13,9 @@ import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
-import com.aionemu.gameserver.playerbot.ai.HealthRecord;
-import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
+import com.aionemu.gameserver.playerbot.combat.HealthRecord;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
@@ -331,8 +331,8 @@ final class ClericPlaybook implements ClassPlaybook {
 		if (aimedAt == null)
 			return false;
 		boolean cast = BotSkillManager.tryCastGroup(bot, aimedAt, decision.move().group);
-		if (cast && !situation.inTeam() && situation.inFight() && FIGHT_LADDER.contains(decision.move()) && bot.getAi() instanceof PlayerBotAI ai)
-			ai.setMendingToFull(true);
+		if (cast && !situation.inTeam() && situation.inFight() && FIGHT_LADDER.contains(decision.move()) && BotCombatMemory.of(bot) instanceof BotCombatMemory memory)
+			memory.setMendingToFull(true);
 		if (cast)
 			log.debug("Cleric {} casts {} at {} ({}% health, {}% mana)", bot.getName(), decision.move(), aimedAt.getName(), situation.hp(), situation.mp());
 		return cast;
@@ -378,7 +378,7 @@ final class ClericPlaybook implements ClassPlaybook {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		boolean inTeam = team != null;
 		int hp = bot.getLifeStats().getHpPercentage();
-		PlayerBotAI ai = bot.getAi() instanceof PlayerBotAI own ? own : null;
+		BotCombatMemory memory = BotCombatMemory.of(bot);
 
 		Player tank = null, member = null, debuffedMember = null;
 		int tankHp = -1, memberHp = -1, hurtUnder60 = hp < AREA_HEAL_BELOW_PERCENT ? 1 : 0;
@@ -387,7 +387,7 @@ final class ClericPlaybook implements ClassPlaybook {
 		int debuffedCount = selfDebuffed ? 1 : 0, tankLoss = 0, membersLosing = 0;
 		boolean tankHasRejuvenation = false, tankHasSavingGrace = false;
 		if (inTeam) {
-			HealthRecord record = ai == null ? null : ai.healthRecord();
+			HealthRecord record = memory == null ? null : memory.healthRecord();
 			long now = System.currentTimeMillis();
 			List<Integer> ids = new ArrayList<>();
 			if (record != null) {
@@ -432,14 +432,14 @@ final class ClericPlaybook implements ClassPlaybook {
 				tankLoss = tank == null ? 0 : record.lossOverWindow(tank.getObjectId());
 				membersLosing = record.membersWhoLostAtLeast(ids, ACQUITTAL_LOSS_PERCENT);
 			}
-		} else if (ai != null) {
-			ai.healthRecord().clear();
+		} else if (memory != null) {
+			memory.healthRecord().clear();
 		}
 		boolean mending = false;
-		if (ai != null) {
+		if (memory != null) {
 			if (hp >= 100 || inTeam)
-				ai.setMendingToFull(false); // done, or it is a group's cleric now, which rations its heals by the group's need
-			mending = ai.isMendingToFull();
+				memory.setMendingToFull(false); // done, or it is a group's cleric now, which rations its heals by the group's need
+			mending = memory.isMendingToFull();
 		}
 		// one look round for whatever is hitting the cleric, asked only when a skill that cares is ready
 		Creature assailant = inFight && inTeam && (ready.contains(Move.HEALING_GRACE) || ready.contains(Move.STABILITY)) ? BotGroupManager.enemyHitting(bot, ENEMY_RADIUS) : null;
@@ -454,7 +454,7 @@ final class ClericPlaybook implements ClassPlaybook {
 					onTarget.add(move);
 			}
 		}
-		boolean justControlled = ai != null && !BotSkillManager.isCrowdControlled(bot) && System.currentTimeMillis() - ai.lastControlledAt() < JUST_CONTROLLED_MILLIS;
+		boolean justControlled = memory != null && !BotSkillManager.isCrowdControlled(bot) && System.currentTimeMillis() - memory.lastControlledAt() < JUST_CONTROLLED_MILLIS;
 		Player mateToRaise = inTeam && ready.contains(Move.LIGHT_OF_RESURRECTION) ? BotGroupManager.mateToResurrect(bot, RESURRECTION_RANGE) : null;
 		int deadCount = inTeam && ready.contains(Move.RESURRECTION_LOCI) ? BotGroupManager.deadMembersWithin(bot, AREA_RESURRECTION_RANGE) : 0;
 		Player deadMate = deadCount > 0 ? BotGroupManager.deadMemberWithin(bot, AREA_RESURRECTION_RANGE) : null;

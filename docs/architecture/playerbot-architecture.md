@@ -56,9 +56,9 @@ com.aionemu.gameserver.playerbot/
   lifecycle/    Headless creation, loading, entering and leaving the world (PlayerBot*Service, PlayerBotLoader), BotRoster (the pool, a query),
                 BotPacing (levels per region), BotMapChange (a map change with no client), BotAppearance
   ai/           PlayerBotAI (extends AITemplate<Player>: the decision tick, fights, following), BotDay and TownRoutine (what a bot does with its
-                day, in the field and in town), BotErrands, BotConvalescence, BotPosture, Occupation, LostTrail, HealthRecord
+                day, in the field and in town), BotErrands, BotConvalescence, BotPosture, Occupation, LostTrail
   combat/       BotSkillManager (the generic order), BotTargetSelector, BotTargetRegistry (one bot per mob), BotAttackManager, BotLootManager,
-                BotPotionManager, BotRestManager, BotServantAI
+                BotPotionManager, BotRestManager, BotServantAI, BotCombatMemory (what the playbooks remember, owned by the AI), HealthRecord
   combat/playbook/  ClassPlaybook + BotPlaybooks: templar, chanter, ranger, cleric, gladiator, sorcerer, consulted before the generic order
   positioning/  BotPosition, BotStations, CombatSpots, AggroZone, PositioningMode: where each class stands in a group fight
   movement/     BotMoveController (legs, detours, stuck detection, flight mode), BotFlight, BotGeoHelper, BotServantMoveController

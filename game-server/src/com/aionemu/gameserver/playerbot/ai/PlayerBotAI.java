@@ -24,6 +24,7 @@ import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.playerbot.BotRecruiter;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
+import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
@@ -62,7 +63,7 @@ import com.aionemu.gameserver.utils.PositionUtil;
  * Brain of a player bot. The engine fires creature events on whatever AI is attached to a creature, so a bot receives ATTACK, MOVE_ARRIVED and
  * ATTACK_COMPLETE for free, unlike the NpcAI-typed handlers in {@code ai/handler} which cannot be reused here.
  */
-public class PlayerBotAI extends AITemplate<Player> {
+public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.Holder {
 
 	private static final Logger log = LoggerFactory.getLogger(PlayerBotAI.class);
 
@@ -229,26 +230,8 @@ public class PlayerBotAI extends AITemplate<Player> {
 	private volatile Vector3f newHome;
 	/** When the bot last actually did something to its target -- a swing sent or a skill cast, not a tick that decided to do neither. */
 	private volatile long lastBlow;
-	/**
-	 * When the bot was last seen stunned, knocked about, spun or held in the air. The engine says whether a bot is controlled now and never when it
-	 * last was, which is what a class that answers it afterwards needs; a playbook is shared by every bot of its class, so the memory is kept here.
-	 */
-	private volatile long lastControlledAt;
-	/**
-	 * Whether the bot has begun healing itself back to full after a critical moment and is to keep at it. A rule that says "until full" has to remember that
-	 * it began, since the health it began at is not the health it is at a cast later; kept here for the same reason as {@link #lastControlledAt}.
-	 */
-	private volatile boolean mendingToFull;
-	/** What the members of the group have lost over the last half minute, for the class that rations its heals by it. Touched by the decision tick only. */
-	private final HealthRecord healthRecord = new HealthRecord();
-	/**
-	 * Since when a grouped ranger has held its fire because its target turned on it, or 0, and until when it will not start again. A playbook is shared by
-	 * every bot of its class, so what one bot has been doing is kept here, as for {@link #lastControlledAt}.
-	 */
-	private volatile long holdingFireSince;
-	private volatile long holdFireRearmAt;
-	/** The enemy the bot has already spent its opening handicap on, so that the opener is once per enemy and not once per tick. */
-	private volatile int openedOn;
+	/** What the class playbooks remember of this bot's fight from one tick to the next; see {@link BotCombatMemory}. */
+	private final BotCombatMemory combatMemory = new BotCombatMemory();
 	private ScheduledFuture<?> thinkTask;
 	/** Non null between death and resurrection, which also marks the death as already handled. */
 	private ScheduledFuture<?> reviveTask;
@@ -903,47 +886,9 @@ public class PlayerBotAI extends AITemplate<Player> {
 		BotPowerShards.switchOff(getOwner());
 	}
 
-	/** @return When the bot was last seen crowd controlled, in milliseconds, or 0 if it has not been. */
-	public long lastControlledAt() {
-		return lastControlledAt;
-	}
-
-	/** @return The record of how much health each member of the group has lost lately, which a healer fills as it reads the group and asks about. */
-	public HealthRecord healthRecord() {
-		return healthRecord;
-	}
-
-	/** @return true if the bot is in the middle of healing itself back to full. See {@link #mendingToFull}. */
-	public boolean isMendingToFull() {
-		return mendingToFull;
-	}
-
-	public void setMendingToFull(boolean mendingToFull) {
-		this.mendingToFull = mendingToFull;
-	}
-
-	/** @return Since when the bot has been holding its fire, in milliseconds, or 0 when it is not. */
-	public long holdingFireSince() {
-		return holdingFireSince;
-	}
-
-	/** @return The time before which it will not begin to hold its fire again. */
-	public long holdFireRearmAt() {
-		return holdFireRearmAt;
-	}
-
-	public void setHoldingFire(long since, long rearmAt) {
-		this.holdingFireSince = since;
-		this.holdFireRearmAt = rearmAt;
-	}
-
-	/** @return The object id of the enemy the opening handicap was cast on, or 0. */
-	public int openedOn() {
-		return openedOn;
-	}
-
-	public void setOpenedOn(int objectId) {
-		this.openedOn = objectId;
+	@Override
+	public BotCombatMemory combatMemory() {
+		return combatMemory;
 	}
 
 	public boolean isAttacking() {
@@ -1262,7 +1207,7 @@ public class PlayerBotAI extends AITemplate<Player> {
 
 	private void noteCrowdControl() {
 		if (BotSkillManager.isCrowdControlled(getOwner()))
-			lastControlledAt = System.currentTimeMillis();
+			combatMemory.setLastControlledAt(System.currentTimeMillis());
 	}
 
 	private void scheduleAttackTick(int delayMillis) {

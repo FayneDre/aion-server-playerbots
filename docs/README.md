@@ -20,7 +20,7 @@ A plan's status here is a summary of its own **Status** line, which is the one t
 | [playerbot-architecture.md](architecture/playerbot-architecture.md) | Why bots are real `Player` objects, the core patches (`setAi`, `setMoveController`), the package layout, the reuse map. |
 | [moving-a-body.md](architecture/moving-a-body.md) | Driving a body from the server: what a movement packet carries, how often, and the task manager that drops a body that arrived. |
 | [test-harness-plan.md](architecture/test-harness-plan.md) | Notes in the log, feedback zips, patch tags, debug on demand, bot-only squads, the command inbox. Built. |
-| [module-structure-plan.md](architecture/module-structure-plan.md) | Untangling the module before navigation goes further: forgetting a bot, playbooks on their own inputs, navigation as the bottom layer, `PlayerBotAI` cut up. Step 1 built. |
+| [module-structure-plan.md](architecture/module-structure-plan.md) | Untangling the module before navigation goes further: forgetting a bot, playbooks on their own inputs, navigation as the bottom layer, `PlayerBotAI` cut up. Steps 1 and 2 built. |
 
 ## Traps — [traps/](traps/)
 

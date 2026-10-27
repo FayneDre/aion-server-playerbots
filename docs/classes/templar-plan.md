@@ -85,7 +85,7 @@ that can be checked without a world can have its thresholds argued about in a te
    free, once per cooldown. Remove Shock then Refresh Spirit (the latter only under 75 % health). Settled by reading the engine: a stunned character may cast only skills with an evade effect (`Skill.canUseSkill`), which
    Remove Shock has, so nothing needed patching. Refresh Spirit asks for the chain Remove Shock opens (`ChainCondition`), and any other skill cast in between
    closes it, so it is the very next thing the templar casts. Devotion's five resistances are exactly the five states Remove Shock accepts: stun, stumble,
-   stagger (knockback), spin and held in the air. The memory of "was just controlled" lives in `PlayerBotAI.lastControlledAt`.
+   stagger (knockback), spin and held in the air. The memory of "was just controlled" lives in `BotCombatMemory.lastControlledAt` (in `PlayerBotAI` until 27 October).
 6. **Exclusions and mana.** *Built for the exclusions; the mana half is instrumentation, by design.* No Stubborn Spirit, no Bodyguard, no area skill other than Roar for a tank in a group. Then watch mana across a long
    instance before deciding whether the rest rule may be skipped for a tank.
    The exclusions are by skill group (Stubborn Spirit, Bodyguard: never) and by property (any area attack on enemies while in a group; Roar is a move

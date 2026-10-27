@@ -13,7 +13,7 @@ import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.NpcSkillEntry;
 import com.aionemu.gameserver.model.skill.NpcSkillList;
-import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
@@ -203,8 +203,8 @@ final class RangerPlaybook implements ClassPlaybook {
 	@Override
 	public boolean tend(Player bot) {
 		// a fight that has ended leaves its hold behind, which a new fight would take for one it is in the middle of
-		if (bot.getAi() instanceof PlayerBotAI ai && ai.holdingFireSince() != 0)
-			ai.setHoldingFire(0, ai.holdFireRearmAt());
+		if (BotCombatMemory.of(bot) instanceof BotCombatMemory memory && memory.holdingFireSince() != 0)
+			memory.setHoldingFire(0, memory.holdFireRearmAt());
 		return false;
 	}
 
@@ -219,10 +219,10 @@ final class RangerPlaybook implements ClassPlaybook {
 		Move move = decide(situation);
 		boolean did = perform(bot, target, move);
 		// a first hold is also its start: the memory is written whether or not Calming Whisper could be cast, or it would be started again every tick
-		if (bot.getAi() instanceof PlayerBotAI ai) {
-			ai.setHoldingFire(situation.hold().since(), situation.hold().rearmAt());
+		if (BotCombatMemory.of(bot) instanceof BotCombatMemory memory) {
+			memory.setHoldingFire(situation.hold().since(), situation.hold().rearmAt());
 			if (did && (move == Move.ENTANGLING_SHOT || move == Move.SILENCE_ARROW))
-				ai.setOpenedOn(target.getObjectId());
+				memory.setOpenedOn(target.getObjectId());
 		}
 		return did;
 	}
@@ -282,10 +282,10 @@ final class RangerPlaybook implements ClassPlaybook {
 		long since = 0;
 		long rearmAt = 0;
 		boolean opened = false;
-		if (bot.getAi() instanceof PlayerBotAI ai) {
-			since = ai.holdingFireSince();
-			rearmAt = ai.holdFireRearmAt();
-			opened = target != null && ai.openedOn() == target.getObjectId();
+		if (BotCombatMemory.of(bot) instanceof BotCombatMemory memory) {
+			since = memory.holdingFireSince();
+			rearmAt = memory.holdFireRearmAt();
+			opened = target != null && memory.openedOn() == target.getObjectId();
 		}
 		Hold hold = inFight ? nextHold(inTeam, targeted, now, since, rearmAt) : new Hold(false, false, 0, rearmAt);
 		// asked only when the move is ready: each is a walk over what the bot can see

@@ -11,7 +11,7 @@ import com.aionemu.gameserver.controllers.attack.AggroTarget;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
-import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
@@ -213,7 +213,7 @@ final class TemplarPlaybook implements ClassPlaybook {
 		boolean inTeam = bot.getCurrentTeam() != null;
 		// asked only when the roar is ready: counting is a walk over everything the bot can see
 		boolean enemyInRoarRange = inTeam && ready.contains(Move.PROVOKING_ROAR) && BotGroupManager.enemiesFightingTheGroupWithin(bot, ROAR_RANGE) > 0;
-		long lastControlledAt = bot.getAi() instanceof PlayerBotAI ai ? ai.lastControlledAt() : 0;
+		long lastControlledAt = BotCombatMemory.of(bot) instanceof BotCombatMemory memory ? memory.lastControlledAt() : 0;
 		boolean controlled = BotSkillManager.isCrowdControlled(bot);
 		boolean recentlyControlled = !controlled && lastControlledAt != 0 && System.currentTimeMillis() - lastControlledAt <= RECENTLY_CONTROLLED_MILLIS;
 		boolean looseHeld = loose != null && loose.getEffectController().isInAnyAbnormalState(AbnormalState.CANT_MOVE_STATE);
