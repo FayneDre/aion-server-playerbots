@@ -39,14 +39,12 @@ import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
-import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotInstances;
 import com.aionemu.gameserver.playerbot.social.BotRequests;
 import com.aionemu.gameserver.playerbot.social.LeaderGlides;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.social.BotTransports;
-import com.aionemu.gameserver.world.geo.GeoService;
 import com.aionemu.gameserver.playerbot.positioning.BotPosition;
 import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
@@ -66,28 +64,12 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	private static final Logger log = LoggerFactory.getLogger(PlayerBotAI.class);
 
 	private static final int THINK_INTERVAL_MILLIS = 1000;
-	/** A chase is abandoned after this long, whatever the reason it is not getting anywhere. */
-	private static final long MAX_CHASE_MILLIS = 15000;
-	/**
-	 * How far from its anchor a bot may be dragged before it breaks off and comes back. It is the camp radius on purpose: the bot roams that far to
-	 * find fights, so a shorter leash would make it abandon the very mobs it just walked to.
-	 */
-	private static final float LEASH_DISTANCE = BotTargetSelector.HOME_RADIUS;
 	/** How far behind its leader a grouped bot on foot has fallen before it reads a running scroll, in metres. */
 	private static final float RUNNING_SCROLL_DISTANCE = 30;
 	/** A chased target is only given a new route once it has moved this far, instead of on every tick. */
-	private static final float RETARGET_STEP = 3f;
-	/**
-	 * Minimum delay between two routes towards the same chased target. Each new route makes clients restart their interpolation, so re-routing on
-	 * every attack tick turns a run into a stutter.
-	 */
-	private static final long CHASE_REROUTE_INTERVAL = 600;
-	/** How long a walk to a fight position is left alone before the place is worked out again. Longer than a chase: the place moves only when the enemy does. */
-	private static final long STATION_REROUTE_MILLIS = 1500;
+	static final float RETARGET_STEP = 3f;
 	/** Health of a group mate under which a healer heals before it walks to its place: somebody in danger is the job, and the walk can wait a cast. */
-	private static final int HEALER_DANGER_PERCENT = 50;
-	/** How often the log may say that a healer has no place to stand. */
-	private static final long NO_PLACE_LOG_MILLIS = 30_000;
+	static final int HEALER_DANGER_PERCENT = 50;
 	/**
 	 * How long the bot waits after getting up before it swings, so the two do not arrive as one frame of the client's work. How long each posture
 	 * itself takes to draw is {@link BotPosture}'s business; this is the fight's own sequencing, which is why it stays here.
@@ -162,20 +144,11 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	/** How little life a target needs for the bot to stop looking after itself and simply end the fight. */
 	private static final int FINISH_IT_PERCENT = 20;
 	/** Close enough to the anchor to count as home, so the bot does not fidget over a metre. */
-	private static final float ANCHOR_TOLERANCE = 5f;
+	static final float ANCHOR_TOLERANCE = 5f;
 	/** How far from its group a bot back from the obelisk may be and still join it before resting: near enough for the group to cover the walk. */
 	private static final float CATCH_UP_UNRESTED = 40f;
-	/**
-	 * How far from the place it shares a bot stands.
-	 * <p>
-	 * Every bot of a camp was given the same point to walk to and the same five metre tolerance for having arrived, so they settled on top of one
-	 * another: seen in game as a pile of characters with a ring of corpses around it, which reads as a spawner rather than as people working a
-	 * ground. Kept inside {@link #ANCHOR_TOLERANCE}, so a bot standing on its own spot is still at its anchor and nothing that asks that question
-	 * has to learn a second one.
-	 */
-	private static final float SPREAD_RADIUS = 4f;
 	/** How close a bot gets to its own spot before it stops. Tight, because the spot is already its own and not worth haggling over. */
-	private static final float SPOT_TOLERANCE = 1.5f;
+	static final float SPOT_TOLERANCE = 1.5f;
 	/** How near its place in the formation a follower settles. Small, because that place is already set apart from the leader. */
 	private static final float FOLLOW_DISTANCE = 2f;
 	/** How far in height from where its leader left the ground a member may stand and still be up there with it, ready to glide the same way. */
@@ -217,6 +190,8 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	private final BotDeath death = new BotDeath(this);
 	/** Refusals counted, and a bot freed from where it cannot move; see {@link BotRescue}. */
 	private final BotRescue rescue = new BotRescue(this);
+	/** Chasing a target, the bot's own spot by its anchor, and its place in a group's fight; see {@link BotChase}. */
+	private final BotChase chase = new BotChase(this);
 	/** The leader's last glide while it is fresh, seen on the last tick, and the one this bot has already gone down or given up on. */
 	private volatile LeaderGlides.Glide leadersGlide, copiedGlide;
 	/** Whether the last tick found the bot alive and out of the world, the state a teleport to another map leaves it in, see {@link #arriveIfStranded()}. */
@@ -240,15 +215,6 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 
 	/** Where the bot belongs: it fights around this point and returns to it rather than following a target across the map. */
 	private volatile float anchorX, anchorY, anchorZ;
-	/** This bot's chosen place to stand, and the anchor it was chosen for. Kept because choosing it asks the mesh, and the answer only changes with the anchor. */
-	private volatile Vector3f standingSpot;
-	private volatile float spotForX, spotForY;
-	private volatile long chaseStartTime;
-	private volatile long lastChaseRoute;
-	/** When the bot last set out for its place in a fight, so that a route under way is not replaced on every tick. */
-	private volatile long lastStationRoute;
-	/** When the log last said that the healer had no place to stand. */
-	private volatile long lastNoPlaceLog;
 	/**
 	 * Whether this character is somebody's own rather than one the world made to fill a region. Read once: it is a fact about the character and does
 	 * not change while it is in the world.
@@ -385,6 +351,19 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	/** @return The point the bot fights around and comes back to. */
 	Vector3f anchor() {
 		return new Vector3f(anchorX, anchorY, anchorZ);
+	}
+
+	/** The anchor's coordinates one by one, read without making a vector, as the chase reads them on every step. */
+	float anchorX() {
+		return anchorX;
+	}
+
+	float anchorY() {
+		return anchorY;
+	}
+
+	float anchorZ() {
+		return anchorZ;
 	}
 
 	/** @return true if the bot is near enough its anchor to count as arrived, rather than fidgeting over a metre. */
@@ -772,7 +751,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 						convalescence.forget(); // the sickness is over, so the claim on the spot is too
 						// the camp's leash as well as what was given up: the nearest monster to a bot walking home from an obelisk is outside its camp, chase()
 						// refuses it in the same millisecond, and one bot went round three of them 1345 times in forty minutes, logged as "cannot reach"
-						Creature target = BotTargetSelector.findTarget(getOwner(), npc -> isIgnored(npc) || isOffLeash(npc));
+						Creature target = BotTargetSelector.findTarget(getOwner(), npc -> isIgnored(npc) || chase.isOffLeash(npc));
 						if (target == null)
 							roam();
 						else if (BotTargetRegistry.claim(target, getOwner())) { // another bot may have picked it in the same tick
@@ -861,7 +840,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		BotFlight.engage(getOwner(), null); // back beside its leader, or down, for a bot that was fighting in the air
 		synchronized (combatLock) {
 			stopAttackTask();
-			chaseStartTime = 0;
+			chase.stop();
 			stopMoving();
 			// the weapon stays out for a moment: sheathing between two mobs of the same pull looks like a nervous tic, and a real player does not do it
 			combatEndedAt = System.currentTimeMillis();
@@ -965,12 +944,12 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		}
 		if (bot.getCastingSkill() != null) {
 			// casting roots a real player, so the bot neither moves nor starts another action until the cast is over
-		} else if (takeStation(target)) {
+		} else if (chase.takeStation(target)) {
 			// walking to the place its class fights from, which is behind the enemy for melee and back from it for the rest; nothing is swung on the way
-		} else if (comesIntoSight(target)) {
+		} else if (chase.comesIntoSight(target)) {
 			// in reach and out of sight, behind a stair or a corner: every cast would be refused, so it walks round until it sees the target
 		} else if (BotAttackManager.isInAttackRange(bot, target)) {
-			chaseStartTime = 0;
+			chase.stop();
 			pulledFromAfar = true; // the fight is opened in reach, so a target that steps back is followed, not shot at
 			stopMoving();
 			// a class that never swings (a sorcerer's "Always Be Casting") waits for a spell rather than reaching for its orb
@@ -987,16 +966,16 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			lastBlow = System.currentTimeMillis();
 			giveUpsInARow = 0;
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
-		} else if (holdsStation(target)) {
+		} else if (chase.holdsStation(target)) {
 			// a ranged class in its place with nothing in reach to cast. Walking up to the enemy would be the chase this whole rule exists to replace, and
 			// the next tick would walk it straight back.
 		} else if (BotRole.of(bot) == BotRole.HEALER && bot.getCurrentTeam() != null) {
 			// Out of reach of anything it knows, and a healer does not walk closer: holding position beside the group is the whole of the job, and
 			// the surplus damage it was spending is not worth leaving it for. It waits instead; the group's own fight brings the target into range,
 			// and where it never does the stalled fight watchdog lets this one go.
-		} else if (!chase(target)) {
+		} else if (!chase.after(target)) {
 			// told apart, because the two read the same in the log and are not the same fault: the second is the mesh's, the first is not
-			if (isOffLeash(target)) {
+			if (chase.isOffLeash(target)) {
 				log.info("Bot {} leaves {} alone: it is beyond its camp", bot.getName(), target.getName());
 				ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
 				stopAttacking();
@@ -1020,38 +999,6 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 
 	}
 
-	/**
-	 * Walks the bot to the place its class fights from, when it is not already there.
-	 * <p>
-	 * Only inside a group and only for the classes that stand behind or back: the tank and the healer have their own rules to come, and a bot alone
-	 * walks to what it is fighting as it always did. A route already under way is left to finish for a moment, because the enemy takes a step every
-	 * second and a bot re-aimed every time it does never gets anywhere.
-	 *
-	 * @return true while the bot is on its way, in which case this tick is spent. false when it is placed, has no spot to go to, or cannot get there:
-	 *         the old way then decides.
-	 */
-	private boolean takeStation(Creature target) {
-		Player bot = getOwner();
-		boolean healer = BotStations.handlesHealer(bot);
-		if (!PlayerBotConfig.POSITIONING.placesAgainst(target) || !(BotStations.handles(bot) || healer) || BotStations.isWellPlaced(bot, target) || BotStations.isHeldByEnemy(bot, target))
-			return false;
-		// a healer that is attacking with its spare mana still heals first when somebody is in danger, and a walk would take the tick the heal needs
-		if (healer && BotGroupManager.mostHurtMember(bot, HEALER_DANGER_PERCENT, true) != null)
-			return false;
-		if (!(bot.getMoveController() instanceof BotMoveController moveController))
-			return false;
-		long now = System.currentTimeMillis();
-		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
-			return true;
-		Vector3f spot = BotStations.spotFor(bot, target);
-		// Already standing on it and still not placed: the spot passed the line of sight as asked from the enemy, and the bot's own look disagrees. Walking
-		// to where it stands would spend every tick here; comesIntoSight takes it on from this step.
-		if (spot == null || PositionUtil.getDistance(bot.getX(), bot.getY(), spot.getX(), spot.getY()) <= SPOT_TOLERANCE)
-			return false;
-		lastStationRoute = now;
-		moveController.avoid(BotStations.avoidanceFor(bot, target));
-		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
-	}
 
 	/**
 	 * What a healer does on the decision tick while the group is fighting, once there is nobody to heal: get into place, then spend a surplus of mana on the
@@ -1072,7 +1019,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		boolean positioned = PlayerBotConfig.POSITIONING.placesAgainst(fight) && BotStations.handlesHealer(bot);
 		if (positioned) {
 			BotStations.sample(bot, fight);
-			if (!BotStations.isWellPlaced(bot, fight) && walkToHealerStation(fight))
+			if (!BotStations.isWellPlaced(bot, fight) && chase.walkToHealerStation(fight))
 				return true;
 		}
 		if (BotSkillManager.hasManaToSpare(bot)) {
@@ -1099,59 +1046,11 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		Creature fight = BotGroupManager.targetToAssist(bot);
 		if (fight == null || !PlayerBotConfig.POSITIONING.placesAgainst(fight) || BotStations.isWellPlaced(bot, fight) || BotGroupManager.mostHurtMember(bot, HEALER_DANGER_PERCENT, true) != null)
 			return false;
-		return walkToHealerStation(fight);
+		return chase.walkToHealerStation(fight);
 	}
 
-	/** @return true while the healer is on its way to its place, or has just set out; false when there is no place to go or no way there. */
-	private boolean walkToHealerStation(Creature fight) {
-		Player bot = getOwner();
-		if (!(bot.getMoveController() instanceof BotMoveController moveController))
-			return false;
-		long now = System.currentTimeMillis();
-		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
-			return true;
-		Vector3f spot = BotStations.spotFor(bot, fight);
-		if (spot == null) {
-			// said once in a while, since it is asked every second of a fight: with the reason, because "has no place" is a map with no mesh, a group too spread out for the heal's reach,
-			// or an enemy with its back to a wall, and three different things to do about it
-			if (now - lastNoPlaceLog > NO_PLACE_LOG_MILLIS) {
-				lastNoPlaceLog = now;
-				log.info("Healer {} has no place to stand against {} at {} {} {} (mesh on this map: {}, heal reach {} m)", bot.getName(), fight.getName(), Math.round(fight.getX()),
-					Math.round(fight.getY()), Math.round(fight.getZ()), NavmeshService.getInstance().hasMesh(bot.getWorldId()), Math.round(BotSkillManager.healReach(bot)));
-			}
-			return false;
-		}
-		lastStationRoute = now;
-		moveController.avoid(BotStations.avoidanceFor(bot, fight));
-		return tryMoveTo(moveController, spot.getX(), spot.getY(), spot.getZ());
-	}
 
-	/**
-	 * Walks towards a target that is within the bot's reach but out of its sight, along the mesh's route, which goes round what is in the way.
-	 * <p>
-	 * Reach was the only question asked, and a target below a stair or round a pillar is in reach: a ranged bot stood there with every cast refused for
-	 * want of a line of sight, landed nothing, and gave the fight up after twenty seconds (reported on 19 October). The walk is asked again on every
-	 * tick, so it stops on the first step from which the target can be seen. A group's healer is left where it is, which is its whole rule.
-	 *
-	 * @return true while the bot is on its way.
-	 */
-	private boolean comesIntoSight(Creature target) {
-		Player bot = getOwner();
-		if (isGroupHealer(bot) || PositionUtil.getDistance(bot, target) > Math.max(BotSkillManager.reach(bot), bot.getGameStats().getAttackRange().getCurrent() / 1000f)
-			|| GeoService.getInstance().canSee(bot, target) || !(bot.getMoveController() instanceof BotMoveController moveController))
-			return false;
-		long now = System.currentTimeMillis();
-		if (moveController.isInMove() && now - lastStationRoute < STATION_REROUTE_MILLIS)
-			return true;
-		lastStationRoute = now;
-		return tryMoveTo(moveController, target.getX(), target.getY(), target.getZ());
-	}
 
-	/** @return true if this is a ranged class standing where it should against the target, which then waits for something to cast rather than close in. */
-	private boolean holdsStation(Creature target) {
-		Player bot = getOwner();
-		return PlayerBotConfig.POSITIONING.placesAgainst(target) && BotStations.handles(bot) && BotPosition.of(bot) == BotPosition.RANGED && BotStations.isWellPlaced(bot, target);
-	}
 
 	/**
 	 * @return true if this is a healer in a group, fighting something that is not after it, with no mana to spare. Mana is what a healer is for: below the
@@ -1161,7 +1060,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return isGroupHealer(bot) && !BotSkillManager.hasManaToSpare(bot) && !bot.equals(target.getTarget());
 	}
 
-	private static boolean isGroupHealer(Player bot) {
+	static boolean isGroupHealer(Player bot) {
 		return BotRole.of(bot) == BotRole.HEALER && bot.getCurrentTeam() != null;
 	}
 
@@ -1226,7 +1125,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			return false;
 		if (target.getEffectController().isAbnormalSet(AbnormalState.FEAR) || target.getAi().isInState(AIState.RETURNING))
 			return false; // running away: what reaches is what catches it
-		return chase(target);
+		return chase.after(target);
 	}
 
 	/**
@@ -1241,7 +1140,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	private boolean castFromAfar(Creature target) {
 		if (!useBestSkill(target))
 			return false;
-		chaseStartTime = 0;
+		chase.stop();
 		stopMoving(); // a cast roots a real player, and sliding through one is the animation fault we keep paying for elsewhere
 		return true;
 	}
@@ -1322,51 +1221,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return BotSkillManager.tryCastSkill(bot, target);
 	}
 
-	/**
-	 * @return Where a chase is aimed: the target itself, except for a tank in a group, which closes in on the side of the enemy away from the group. That is
-	 *         the one moment it chooses a side: once in reach it stays, because moving a tank round an enemy in the middle of a fight is what the guide ruled out.
-	 */
-	private Vector3f approachPoint(Creature target) {
-		Player bot = getOwner();
-		if (PlayerBotConfig.POSITIONING.placesAgainst(target) && BotStations.handlesTank(bot)) {
-			Vector3f spot = BotStations.spotFor(bot, target);
-			if (spot != null)
-				return spot;
-		}
-		return new Vector3f(target.getX(), target.getY(), target.getZ());
-	}
 
-	/**
-	 * Walks towards a target that is out of weapon reach.
-	 * <p>
-	 * Every bound here exists because reactive steering cannot guarantee it will ever arrive: the leash keeps a fleeing target from dragging the bot
-	 * across the map, the timeout ends chases that make no progress, and the move controller reports geometry it could not get through.
-	 *
-	 * @return false if the bot should give this target up.
-	 */
-	private boolean chase(Creature target) {
-		if (!(getOwner().getMoveController() instanceof BotMoveController moveController))
-			return false;
-		long now = System.currentTimeMillis();
-		if (chaseStartTime == 0)
-			chaseStartTime = now;
-		else if (now - chaseStartTime > MAX_CHASE_MILLIS)
-			return false;
-		if (isOffLeash(target))
-			return false;
-		if (posture.isAnimating())
-			return true; // on its feet, or drawing its weapon; walking now is what makes it slide
-
-		if (moveController.isInMove() && now - lastChaseRoute < CHASE_REROUTE_INTERVAL)
-			return true;
-		Vector3f goal = approachPoint(target);
-		if (moveController.isInMove() && moveController.isHeadingTo(goal.getX(), goal.getY(), RETARGET_STEP))
-			return true; // already on its way, and the goal has not moved enough to be worth a new route
-		lastChaseRoute = now;
-		if (PlayerBotConfig.POSITIONING.placesAgainst(target) && BotStations.handlesTank(getOwner()))
-			moveController.avoid(BotStations.avoidanceFor(getOwner(), target));
-		return tryMoveTo(moveController, goal.getX(), goal.getY(), goal.getZ());
-	}
 
 	/**
 	 * Joins the group's fight from the air, for a bot following its leader up there: its mates' heals first, then whatever the group
@@ -1534,7 +1389,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	boolean returnToAnchor() {
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
 			return true;
-		Vector3f spot = standingSpot();
+		Vector3f spot = chase.standingSpot();
 		if (PositionUtil.getDistance(getOwner().getX(), getOwner().getY(), spot.getX(), spot.getY()) <= SPOT_TOLERANCE) {
 			rescue.atItsSpot(); // where it means to be, so whatever it was refused, the spot it stands on is not the fault
 			return true;
@@ -1552,50 +1407,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return rescue.tryMoveTo(moveController, x, y, z);
 	}
 
-	/**
-	 * @return This bot's own place at the ground it shares, a fixed offset from the anchor.
-	 *         <p>
-	 *         Derived from the object id rather than drawn at random, because a spot drawn afresh would move every time the bot came back and the
-	 *         camp would shuffle itself whenever anybody returned to it. The same bot therefore stands in the same place all its life, which is what
-	 *         somebody working a patch of ground looks like.
-	 *         <p>
-	 *         The height is the anchor's: the offset puts the spot a few metres away on ground the move controller samples as it walks, so it ends
-	 *         up on the real surface whatever this says.
-	 */
-	private Vector3f standingSpot() {
-		Vector3f known = standingSpot;
-		if (known != null && spotForX == anchorX && spotForY == anchorY)
-			return known;
-		int id = getOwner().getObjectId();
-		double angle = Math.toRadians(id % 360);
-		// Two independent digits of the id, so bots with neighbouring ids do not end up on the same ray out of the centre.
-		float radius = SPREAD_RADIUS * (0.4f + 0.6f * (id / 360 % 10) / 9f);
-		float x = anchorX + (float) (Math.cos(angle) * radius), y = anchorY + (float) (Math.sin(angle) * radius);
-		Vector3f chosen = reachableSpot(x, y);
-		standingSpot = chosen;
-		spotForX = anchorX;
-		spotForY = anchorY;
-		return chosen;
-	}
 
-	/**
-	 * @return The offered spot once the mesh agrees a body stands there and can walk to it from the anchor, or the anchor itself.
-	 *         <p>
-	 *         Geometry alone was choosing these, and in the open that is fine — four metres from a camp fire is grass. Inside a fortress it is a
-	 *         pillar, an arcade or the inside of a wall, and because the offset is derived from the object id the same bot was sent to the same
-	 *         impossible spot for the whole of its life: refused, refused again, and finally teleported home by the anti-stuck rescue, which is what
-	 *         a fortress full of bots freezing and blinking away actually was.
-	 */
-	private Vector3f reachableSpot(float x, float y) {
-		Vector3f anchor = new Vector3f(anchorX, anchorY, anchorZ);
-		NavmeshService navmesh = NavmeshService.getInstance();
-		Vector3f ground = navmesh.groundNear(getOwner().getWorldId(), x, y, anchorZ);
-		if (ground == null)
-			return anchor; // no mesh for this map, or nothing walkable within reach of the offset
-		// Standable is not reachable: the far side of a wall is good ground that joins nothing, and a bot posted on one spends its life asking for a
-		// way out. The same question BotPlaces already asks when it scatters villagers around a village centre.
-		return navmesh.canReachNearby(getOwner().getWorldId(), anchorX, anchorY, anchorZ, ground.getX(), ground.getY(), ground.getZ()) ? ground : anchor;
-	}
 
 	/**
 	 * Puts the weapon away once there is nothing to point it at.
@@ -1894,13 +1706,6 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return failures <= 1 ? UNREACHABLE_MILLIS : failures == 2 ? UNREACHABLE_AGAIN_MILLIS : UNREACHABLE_FOR_GOOD_MILLIS;
 	}
 
-	/** @return true if a target is further from the bot's anchor than it follows anything, which is a fight it would break off as soon as it chased. */
-	private boolean isOffLeash(Creature target) {
-		// never something that is hitting the bot: on a walk the anchor is the walk's end, and a naga sorcerer casting from beyond it was left alone
-		// while it went on casting, which is how most of the deaths of Reshanta's upper layer began (21 of 26 in half an hour were a fight the bot did
-		// not pick)
-		return PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > LEASH_DISTANCE && !getOwner().equals(target.getTarget());
-	}
 
 	private boolean isIgnored(Creature target) {
 		Long until = ignoredTargets.get(target.getObjectId());
@@ -1934,9 +1739,9 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	@Override
 	protected void handleMoveValidate() {
 		// the attack tick only runs at weapon speed, far too slow to notice the target came into reach while running at it
-		if (chaseStartTime == 0 || !(getOwner().getTarget() instanceof Creature target) || !BotAttackManager.isInAttackRange(getOwner(), target))
+		if (!chase.isChasing() || !(getOwner().getTarget() instanceof Creature target) || !BotAttackManager.isInAttackRange(getOwner(), target))
 			return;
-		chaseStartTime = 0;
+		chase.stop();
 		stopMoving();
 		// strike right away instead of standing next to the target until the scheduled tick comes round
 		synchronized (combatLock) {
