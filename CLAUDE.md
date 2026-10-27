@@ -106,7 +106,11 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
 ## Plan documents and tools
 
 - A plan document opens with a **Status** line (not started, in progress with the milestone, or built and what is still unverified). A plan that has been
-  built and is not kept up to date is worse than none: two of them said "not built" for a day after they were.
+  built and is not kept up to date is worse than none: two of them said "not built" for a day after they were. `tools/check-docs.ps1` now flags
+  a plan whose classes changed since the last patch while the plan did not.
+- **Measure before and after**, with the versioned tools: `tools/measure.sh <from> <to> [day]` writes the same report for any window of the log
+  (into the server's `log/bot-measures`, plus the day plans given up as journeys), and `NavmeshTool replay <file>` plans those journeys again
+  offline. A measurement tool written in a scratch folder is lost with the session: write it here.
 - `tools/check-server-log.ps1` reads the game server log for errors, a log that has gone silent (a console clicked into pauses the whole server) and the
   number of bots in the world; `start-server.ps1` runs it after startup. `tools/skill-lookup.ps1` finds skills by name (French ones through the glossary), group, id or class, with their group,
   cooldown, reach and tier. Use them before reading the data by hand.

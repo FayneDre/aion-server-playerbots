@@ -49,6 +49,9 @@ public class NavmeshTool {
 		if (args.length >= 1 && args[0].equals("obelisks")) {
 			System.exit(ObeliskAudit.run(args.length > 1 ? Integer.parseInt(args[1]) : 0));
 		}
+		if ((args.length == 2 || args.length == 3) && args[0].equals("replay")) {
+			System.exit(JourneyReplay.run(Path.of(args[1]), args.length == 3 ? Integer.parseInt(args[2]) : 1));
+		}
 		if (args.length >= 2 && args[1].equals("components")) {
 			float[] probes = new float[args.length - 2];
 			for (int i = 2; i < args.length; i++)
@@ -147,6 +150,7 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> path <x1> <y1> [z1] <x2> <y2> [z2]   plan a route and draw it");
 			System.out.println("       NavmeshTool <mapId> components   find what is reachable from what");
 			System.out.println("       NavmeshTool obelisks [mapId]   can a body resurrected at each obelisk of each mesh walk away? exit code 1 when one cannot");
+			System.out.println("       NavmeshTool replay <file> [every]   plan again the journeys a server gave up (map sx sy sz gx gy gz cause, a line each)");
 			System.out.println("       NavmeshTool <mapId> seams <x> <y> <z>   where the ground under that spot nearly joins its neighbours, and by how much it misses");
 			System.out.println("       NavmeshTool <mapId> stuck <file>   where bots reported being unable to move: on footing or inside geometry");
 			System.out.println("       NavmeshTool <mapId> audit        walk sample routes and report how far they wander");

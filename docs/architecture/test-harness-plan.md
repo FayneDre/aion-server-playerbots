@@ -15,7 +15,7 @@ server, 18 MB long, with no way to find the minute that mattered. This plan is t
 2. **`tools/collect-feedback.ps1`.** Finds every `BOT NOTE` in a log, keeps the few minutes around each (two before, one after by default), and writes
    them with the server's revision into one zip a tester can send. Works on a log copied from another machine.
 3. **Versions.** `//bot version` prints the revision the server runs (the jar's manifest already carries it). `tools/tag-patch.ps1` tags a clean HEAD
-   `patch-YYYY-MM-DD` (with a suffix for a second one that day) and pushes the tag; a patch note names it. `deploy.ps1` warns when the tree is dirty,
+   `patch-YYYY-MM-DD` (with a suffix for a second one that day), pushes it only with `-Push`, and refuses a deployed jar that is `-DIRTY` or older than the code; a patch note names it and its revision. `deploy.ps1` warns when the tree is dirty,
    since a build from uncommitted code has a revision nobody can check out.
 4. **Detailed logging on demand.** `//bot debug [on|off]` raises the bot module's combat loggers to DEBUG at runtime, so every cast, with its target, is
    in the log of a test session without editing `logback.xml` or restarting.
