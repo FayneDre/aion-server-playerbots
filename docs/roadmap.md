@@ -11,18 +11,16 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 0. **Feedback as it comes**: the user reports from the game while playing; each plan's Status line says what has been seen. On 27 October
    everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion.
-1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
-   Arachne's room in Theobomos Lab. Left: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long, then bosses.
-2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
-   (templar, chanter, ranger, cleric, gladiator, sorcerer). Damage that waits for the tank stays ours.
-3. **Living capitals** ([living-capitals-plan.md](capitals/living-capitals-plan.md)): store goods ([bot-store-goods-plan.md](capitals/bot-store-goods-plan.md))
-   and bots in the Trade, Find Group and Region channels ([chat-channels-plan.md](social/chat-channels-plan.md)) built and liked in game on 24
-   October; the channels' hour-long watch is the user's. Duels and pets on hold; ambience, buyers and the day's rhythm dropped.
-4. **Navigation**, the priority once the module structure plan is done: the user's six points in
-   [navigation-backlog.md](navigation/navigation-backlog.md), long journeys first (agreed 25 October).
-5. **The director**: a pool stocked by level and role, a map filled before a player lands, a bot moved to the map its level calls for.
-6. **What a player does with a bot** ([player-interactions-plan.md](social/player-interactions-plan.md)): duels, friends and trading with one's companion
-   built in `patch-2026-10-19-2`, to be watched in game.
+1. **The module structure plan** ([module-structure-plan.md](architecture/module-structure-plan.md)): steps 1 to 4 built, step 4 deployed and
+   measured on 27 October; step 5 (`PlayerBotAI` cut into its parts) on its branch, to deploy and measure.
+2. **Navigation**, the user's priority after it: the six points in [navigation-backlog.md](navigation/navigation-backlog.md), long journeys first
+   (agreed 25 October), then sliding, obstacles, gliding, parasitic moves, dungeons.
+3. **A world alive with or without a player**, a lead to explore within the 2560 MB heap: density independent of who is online, sleepers living
+   off-world, memory measured first and freed where it can be.
+4. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them.
+   Damage that waits for the tank stays ours.
+5. **Dungeons**: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long; bosses' mechanics.
+6. **The director**: a pool stocked by level and role, a bot moved to the map its level calls for.
 7. **Cohorts** ([cohort-plan.md](social/cohort-plan.md)): a bot in an alliance acting as a member of its own group of six.
 8. **Wild PvP, rifts and the arenas.**
 9. **Economy**: the broker, then player shops, then gathering and crafting.
@@ -31,7 +29,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-25 (after `patch-2026-10-25-2`). **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-10-27. **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
 for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
 routine, gear and stigmas, merchants' wings and power shards, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with their glide links,
