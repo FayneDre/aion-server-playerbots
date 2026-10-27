@@ -1,6 +1,6 @@
 # Module structure: plan
 
-Status: steps 1 to 3 built on 27 October 2026 (not deployed); steps 4 and 5 not started. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
+Status: all five steps built on 27 October 2026. Step 4 deployed and being measured; step 5 on the branch `structure/step5-ai`, to be measured on its own after it. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
 (one accessor for `instanceof PlayerBotAI`, one thread owning each bot's state, tuning constants as properties) are kept for later, on evidence.
 
 Why: navigation is far from finished and has to become very stable and fast, and the five class playbooks still to write must be testable before
@@ -92,3 +92,23 @@ them, nothing else changed: `MapSlopes` and `RideLinks` public, and `Heightfield
 `navmesh.tool.NavmeshTool`; the patch notes of October keep the old name, since they describe the jars of their day. Proof, in a folder of its
 own with the server's data read only: 310050000 (mesh and glides) and 300060000 rebuilt byte for byte as before and as installed, their reports
 the same, and the obelisk audit of Poeta the same. `ModuleLayersTest` forbids every server package importing `navmesh.tool`. 399 tests.
+
+**Step 4, built 27 October.** `NavmeshService` asks the world through `NavmeshService.Host` (`world/BotNavmeshHost`: who is too strong, siege
+ground, whose ground, whether a crossing flies, the route lane), and `BotFlight` asks the fight through `BotFlight.Crew` (`combat/BotFlightCrew`:
+take-off buffs and scroll, the class's rule in the air, serums). Both are installed first thing in `PlayerBotService.onStartUp` and throw when
+missing rather than plan as though the world held no danger. `BotRestManager` (sit, stand) moved to `movement`. `navmesh` imports nothing of the
+module now, `movement` only `navmesh` and the scheduler; `ModuleLayersTest` holds both (checked by putting a `world` and a root import back).
+Measured: see the figures below once taken.
+
+**Step 5, built 27 October** on its own branch, so that step 4 is measured alone. `PlayerBotAI` went from 2481 lines to 1805 (1999 after the
+rescue, 1792 after the chase, plus four anchor readers):
+- `BotDeath`: dying, waiting for a resurrection, taking one, the obelisk or the instance's entrance, the way home from another layer. Its three
+  decisions are static and tested (`BotDeathTest`): how long to wait, which way back, whether the home is on another layer.
+- `BotRescue`: refusals counted, a stuck bot freed. Moved as it was; its decisions read the world (the leader, who sees the bot, the mesh) and
+  have no test of their own.
+- `BotChase`: the chase and its timers, the leash, the bot's own spot by its anchor, and the four station methods of a group's fight. The anchor
+  stays in the AI, which reads it everywhere; `tendTheFight` and `healerTakesItsPlace` stay too, since they start attacks.
+- `BotCombatState` became `BotCombatMemory` in step 2.
+
+Two traps met: the moved log lines changed logger, and `nav-stats.ps1` matched rescues and deaths by `PlayerBotAI` (it now takes either name, so
+old logs still read); and `BotMemoryTest` failed on a checkout with CRLF endings (fixed on the main branch). 404 tests.
