@@ -9,6 +9,7 @@ A plan's status here is a summary of its own **Status** line, which is the one t
 |---|---|
 | [roadmap.md](roadmap.md) | **Start here**: what is left, by priority, with what blocks each item. |
 | [built.md](built.md) | What already works, and the reasoning most of it was paid for twice. |
+| [to-watch.md](to-watch.md) | What is built and not yet watched in game, where to look and the log line that proves it; at most 10 before new work. |
 | [bot-commands.md](bot-commands.md) | Every `//bot` command, and the one number that decides who may run them (`check-bot-docs.ps1` keeps it complete). |
 | [patch-notes.md](patch-notes.md) | Every test patch, in French for the testers, newest first, by git tag; older ones in [patch-notes-2026-10.md](patch-notes-2026-10.md). |
 | [tester-feedback.md](tester-feedback.md) | What a useful tester report holds, the commands to type during a session, the template. |

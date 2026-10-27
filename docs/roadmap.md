@@ -9,8 +9,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
-0. **Watch in game what is deployed**: `patch-2026-10-25-2` ([feedback-2026-10-25.md](feedback/feedback-2026-10-25.md): the cleric's thresholds, bots brought
-   on an invitation, power shards, wings, the cleric's seeming jump, lava), and still `patch-2026-10-23` and `-2` (gladiator, sorcerer, flight fixes).
+0. **Watch in game what is deployed**: [to-watch.md](to-watch.md), 19 points against a limit of 10, with where to look and the
+   log line that proves each one.
 1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
    Arachne's room in Theobomos Lab. Left: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long, then bosses.
 2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
