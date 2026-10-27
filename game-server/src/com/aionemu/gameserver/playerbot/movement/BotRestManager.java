@@ -1,4 +1,4 @@
-package com.aionemu.gameserver.playerbot.combat;
+package com.aionemu.gameserver.playerbot.movement;
 
 import com.aionemu.gameserver.model.EmotionType;
 import com.aionemu.gameserver.model.gameobjects.player.Player;

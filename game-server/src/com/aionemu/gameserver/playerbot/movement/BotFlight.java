@@ -18,12 +18,8 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.templates.zone.ZoneClassName;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.gameobjects.state.CreatureState;
-import com.aionemu.gameserver.model.stats.container.StatEnum;
 import com.aionemu.gameserver.model.templates.zone.ZoneType;
 import com.aionemu.gameserver.playerbot.BotScheduler;
-import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
-import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
-import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -48,6 +44,34 @@ import com.aionemu.gameserver.world.zone.ZoneInstance;
 public class BotFlight {
 
 	private static final Logger log = LoggerFactory.getLogger(BotFlight.class);
+
+	/**
+	 * What a bot does for itself as it takes off and while it is up: its class's rules, the flight buffs, a scroll, a serum. That is fighting
+	 * knowledge, which movement must not reach up for; {@code PlayerBotService.onStartUp} installs the one that knows it before any bot flies.
+	 */
+	public interface Crew {
+
+		/** @param goingSomewhere A flight to a place, not the up and back of a hover, which is when a scroll is worth reading. */
+		void onTakeOff(Player bot, boolean goingSomewhere);
+
+		void whileFlying(Player bot);
+
+		/** @return true if the bot drank something that gives flight time back, its flight points being under that share. */
+		boolean drinkSerum(Player bot, int belowPercent);
+	}
+
+	private static volatile Crew crew;
+
+	public static void setCrew(Crew crew) {
+		BotFlight.crew = crew;
+	}
+
+	private static Crew crew() {
+		Crew installed = crew;
+		if (installed == null)
+			throw new IllegalStateException("BotFlight has no crew: PlayerBotService.onStartUp installs one before any bot flies");
+		return installed;
+	}
 
 	/** Flights in progress, by object id. A bot is in here from its take-off until it is back on the ground. */
 	private static final Map<Integer, BotFlight> inTheAir = new ConcurrentHashMap<>();
@@ -641,11 +665,8 @@ public class BotFlight {
 			bot.isInState(CreatureState.FLYING));
 		// after the flight is scheduled, and guarded: a class's own take-off rule must never be able to leave a bot registered as flying with nothing to fly it
 		try {
-			BotPlaybooks.of(bot).onTakeOff(bot);
-			BotSkillManager.tryFlightBuff(bot); // the classes with no playbook, whose flight buffs nothing else casts
 			// a flight that goes somewhere, not the up and back: the scroll lasts five minutes and a player reads one leaving the ground
-			if (hoverAfter < 0)
-				BotPotionManager.tryScroll(bot, StatEnum.FLY_SPEED);
+			crew().onTakeOff(bot, hoverAfter < 0);
 		} catch (RuntimeException e) {
 			log.warn("Bot {} could not do its class's take-off rule", bot.getName(), e);
 		}
@@ -821,10 +842,10 @@ public class BotFlight {
 		wasAtZ = bot.getZ();
 		// guarded: an exception out of a task scheduled at a fixed rate silently cancels every step after it, which would leave the bot hanging in the air
 		try {
-			BotPlaybooks.of(bot).whileFlying(bot);
+			crew().whileFlying(bot);
 			if (!powerless && now - lastSerumTry >= SERUM_TRY_MILLIS) {
 				lastSerumTry = now;
-				if (BotPotionManager.tryFlightPotion(bot, SERUM_BELOW_PERCENT))
+				if (crew().drinkSerum(bot, SERUM_BELOW_PERCENT))
 					log.info("Bot {} drinks a wind serum at {} fp", bot.getName(), bot.getLifeStats().getCurrentFp());
 			}
 		} catch (RuntimeException e) {

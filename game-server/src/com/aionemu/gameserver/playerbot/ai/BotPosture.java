@@ -3,7 +3,7 @@ package com.aionemu.gameserver.playerbot.ai;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
-import com.aionemu.gameserver.playerbot.combat.BotRestManager;
+import com.aionemu.gameserver.playerbot.movement.BotRestManager;
 
 /**
  * How the bot is holding itself, and the time the client needs to draw a change of it: sitting, standing, weapon out, weapon away.

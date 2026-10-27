@@ -15,13 +15,17 @@ import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.playerbot.combat.BotFlightCrew;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
-import com.aionemu.gameserver.playerbot.world.BotDirector;
-import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
+import com.aionemu.gameserver.playerbot.movement.BotFlight;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
+import com.aionemu.gameserver.playerbot.world.BotDirector;
+import com.aionemu.gameserver.playerbot.world.BotNavmeshHost;
+import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.world.World;
@@ -55,6 +59,10 @@ public class PlayerBotService {
 	 * untouched, which is the whole promise of the setting — turning bots off must not be a way to lose them.
 	 */
 	public void onStartUp() {
+		// before anything else, and whether bots are enabled or not, since a command can still put one in the world: navigation and flight ask the
+		// world and the fight through these, and fail loudly without them
+		NavmeshService.setHost(new BotNavmeshHost());
+		BotFlight.setCrew(new BotFlightCrew());
 		if (!PlayerBotConfig.ENABLE) {
 			log.info("Playerbots are disabled, so none is put back into the world. Their characters are left in the database untouched.");
 			return;

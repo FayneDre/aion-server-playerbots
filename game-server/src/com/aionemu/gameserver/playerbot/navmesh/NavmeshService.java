@@ -22,16 +22,12 @@ import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
 import com.aionemu.gameserver.geoEngine.collision.IgnoreProperties;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
+import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.World;
 import com.aionemu.gameserver.world.WorldMap;
 import com.aionemu.gameserver.world.geo.GeoService;
-import com.aionemu.gameserver.services.TribeRelationService;
-import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
-import com.aionemu.gameserver.playerbot.BotScheduler;
-import com.aionemu.gameserver.playerbot.movement.BotFlight;
-import com.aionemu.gameserver.playerbot.world.BotPlaces;
 
 /**
  * Serves generated maps to the bots that need them.
@@ -42,6 +38,43 @@ import com.aionemu.gameserver.playerbot.world.BotPlaces;
 public class NavmeshService {
 
 	private static final Logger log = LoggerFactory.getLogger(NavmeshService.class);
+
+	/**
+	 * What a journey asks of the world the mesh lies in, which navigation cannot answer from the mesh and must not answer by reaching up into the bot
+	 * module: who is too strong to land beside, where a fortress is, whose ground a stretch is, whether a crossing can be flown, and the thread a long
+	 * search runs on. {@code PlayerBotService.onStartUp} installs it before any bot plans anything; asked without one, a journey fails loudly rather
+	 * than quietly planning as though the world held no danger.
+	 */
+	public interface Host {
+
+		/** @return true for a creature the bot cannot fight: one of its enemies, aggressive towards it, beyond a fight's level gap above it. */
+		boolean isTooStrongFor(Player bot, Npc npc);
+
+		/** @return true if the spot is inside a fortress's zone. */
+		boolean isSiegeGround(int worldId, float x, float y, float z);
+
+		/** @return The side whose people alone live on that stretch of ground, or null when it is nobody's or both sides'. */
+		Race ownerOfGround(int worldId, int region);
+
+		/** @return true if the bot could fly from one end to the other. */
+		boolean canCross(Player bot, Vector3f from, Vector3f to);
+
+		/** Runs a long search on the thread meant for it. */
+		void planRoute(Runnable search);
+	}
+
+	private static volatile Host host;
+
+	public static void setHost(Host host) {
+		NavmeshService.host = host;
+	}
+
+	private static Host host() {
+		Host installed = host;
+		if (installed == null)
+			throw new IllegalStateException("NavmeshService has no host: PlayerBotService.onStartUp installs one before any bot plans a journey");
+		return installed;
+	}
 
 	private final Map<Integer, Navmesh> open = new ConcurrentHashMap<>();
 	/** Maps we already know have no file, so a bot walking there does not retry on every step. */
@@ -140,8 +173,7 @@ public class NavmeshService {
 			return known;
 		List<Vector3f> found = new ArrayList<>();
 		bot.getPosition().getWorldMapInstance().forEachNpc(npc -> {
-			if (npc.isSpawned() && !npc.isDead() && npc.getLevel() > bot.getLevel() + BotTargetSelector.MAX_LEVEL_GAP && bot.isEnemy(npc)
-				&& TribeRelationService.isAggressive(npc, bot))
+			if (npc.isSpawned() && !npc.isDead() && host().isTooStrongFor(bot, npc))
 				found.add(new Vector3f(npc.getX(), npc.getY(), npc.getZ()));
 		});
 		Dangers dangers = Dangers.of(now, found);
@@ -194,9 +226,9 @@ public class NavmeshService {
 	 *         per link, since the chains ask it of every link they look at.
 	 */
 	private boolean mayLand(Player bot, GlideLink link) {
-		if (siegeLandings.computeIfAbsent(link, l -> BotPlaces.isSiegeGround(bot.getWorldId(), l.toX(), l.toY(), l.toZ())))
+		if (siegeLandings.computeIfAbsent(link, l -> host().isSiegeGround(bot.getWorldId(), l.toX(), l.toY(), l.toZ())))
 			return false;
-		Race owner = BotPlaces.ownerOfGround(bot.getWorldId(), link.toRegion());
+		Race owner = host().ownerOfGround(bot.getWorldId(), link.toRegion());
 		return owner == null || owner == bot.getRace();
 	}
 
@@ -228,7 +260,7 @@ public class NavmeshService {
 		if (airAnswers.size() >= MAX_AIR_ANSWERS)
 			airAnswers.clear(); // instances come and go, and their answers with them: a bound rather than a sweep
 		boolean clear = link.flight()
-			? BotFlight.crossing(bot, new Vector3f(link.fromX(), link.fromY(), link.fromZ()), new Vector3f(link.toX(), link.toY(), link.toZ())) != null
+			? host().canCross(bot, new Vector3f(link.fromX(), link.fromY(), link.fromZ()), new Vector3f(link.toX(), link.toY(), link.toZ()))
 			: castAir(bot, link);
 		airAnswers.put(key, new AirAnswer(clear, now + AIR_ANSWER_MILLIS));
 		return clear;
@@ -441,7 +473,7 @@ public class NavmeshService {
 		}
 		// answered even when the search found nothing: "no way through" is an answer the caller waits for, and swallowing it left bots standing
 		// still for ever waiting for a plan that was never coming
-		BotScheduler.getInstance().planRoute(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid)));
+		host().planRoute(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid)));
 	}
 
 	/** @return true if the map has a generated mesh that opens, which is what says whether anything planned on it can be trusted. */
