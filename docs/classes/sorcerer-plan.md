@@ -1,6 +1,6 @@
 # Sorcerer: implementation plan
 
-Status: milestones 1 to 11 built and unit tested (26 pure tests, 6 data tests), none watched in game; milestone 0 (naming the skills) done from the
+Status: milestones 1 to 11 built and unit tested (26 pure tests, 6 data tests), validated in game on 27 October, solo and grouped; milestone 0 (naming the skills) done from the
 data and the French client's strings, every name settled; the guide's questions answered below. Source: the guide's document "Sorcier 101" (seven pages, in French): a ranged magical damage dealer with an orb, extreme single target damage and
 many controls, fragile ("glass cannon"), who never swings its weapon ("Always Be Casting") and never breaks off a cast it has begun. The pattern is the
 gladiator's ([gladiator-plan.md](gladiator-plan.md)): a `ClassPlaybook`, rules by skill **group**, a pure `decide`, a data test. This file is only the

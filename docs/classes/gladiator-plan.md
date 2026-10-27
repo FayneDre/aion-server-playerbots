@@ -1,6 +1,6 @@
 # Gladiator: implementation plan
 
-Status: all nine milestones built and unit tested (42 pure tests, 8 data tests), none watched in game; a move the engine refuses gives way to
+Status: all nine milestones built and unit tested (42 pure tests, 8 data tests), validated in game on 27 October, solo and grouped; a move the engine refuses gives way to
 the next in the order (`act`), found in review; milestone 0 (naming the skills) done, every
 name settled against the French client's strings, the guide's questions answered. Source: the guide's document
 "Gladiateur 101" (six pages, in French): the gladiator is a melee physical damage dealer with a polearm, sustained by lifesteal and a heal of its

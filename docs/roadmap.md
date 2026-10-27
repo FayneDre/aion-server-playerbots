@@ -9,12 +9,12 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
-0. **Watch in game what is deployed**: [to-watch.md](to-watch.md), 19 points against a limit of 10, with where to look and the
+0. **Watch in game what is deployed**: [to-watch.md](to-watch.md), 14 points against a limit of 10, with where to look and the
    log line that proves each one.
 1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
    Arachne's room in Theobomos Lab. Left: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long, then bosses.
 2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
-   (templar, chanter, ranger, cleric, gladiator, sorcerer). Damage that waits for the tank and group resurrection watched stay ours.
+   (templar, chanter, ranger, cleric, gladiator, sorcerer). Damage that waits for the tank stays ours.
 3. **Living capitals** ([living-capitals-plan.md](capitals/living-capitals-plan.md)): store goods ([bot-store-goods-plan.md](capitals/bot-store-goods-plan.md))
    and bots in the Trade, Find Group and Region channels ([chat-channels-plan.md](social/chat-channels-plan.md)) built and liked in game on 24
    October; the channels' hour-long watch is the user's. Duels and pets on hold; ambience, buyers and the day's rhythm dropped.
@@ -39,8 +39,8 @@ flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, frie
 capitals with a town routine, 40 bot stores each with broker prices, visitors of every level, shouted adverts and calls for a group, bots
 speaking in the chat channels, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
 a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron, and a squad crossing Reshanta's upper layer by air. **Watched with a
-player**: a Noschana run, Sanctum's town day, Pandaemonium's visitors and speech. **Not watched in game**: everything listed at 0 above, group
-resurrection, positioning against a boss. **Not started**: wild PvP, the broker and player shops, legions, gathering, RvR.
+player**: a Noschana run, Sanctum's town day, Pandaemonium's visitors and speech. **Validated in game on 27 October**: the cleric, gladiator and sorcerer playbooks, group resurrection, wings and power
+shards, flights between Reshanta's islands. **Not watched in game**: everything listed at 0 above, positioning against a boss. **Not started**: wild PvP, the broker and player shops, legions, gathering, RvR.
 
 ## Dungeons and instances
 
@@ -83,7 +83,7 @@ What is left once roles, playbooks and positioning exist:
   since a missing templar or cleric at a level is a missing tank or healer (see the director below).
 - **Bots never form a group of their own.** They join a player's, an offer's or a `//bot squad`; two bots in a field never party with each other.
 - **Tester points still open**: the templar that "drops the fight" (needs the tester's log or the time and the bot's name; a grouped bot no longer
-  breaks off from any fight since 17 October, which may be it), group resurrection, the cleric against an assassin's rune ([cleric-plan.md](classes/cleric-plan.md)).
+  breaks off from any fight since 17 October, which may be it), the cleric against an assassin's rune ([cleric-plan.md](classes/cleric-plan.md)).
 
 ## What the director still does not do
 

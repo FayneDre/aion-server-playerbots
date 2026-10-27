@@ -60,9 +60,9 @@ each: a `ClassPlaybook`, rules by skill group, a pure `decide`, a data test.
 | [templar-plan.md](classes/templar-plan.md) | Built and unit tested, marks included; not watched in game. |
 | [chanter-plan.md](classes/chanter-plan.md) | Milestones 0 to 8 built; not watched in game. |
 | [ranger-plan.md](classes/ranger-plan.md) | Built (6 closed by decision); not watched in game. |
-| [cleric-plan.md](classes/cleric-plan.md) | Built; thresholds corrected after a first run in game on 25 October. |
-| [gladiator-plan.md](classes/gladiator-plan.md) | Built (patch-2026-10-23); not watched in game. |
-| [sorcerer-plan.md](classes/sorcerer-plan.md) | Built (patch-2026-10-23-2); not watched in game. |
+| [cleric-plan.md](classes/cleric-plan.md) | Built; validated in game on 27 October. |
+| [gladiator-plan.md](classes/gladiator-plan.md) | Built (patch-2026-10-23); validated in game on 27 October. |
+| [sorcerer-plan.md](classes/sorcerer-plan.md) | Built (patch-2026-10-23-2); validated in game on 27 October. |
 | [skill-glossary.md](classes/skill-glossary.md) | French skill names mapped to groups, with [gladiator](classes/skill-glossary-gladiator.md) and [sorcerer](classes/skill-glossary-sorcerer.md) files; `skill-lookup.ps1 -Name` reads them all. |
 
 Assassin, spirit master, bard, gunner and aethertech have no plan yet ([roadmap.md](roadmap.md), "Group play").

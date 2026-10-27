@@ -1,6 +1,6 @@
 # Cleric: implementation plan
 
-Status: milestones 0 to 8 are built and unit tested, and the heal thresholds were corrected by the tester on 25 October after a first run in game (below).
+Status: milestones 0 to 8 are built and unit tested, and the heal thresholds were corrected by the tester on 25 October after a first run in game (below); the corrected heals and the group resurrection validated in game on 27 October.
 Built: the naming, the seam (`ClassPlaybook.heal`), the heals, the cleanses, the buffs, the resurrections, the offence, the divine power and the stigmas. What is left is what only play can say: whether the thresholds read as the guide meant them, which the open points below list. Source: the guide's document "Clerc 101" (eleven pages, in
 French, with the tester's comments in the margin): the cleric is the game's main healer, keeps the group in health and adds to the damage; alone it kills with
 magic and heals itself, and what limits it is mana. The pattern is the templar's and the chanter's ([templar-plan.md](templar-plan.md),

@@ -1,7 +1,7 @@
 # What is built and not yet watched in game
 
 Status: opened on 27 October 2026 from the roadmap's item 0, the plans' Status lines and every patch note's "À tester" since `patch-2026-10-19`.
-**19 open, against a limit of 10**: past ten, what is here is verified before anything new is built (agreed 27 October).
+**14 open, against a limit of 10**: past ten, what is here is verified before anything new is built (agreed 27 October).
 
 How it is kept:
 - A line comes in when a patch ships a behaviour nobody has seen, with where to look and the log line that proves it. A line goes out when it has been
@@ -14,36 +14,37 @@ How it is kept:
 
 | # | What | Where, how | Proof in the log | Squad | Patch |
 |---|---|---|---|---|---|
-| 1 | Cleric heals on the corrected thresholds, the heal over time from a fight's start, the channels landing | A group with a templar | `Cleric {} casts {} at {} ({}% health, {}% mana)` (debug) | yes | 25-2 |
-| 2 | Gladiator and sorcerer playbooks, solo and grouped; `//bot gate` | Any camp of their level | the playbooks' debug lines; `//bot gate` answers | yes | 23 |
-| 3 | Templar, chanter and ranger playbooks with a player in the group | A group fight, then an instance | debug per cast; no `gives up` round the ranger | partly | 16 to 19 |
-| 4 | Group resurrection | A bot dies in a group with a cleric or chanter | `Bot {} accepted a resurrection at {} {} {}` | yes | 16 |
-| 5 | Positioning against a boss (`AUTO` places only there) | An instance boss: none outdoors stands on the mesh | `Positioning {}: {} of {} samples well placed` | no | 16 |
-| 6 | Duels, friends, trades with a companion, `//bot give` | Anywhere, a companion of one's own | `Bot {} confirms its trade with {}: ...` | no | 19-2 |
+| 1 | Templar, chanter and ranger playbooks with a player in the group | A group fight, then an instance | debug per cast; no `gives up` round the ranger | partly | 16 to 19 |
+| 2 | Positioning against a boss (`AUTO` places only there) | An instance boss: none outdoors stands on the mesh | `Positioning {}: {} of {} samples well placed` | no | 16 |
+| 3 | Duels, friends, trades with a companion, `//bot give` | Anywhere, a companion of one's own | `Bot {} confirms its trade with {}: ...` | no | 19-2 |
 
 ## Following a player
 
 | # | What | Where, how | Proof in the log | Squad | Patch |
 |---|---|---|---|---|---|
-| 7 | A bot invited from over 50 m is brought, and sent home when it leaves the group | Invite from another map | `Bot {} accepted {}'s invitation {} and is brought beside the player` | no | 25-2 |
-| 8 | A bot cut off in an instance (teleporter, lift, windstream) is put beside its player in about 13 s | Dredgion, Esoterrace, Steel Rake | `Bot {} could not move at {} {}, cut off from {}, and is put beside them at ...` | no | 19 |
-| 9 | Bots waiting five minutes for a player who logged out inside, then leaving | Log out in an instance | `Bot {} has waited {} min in map {}, {}, and leaves` | no | 18 |
-| 10 | Followers copy a leader's glide, with wings drawn (`GLIDE` mask) | Glide off a ledge with a group | `Bot {} glides after its leader from {} to {} through {} point(s)` | no | 20 |
-| 11 | Flying with a player: landing beside them, the void, Primum's rings, fighting in the air, scrolls read | The plan's "How to verify" ([flying-with-a-player-plan.md](flight/flying-with-a-player-plan.md)) | `Bot {} lands at ...`, `is not following {} into the air: {}` | no | 19-3 |
-| 12 | A group taking a transport flight or a teleport with its player | A teleporter npc with bots in the group | `Bot {} leaves map {} behind {}, who has gone to map {}` | no | 23 |
+| 4 | A bot invited from over 50 m is brought, and sent home when it leaves the group | Invite from another map | `Bot {} accepted {}'s invitation {} and is brought beside the player` | no | 25-2 |
+| 5 | A bot cut off in an instance (teleporter, lift, windstream) is put beside its player in about 13 s | Dredgion, Esoterrace, Steel Rake | `Bot {} could not move at {} {}, cut off from {}, and is put beside them at ...` | no | 19 |
+| 6 | Bots waiting five minutes for a player who logged out inside, then leaving | Log out in an instance | `Bot {} has waited {} min in map {}, {}, and leaves` | no | 18 |
+| 7 | Followers copy a leader's glide, with wings drawn (`GLIDE` mask) | Glide off a ledge with a group | `Bot {} glides after its leader from {} to {} through {} point(s)` | no | 20 |
+| 8 | Flying with a player: landing beside them, the void, Primum's rings, fighting in the air, scrolls read | The plan's "How to verify" ([flying-with-a-player-plan.md](flight/flying-with-a-player-plan.md)) | `Bot {} lands at ...`, `is not following {} into the air: {}` | no | 19-3 |
+| 9 | A group taking a transport flight or a teleport with its player | A teleporter npc with bots in the group | `Bot {} leaves map {} behind {}, who has gone to map {}` | no | 23 |
 
 ## The world
 
 | # | What | Where, how | Proof in the log | Squad | Patch |
 |---|---|---|---|---|---|
-| 13 | Wings on bots from level 30, power shards burning in a fight | Any bot of 30 and over | `Bot {} wears new wings for level {}` | yes | 25-2 |
-| 14 | A bot steps off lava before resting | Sulfur Swamp, Theobomos, the lava hoverstones | none written: `//bot note` on the spot | no | 25-2 |
-| 15 | A cleric no longer seems to jump to the monster at a fight's end | A group's cleric, watched | none: the client's view only | no | 25-2 |
-| 16 | Capitals: no bot frozen, circling or vanishing in sight | Walk Sanctum and Pandaemonium | `measure.sh`: "in sight loops", "stuck spots" | no | 25 |
-| 17 | Reshanta: bots flying from island to island, none stuck at an edge | The upper layer | `Bot {} plans {} crossing(s) by air, the first landing at {}` | yes | 25 |
-| 18 | Stores renewed within the hour, open at night, a rider vanishing as the boat leaves | Sanctum | `Bot {} renews its store, {} unsold line(s) taken away` | no | 20 |
-| 19 | The three chat channels over an hour: variety, pace, a false line | A character of 10+ in a capital | `Bot {} says in trade: {}` (and region, find group) | no | 24-2 |
+| 10 | A bot steps off lava before resting | Sulfur Swamp, Theobomos, the lava hoverstones | none written: `//bot note` on the spot | no | 25-2 |
+| 11 | A cleric no longer seems to jump to the monster at a fight's end | A group's cleric, watched | none: the client's view only | no | 25-2 |
+| 12 | Capitals: no bot frozen, circling or vanishing in sight | Walk Sanctum and Pandaemonium | `measure.sh`: "in sight loops", "stuck spots" | no | 25 |
+| 13 | Stores renewed within the hour, open at night, a rider vanishing as the boat leaves | Sanctum | `Bot {} renews its store, {} unsold line(s) taken away` | no | 20 |
+| 14 | The three chat channels over an hour: variety, pace, a false line | A character of 10+ in a capital | `Bot {} says in trade: {}` (and region, find group) | no | 24-2 |
 
 ## Seen, and moved out
 
-Nothing yet. A line moved out says when, by whom (the tester, the user, a squad) and what was seen.
+A line moved out says when, by whom (the tester, the user, a squad) and what was seen.
+
+- **Cleric heals on the corrected thresholds, the heal over time from a fight's start, the channels landing**: validated in game by the user on 27 October 2026.
+- **Gladiator and sorcerer playbooks, solo and grouped; `//bot gate`**: validated in game by the user on 27 October 2026.
+- **Group resurrection**: validated in game by the user on 27 October 2026.
+- **Wings on bots from level 30, power shards burning in a fight**: validated in game by the user on 27 October 2026.
+- **Reshanta: bots flying from island to island, none stuck at an edge**: validated in game by the user on 27 October 2026.
