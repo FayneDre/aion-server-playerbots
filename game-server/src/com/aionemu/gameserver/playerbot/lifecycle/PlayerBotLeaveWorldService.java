@@ -6,9 +6,13 @@ import com.aionemu.gameserver.model.gameobjects.player.FriendList;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.alliance.PlayerAllianceService;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
+import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
+import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.economy.BotStores;
 import com.aionemu.gameserver.playerbot.economy.BotTrades;
+import com.aionemu.gameserver.playerbot.social.BotInstances;
 import com.aionemu.gameserver.playerbot.social.BotRequests;
+import com.aionemu.gameserver.playerbot.social.BotTransports;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.world.World;
 
@@ -29,8 +33,14 @@ public class PlayerBotLeaveWorldService {
 		// a store left open goes with the body: the engine closes one on a teleport and never on leaving, which a real player's logout never needs
 		BotStores.close(bot);
 		bot.getAi().onGeneralEvent(AIEventType.DESPAWNED);
+		// What the module keeps about this bot's life in the world, in one place: a bot woken later starts a new one. Every static map keyed by a bot
+		// is either forgotten here, or cleared by the AI on DESPAWNED just above, or kept on purpose; BotMemoryTest holds the list and fails on a new one.
 		BotRequests.forget(bot);
 		BotTrades.forget(bot);
+		BotSkillManager.forget(bot);
+		BotPlaybooks.forget(bot);
+		BotTransports.forget(bot);
+		BotInstances.forget(bot);
 		bot.getController().cancelCurrentSkill(null);
 		bot.getEffectController().removeAllEffects();
 		bot.getLifeStats().cancelAllTasks();

@@ -1,6 +1,6 @@
 # Module structure: plan
 
-Status: not started; decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
+Status: step 1 built on 27 October 2026 (not deployed); steps 2 to 5 not started. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
 (one accessor for `instanceof PlayerBotAI`, one thread owning each bot's state, tuning constants as properties) are kept for later, on evidence.
 
 Why: navigation is far from finished and has to become very stable and fast, and the five class playbooks still to write must be testable before
@@ -69,4 +69,8 @@ turn, it is taken out then.
 
 ## Where this stands
 
-Nothing built yet.
+**Step 1, built 27 October.** The inventory found less than the review feared: most maps were already cleared (by the AI on `DESPAWNED`:
+convalescence, target claims, flights; by their owner: visitors, recruits) or recompute themselves on the next tick (the sorcerer's drain from its
+mana). Four owners gained a `forget(Player)`, all called from `PlayerBotLeaveWorldService`: `BotSkillManager` (casts that did not go through),
+the sorcerer's three states (through `ClassPlaybook.forget`), `BotTransports` and `BotInstances`. `BotMemoryTest` reads the sources and fails on a
+static map keyed by an id that nobody has classified, or on a forgotten one its class's `forget` does not clear (checked by removing a line). 398 tests.

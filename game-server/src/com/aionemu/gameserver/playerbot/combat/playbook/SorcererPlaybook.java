@@ -650,4 +650,12 @@ final class SorcererPlaybook implements ClassPlaybook {
 		});
 		return found[0];
 	}
+
+	@Override
+	public void forget(Player bot) {
+		int id = bot.getObjectId();
+		draining.remove(id);
+		aetherFlames.remove(id);
+		aimedSince.remove(id);
+	}
 }

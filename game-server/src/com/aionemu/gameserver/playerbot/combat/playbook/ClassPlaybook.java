@@ -120,6 +120,10 @@ public interface ClassPlaybook {
 	default void whileFlying(Player bot) {
 	}
 
+	/** Called as the bot leaves the world, for a class that keeps something about it from one tick to the next. */
+	default void forget(Player bot) {
+	}
+
 	/**
 	 * @param inTeam Whether the bot is in a group, since a class may want other mantras for its mates than for itself.
 	 * @return The skill groups of the mantras this class wants running, best first. Empty when it has no opinion, and then the newest mantra wins as it

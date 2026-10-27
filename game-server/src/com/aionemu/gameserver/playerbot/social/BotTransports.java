@@ -96,4 +96,9 @@ public final class BotTransports {
 		BotInstances.moveBeside(bot, player);
 		return true;
 	}
+
+	/** Forgets what is kept about a bot leaving the world: where it last saw its player, and a join it may still have owed them. */
+	public static void forget(Player bot) {
+		watches.remove(bot.getObjectId());
+	}
 }

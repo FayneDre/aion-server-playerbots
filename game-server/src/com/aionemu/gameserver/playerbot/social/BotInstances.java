@@ -149,4 +149,9 @@ public final class BotInstances {
 		TeleportService.teleportTo(bot, player.getWorldId(), player.getInstanceId(), spot.getX(), spot.getY(), spot.getZ());
 		BotMapChange.arrive(bot);
 	}
+
+	/** Forgets what is kept about a bot leaving the world: since when it has waited for a player who left the instance. */
+	public static void forget(Player bot) {
+		waitingSince.remove(bot.getObjectId());
+	}
 }

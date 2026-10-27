@@ -1290,6 +1290,12 @@ public class BotSkillManager {
 		return ((long) bot.getObjectId() << 32) | (template.getCooldownId() & 0xFFFFFFFFL);
 	}
 
+	/** Forgets what is kept about a bot leaving the world: its casts that did not go through, which a later life has no reason to pay for. */
+	public static void forget(Player bot) {
+		long id = bot.getObjectId();
+		castAttempts.keySet().removeIf(key -> key >>> 32 == id);
+	}
+
 	/** @return The bot's usable skills of one kind, in the order it should try them. */
 	private static List<SkillTemplate> skills(Player bot, SkillFilter filter) {
 		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId())).filter(template -> {

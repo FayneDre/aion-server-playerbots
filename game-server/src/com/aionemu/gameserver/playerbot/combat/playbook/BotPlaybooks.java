@@ -35,6 +35,11 @@ public final class BotPlaybooks {
 		return of(bot.getPlayerClass());
 	}
 
+	/** Forgets what the bot's class kept about it, as the bot leaves the world. */
+	public static void forget(Player bot) {
+		of(bot).forget(bot);
+	}
+
 	/** Has a sorcerer bot open a gate to the capital at its feet, for {@code //bot gate}. @return The line to answer with. */
 	public static String openGate(Player bot) {
 		return SorcererPlaybook.openGate(bot);
