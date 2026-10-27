@@ -64,3 +64,15 @@ Placing against ordinary monsters costs two fights in five. In `spread`, 31 of 2
 placing that costs that much is not even achieved; that is the work left on positioning, for bosses, where `AUTO` uses it.
 
 **Next:** every target given up in both runs (13 of 13) was the ranger's. That, and not the templar, is the first thing to look at with a squad.
+
+## The squads kept in the database
+
+Squads do not survive a restart; the characters do, so each is formed again through the inbox (`tools/bot-command.ps1 'squad form ...'`).
+
+| Squad | Level, side | Where | Members |
+|---|---|---|---|
+| Eltnen | 24 Elyos | `teleport Squadtank 210020000 188 2143 216` | Squadtank, Squadheal, Squadsorc, Squadglad, Squadchant, Squadrang |
+| Heiron | 40 Elyos | the camp at 275 517 121; spawn near an awake Heiron bot first | Heirtank, Heirheal, Heirspirit, Heirsorc, Heirglad, Heirchant |
+| Reshanta | high, Elyos | the upper layer | Nariran, Verous, Wynemia, Irieia, Zelen, Eriarar |
+
+A squad meets level 65 Balaur elites between Reshanta's landings and dies to them: the Abyss is left dangerous on foot, by decision.
