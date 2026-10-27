@@ -1,4 +1,8 @@
-package com.aionemu.gameserver.playerbot.navmesh;
+package com.aionemu.gameserver.playerbot.navmesh.tool;
+
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.playerbot.navmesh.Navmesh;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,8 +18,6 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
-import com.aionemu.gameserver.geoEngine.math.Vector3f;
 
 /**
  * Checks every obelisk of every map that has a mesh: can a body that comes back from the dead there walk away?

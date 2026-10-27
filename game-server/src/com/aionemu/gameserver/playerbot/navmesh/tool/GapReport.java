@@ -1,4 +1,12 @@
-package com.aionemu.gameserver.playerbot.navmesh;
+package com.aionemu.gameserver.playerbot.navmesh.tool;
+
+import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
+import com.aionemu.gameserver.playerbot.navmesh.GeoDataReader;
+import com.aionemu.gameserver.playerbot.navmesh.GeoPlacement;
+import com.aionemu.gameserver.playerbot.navmesh.GlideLink;
+import com.aionemu.gameserver.playerbot.navmesh.GlideLinks;
+import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
+import com.aionemu.gameserver.playerbot.navmesh.HeightfieldBuilder;
 
 import java.io.IOException;
 import java.util.ArrayDeque;

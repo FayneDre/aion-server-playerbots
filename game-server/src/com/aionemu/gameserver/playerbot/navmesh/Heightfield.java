@@ -224,14 +224,14 @@ public class Heightfield {
 	 * @param climbTolerance The height a body may gain over half a metre, which is the path finder's own {@code STEP_TOLERANCE}.
 	 * @return One region id per surface, indexed as {@code surfaces} is, 0 for anything not walkable. Ids start at 1 and count up.
 	 */
-	int[] regions(float climbTolerance) {
+	public int[] regions(float climbTolerance) {
 		return regions(climbTolerance, 1f);
 	}
 
 	/**
 	 * @param slopeTangent How steep a body walks up, as the rise over the run: 1 for the engine's 45 degrees.
 	 */
-	int[] regions(float climbTolerance, float slopeTangent) {
+	public int[] regions(float climbTolerance, float slopeTangent) {
 		int[] region = new int[surfaces.length];
 		int[] stack = new int[surfaces.length];
 		int next = 0;

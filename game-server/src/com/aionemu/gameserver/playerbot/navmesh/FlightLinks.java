@@ -96,7 +96,7 @@ public final class FlightLinks {
 	 *
 	 * @return How many links were written.
 	 */
-	static int writeAlone(int mapId) throws IOException {
+	public static int writeAlone(int mapId) throws IOException {
 		Heightfield field = HeightfieldBuilder.build(mapId);
 		List<GlideLink> links = find(field, field.regions(BotPathFinder.STEP_TOLERANCE, MapSlopes.tangent(mapId)));
 		write(mapId, links);

@@ -28,7 +28,11 @@ class ModuleLayersTest {
 
 	private static final List<Rule> RULES = List.of(
 		// the AI calls the playbooks and owns what they remember (BotCombatMemory): they never call back into it
-		new Rule("combat", "ai"));
+		new Rule("combat", "ai"),
+		// the offline toolchain uses the server's classes, never the other way round: nothing that runs in the game server imports it
+		new Rule("ai", "navmesh.tool"), new Rule("combat", "navmesh.tool"), new Rule("economy", "navmesh.tool"), new Rule("lifecycle", "navmesh.tool"),
+		new Rule("movement", "navmesh.tool"), new Rule("positioning", "navmesh.tool"), new Rule("social", "navmesh.tool"), new Rule("world", "navmesh.tool"),
+		new Rule("navmesh", "navmesh.tool"));
 
 	@Test
 	void noPackageImportsWhatItMustNot() throws IOException {

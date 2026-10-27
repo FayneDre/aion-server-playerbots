@@ -111,7 +111,7 @@ public final class GlideLinks {
 	static final Rules OPEN_WORLD = new Rules(400, 2000, 4);
 
 	/** @return The rule a map's links are found with. */
-	static Rules rulesFor(int mapId) throws IOException {
+	public static Rules rulesFor(int mapId) throws IOException {
 		if (!MapSize.isInstance(mapId))
 			return OPEN_WORLD;
 		int minimum = minRegionSurfaces(mapId);
@@ -127,7 +127,7 @@ public final class GlideLinks {
 	 *
 	 * @return How many links were written.
 	 */
-	static int writeAlone(int mapId) throws IOException {
+	public static int writeAlone(int mapId) throws IOException {
 		Heightfield field = HeightfieldBuilder.build(mapId);
 		List<GlideLink> links = find(field, field.regions(BotPathFinder.STEP_TOLERANCE, MapSlopes.tangent(mapId)), rulesFor(mapId));
 		write(mapId, links);
@@ -145,7 +145,7 @@ public final class GlideLinks {
 	 * One rule did for the instances. The open world has maps of a hundred and forty thousand stretches, where it made a million links, held as objects in the
 	 * server's memory, so a map may need a stricter one; {@code NavmeshTool <map> glidecheck} measures the candidates.
 	 */
-	record Rules(int minFrom, int minLanding, int perPair) {
+	public record Rules(int minFrom, int minLanding, int perPair) {
 
 		@Override
 		public String toString() {
@@ -154,7 +154,7 @@ public final class GlideLinks {
 	}
 
 	/** As above, with every rule given. */
-	static List<GlideLink> find(Heightfield field, int[] regions, Rules rules) {
+	public static List<GlideLink> find(Heightfield field, int[] regions, Rules rules) {
 		int highest = 0;
 		for (int region : regions)
 			highest = Math.max(highest, region);

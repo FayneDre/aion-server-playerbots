@@ -60,7 +60,7 @@ public class Navmesh {
 	 * Widening the count to a {@code char} would remove the limit at the cost of 37 MB a map, which is not worth paying for a case that does not
 	 * occur.
 	 */
-	static final int MAX_SURFACES_PER_COLUMN = 255;
+	public static final int MAX_SURFACES_PER_COLUMN = 255;
 	/**
 	 * Bytes of tiles one map keeps before it starts giving the oldest ones back.
 	 * <p>
@@ -217,7 +217,7 @@ public class Navmesh {
 	}
 
 	/** @return The ways down from a stretch of ground to lower ones, as {@link GlideLinks} found them; empty for a map that has none. */
-	List<GlideLink> glidesFrom(int region) {
+	public List<GlideLink> glidesFrom(int region) {
 		return glides.getOrDefault(region, List.of());
 	}
 

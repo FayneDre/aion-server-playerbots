@@ -1,7 +1,7 @@
 #!/bin/bash
 # Measures the bots' navigation over one stretch of the running server's log, without loading the whole log anywhere, and writes the day plans
 # given up in that stretch as journeys NavmeshTool can plan again offline (the file next to the report, ending in -journeys.txt):
-#   cd <server>/game-server && java -Xmx700m -cp "libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool replay <that file> [every]
+#   cd <server>/game-server && java -Xmx700m -cp "libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool replay <that file> [every]
 # Usage: tools/measure.sh <from HH:MM> <to HH:MM or now> [day, default today]
 # Run it in the foreground once the window is over: a background wait of half an hour was killed for low memory on this machine.
 # Versioned on 27 October 2026 after two weeks in the server's log folder, where only this machine could run it. Reports go to

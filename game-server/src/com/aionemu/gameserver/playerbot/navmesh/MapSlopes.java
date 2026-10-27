@@ -9,7 +9,7 @@ import java.util.Set;
  * step is high enough to stop a body, but the face is too steep for the rule, and the whole dungeon beyond it reads as unreachable. Raising the limit for every dungeon was measured
  * and is not the answer, since it opens cliff faces elsewhere and makes the searches longer, so it is raised where it is known to be needed.
  */
-final class MapSlopes {
+public final class MapSlopes {
 
 	static final int WALKABLE_DEGREES = 45;
 	private static final int STAIRS_DEGREES = 62;
@@ -47,7 +47,7 @@ final class MapSlopes {
 	}
 
 	/** @return How steep a body climbs between two cells, as the rise over the run: the steeper of the ground's and the buildings' limits. */
-	static float tangent(int mapId) {
+	public static float tangent(int mapId) {
 		return (float) Math.tan(Math.toRadians(Math.max(degrees(mapId), buildingDegrees(mapId))));
 	}
 }

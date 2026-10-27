@@ -1,6 +1,6 @@
 # Module structure: plan
 
-Status: steps 1 and 2 built on 27 October 2026 (not deployed); steps 3 to 5 not started. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
+Status: steps 1 to 3 built on 27 October 2026 (not deployed); steps 4 and 5 not started. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
 (one accessor for `instanceof PlayerBotAI`, one thread owning each bot's state, tuning constants as properties) are kept for later, on evidence.
 
 Why: navigation is far from finished and has to become very stable and fast, and the five class playbooks still to write must be testable before
@@ -82,3 +82,13 @@ tests. The five values (`lastControlledAt`, `mendingToFull`, the hold's two time
 fields, same `volatile`, same reads and writes: nothing a bot does changes, so no measurement was taken. `ModuleLayersTest` reads the imports and
 fails when `combat` imports `ai` (checked by putting one back); step 4 adds its rules there. 399 tests. This is also the first piece of step 5:
 `BotCombatState` is now `BotCombatMemory`.
+
+**Step 3, built 27 October.** Correction to the plan: the generation chain is not offline only. `BotPopulator` builds a missing mesh on the first
+start (`NavmeshBuilder`, the `Heightfield` chain, the writers), and the server reads `Heightfield`, the links and `MapSlopes`; all of that stays in
+`navmesh`. Ten classes moved to `navmesh.tool`: `NavmeshTool`, `ObeliskAudit`, `InstanceReach`, `FieldReach`, `RegionProof`, `GlideCheck`,
+`GapReport`, `Flood`, `Blockers`, `JourneyReplay`, with the tests of the first two (a `MapSize` case went back to `MapSizeTest`). Opened for
+them, nothing else changed: `MapSlopes` and `RideLinks` public, and `Heightfield.regions`, `Navmesh.glidesFrom`, `Navmesh.MAX_SURFACES_PER_COLUMN`,
+`GlideLinks.find/rulesFor/writeAlone/Rules`, `FlightLinks.writeAlone`, `RideLinks.writeAlone`. `tools/navmesh.ps1` and `measure.sh` name
+`navmesh.tool.NavmeshTool`; the patch notes of October keep the old name, since they describe the jars of their day. Proof, in a folder of its
+own with the server's data read only: 310050000 (mesh and glides) and 300060000 rebuilt byte for byte as before and as installed, their reports
+the same, and the obelisk audit of Poeta the same. `ModuleLayersTest` forbids every server package importing `navmesh.tool`. 399 tests.

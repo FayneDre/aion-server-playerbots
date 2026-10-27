@@ -1,4 +1,4 @@
-package com.aionemu.gameserver.playerbot.navmesh;
+package com.aionemu.gameserver.playerbot.navmesh.tool;
 
 import static org.junit.jupiter.api.Assertions.*;
 

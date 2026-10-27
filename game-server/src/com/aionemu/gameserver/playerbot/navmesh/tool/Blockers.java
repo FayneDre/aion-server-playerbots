@@ -1,12 +1,15 @@
-package com.aionemu.gameserver.playerbot.navmesh;
+package com.aionemu.gameserver.playerbot.navmesh.tool;
+
+import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.playerbot.navmesh.GeoDataReader;
+import com.aionemu.gameserver.playerbot.navmesh.GeoModel;
+import com.aionemu.gameserver.playerbot.navmesh.GeoPlacement;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
-import com.aionemu.gameserver.geoEngine.math.Vector3f;
 
 /**
  * Which placed models have a triangle over a given spot of the plan, and at what height.

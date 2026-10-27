@@ -1,4 +1,7 @@
-package com.aionemu.gameserver.playerbot.navmesh;
+package com.aionemu.gameserver.playerbot.navmesh.tool;
+
+import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
+import com.aionemu.gameserver.playerbot.navmesh.Navmesh;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,8 +10,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.regex.Matcher;

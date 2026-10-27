@@ -1,4 +1,18 @@
-package com.aionemu.gameserver.playerbot.navmesh;
+package com.aionemu.gameserver.playerbot.navmesh.tool;
+
+import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
+import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
+import com.aionemu.gameserver.playerbot.navmesh.FlightLinks;
+import com.aionemu.gameserver.playerbot.navmesh.GeoDataReader;
+import com.aionemu.gameserver.playerbot.navmesh.GeoModel;
+import com.aionemu.gameserver.playerbot.navmesh.GeoPlacement;
+import com.aionemu.gameserver.playerbot.navmesh.GlideLinks;
+import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
+import com.aionemu.gameserver.playerbot.navmesh.HeightfieldBuilder;
+import com.aionemu.gameserver.playerbot.navmesh.Navmesh;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshWriter;
+import com.aionemu.gameserver.playerbot.navmesh.RideLinks;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -19,14 +33,11 @@ import java.util.TreeMap;
 
 import javax.imageio.ImageIO;
 
-import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
-import com.aionemu.gameserver.geoEngine.math.Vector3f;
-
 /**
  * Offline entry point of the navmesh toolchain. Run it from the server directory, where {@code data/geo} lives:
  *
  * <pre>
- * java -cp "libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool 210010000
+ * java -cp "libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool 210010000
  * </pre>
  *
  * It deliberately starts nothing: no database, no world, no data manager. Generation is a batch job over files.

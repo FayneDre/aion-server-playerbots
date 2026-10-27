@@ -62,8 +62,10 @@ com.aionemu.gameserver.playerbot/
   combat/playbook/  ClassPlaybook + BotPlaybooks: templar, chanter, ranger, cleric, gladiator, sorcerer, consulted before the generic order
   positioning/  BotPosition, BotStations, CombatSpots, AggroZone, PositioningMode: where each class stands in a group fight
   movement/     BotMoveController (legs, detours, stuck detection, flight mode), BotFlight, BotGeoHelper, BotServantMoveController
-  navmesh/      BotPathFinder (grid A*, long walks), NavmeshBuilder/NavmeshTool (offline generation), glide, ride and flight links,
-                InstanceReach, ObeliskAudit, SearchSpace
+  navmesh/      BotPathFinder (grid A*, long walks), Navmesh and its glide, ride and flight links, NavmeshService, SearchSpace; NavmeshBuilder and
+                the Heightfield chain, which the server runs too when a map it populates has no mesh
+  navmesh/tool/ Offline only: NavmeshTool (the command line), the audits (ObeliskAudit, InstanceReach, FieldReach, RegionProof, GlideCheck,
+                GapReport, Flood, Blockers) and JourneyReplay; nothing the server runs imports it (ModuleLayersTest)
   world/        BotDirector and BotPresence (who should be where), BotPlaces, BotLanding, StrandedPlaces, HarmfulGround, TownServices
   economy/      Gear (BotOutfitter, BotEquipManager, BotGearFit, BotGearSources, BotGearRefiner, BotStatWeights, BotStigmaFitter, BotPowerShards),
                 selling (BotVendorManager), stores (BotStores, BotStoreStock, BotStoreGoods, BotStorePricing, BotManastones), BotTrades

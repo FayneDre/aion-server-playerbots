@@ -1,8 +1,8 @@
-package com.aionemu.gameserver.playerbot.navmesh;
+package com.aionemu.gameserver.playerbot.navmesh.tool;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -125,20 +125,5 @@ class InstanceReachTest {
 		assertEquals(193.054f, spots.get(1)[0], 0.001f);
 		assertEquals(1, InstanceReach.spawnSpots(directory, 300040000).size());
 		assertTrue(InstanceReach.spawnSpots(directory.resolve("nowhere"), 300090000).isEmpty(), "no folder is no spots, not a failure");
-	}
-
-	@Test
-	void aMapIsAnInstanceOnlyWhenTheListSaysSo(@TempDir Path directory) throws IOException {
-		Path list = directory.resolve("world_maps.xml");
-		Files.writeString(list, """
-			<world_maps>
-				<map id="210010000" cName="LF1" name="Poeta" world_size="3072" flags="BIND RECALL"/>
-				<map id="300040000" cName="IDLF1" name="Dark Poeta" name_id="401172" instance="true" water_level="100" world_size="1536"/>
-			</world_maps>
-			""");
-
-		assertTrue(MapSize.isInstance(list, 300040000));
-		assertFalse(MapSize.isInstance(list, 210010000));
-		assertFalse(MapSize.isInstance(list, 999));
 	}
 }

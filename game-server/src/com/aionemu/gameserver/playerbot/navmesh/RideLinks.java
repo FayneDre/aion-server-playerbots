@@ -20,7 +20,7 @@ import java.util.Map;
  * Written the way the glide and flight links are, by {@code NavmeshTool <mapId> rides}, because a stretch of ground is numbered only while the mesh is built:
  * each end is put on the nearest floor of a real stretch round where the tester stood, since both lifts are stood on and their floor is not the mesh's.
  */
-final class RideLinks {
+public final class RideLinks {
 
 	/** A lift or a boat between two spots, taken either way. */
 	record Ride(String name, float fromX, float fromY, float fromZ, float toX, float toY, float toZ, int seconds) {
@@ -91,7 +91,7 @@ final class RideLinks {
 	 *
 	 * @return One line per ride, saying where its ends landed or why it was left out.
 	 */
-	static List<String> writeAlone(int mapId) throws IOException {
+	public static List<String> writeAlone(int mapId) throws IOException {
 		List<Ride> rides = RIDES.getOrDefault(mapId, List.of());
 		List<String> report = new ArrayList<>();
 		if (rides.isEmpty()) {

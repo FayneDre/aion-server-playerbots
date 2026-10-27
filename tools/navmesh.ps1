@@ -94,11 +94,11 @@ try {
                 if (Test-Path "data/navmesh/$id.$($links[0])") { $kinds.Add($links) }
             }
             Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
-            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id
+            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id
             if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
             foreach ($links in $kinds) {
                 Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
-                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id $links[1]
+                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id $links[1]
                 if ($LASTEXITCODE -ne 0) { throw "Writing the $($links[1]) of map $id failed (exit code $LASTEXITCODE)" }
             }
         }
@@ -108,7 +108,7 @@ try {
     if ($Obelisks) {
         # the audit asks the same service the bots do, which logs through slf4j: the server's libraries are needed, the generator's bare jar is not enough
         $arguments = @('obelisks'); if ($maps) { $arguments += $maps[0] }
-        & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool @arguments
+        & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool @arguments
         exit $LASTEXITCODE
     }
     if ($Dungeons) {
@@ -118,7 +118,7 @@ try {
         if ($Reach) {
             $worst = 0
             foreach ($group in $groups) { foreach ($id in $group) {
-                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id reach
+                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id reach
                 if ($LASTEXITCODE -gt $worst) { $worst = $LASTEXITCODE }
             } }
             exit $worst
@@ -128,7 +128,7 @@ try {
                 Write-Host "Map $($group[0]) already has its mesh, left alone (-Force builds it again)." -ForegroundColor DarkGray
             } else {
                 Write-Host "Generating the mesh of map $($group[0])..." -ForegroundColor Cyan
-                & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $group[0]
+                & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $group[0]
                 if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $($group[0]) (exit code $LASTEXITCODE)" }
             }
             foreach ($copy in $group | Select-Object -Skip 1) {
@@ -148,7 +148,7 @@ try {
     if ($Glides) {
         # writes each map's .glide alone, the .nav untouched: the server reads it on its next start, so this is run map by map, on purpose
         foreach ($id in $maps) {
-            & java -Xmx3g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() glides
+            & java -Xmx3g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim() glides
             if ($LASTEXITCODE -ne 0) { throw "Writing the glide links of map $id failed (exit code $LASTEXITCODE)" }
         }
         Write-Host 'Done. Restart the game server to load them: .\tools\stop-server.ps1 then .\tools\start-server.ps1' -ForegroundColor Green
@@ -158,7 +158,7 @@ try {
         # the open world: from where a monster stands, can a hunting bot walk to the monsters it would pick next? Exit code 1 when some pairs cannot be
         $worst = 0
         foreach ($id in $maps) {
-            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() fieldreach
+            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim() fieldreach
             if ($LASTEXITCODE -gt $worst) { $worst = $LASTEXITCODE }
         }
         exit $worst
@@ -167,7 +167,7 @@ try {
         # an instance: from where the party arrives, can a bot walk to where the monsters are? Exit code 1 when some spots cannot be reached
         $worst = 0
         foreach ($id in $maps) {
-            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() reach
+            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim() reach
             if ($LASTEXITCODE -gt $worst) { $worst = $LASTEXITCODE }
         }
         exit $worst
@@ -175,13 +175,13 @@ try {
     # several maps at once, one after the other: 110010000,400010000
     foreach ($id in $maps) {
         Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
-        & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim()
+        & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim()
         if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
         # links name the mesh's stretches by number, and a new mesh numbers them afresh: a link file left from the old one would join the wrong ground
         foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'), @('ride', 'rides'))) {
             if (Test-Path "data/navmesh/$($id.Trim()).$($links[0])") {
                 Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
-                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.NavmeshTool $id.Trim() $links[1]
+                & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim() $links[1]
                 if ($LASTEXITCODE -ne 0) { throw "Writing the $($links[1]) of map $id failed (exit code $LASTEXITCODE)" }
             }
         }
