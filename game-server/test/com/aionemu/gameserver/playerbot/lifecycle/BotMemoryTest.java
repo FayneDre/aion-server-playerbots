@@ -86,9 +86,8 @@ class BotMemoryTest {
 			if (file == null)
 				fail(field + " is not in the sources any more");
 			String name = field.substring(field.indexOf('.') + 1);
-			String body = forgetBody(Files.readString(file).replace("
-", "
-")); // a checkout with CRLF endings is as good as one without
+			// a checkout with CRLF endings is as good as one without
+			String body = forgetBody(Files.readString(file).replace("\r\n", "\n"));
 			assertTrue(body != null && body.contains(name), field + " is listed as forgotten, but its class's forget(Player) does not mention it");
 		}
 	}
