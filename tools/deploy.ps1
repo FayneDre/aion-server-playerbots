@@ -70,6 +70,13 @@ if ($LASTEXITCODE -ne 0) {
     throw "Orphaned javadoc (a doc comment directly followed by another): $($orphans -join ', ')"
 }
 
+# The docs' links, index, sizes and plan statuses; printed and never blocking, since a stale doc is no reason to keep a fix off the server.
+$docProblems = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-docs.ps1')
+if ($docProblems) {
+    Write-Host 'Docs (tools/check-docs.ps1):' -ForegroundColor Yellow
+    $docProblems | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+}
+
 if (-not $SkipBuild) {
     # Allowed, since most deploys are a change being tried; but the jar's revision will end in -DIRTY, which no one can check out, so a build meant for a
     # tester is made from a clean tree and tagged (tools/tag-patch.ps1).

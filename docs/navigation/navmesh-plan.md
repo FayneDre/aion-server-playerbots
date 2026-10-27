@@ -1,6 +1,6 @@
 # Navmesh plan
 
-Replacing reactive steering with real path planning. **N0 to N6 done** for navigation. What it is used for is in [built.md](../built.md); what is still missing, [roadmap.md](../roadmap.md).
+Status: **N0 to N6 done** for navigation; this file is the design, kept for its reasons. Replacing reactive steering with real path planning. What it is used for is in [built.md](../built.md); what is still missing, [roadmap.md](../roadmap.md).
 
 ## Why
 

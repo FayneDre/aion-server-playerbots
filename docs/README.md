@@ -123,3 +123,6 @@ One file per report: each point, what the log showed, the cause and the change. 
 | [feedback-2026-10-20.md](feedback/feedback-2026-10-20.md) | 19 and 20 October, group play in Eltnen. Deployed 23 October; not watched in game. |
 | [feedback-2026-10-21.md](feedback/feedback-2026-10-21.md) | 21 October, the capitals. Deployed; point 3 became the capital visitors. |
 | [feedback-2026-10-25.md](feedback/feedback-2026-10-25.md) | 25 October, cleric thresholds, invitations, shards, wings, lava. Shipped in patch-2026-10-25-2. |
+
+`tools/check-docs.ps1` checks this folder (links, this index, sizes, Status lines, plans whose classes changed since the last patch); `deploy.ps1`
+and `tag-patch.ps1` print what it finds.
