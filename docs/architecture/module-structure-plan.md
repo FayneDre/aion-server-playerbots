@@ -100,7 +100,7 @@ missing rather than plan as though the world held no danger. `BotRestManager` (s
 module now, `movement` only `navmesh` and the scheduler; `ModuleLayersTest` holds both (checked by putting a `world` and a root import back).
 Measured: see the figures below once taken.
 
-**Step 5, built 27 October** on its own branch, so that step 4 is measured alone. `PlayerBotAI` went from 2481 lines to 1805 (1999 after the
+**Step 5, built 27 October** on its own branch, so that step 4 is measured alone. `PlayerBotAI` went from 2481 lines to 1803 (1999 after the
 rescue, 1792 after the chase, plus four anchor readers):
 - `BotDeath`: dying, waiting for a resurrection, taking one, the obelisk or the instance's entrance, the way home from another layer. Its three
   decisions are static and tested (`BotDeathTest`): how long to wait, which way back, whether the home is on another layer.
