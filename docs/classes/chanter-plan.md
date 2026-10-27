@@ -1,6 +1,6 @@
 # Chanter: implementation plan
 
-Status: milestones 1 (the seam), 2 (mantras), 3 (buffs and the dispel), 4 (heals), 5 (resurrection), 6 (divine power) 7 (offence, the part that needs no measuring) and 8 (stigmas) built and unit tested, not watched in game; milestone 0 (naming the skills) done from the data, every name settled. Nothing watched in game. Source: the guide's document "Aède 101" (eight pages, in French): the chanter is a melee DPS and a support, who keeps up to
+Status: milestones 1 (the seam), 2 (mantras), 3 (buffs and the dispel), 4 (heals), 5 (resurrection), 6 (divine power) 7 (offence, the part that needs no measuring) and 8 (stigmas) built and unit tested, validated in game on 27 October with a player in the group; milestone 0 (naming the skills) done from the data, every name settled. Nothing watched in game. Source: the guide's document "Aède 101" (eight pages, in French): the chanter is a melee DPS and a support, who keeps up to
 three mantras running for the allies within 25 m. The pattern is the templar's ([templar-plan.md](templar-plan.md)): a `ClassPlaybook`, rules by skill
 **group**, a pure `decide` over a `Situation`, a data test. This file is only the distance between the guide and what the module does today.
 

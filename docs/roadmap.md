@@ -9,8 +9,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Next, by priority
 
-0. **Watch in game what is deployed**: [to-watch.md](to-watch.md), 11 points against a limit of 10, with where to look and the
-   log line that proves each one.
+0. **Feedback as it comes**: the user reports from the game while playing; each plan's Status line says what has been seen. On 27 October
+   everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion.
 1. **Dungeons, watched in game** with `patch-2026-10-19` and `-2`: a bot cut off from its player put beside them, the meshes built again, Queen
    Arachne's room in Theobomos Lab. Left: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long, then bosses.
 2. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them
@@ -39,8 +39,8 @@ flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, frie
 capitals with a town routine, 40 bot stores each with broker prices, visitors of every level, shouted adverts and calls for a group, bots
 speaking in the chat channels, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
 a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron, and a squad crossing Reshanta's upper layer by air. **Watched with a
-player**: a Noschana run, Sanctum's town day, Pandaemonium's visitors and speech. **Validated in game on 27 October**: the cleric, gladiator and sorcerer playbooks, group resurrection, wings and power
-shards, flights between Reshanta's islands. **Not watched in game**: everything listed at 0 above, positioning against a boss. **Not started**: wild PvP, the broker and player shops, legions, gathering, RvR.
+player**: a Noschana run, Sanctum's town day, Pandaemonium's visitors and speech. **Validated in game on 27 October**: everything shipped up to `patch-2026-10-25-2`, the six playbooks, positioning against a
+boss and flying with a player among it. **Not watched in game**: duels, friends and trades with a companion. **Not started**: wild PvP, the broker and player shops, legions, gathering, RvR.
 
 ## Dungeons and instances
 
@@ -53,10 +53,10 @@ each put through a reach check ([dungeon-navmesh-plan.md](navigation/dungeon-nav
 - **Instance entry: built and watched 18 October** (Noschana). A grouped bot follows its player into the instance and out again (`BotInstances`),
   revives at the entrance, and a bot saved inside starts at the exit; `BotMapChange` spawns a bot a map change would leave waiting for a client's
   `CM_LEVEL_READY`. The run showed bots slow to catch up and never gliding: they now keep a route within 8 m of a moving leader and copy the
-  leader's glide from its takeoff (`LeaderGlides`), not yet watched. A player who logs out inside is waited for five minutes, then the bots leave the group and the instance (`BotInstances`), not watched either.
+  leader's glide from its takeoff (`LeaderGlides`). A player who logs out inside is waited for five minutes, then the bots leave the group and the instance (`BotInstances`). Both validated in game on 27 October.
 - **A bot cut off from its player** in an instance (a teleporter, a lever, a lift, a windstream, a door the player's key opens) is put beside them
   at any distance after about 13 s (`PlayerBotAI.freeItself`, 19 October); before, past 200 m, it went to its home's coordinates on the instance's
-  map. Not watched in game.
+  map. Validated in game on 27 October.
 - **The instance meshes** (54 files for the 45 geometries) are walked: Noschana's was. On 19 October floors the generator dropped were put back in 20
   of them (Steel Rake 99 %, the Danuar Sanctuaries 94 and 95 %, the Dredgions 96 to 99 %, Sauro 91 %), and Esoterrace reads 99 % once its
   windstreams' landings count as arrivals, and both Dragon Lord's Refuges 100 % once the teleporters their handler codes count too. Left under 80 %: **Theobomos Lab** (72 %, its lift after the elemental rooms; Queen Arachne's room, its

@@ -1,6 +1,6 @@
 # Group positioning: plan
 
-Status: milestones 1 to 5 built and unit tested, none yet watched in game; since the second group tests it applies to bosses only by default (`//bot position auto|standard|spread`, see the last section). The before and after figures of milestone 2 are still to be taken. Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
+Status: milestones 1 to 5 built and unit tested, validated in game against a boss on 27 October; since the second group tests it applies to bosses only by default (`//bot position auto|standard|spread`, see the last section). The before and after figures of milestone 2 are still to be taken. Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
 Where the module stands today is in [group-roles.md](group-roles.md) and [navigation-prototype.md](../navigation/navigation-prototype.md); this file is the distance
 between that and what it describes. Step 0, the measuring, is done and its figures are below.
 

@@ -1,6 +1,6 @@
 # Ranger: implementation plan
 
-Status: milestones 1 to 5, 7 and 8 built and unit tested, 6 closed by decision; none watched in game. The guide's italics and yellow highlights count as validated; its red paragraph on traps does not (see "Traps"). Source: the guide's document "Rôdeur 101" (eight pages, in French). The ranger is a ranged physical DPS that uses its bow
+Status: milestones 1 to 5, 7 and 8 built and unit tested, 6 closed by decision; validated in game on 27 October with a player in the group. The guide's italics and yellow highlights count as validated; its red paragraph on traps does not (see "Traps"). Source: the guide's document "Rôdeur 101" (eight pages, in French). The ranger is a ranged physical DPS that uses its bow
 only, stays at a good distance and does as much damage as fast as it can; alone it kills before the enemy arrives, with personal buffs before the fight and
 handicaps during it. The pattern is the chanter's ([chanter-plan.md](chanter-plan.md)) and the templar's: a `ClassPlaybook`, rules by skill **group**, a pure
 `decide` over a `Situation`, a data test. Names are the English client names from `skill_templates.xml` and `skill_tree.xml`; the levels below 10 are in

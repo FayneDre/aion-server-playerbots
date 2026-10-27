@@ -1,6 +1,6 @@
 # Flying with a player: plan
 
-Status: milestones 1 to 5 built on 19 October and shipped in `patch-2026-10-19-3`, **not watched in game**. Milestone 6 waits for a
+Status: milestones 1 to 5 built on 19 October and shipped in `patch-2026-10-19-3`, validated in game on 27 October. Milestone 6 waits for a
 time and a bot name from the tester.
 
 The tester's report of 19 October, seven points, all about flight and the Abyss. This plan maps each one to its cause in the code and in that evening's

@@ -1,7 +1,8 @@
 # Bots' private stores
 
 **Status: built, milestone 2 of [living-capitals-plan.md](living-capitals-plan.md).** Designed and built 20 October 2026, a purchase checked in
-`exchange.log` the same day, reworked on 23 October and looked over in game on 24 October. Decisions taken by the user on 20 October: stock generated
+`exchange.log` the same day, reworked on 23 October looked over in game on 24 October,
+and the hourly renewal, night stores and the boat rider validated on 27 October. Decisions taken by the user on 20 October: stock generated
 at the keeper's level, the prices below, and (milestone 5) bots buying from players' stores, dropped on 23 October. What the stores sell since 24
 October is in [bot-store-goods-plan.md](bot-store-goods-plan.md).
 
