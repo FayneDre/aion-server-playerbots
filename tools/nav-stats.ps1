@@ -55,9 +55,10 @@ $kinds = [ordered]@{
     'steps aside'             = 'BotMoveController - Bot \S+ steps aside '
     'no headway'              = 'BotMoveController - Bot \S+ makes no headway '
     'walled in'               = 'BotMoveController - Bot \S+ is walled in '
-    'could not move at all'   = 'PlayerBotAI - Bot \S+ could not move at all '
-    'rescue teleports'        = 'PlayerBotAI - Bot \S+ .*(is put back home|is put on walkable ground)'
-    'deaths'                  = 'PlayerBotAI - Bot \S+ died at '
+    # rescues and deaths were logged by PlayerBotAI until 27 October 2026, by BotRescue and BotDeath since: both, so older logs still read
+    'could not move at all'   = '(PlayerBotAI|BotRescue) - Bot \S+ could not move at all '
+    'rescue teleports'        = '(PlayerBotAI|BotRescue) - Bot \S+ .*(is put back home|is put on walkable ground)'
+    'deaths'                  = '(PlayerBotAI|BotDeath) - Bot \S+ died at '
 }
 $counts = [ordered]@{}
 foreach ($kind in $kinds.Keys) { $counts[$kind] = @($lines | Where-Object { $_ -match $kinds[$kind] }).Count }
