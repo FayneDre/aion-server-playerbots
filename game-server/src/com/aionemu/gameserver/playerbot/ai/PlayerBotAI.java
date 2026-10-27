@@ -54,7 +54,6 @@ import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.playerbot.world.BotLanding;
 import com.aionemu.gameserver.playerbot.world.HarmfulGround;
-import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -110,8 +109,6 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	private static final int GIVE_UPS_BEFORE_CAMP = 3;
 	/** How many monsters' failures are remembered before the memory is started again: a monster respawns under a new id, so old ones only take room. */
 	private static final int MAX_FAILED_CHASES_KEPT = 256;
-	/** How long the bot leaves alone whatever killed it, so a lost fight is not restarted on a loop. */
-	private static final long KILLER_AVOIDED_MILLIS = 120000;
 	/**
 	 * How long a bot may be in a fight without the attack loop running before the fight is abandoned.
 	 * <p>
@@ -186,25 +183,6 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	private static final float GLIDE_SAME_LEVEL = 3f;
 	/** How near where its leader left the ground a member must come before it glides: the leader's edge, give or take a stride. */
 	private static final float TAKEOFF_REACHED = 2f;
-	/** Roughly the time a player spends looking at the resurrection window. */
-	private static final int REVIVE_DELAY_MILLIS = 10000;
-	/**
-	 * How long a bot dead in a group still waits for a resurrection once the group has stopped fighting. A cleric's or a chanter's raise takes some
-	 * seconds to cast and is cast after the fight, and a player has to walk over first: ten seconds was never enough, and a tester could not raise a
-	 * single bot on the spot.
-	 */
-	private static final long RESURRECTION_WAIT_MILLIS = 60_000;
-	/** Longest a bot dead in a group waits, whatever the group does, so a mate who stays alive and never raises it does not keep it down for good. */
-	private static final long LONGEST_RESURRECTION_WAIT_MILLIS = 600_000;
-	/** How often a bot waiting for a resurrection looks again at whether its group is still fighting. */
-	private static final long RESURRECTION_LOOK_MILLIS = 5_000;
-	/** How long a player takes to click "accept" once a resurrection has been cast on them. */
-	private static final int ACCEPT_RESURRECTION_DELAY_MILLIS = 2000;
-	/** How far in height a revived bot's home may be from the obelisk and still be walked or flown back to: Reshanta's layers are 1200 m apart. */
-	private static final float ANOTHER_LAYER = 300;
-	/** How often a bot revived on another layer looks at whether it is well enough to be taken home, and how many times before it goes anyway. */
-	private static final long TAKEN_HOME_DELAY_MILLIS = 5000;
-	private static final int TAKEN_HOME_LOOKS = 120;
 	/**
 	 * How far from its bind point a bot gets before it is willing to sit down.
 	 * <p>
@@ -214,8 +192,11 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	 */
 	private static final float OBELISK_CLEARANCE = 60f;
 
-	/** Guards the scheduled tasks against concurrent starts and stops, since events and ticks run on different pool threads. */
-	private final Object combatLock = new Object();
+	/**
+	 * Guards the scheduled tasks against concurrent starts and stops, since events and ticks run on different pool threads: the fight's here, and the
+	 * revival's in {@link BotDeath}, which the tick reads under it to know whether the bot is busy.
+	 */
+	final Object combatLock = new Object();
 	private ScheduledFuture<?> attackTask;
 	/**
 	 * Which attack loop is the current one. A tick whose generation has been superseded retires instead of scheduling its successor.
@@ -233,12 +214,8 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	/** What the class playbooks remember of this bot's fight from one tick to the next; see {@link BotCombatMemory}. */
 	private final BotCombatMemory combatMemory = new BotCombatMemory();
 	private ScheduledFuture<?> thinkTask;
-	/** Non null between death and resurrection, which also marks the death as already handled. */
-	private ScheduledFuture<?> reviveTask;
-	/** Whether the pending revival is the acceptance of a resurrection somebody cast, rather than the walk back from the obelisk. */
-	private boolean resurrectionPending;
-	/** When the bot last died, and when its group was last seen fighting since, for how long it waits to be raised. */
-	private long diedAt, groupLastFoughtAt;
+	/** The bot's death and how it comes back; see {@link BotDeath}. */
+	private final BotDeath death = new BotDeath(this);
 	/** The leader's last glide while it is fresh, seen on the last tick, and the one this bot has already gone down or given up on. */
 	private volatile LeaderGlides.Glide leadersGlide, copiedGlide;
 	/** Whether the last tick found the bot alive and out of the world, the state a teleport to another map leaves it in, see {@link #arriveIfStranded()}. */
@@ -366,6 +343,34 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 
 	BotPosture posture() {
 		return posture;
+	}
+
+	BotDay day() {
+		return day;
+	}
+
+	BotConvalescence convalescence() {
+		return convalescence;
+	}
+
+	/** {@code setStateIfNot}, for the parts of the AI that live in classes of their own. */
+	void enterState(AIState state) {
+		setStateIfNot(state);
+	}
+
+	/** Leaves a creature alone until then: the bot picks no fight with it and gives up one it is in. */
+	void ignoreFor(Creature creature, long until) {
+		ignoredTargets.put(creature.getObjectId(), until);
+	}
+
+	/** Has the next tick look at where the bot stands, once a move it has just been given has settled. */
+	void checkLandingNextTick() {
+		checkLanding = true;
+	}
+
+	/** @return The anchor, written as the log has always written it. */
+	String describeAnchor() {
+		return anchorX + " " + anchorY + " " + anchorZ;
 	}
 
 	/**
@@ -651,7 +656,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	 */
 	public boolean tryRetire() {
 		synchronized (combatLock) {
-			if (retiring || ticking || attackTask != null || reviveTask != null)
+			if (retiring || ticking || attackTask != null || death.isBeingBroughtBack())
 				return false;
 			Player bot = getOwner();
 			if (bot.isDead() || getState() == AIState.DIED)
@@ -725,7 +730,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			stepOffTrappedGround();
 		}
 		if (getOwner().isSpawned() && getOwner().isDead())
-			handleDeath();
+			death.onDeath();
 		else if (posture.isAnimating()) {
 			// Nothing on top of an animation already playing. Deliberately not inside tryMoveTo, where it would have been one check for every kind of
 			// journey at once: a refusal there means the geometry leads nowhere, and two callers give the errand up for good on one — a bot would have
@@ -872,7 +877,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		setStateIfNot(AIState.IDLE);
 	}
 
-	private void cancelCombat() {
+	void cancelCombat() {
 		BotTargetRegistry.releaseAllOf(getOwner());
 		BotFlight.engage(getOwner(), null); // back beside its leader, or down, for a bot that was fighting in the air
 		synchronized (combatLock) {
@@ -1269,7 +1274,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	 *         nothing else does. The first version waited out the whole of it doing nothing at all, which is how obelisks came to hold a dozen
 	 *         seated bots apiece. Defending itself, going home, resting, running an errand and following a group are all untouched.
 	 */
-	private boolean isRecoveringFromDeath() {
+	boolean isRecoveringFromDeath() {
 		return getOwner().getEffectController().hasAbnormalEffect(SOUL_SICKNESS_SKILL);
 	}
 
@@ -2028,7 +2033,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	 * Keeps the bot from starting a fight it is in no shape for — in particular right after resurrecting at 25% hp, next to whatever killed it.
 	 * Only picking a fight is gated: it always defends itself, whatever its health.
 	 */
-	private boolean isHealthyEnoughToFight() {
+	boolean isHealthyEnoughToFight() {
 		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT
 			&& getOwner().getLifeStats().getMpPercentage() >= MIN_ENGAGE_MP_PERCENT && !BotPlaybooks.of(getOwner()).wantsToRest(getOwner());
 	}
@@ -2250,160 +2255,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 
 	@Override
 	protected void handleDied() {
-		handleDeath();
-	}
-
-	/**
-	 * Reacts to the bot being dead, at most once per death.
-	 * <p>
-	 * The engine only fires {@code AIEventType.DIED} from {@code NpcController}: {@code PlayerController.onDie} never notifies the AI, since real
-	 * players have a dummy one. Rather than patch a core file upstream changes often, the decision tick notices the death itself.
-	 */
-	private void handleDeath() {
-		synchronized (combatLock) {
-			if (reviveTask != null) { // already dealt with, unless a resurrection has been cast on it since
-				if (!resurrectionPending && getOwner().getResStatus()) {
-					// the window a resurrection opens is clicked by the player it is cast on, so for a bot the decision tick clicks it: taking a resurrection
-					// instead of the obelisk is what a player does when one is offered, and it is what a chanter's Light of Resurrection is for
-					resurrectionPending = true;
-					reviveTask.cancel(false);
-					reviveTask = BotScheduler.getInstance().schedule(this::acceptResurrection, ACCEPT_RESURRECTION_DELAY_MILLIS);
-				}
-				return;
-			}
-			// nobody will ever click the resurrection window for a bot, so without this it lies dead forever
-			diedAt = groupLastFoughtAt = System.currentTimeMillis();
-			reviveTask = BotScheduler.getInstance().schedule(this::reviveUnlessRaised, REVIVE_DELAY_MILLIS);
-		}
-		Player bot = getOwner();
-		// whatever it was fighting just won, so leave it alone for a while instead of walking straight back into it
-		if (bot.getTarget() instanceof Creature killer)
-			ignoredTargets.put(killer.getObjectId(), System.currentTimeMillis() + KILLER_AVOIDED_MILLIS);
-		cancelCombat();
-		if (bot.getMoveController() instanceof BotMoveController moveController)
-			moveController.abandonGlide();
-		setStateIfNot(AIState.DIED);
-		log.info("Bot {} died at {} {} {} (anchor {} {} {})", bot.getName(), bot.getX(), bot.getY(), bot.getZ(), anchorX, anchorY, anchorZ);
-		day.recordDeath(); // a home that keeps killing its resident is a home the resident leaves, whatever the reason turns out to be
-	}
-
-	/**
-	 * Brings the bot back the way a player does: at its obelisk, on a quarter of its health, with soul sickness.
-	 * <p>
-	 * {@code bindRevive} rather than a revive on the spot, and that is the whole of it. Coming back where it fell — or at its anchor, which is the
-	 * patch of ground it was working — puts the bot back within reach of whatever just killed it, at a quarter health: it dies again, comes back
-	 * again, and the loop only ends when something else wanders past. An obelisk is far away on purpose, and the walk home is the price a player
-	 * pays too.
-	 * <p>
-	 * Its anchor is moved home as well, because the spot it was working is on the far side of that walk and it has no business resuming there from
-	 * across the region.
-	 */
-	private void revive() {
-		bringBack(false);
-	}
-
-	/**
-	 * Goes back to the obelisk, unless the group may still raise the bot where it lies: then it looks again in a moment.
-	 * <p>
-	 * A bot alone goes at once, as before. One in a group waits while the group is fighting and for {@value #RESURRECTION_WAIT_MILLIS} ms after, as a
-	 * player waits for the cleric before releasing; it goes sooner when nobody in the group is left standing on its map to raise it.
-	 */
-	private void reviveUnlessRaised() {
-		long wait = resurrectionWaitLeft();
-		synchronized (combatLock) {
-			// A resurrection taken in the meantime has replaced this task with its own, and a bot leaving the world has dropped it: either way this run is
-			// stale, and going to the obelisk now would throw away the raise the tick has just accepted.
-			if (reviveTask == null || resurrectionPending)
-				return;
-			if (wait > 0) {
-				reviveTask = BotScheduler.getInstance().schedule(this::reviveUnlessRaised, Math.min(wait, RESURRECTION_LOOK_MILLIS));
-				return;
-			}
-		}
-		revive();
-	}
-
-	/** @return How much longer the bot waits to be raised, in milliseconds; 0 or less to go back now. */
-	private long resurrectionWaitLeft() {
-		Player bot = getOwner();
-		if (!BotGroupManager.hasLivingMateOnTheMap(bot))
-			return 0;
-		long now = System.currentTimeMillis();
-		if (BotGroupManager.isGroupFighting(bot))
-			groupLastFoughtAt = now;
-		return Math.min(groupLastFoughtAt + RESURRECTION_WAIT_MILLIS, diedAt + LONGEST_RESURRECTION_WAIT_MILLIS) - now;
-	}
-
-	/**
-	 * Takes the resurrection somebody has cast on the bot, where it lies: no obelisk and no walk home, which is the whole of what a resurrection is for. It
-	 * comes back on a third of its health with soul sickness, as the engine gives it to a player ({@code skillRevive}), and its anchor stays where it was,
-	 * since it is still beside the group that raised it.
-	 */
-	private void acceptResurrection() {
-		bringBack(true);
-	}
-
-	private void bringBack(boolean resurrected) {
-		Player bot = getOwner();
-		try {
-			if (!bot.isSpawned() || !bot.isDead())
-				return;
-			// skillRevive writes the character into the audit log as a resurrection hack when nobody cast one, so it is asked first
-			if (resurrected && bot.getResStatus()) {
-				PlayerReviveService.skillRevive(bot);
-				convalescence.forget();
-				setStateIfNot(AIState.IDLE);
-				log.info("Bot {} accepted a resurrection at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
-				return;
-			}
-			if (bot.isInInstance()) {
-				// the instance's entrance, as a player inside chooses it: the obelisk is on another map, and a bot sent there leaves its group for the
-				// length of a walk back it cannot make, since only the player's portal leads in
-				PlayerReviveService.instanceRevive(bot);
-				BotMapChange.arrive(bot); // the instance had no entrance on record, and the revival fell back to the obelisk
-				convalescence.forget();
-				setStateIfNot(AIState.IDLE);
-				log.info("Bot {} revived at the entrance of map {} at {} {} {}", bot.getName(), bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
-				return;
-			}
-			PlayerReviveService.bindRevive(bot);
-			BotMapChange.arrive(bot); // an obelisk on another map, which a death far from home can bring
-			checkLanding = true; // looked at on the next tick, once the move to the obelisk has settled
-			convalescence.forget(); // a new death, a new look at where is quiet
-			Vector3f home = day.home();
-			if (home != null)
-				setAnchor(home.getX(), home.getY(), home.getZ());
-			setStateIfNot(AIState.IDLE);
-			log.info("Bot {} revived at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
-			// Home on another layer of the map, which no walk and no flight joins to the obelisk: taken there as a player takes the base's teleporter.
-			// Reshanta's upper layer has no obelisk of its own, and its residents came back in Teminon, 1300 m below, asked for routes home that do
-			// not exist and were rescued a dozen seconds later: 47 refused routes and 22 of 23 rescues of its 22 residents in half an hour.
-			// Not in a group, whose members come back to it: a squad member taken home was left hundreds of metres from a leader waiting for it.
-			if (home != null && bot.getCurrentTeam() == null && Math.abs(home.getZ() - bot.getZ()) > ANOTHER_LAYER)
-				BotScheduler.getInstance().schedule(() -> takeHomeWhenRecovered(home, TAKEN_HOME_LOOKS), TAKEN_HOME_DELAY_MILLIS);
-		} finally {
-			// cleared last, so the decision tick cannot mistake the bot for freshly dead while it is being brought back
-			synchronized (combatLock) {
-				reviveTask = null;
-				resurrectionPending = false;
-			}
-		}
-	}
-
-	/**
-	 * Takes a bot revived on another layer of the map home, once it has waited out its sickness and healed: taken there at once, still sick, a resident
-	 * of Reshanta's upper layer died again at home within thirty seconds of every revival, five times running. Looked at again until then.
-	 */
-	private void takeHomeWhenRecovered(Vector3f home, int looksLeft) {
-		Player bot = getOwner();
-		if (!bot.isSpawned() || bot.isDead() || bot.getCurrentTeam() != null || Math.abs(home.getZ() - bot.getZ()) <= ANOTHER_LAYER)
-			return;
-		if ((isRecoveringFromDeath() || !isHealthyEnoughToFight()) && looksLeft > 0) {
-			BotScheduler.getInstance().schedule(() -> takeHomeWhenRecovered(home, looksLeft - 1), TAKEN_HOME_DELAY_MILLIS);
-			return;
-		}
-		log.info("Bot {} lives {} m above or below where it revived and is taken home", bot.getName(), Math.round(Math.abs(home.getZ() - bot.getZ())));
-		TeleportService.teleportTo(bot, bot.getWorldId(), home.getX(), home.getY(), home.getZ());
+		death.onDeath();
 	}
 
 	@Override
@@ -2413,10 +2265,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 				thinkTask.cancel(false);
 				thinkTask = null;
 			}
-			if (reviveTask != null) {
-				reviveTask.cancel(false);
-				reviveTask = null;
-			}
+			death.cancel();
 		}
 		convalescence.forget(); // a bot that leaves the world mid sickness must not keep its ground reserved
 		cancelCombat();
