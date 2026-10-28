@@ -117,6 +117,8 @@ History: [flight-plan.md](flight/history/flight-plan.md) (take-off, landing, ter
 
 ## Capitals — [capitals/](capitals/)
 
+[how-it-works.md](capitals/how-it-works.md): **how the capitals live today**, the town day, private stores, visitors, speech.
+
 History, all built: [living-capitals-plan.md](capitals/history/living-capitals-plan.md) (the umbrella plan, milestones 0 to 5),
 [living-capitals-findings.md](capitals/history/living-capitals-findings.md) (Sanctum's bridges and rides, the crowd test, the town routine),
 [bot-stores-plan.md](capitals/history/bot-stores-plan.md) (bots' private stores),
@@ -127,6 +129,7 @@ History, all built: [living-capitals-plan.md](capitals/history/living-capitals-p
 
 | File | What it holds |
 |---|---|
+| [how-it-works.md](social/how-it-works.md) | **How bots deal with players today**: groups, requests, the chat channels. |
 | [plans/player-interactions-plan.md](social/plans/player-interactions-plan.md) | Trades with a companion, friends, duels. Built, unverified in game. |
 | [plans/cohort-plan.md](social/plans/cohort-plan.md) | Bots in an alliance. Not started. |
 
