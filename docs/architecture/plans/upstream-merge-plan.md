@@ -56,7 +56,7 @@ connection and are not counted), and a client that stalls or does not authentica
 
 ## Deployed on 28 October
 
-Backups in `D:\Jeux\Aionackup-before-upstream-merge-2026-10-28` (the three servers' libs and config, and `aion_gs.sql`, dumped with the server stopped).
+Backups in `backup-before-upstream-merge-2026-10-28` beside the install (the three servers' libs and config, and `aion_gs.sql`, dumped with the server stopped).
 Order: build, stop the three servers, dump, upstream's SQL, `sync-install.ps1 -Apply`, the two files edited in the install merged by hand, `deploy.ps1
 -SkipBuild`, `start-server.ps1`. Met on the way: the dump needs `--skip-lock-tables --no-tablespaces` for this database user; the chat and login
 servers load their own copy of the commons jar, which nothing copied (now `sync-install.ps1` does, with the login server's jar); and a jar built in a
