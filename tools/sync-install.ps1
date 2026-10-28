@@ -70,8 +70,13 @@ function Get-InstalledText([string]$path) {
 
 function Install-File([string]$path, [string]$target) {
     New-Item -ItemType Directory -Force (Split-Path -Parent $target) | Out-Null
-    cmd /c "git -C `"$repo`" show ${To}:${path} > `"$target`""
-    if ($LASTEXITCODE -ne 0) { throw "Could not write $target" }
+    # to a file of its own first: a git that fails after the redirect has opened the target would leave it empty
+    $tmp = [IO.Path]::GetTempFileName()
+    try {
+        cmd /c "git -C `"$repo`" show ${To}:${path} > `"$tmp`""
+        if ($LASTEXITCODE -ne 0) { throw "Could not read $path at $To" }
+        Copy-Item $tmp $target -Force
+    } finally { Remove-Item $tmp -ErrorAction SilentlyContinue }
 }
 
 $mainClass = @{ 'game-server' = 'com.aionemu.gameserver.GameServer'; 'login-server' = 'com.aionemu.loginserver.LoginServer'; 'chat-server' = 'com.aionemu.chatserver.ChatServer' }
@@ -126,8 +131,10 @@ if (-not $LibsOnly) {
                     $replaced++
                 } else { $left += "$path (removed upstream, edited here)" }
             } else {
+                $now = Get-Text $To $path
+                if ($exists -and (Get-InstalledText $target) -ceq $now) { $same++; continue } # already the wanted file, from an earlier run or by hand
                 if ($exists -and $kind -eq 'M' -and (Get-InstalledText $target) -cne $was) { $left += "$path (changed upstream, edited here)"; continue }
-                if ($exists -and $kind -eq 'A' -and (Get-InstalledText $target) -cne (Get-Text $To $path)) { $left += "$path (added upstream, a different file is there)"; continue }
+                if ($exists -and $kind -eq 'A') { $left += "$path (added upstream, a different file is there)"; continue }
                 if (-not $exists -and $kind -eq 'M') { Write-Output "ADD     $path (not in the install)" } else { Write-Output "REPLACE $path" }
                 if ($Apply) { Install-File $path $target }
                 $replaced++
@@ -146,8 +153,11 @@ $modules = 'game-server', 'login-server', 'chat-server'
 $pomFiles = @('pom.xml', 'commons\pom.xml') + ($modules | ForEach-Object { "$_\pom.xml" })
 $pomHash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash(
     [Text.Encoding]::UTF8.GetBytes((($pomFiles | ForEach-Object { [IO.File]::ReadAllText((Join-Path $repo $_)).Replace("`r`n", "`n") }) -join "`0")))).Replace('-', '')
+# and which servers are installed: one installed later has not had its libraries
+$present = ($modules | Where-Object { Test-Path (Join-Path $ServerRoot "$_\libs") }) -join ','
+$stampValue = "$pomHash $present"
 $stampFile = Join-Path $ServerRoot '.libs-stamp'
-$resolve = -not ($LibsOnly -and (Test-Path $stampFile) -and ((Get-Content $stampFile -Raw).Trim() -eq $pomHash))
+$resolve = -not ($LibsOnly -and (Test-Path $stampFile) -and ((Get-Content $stampFile -Raw).Trim() -eq $stampValue))
 if (-not $resolve) { Write-Output 'Libraries: the poms are as at the last sync.' }
 
 # the modules' own jars the others load: every server reads commons from its own folder, and the login server's jar is nobody's but this script's.
@@ -181,7 +191,15 @@ foreach ($module in $modules) {
     $differ = @($ownJars[$module] | Where-Object {
         $_ -and -not ((Test-Path (Join-Path $libs $_.Name)) -and (Get-FileHash (Join-Path $libs $_.Name)).Hash -eq (Get-FileHash $_.FullName).Hash)
     })
-    if ($resolve -or $differ.Count -gt 0) {
+    # an own jar of another name (a new version) leaves the old one behind, and two versions of a class on the classpath is not a choice anyone made
+    $stale = @()
+    foreach ($jar in $ownJars[$module]) {
+        if (-not $jar) { continue }
+        $prefix = $jar.Name -replace '-\d.*$', ''
+        $stale += @(Get-ChildItem $libs -Filter '*.jar' | Where-Object { $_.Name -match "^$([regex]::Escape($prefix))-\d" -and $_.Name -ne $jar.Name -and $_.Name -notmatch '-(sources|javadoc)\.jar$' })
+    }
+    $drop = @($drop) + @($stale)
+    if ($resolve -or $differ.Count -gt 0 -or $stale.Count -gt 0) {
         Write-Output "Libraries of ${module}: $($add.Count) to add, $($drop.Count) to remove, $($differ.Count) own jar(s) to copy."
     }
     foreach ($jar in $add) { Write-Output "ADD     $module/libs/$($jar.Name)" }
@@ -195,7 +213,7 @@ foreach ($module in $modules) {
         } else { $everythingDone = $false }
     }
 }
-if ($Apply -and $resolve -and $everythingDone) { Set-Content $stampFile $pomHash -Encoding ascii }
+if ($Apply -and $resolve -and $everythingDone) { Set-Content $stampFile $stampValue -Encoding ascii }
 
 # ---- SQL --------------------------------------------------------------------------------------------------------------------------------------
 # the statements of update.sql the database has not had yet, once each, after a backup (apply-sql.ps1; deploy.ps1 runs it too)

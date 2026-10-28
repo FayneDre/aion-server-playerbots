@@ -7,7 +7,8 @@
     reads. By hand it is a mysqldump, a client, and remembering which statements the database already has; here the database remembers: a table,
     schema_applied_sql, holds the hash of every statement run, so a statement is never run twice and a deploy with nothing new does nothing.
 
-    - Comments are dropped and the file is cut where the bot's own tables begin (a statement naming playerbot_): SchemaUpdater creates those at start.
+    - Comments that start a line are dropped, and so are the statements naming playerbot_ (SchemaUpdater creates the bot's tables at start). Two equal
+      statements are one. A file with DELIMITER (procedures, triggers) is refused: this runs plain statements.
     - With something new: the game server must be stopped, aion_gs is dumped to <install>/backups, then each statement is run and recorded. A statement
       that fails stops the run with its error; the ones before it stay recorded, and the next run goes on from there. A DDL statement that fails because
       the column, key or table is already (or no longer) there is recorded as already done.
@@ -45,15 +46,20 @@ if (-not $ServerRoot) { throw 'Set AION_SERVER_HOME or pass -ServerRoot.' }
 
 # ---- the statements -------------------------------------------------------------------------------------------------------------------------
 $text = [IO.File]::ReadAllText($SqlFile)
-$text = [regex]::Replace($text, '/\*.*?\*/', '', 'Singleline')
-$text = [regex]::Replace($text, '(?m)^\s*--.*$', '')
+# comments are only taken out where they start a line, so that a string holding /* or -- is left alone
+$text = [regex]::Replace($text, '(?ms)^[ \t]*/\*.*?\*/', '')
+$text = [regex]::Replace($text, '(?m)^[ \t]*(--|#).*$', '')
+if ($text -match '(?im)^\s*DELIMITER\b') { throw "$SqlFile uses DELIMITER (procedures, triggers): this script runs plain statements; run that part by hand." }
 $statements = New-Object Collections.Generic.List[object]
+$hashes = @{}
 foreach ($raw in [regex]::Split($text, ';[ \t]*(?:\r?\n|$)')) {
     $statement = $raw.Trim()
     if ($statement.Length -eq 0) { continue }
-    if ($statement -match 'playerbot_') { break }
+    if ($statement -match 'playerbot_') { continue } # the bot's tables are SchemaUpdater's, created at start
     $normal = [regex]::Replace($statement, '\s+', ' ')
     $hash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($normal))).Replace('-', '').ToLower()
+    if ($hashes[$hash]) { continue } # the same statement twice in the file is one: a statement is known by its text
+    $hashes[$hash] = $true
     $statements.Add([pscustomobject]@{ Text = $statement; Hash = $hash })
 }
 
@@ -144,7 +150,9 @@ try {
         Remove-Item $errors -ErrorAction SilentlyContinue
         Write-Output ("Backup: $backup ({0:N0} MB)" -f ((Get-Item $backup).Length / 1MB))
     }
-    $benign = 'ERROR (1060|1061|1050|1054|1091)\b'
+    # duplicate column, duplicate key, table exists, can't drop what is not there: the statement's effect is in the database. An unknown column (1054) is not
+    # in the list: it may as well be a statement that is wrong, and a wrong statement recorded as done is never run
+    $benign = 'ERROR (1060|1061|1050|1091)\b'
     foreach ($s in $pending) {
         $r = Invoke-Sql ($s.Text + ';')
         if ($r.Code -eq 0) {
@@ -153,7 +161,8 @@ try {
             Write-Output "  already there: $(($s.Text -split "`n")[0].Trim())"
             Record $s 'already'
         } else {
-            throw "A statement failed; the ones before it are recorded and the next run goes on from here:`n$($s.Text)`n$($r.Output)"
+            throw ("A statement failed; the ones before it are recorded and the next run goes on from here:`n$($s.Text)`n$($r.Output)`n" +
+                'If the database has these statements already (run by hand), say so once: apply-sql.ps1 -MarkApplied -Apply.')
         }
     }
     Write-Output "Applied $($pending.Count) statement(s)."

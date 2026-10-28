@@ -84,6 +84,13 @@ if ($docProblems) {
     $docProblems | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
 }
 
+# The database is asked now, before a build of minutes: MySQL not started, or a password that changed, is found out here and not after the tests.
+# Only looks (no -Apply); the statements are run after the build.
+if (-not $SkipSql) {
+    $sqlLook = & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot
+    $sqlLook | Where-Object { $_ -match ', [1-9][0-9]* not applied yet' } | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
+}
+
 if (-not $SkipBuild) {
     # Allowed, since most deploys are a change being tried; but the jar's revision will end in -DIRTY, which no one can check out, so a build meant for a
     # tester is made from a clean tree and tagged (tools/tag-patch.ps1).
