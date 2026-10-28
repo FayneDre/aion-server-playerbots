@@ -1,6 +1,6 @@
 # Merging the upstream into the bot branch
 
-Status: in progress: merged, compiled and tested on branch `merge/upstream-2026-10` (28 October 2026, 442 tests); not deployed.
+Status: in progress: merged, tested and deployed on 28 October 2026 (branch `merge/upstream-2026-10`, 442 tests); to be checked in game, then measured.
 
 `4.8` was 69 commits behind `beyond-aion/aion-server` (the last one of 28 October, 1515 files). A trial merge in a throwaway worktree gave 10 small
 conflicts out of 30 files touched on both sides, and a compile that fails on 7 changes of interface. Nothing pushed without the user's decision.
@@ -53,3 +53,12 @@ session; the merged file has none).
 The SQL also holds a migration of every player's skills to level 1 (upstream stopped using the skill's grade as its level), which bots take
 with everyone else. New server settings to know: at most 2 characters per computer (`multi_client.max_clients_per_computer`; bots have no
 connection and are not counted), and a client that stalls or does not authenticate in 60 s is disconnected.
+
+## Deployed on 28 October
+
+Backups in `D:\Jeux\Aionackup-before-upstream-merge-2026-10-28` (the three servers' libs and config, and `aion_gs.sql`, dumped with the server stopped).
+Order: build, stop the three servers, dump, upstream's SQL, `sync-install.ps1 -Apply`, the two files edited in the install merged by hand, `deploy.ps1
+-SkipBuild`, `start-server.ps1`. Met on the way: the dump needs `--skip-lock-tables --no-tablespaces` for this database user; the chat and login
+servers load their own copy of the commons jar, which nothing copied (now `sync-install.ps1` does, with the login server's jar); and a jar built in a
+worktree names the main checkout's revision (`08a087a`), so the revision is only right after the merge is rebuilt in the main checkout.
+Started with no ERROR line, 959 bots in the world, the game server connected to the login and chat servers.

@@ -115,6 +115,20 @@ foreach ($module in 'game-server', 'login-server', 'chat-server') {
     foreach ($jar in $drop) { Write-Output "REMOVE  $module/libs/$($jar.Name)"; if ($Apply) { Remove-Item $jar.FullName } }
 }
 
+# the modules' own jars: deploy.ps1 carries the game server's and commons into the game server, and the chat server's; but every server loads commons
+# from its own folder, and the login server's jar is nobody's. Left as they were, the chat server met a commons class that did not exist yet (28 October).
+# Built by the caller (mvn package); a jar not built is not touched.
+$commons = Get-ChildItem (Join-Path $repo 'commons\target') -Filter 'commons-*.jar' -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '-(sources|javadoc)\.jar$' } | Select-Object -First 1
+$login = Get-ChildItem (Join-Path $repo 'login-server\target') -Filter 'login-server-*.jar' -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '-(sources|javadoc)\.jar$' } | Select-Object -First 1
+foreach ($own in @(@($commons, 'login-server'), @($commons, 'chat-server'), @($login, 'login-server'))) {
+    $jar, $module = $own
+    if (-not $jar) { continue }
+    $installed = Join-Path $ServerRoot "$module\libs\$($jar.Name)"
+    if ((Test-Path $installed) -and (Get-FileHash $installed).Hash -eq (Get-FileHash $jar.FullName).Hash) { continue }
+    Write-Output "OWN     $module/libs/$($jar.Name)"
+    if ($Apply) { Copy-Item $jar.FullName (Split-Path -Parent $installed) -Force }
+}
+
 # ---- SQL --------------------------------------------------------------------------------------------------------------------------------------
 # the merged update.sql is upstream's statements and then the bot tables (which SchemaUpdater creates by itself); the first are the ones to run
 git -C $repo diff --quiet $From $To -- game-server/sql/update.sql
