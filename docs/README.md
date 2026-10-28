@@ -107,6 +107,7 @@ History: [navigation-prototype.md](navigation/history/navigation-prototype.md) (
 
 | File | What it holds |
 |---|---|
+| [how-it-works.md](flight/how-it-works.md) | **How a bot flies today**: what the engine leaves to the client, when a bot leaves the ground, Reshanta, the limits. |
 | [plans/abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md) | Flight links between Reshanta's islands. In progress: 1 to 5 built, 6 not started. |
 | [plans/flying-with-a-player-plan.md](flight/plans/flying-with-a-player-plan.md) | The 19 October report. In progress: 1 to 5 validated, 6 waits on the tester. |
 
