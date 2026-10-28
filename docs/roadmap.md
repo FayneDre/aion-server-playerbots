@@ -11,9 +11,9 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 0. **Feedback as it comes**: the user reports from the game while playing; each plan's Status line says what has been seen. On 27 October
    everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion.
-1. **Upstream**: `4.8` is 69 commits behind `beyond-aion` (28 October). A trial merge: 10 small conflicts, and the per-map death levels
-   removed upstream, which `BotFlight` reads; the user decides when. The module structure plan is done
-   ([module-structure-plan.md](architecture/history/module-structure-plan.md), five steps, the last validated on 28 October).
+1. **Done on 28 October**: the module structure plan ([module-structure-plan.md](architecture/history/module-structure-plan.md), five steps) and the
+   merge of 69 upstream commits ([upstream-merge-plan.md](architecture/history/upstream-merge-plan.md)), both measured. Next merge: when `4.8` has moved,
+   then `tools/sync-install.ps1` for the install and the SQL; the sooner, the smaller.
 2. **Navigation**, the user's priority: the six points in [navigation-backlog.md](navigation/backlog.md), long journeys first
    (agreed 25 October), then sliding, obstacles, gliding, parasitic moves, dungeons.
 3. **A world alive with or without a player**, a lead to explore within the 2560 MB heap: density independent of who is online, sleepers living

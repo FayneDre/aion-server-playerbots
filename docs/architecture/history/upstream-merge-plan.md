@@ -1,6 +1,6 @@
 # Merging the upstream into the bot branch
 
-Status: in progress: merged, tested and deployed on 28 October 2026 (branch `merge/upstream-2026-10`, 442 tests); to be checked in game, then measured.
+Status: done; merged, deployed, checked in game and measured on 28 October 2026 (442 tests).
 
 `4.8` was 69 commits behind `beyond-aion/aion-server` (the last one of 28 October, 1515 files). A trial merge in a throwaway worktree gave 10 small
 conflicts out of 30 files touched on both sides, and a compile that fails on 7 changes of interface. Nothing pushed without the user's decision.
@@ -62,3 +62,13 @@ Order: build, stop the three servers, dump, upstream's SQL, `sync-install.ps1 -A
 servers load their own copy of the commons jar, which nothing copied (now `sync-install.ps1` does, with the login server's jar); and a jar built in a
 worktree names the main checkout's revision (`08a087a`), so the revision is only right after the merge is rebuilt in the main checkout.
 Started with no ERROR line, 959 bots in the world, the game server connected to the login and chat servers.
+
+## Checked and measured
+
+In game, by the user: the client connects, a flight and a landing, a purchase from a merchant, a group with a bot; nothing out of the ordinary. Measured
+19:46-20:16 (15 minutes after the start) with a player in game, against the two baselines of 27 October and the step 5 window: 13 of 17 counters
+inside the band; out of it, below, `back to camp after 3` 4 (7), `errands given up` 62 (72 to 78), `rescue teleports` 33 (37 to 43) and `routes with
+a glide` 0 (9 and 13). The glide counter is made by two to four bots a window (6 of 9, 8 of 13, 5 of 11 are one bot each), so it follows where
+those bots stand after a restart: 8 glides were planned in the first nine minutes, and the sampled give-up journeys replayed offline plan the same
+way with the old and the new jar. Channel lines 65 and 52, as before. No ERROR line from the start. The heap held 2.0 of 2.5 GB.
+Merged into `feature/playerbots` by fast-forward; `4.8` follows `upstream/4.8`. The jars name revision `08a087a`: the next deploy corrects it.

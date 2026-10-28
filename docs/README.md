@@ -32,9 +32,9 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 |---|---|
 | [how-it-works.md](architecture/how-it-works.md) | Why bots are real `Player` objects, the core patches (`setAi`, `setMoveController`), the package layout, the reuse map. |
 | [moving-a-body.md](architecture/moving-a-body.md) | Driving a body from the server: what a movement packet carries, how often, and the task manager that drops a body that arrived. |
-| [plans/upstream-merge-plan.md](architecture/plans/upstream-merge-plan.md) | Merging 69 upstream commits into the bot branch: the trial, the steps. In progress. |
 
-History: [module-structure-plan.md](architecture/history/module-structure-plan.md) (the module untangled before navigation went further, five steps, each measured),
+History: [upstream-merge-plan.md](architecture/history/upstream-merge-plan.md) (69 upstream commits merged on 28 October: the trial, the install, the measure),
+[module-structure-plan.md](architecture/history/module-structure-plan.md) (the module untangled before navigation went further, five steps, each measured),
 [test-harness-plan.md](architecture/history/test-harness-plan.md) (notes in the log, feedback zips, patch tags, the command inbox).
 
 ## Traps — [traps/](traps/)
