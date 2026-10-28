@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.utils.PositionUtil;
+import com.aionemu.gameserver.world.zone.ZoneAttributes;
 
 /**
  * Where people gather on a map.
@@ -933,7 +934,7 @@ public class BotPlaces {
 	 */
 	private static List<ZoneInfo> flyZonesOf(int worldId, Vector3f spot) {
 		List<ZoneInfo> inside = new ArrayList<>();
-		List<ZoneInfo> zones = DataManager.ZONE_DATA.getZones().get(worldId);
+		List<ZoneInfo> zones = DataManager.ZONE_DATA.getZones(worldId);
 		if (zones == null)
 			return inside;
 		for (ZoneInfo zone : zones) {
@@ -977,7 +978,7 @@ public class BotPlaces {
 	 *         134 places siege ground.
 	 */
 	public static boolean isSiegeGround(int worldId, float x, float y, float z) {
-		List<ZoneInfo> zones = DataManager.ZONE_DATA.getZones().get(worldId);
+		List<ZoneInfo> zones = DataManager.ZONE_DATA.getZones(worldId);
 		if (zones == null)
 			return false;
 		for (ZoneInfo zone : zones) {
@@ -990,7 +991,7 @@ public class BotPlaces {
 	/** @return true if the map allows flight everywhere, which is how the Abyss works, rather than in zones drawn on it. */
 	private static boolean isFlownEverywhere(int worldId) {
 		WorldMapTemplate map = DataManager.WORLD_MAPS_DATA.getTemplate(worldId);
-		return map != null && map.isFly();
+		return map != null && map.hasAttribute(ZoneAttributes.FLY);
 	}
 
 	/**

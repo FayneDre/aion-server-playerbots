@@ -33,4 +33,17 @@ class BotFlightTest {
 	void aNegativeRollIsNotAnError() {
 		assertDoesNotThrow(() -> BotFlight.worthFlyingTo(120f, -17));
 	}
+
+	@Test
+	void theMapsThatHadADeathLevelKeepIt() {
+		assertEquals(400, BotFlight.deathLevelOf(400437));
+		assertEquals(560, BotFlight.deathLevelOf(404051));
+		assertEquals(42, BotFlight.deathLevelOf(400840));
+	}
+
+	@Test
+	void aMapWithNoDeathLevelHasNone() {
+		assertEquals(0, BotFlight.deathLevelOf(400010000), "the Abyss never had one: its void is the bottom of the map");
+		assertEquals(0, BotFlight.deathLevelOf(110010000));
+	}
 }

@@ -49,7 +49,7 @@ public class PortalService {
 	public static void port(PortalPath portalPath, Player player, Npc npc, byte difficult) {
 		PortalLoc loc = DataManager.PORTAL_LOC_DATA.getPortalLoc(portalPath.getLocId());
 		if (loc == null) {
-			log.warn("No portal loc for locId " + portalPath.getLocId());
+			log.warn("No portal loc for locId {}", portalPath.getLocId());
 			return;
 		}
 
@@ -105,6 +105,8 @@ public class PortalService {
 				return;
 			}
 		} else if (player.getWorldId() != mapId || player.getInstanceId() != instance.getInstanceId()) {
+			if (!instance.getInstanceHandler().canEnter(player))
+				return;
 			reenter = true;
 		}
 

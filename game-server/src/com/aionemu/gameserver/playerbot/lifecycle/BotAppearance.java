@@ -56,7 +56,7 @@ public class BotAppearance {
 		appearance.setHairRGB(stored(HAIR_COLOURS[RANDOM.nextInt(HAIR_COLOURS.length)]));
 		appearance.setLipRGB(stored(PLAIN_LIPS));
 		appearance.setEyeRGB(stored(PLAIN_EYES));
-		appearance.setHeight(SHORTEST);
+		appearance.setHeightScale(SHORTEST);
 		// everything else is left at zero on purpose: zero is the middle of each slider, which is a face with no exaggeration anywhere
 		return vary(appearance);
 	}
@@ -92,15 +92,15 @@ public class BotAppearance {
 		appearance.setCheek(nudge(appearance.getCheek()));
 		appearance.setMouthSize(nudge(appearance.getMouthSize()));
 		appearance.setLipSize(nudge(appearance.getLipSize()));
-		appearance.setJawHeigh(nudge(appearance.getJawHeigh()));
-		appearance.setChinJut(nudge(appearance.getChinJut()));
+		appearance.setChinHeight(nudge(appearance.getChinHeight()));
+		appearance.setCheekBones(nudge(appearance.getCheekBones()));
 		appearance.setShoulders(nudge(appearance.getShoulders()));
 		appearance.setTorso(nudge(appearance.getTorso()));
 		appearance.setWaist(nudge(appearance.getWaist()));
 		appearance.setArmThickness(nudge(appearance.getArmThickness()));
 		appearance.setLegThickness(nudge(appearance.getLegThickness()));
 
-		appearance.setHeight(SHORTEST + RANDOM.nextFloat() * (TALLEST - SHORTEST));
+		appearance.setHeightScale(SHORTEST + RANDOM.nextFloat() * (TALLEST - SHORTEST));
 		return appearance;
 	}
 

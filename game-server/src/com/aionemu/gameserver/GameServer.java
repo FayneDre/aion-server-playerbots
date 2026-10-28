@@ -109,7 +109,6 @@ public class GameServer {
 		// ZoneService.getInstance().saveMaterialZones();
 
 		World.getInstance();
-		GameTimeService.getInstance();
 
 		DropRegistrationService.getInstance();
 
@@ -190,7 +189,7 @@ public class GameServer {
 		Runtime.getRuntime().addShutdownHook(ShutdownHook.getInstance());
 		ShutdownRequestWatcher.start();
 		PlayerBotService.getInstance().onStartUp(); // bots have no connection, so nothing else ever puts them back into the world
-		log.info("Game server started in " + (System.currentTimeMillis() / 1000 - START_TIME_SECONDS) + " seconds.");
+		log.info("Game server started in {} seconds", System.currentTimeMillis() / 1000 - START_TIME_SECONDS);
 
 		LoginServer.getInstance().connect(nioServer);
 		if (GSConfig.ENABLE_CHAT_SERVER)
@@ -257,7 +256,7 @@ public class GameServer {
 			return false;
 		staffClients.forEach(c -> {
 			if (c.getState() == AionConnection.State.IN_GAME)
-				PacketSendUtility.sendPacket(c.getActivePlayer(), new SM_QUIT_RESPONSE(true));
+				PacketSendUtility.sendPacket(c.getActivePlayer(), SM_QUIT_RESPONSE.quitToEditScreen());
 			LoginServer.getInstance().requestAuthReconnection(c.getAccount().getId(), c);
 		});
 		return true;
@@ -299,7 +298,7 @@ public class GameServer {
 			lock.unlock();
 		}
 
-		log.info("FACTIONS RATIO UPDATED: E " + String.format("%.1f", ELYOS_RATIO) + " % / A " + String.format("%.1f", ASMOS_RATIO) + " %");
+		log.info("FACTIONS RATIO UPDATED: E {} % / A {} %", String.format("%.1f", ELYOS_RATIO), String.format("%.1f", ASMOS_RATIO));
 	}
 
 	public static float getRatiosFor(Race race) {

@@ -39,7 +39,7 @@ import com.aionemu.gameserver.utils.collections.DynamicServerPacketBodySplitList
 import com.aionemu.gameserver.utils.collections.SplitList;
 import com.aionemu.gameserver.utils.stats.AbyssRankEnum;
 import com.aionemu.gameserver.world.World;
-import com.aionemu.gameserver.world.zone.ZoneName;
+import com.aionemu.gameserver.world.zone.ZoneInstance;
 
 /**
  * @author MrPoke, Hilgert, vlog, Neon
@@ -59,8 +59,8 @@ public class QuestEngine implements GameEngine {
 	private final List<Integer> questOnDie = new ArrayList<>();
 	private final List<Integer> questOnLogOut = new ArrayList<>();
 	private final List<Integer> questOnEnterWorld = new ArrayList<>();
-	private final Map<ZoneName, List<Integer>> questOnEnterZone = new HashMap<>();
-	private final Map<ZoneName, List<Integer>> questOnLeaveZone = new HashMap<>();
+	private final Map<String, List<Integer>> questOnEnterZone = new HashMap<>();
+	private final Map<String, List<Integer>> questOnLeaveZone = new HashMap<>();
 	private final Map<String, List<Integer>> questOnPassFlyingRings = new HashMap<>();
 	private final List<Integer> questOnTimerEnd = new ArrayList<>();
 	private final List<Integer> onInvisibleTimerEnd = new ArrayList<>();
@@ -76,6 +76,7 @@ public class QuestEngine implements GameEngine {
 	private final List<Integer> reachTarget = new ArrayList<>();
 	private final List<Integer> lostTarget = new ArrayList<>();
 	private final List<Integer> questOnEnterWindStream = new ArrayList<>();
+	private final List<Integer> questOnFlightPathEnd = new ArrayList<>();
 	private final List<Integer> questRideAction = new ArrayList<>();
 	private final Map<String, List<Integer>> questOnKillInZone = new HashMap<>();
 
@@ -103,7 +104,7 @@ public class QuestEngine implements GameEngine {
 		scriptManager.load(GSConfig.QUEST_HANDLER_DIRECTORY);
 		for (XMLQuest xmlQuest : DataManager.XML_QUESTS.getAllQuests())
 			xmlQuest.register(this);
-		log.info("Loaded " + questHandlers.size() + " quest handlers.");
+		log.info("Loaded {} quest handlers", questHandlers.size());
 		if (GSConfig.ANALYZE_QUESTHANDLERS)
 			ThreadPoolManager.getInstance().executeLongRunning(() -> QuestSpawnAnalyzer.run(questHandlers.values(), questNpcs.values(), true));
 		addMessageSendingTask();
@@ -145,6 +146,7 @@ public class QuestEngine implements GameEngine {
 		reachTarget.clear();
 		lostTarget.clear();
 		questOnEnterWindStream.clear();
+		questOnFlightPathEnd.clear();
 		questRideAction.clear();
 		questHandlers.clear();
 	}
@@ -444,15 +446,15 @@ public class QuestEngine implements GameEngine {
 		return true;
 	}
 
-	public boolean onKillInZone(QuestEnv env, String zoneName) {
+	public boolean onKillInZone(QuestEnv env, ZoneInstance zone) {
 		try {
-			List<Integer> questIds = questOnKillInZone.get(zoneName);
+			List<Integer> questIds = questOnKillInZone.get(zone.getZoneTemplate().getName());
 			if (questIds != null) {
 				for (int questId : questIds) {
 					AbstractQuestHandler questHandler = getQuestHandlerByQuestId(questId);
 					if (questHandler != null) {
 						env.setQuestId(questId);
-						questHandler.onKillInZoneEvent(env);
+						questHandler.onKillInZoneEvent(env, zone);
 					}
 				}
 			}
@@ -463,15 +465,15 @@ public class QuestEngine implements GameEngine {
 		return true;
 	}
 
-	public boolean onEnterZone(QuestEnv env, ZoneName zoneName) {
+	public boolean onEnterZone(QuestEnv env, ZoneInstance zone) {
 		try {
-			List<Integer> questIds = questOnEnterZone.get(zoneName);
+			List<Integer> questIds = questOnEnterZone.get(zone.getZoneTemplate().getName());
 			if (questIds != null) {
 				for (int questId : questIds) {
 					AbstractQuestHandler questHandler = getQuestHandlerByQuestId(questId);
 					if (questHandler != null) {
 						env.setQuestId(questId);
-						questHandler.onEnterZoneEvent(env, zoneName);
+						questHandler.onEnterZoneEvent(env, zone);
 					}
 				}
 			}
@@ -482,15 +484,15 @@ public class QuestEngine implements GameEngine {
 		return true;
 	}
 
-	public boolean onLeaveZone(QuestEnv env, ZoneName zoneName) {
+	public boolean onLeaveZone(QuestEnv env, ZoneInstance zone) {
 		try {
-			List<Integer> questIds = questOnLeaveZone.get(zoneName);
+			List<Integer> questIds = questOnLeaveZone.get(zone.getZoneTemplate().getName());
 			if (questIds != null) {
 				for (int questId : questIds) {
 					AbstractQuestHandler questHandler = getQuestHandlerByQuestId(questId);
 					if (questHandler != null) {
 						env.setQuestId(questId);
-						questHandler.onLeaveZoneEvent(env, zoneName);
+						questHandler.onLeaveZoneEvent(env, zone);
 					}
 				}
 			}
@@ -690,6 +692,20 @@ public class QuestEngine implements GameEngine {
 		}
 	}
 
+	public void onFlightPathEnd(QuestEnv env, int teleportId) {
+		try {
+			for (int questId : questOnFlightPathEnd) {
+				AbstractQuestHandler questHandler = getQuestHandlerByQuestId(questId);
+				if (questHandler != null) {
+					env.setQuestId(questId);
+					questHandler.onFlightPathEndEvent(env, teleportId);
+				}
+			}
+		} catch (Exception ex) {
+			log.error("QE: exception in onFlightPathEnd", ex);
+		}
+	}
+
 	public void rideAction(QuestEnv env, int itemId) {
 		try {
 			for (int questId : questRideAction) {
@@ -777,16 +793,19 @@ public class QuestEngine implements GameEngine {
 			questOnLogOut.add(questId);
 	}
 
-	public void registerOnEnterZone(ZoneName zoneName, int questId) {
-		questOnEnterZone.computeIfAbsent(zoneName, k -> new ArrayList<>()).add(questId);
+	public void registerOnEnterZone(String zoneName, int questId) {
+		if (DataManager.ZONE_DATA.validateZoneName(zoneName))
+			questOnEnterZone.computeIfAbsent(zoneName, _ -> new ArrayList<>()).add(questId);
 	}
 
-	public void registerOnKillInZone(String zone, int questId) {
-		questOnKillInZone.computeIfAbsent(zone, k -> new ArrayList<>()).add(questId);
+	public void registerOnKillInZone(String zoneName, int questId) {
+		if (DataManager.ZONE_DATA.validateZoneName(zoneName))
+			questOnKillInZone.computeIfAbsent(zoneName, _ -> new ArrayList<>()).add(questId);
 	}
 
-	public void registerOnLeaveZone(ZoneName zoneName, int questId) {
-		questOnLeaveZone.computeIfAbsent(zoneName, k -> new ArrayList<>()).add(questId);
+	public void registerOnLeaveZone(String zoneName, int questId) {
+		if (DataManager.ZONE_DATA.validateZoneName(zoneName))
+			questOnLeaveZone.computeIfAbsent(zoneName, _ -> new ArrayList<>()).add(questId);
 	}
 
 	public void registerOnKillRanked(AbyssRankEnum playerRank, int questId) {
@@ -830,7 +849,7 @@ public class QuestEngine implements GameEngine {
 	public boolean registerCanAct(int questId, int npcId) {
 		NpcTemplate template = DataManager.NPC_DATA.getNpcTemplate(npcId);
 		if (template == null) {
-			log.warn("[QuestEngine] No such NPC template for " + npcId + " in Q" + questId);
+			log.warn("[QuestEngine] No such NPC template for {} in Q{}", npcId, questId);
 			return false;
 		}
 		if ("quest_use_item".equals(template.getAiName())) {
@@ -864,6 +883,11 @@ public class QuestEngine implements GameEngine {
 			questOnEnterWindStream.add(questId);
 	}
 
+	public void registerOnFlightPathEnd(int questId) {
+		if (!questOnFlightPathEnd.contains(questId))
+			questOnFlightPathEnd.add(questId);
+	}
+
 	public void registerOnRide(int questId) {
 		if (!questRideAction.contains(questId))
 			questRideAction.add(questId);
@@ -892,7 +916,7 @@ public class QuestEngine implements GameEngine {
 	public void addQuestHandler(AbstractQuestHandler questHandler) {
 		int questId = questHandler.getQuestId();
 		if (questHandlers.putIfAbsent(questId, questHandler) != null)
-			log.warn("Duplicate handler for quest: " + questId);
+			log.warn("Duplicate handler for quest: {}", questId);
 		else
 			questHandler.register();
 	}

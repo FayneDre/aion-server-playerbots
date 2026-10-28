@@ -4,8 +4,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.bind.Unmarshaller;
-import javax.xml.bind.annotation.*;
+import jakarta.xml.bind.Unmarshaller;
+import jakarta.xml.bind.annotation.*;
 
 import com.aionemu.gameserver.model.templates.pet.PetBuff;
 
@@ -30,7 +30,6 @@ public class PetBuffsData {
 		for (PetBuff buff : buffs)
 			petBuffsById.put(buff.getId(), buff);
 
-		buffs.clear();
 		buffs = null;
 	}
 

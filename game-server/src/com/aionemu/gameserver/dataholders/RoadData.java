@@ -1,13 +1,11 @@
 package com.aionemu.gameserver.dataholders;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 import com.aionemu.gameserver.model.templates.road.RoadTemplate;
 
@@ -22,24 +20,10 @@ public class RoadData {
 	private List<RoadTemplate> roadTemplates;
 
 	public int size() {
-		if (roadTemplates == null) {
-			roadTemplates = new ArrayList<>();
-			return 0;
-		}
-		return roadTemplates.size();
+		return getRoadTemplates().size();
 	}
 
 	public List<RoadTemplate> getRoadTemplates() {
-		if (roadTemplates == null) {
-			return new ArrayList<>();
-		}
-		return roadTemplates;
-	}
-
-	public void addAll(Collection<RoadTemplate> templates) {
-		if (roadTemplates == null) {
-			roadTemplates = new ArrayList<>();
-		}
-		roadTemplates.addAll(templates);
+		return roadTemplates == null ? List.of() : roadTemplates;
 	}
 }

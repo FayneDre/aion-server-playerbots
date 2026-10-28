@@ -26,7 +26,6 @@ import com.aionemu.gameserver.model.templates.quest.QuestCategory;
 import com.aionemu.gameserver.model.templates.quest.QuestItems;
 import com.aionemu.gameserver.model.templates.quest.Rewards;
 import com.aionemu.gameserver.model.templates.tradelist.TradeListTemplate;
-import com.aionemu.gameserver.model.templates.tradelist.TradeListTemplate.TradeTab;
 import com.aionemu.gameserver.model.templates.tradelist.TradeNpcType;
 
 /**
@@ -97,8 +96,8 @@ public class BotGearSources {
 			for (TradeListTemplate tradeList : DataManager.TRADE_LIST_DATA.getTradeListTemplate().values()) {
 				if (tradeList.getTradeNpcType() != TradeNpcType.NORMAL)
 					continue;
-				for (TradeTab tab : tradeList.getTradeTablist()) {
-					GoodsList goods = DataManager.GOODSLIST_DATA.getGoodsListById(tab.getId());
+				for (int tabId : tradeList.getTradeTabIds()) {
+					GoodsList goods = DataManager.GOODSLIST_DATA.getGoodsListById(tabId);
 					if (goods != null && goods.getItemIdList() != null)
 						found.addAll(goods.getItemIdList());
 				}
@@ -238,8 +237,8 @@ public class BotGearSources {
 		for (TradeListTemplate tradeList : DataManager.TRADE_LIST_DATA.getTradeListTemplate().values()) {
 			NpcTemplate seller = DataManager.NPC_DATA.getNpcTemplate(tradeList.getNpcId());
 			Source source = new Source(seller == null ? Race.PC_ALL : playerRaceOf(seller.getRace()), 0);
-			for (TradeTab tab : tradeList.getTradeTablist()) {
-				GoodsList goods = DataManager.GOODSLIST_DATA.getGoodsListById(tab.getId());
+			for (int tabId : tradeList.getTradeTabIds()) {
+				GoodsList goods = DataManager.GOODSLIST_DATA.getGoodsListById(tabId);
 				if (goods == null || goods.getItemIdList() == null)
 					continue;
 				for (Integer itemId : goods.getItemIdList())

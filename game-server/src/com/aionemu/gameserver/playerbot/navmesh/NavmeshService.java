@@ -28,6 +28,7 @@ import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.World;
 import com.aionemu.gameserver.world.WorldMap;
 import com.aionemu.gameserver.world.geo.GeoService;
+import com.aionemu.gameserver.world.zone.ZoneAttributes;
 
 /**
  * Serves generated maps to the bots that need them.
@@ -163,7 +164,7 @@ public class NavmeshService {
 	 */
 	private Dangers dangersFor(Player bot) {
 		WorldMap map = World.getInstance().getWorldMap(bot.getWorldId());
-		if (map == null || !map.isFlightAllowed() || bot.getPosition() == null || bot.getPosition().getWorldMapInstance() == null)
+		if (map == null || !map.getTemplate().hasAttribute(ZoneAttributes.FLY) || bot.getPosition() == null || bot.getPosition().getWorldMapInstance() == null)
 			return Dangers.NONE;
 		// a walk over every npc of the map, asked by every route of every bot: remembered a few seconds per map, side and level, which is what it turns on
 		String key = bot.getWorldId() + ":" + bot.getPosition().getInstanceId() + ":" + bot.getRace() + ":" + bot.getLevel();

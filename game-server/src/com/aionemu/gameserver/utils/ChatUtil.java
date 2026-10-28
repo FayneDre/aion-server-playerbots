@@ -33,6 +33,7 @@ public class ChatUtil {
 	private static final DecimalFormat DF = (DecimalFormat) DecimalFormat.getInstance(Locale.US);
 	private static final char ASMO_NAME_PREFIX = '\uE053';
 	private static final char ELYOS_NAME_PREFIX = '\uE052';
+	private static final char CONTINUATION_MARK = '\u200B'; // zero-width space, which our client mod detects to skip the chat time prefix
 
 	static {
 		DF.applyPattern(".##");
@@ -70,7 +71,7 @@ public class ChatUtil {
 	 * @return The color encoded message.
 	 */
 	public static String color(String message, int r, int g, int b) {
-		return String.format("[color:%s;%s %s %s]", message, DF.format(r / 255f), DF.format(g / 255f), DF.format(b / 255f));
+		return "[color:%s;%s %s %s]".formatted(message, DF.format(r / 255f), DF.format(g / 255f), DF.format(b / 255f));
 	}
 
 	/**
@@ -78,14 +79,14 @@ public class ChatUtil {
 	 *         spaces, otherwise only the part after the last space will be replaced. Does not work in {@link SM_MESSAGE}
 	 */
 	public static String genderize(String wordForMales, String textForFemales) {
-		return String.format("%s[f:\"%s\"]", wordForMales, textForFemales);
+		return "%s[f:\"%s\"]".formatted(wordForMales, textForFemales);
 	}
 
 	/**
 	 * @return A clickable character name for system {@link ChatType chat types}.<br>
 	 */
 	public static String charName(Player player) {
-		return String.format("[charname:%s;1 1 1]", player.getName(true)); // the 3 parameters are color values, but the client doesn't render them
+		return "[charname:%s;1 1 1]".formatted(player.getName(true)); // the 3 parameters are color values, but the client doesn't render them
 	}
 
 	/**
@@ -132,7 +133,7 @@ public class ChatUtil {
 	 * @return The objects spawn point link, based on its localized name (client does a lookup in its current language)
 	 */
 	public static String path(String npcName) {
-		return String.format("[where:%s]", npcName);
+		return "[where:%s]".formatted(npcName);
 	}
 
 	/**
@@ -141,7 +142,7 @@ public class ChatUtil {
 	 * @return The objects spawn point link, based on its ID.
 	 */
 	public static String path(String linkName, int npcId) {
-		return String.format("[where:%s;%d]", linkName, npcId);
+		return "[where:%s;%d]".formatted(linkName, npcId);
 	}
 
 	public static String position(String label, WorldPosition pos) {
@@ -158,7 +159,7 @@ public class ChatUtil {
 			else
 				subId = 1; // lower
 		}
-		return String.format("[pos:%s;%d %s %s %s %d]", label, worldId, DF.format(x), DF.format(y), DF.format(z), subId);
+		return "[pos:%s;%d %s %s %s %d]".formatted(label, worldId, DF.format(x), DF.format(y), DF.format(z), subId);
 	}
 
 	/**
@@ -231,19 +232,31 @@ public class ChatUtil {
 	}
 
 	public static String item(int itemId) {
-		return String.format("[item:%d]", itemId);
+		return "[item:%d]".formatted(itemId);
 	}
 
-	public static String itemName(int itemId) {
-		return String.format("[item_ex:%d]", itemId);
+	/**
+	 * @return A tag that prints the localized item name in chat.<br>
+	 * The playerName parameter is relevant for crafted items that carry the player's name, such as {@code [item_ex:100200836;Ownername]}.
+	 */
+	public static String itemName(int itemId, String playerName) {
+		return "[item_ex:%d;%s]".formatted(itemId, playerName);
 	}
 
 	public static String recipe(int recipeId) {
-		return String.format("[recipe:%d]", recipeId);
+		return "[recipe:%d]".formatted(recipeId);
+	}
+
+	/**
+	 * @return A tag that prints the localized recipe name in chat.<br>
+	 * The playerName parameter is relevant for recipes that carry the player's name, such as {@code [recipe_ex:155006741;Ownername]}.
+	 */
+	public static String recipeName(int recipeId, String playerName) {
+		return "[recipe_ex:%d;%s]".formatted(recipeId, playerName);
 	}
 
 	public static String quest(int questId) {
-		return String.format("[quest:%d]", questId);
+		return "[quest:%d]".formatted(questId);
 	}
 
 	/**
@@ -347,7 +360,10 @@ public class ChatUtil {
 		List<String> parts = new ArrayList<>();
 		for (int start = 0, length = chatMessage.length(); start < length; ) {
 			int splitIndex = findSplitIndex(chatMessage, start, length);
-			parts.add(chatMessage.substring(start, splitIndex));
+			String messagePart = chatMessage.substring(start, splitIndex);
+			if (start > 0)
+				messagePart = CONTINUATION_MARK + messagePart;
+			parts.add(messagePart);
 			start = splitIndex;
 			if (start < length) {
 				char splitChar = chatMessage.charAt(start);
@@ -359,7 +375,8 @@ public class ChatUtil {
 	}
 
 	private static int findSplitIndex(String chatMessage, int startIndex, int endIndex) {
-		int estimatedDisplayLength = 0;
+		// account for the length of the CONTINUATION_MARK if this is a subsequent part (start > 0)
+		int estimatedDisplayLength = startIndex > 0 ? 1 : 0;
 		int lastNewLineIndex = -1;
 		int lastSpaceIndex = -1;
 		for (int i = startIndex; i < endIndex; i++) {

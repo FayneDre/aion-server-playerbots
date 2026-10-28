@@ -315,7 +315,7 @@ public final class BotChat {
 			ZoneTemplate template = zone.getZoneTemplate();
 			if (template.getZoneType() != ZoneClassName.SUB || template.getName() == null)
 				continue;
-			String name = template.getName().name();
+			String name = template.getName();
 			if (!WORKING_NAME.matcher(name.split("_")[0]).matches())
 				return BotChatLines.placeName(name);
 		}

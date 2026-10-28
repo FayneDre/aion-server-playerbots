@@ -27,6 +27,7 @@ import com.aionemu.gameserver.utils.ThreadPoolManager;
 import com.aionemu.gameserver.world.World;
 import com.aionemu.gameserver.world.WorldMap;
 import com.aionemu.gameserver.world.geo.GeoService;
+import com.aionemu.gameserver.world.zone.ZoneAttributes;
 import com.aionemu.gameserver.world.zone.ZoneInstance;
 
 /**
@@ -809,13 +810,25 @@ public class BotFlight {
 	/** @return true if the bot's map allows flight on the whole of it, which is what the Abyss does instead of drawing fly zones. */
 	static boolean fliesEverywhere(Player bot) {
 		WorldMap map = World.getInstance().getWorldMap(bot.getWorldId());
-		return map != null && map.isFlightAllowed();
+		return map != null && map.getTemplate().hasAttribute(ZoneAttributes.FLY);
+	}
+
+	/**
+	 * The death levels the maps carried in {@code world_maps.xml} until the upstream merge of October 2026, which removed them with the rest of the
+	 * old fall rules. Seven maps had one, none of them an ordinary map; the Abyss never did. The engine's new rule needs the client's move packets,
+	 * which a bot does not send, so a body falling into the void is still ended here, at the same heights as before.
+	 */
+	private static final Map<Integer, Integer> DEATH_LEVELS = Map.of(400437, 400, 400525, 150, 403519, 90, 404051, 560, 404057, 235, 400840, 42, 400720, 500);
+
+	/** @return The height under which a body on the map dies, or 0 on a map with none. */
+	static int deathLevelOf(int worldId) {
+		return DEATH_LEVELS.getOrDefault(worldId, 0);
 	}
 
 	/** @return The lowest a flight may go: the map's death level and a margin over it, or no floor at all on a map with none. */
 	static float floorOf(Player bot) {
-		WorldMap map = World.getInstance().getWorldMap(bot.getWorldId());
-		return map == null || map.getDeathLevel() <= 0 ? -Float.MAX_VALUE : map.getDeathLevel() + ABOVE_THE_VOID;
+		int deathLevel = deathLevelOf(bot.getWorldId());
+		return deathLevel <= 0 ? -Float.MAX_VALUE : deathLevel + ABOVE_THE_VOID;
 	}
 
 	private void step() {
@@ -1149,7 +1162,7 @@ public class BotFlight {
 	 * where {@link #finish} lets the engine's own rule decide, as {@code ZoneLevelService} does for a player.
 	 */
 	private void fallIntoTheVoid(String why) {
-		float bottom = World.getInstance().getWorldMap(bot.getWorldId()).getDeathLevel() - BELOW_THE_DEATH_LEVEL;
+		float bottom = deathLevelOf(bot.getWorldId()) - BELOW_THE_DEATH_LEVEL;
 		log.info("Bot {} falls into the void from {} {} z {} because {}, and nothing is under it", bot.getName(), Math.round(bot.getX()),
 			Math.round(bot.getY()), bot.getZ(), why);
 		powerless = true;
@@ -1217,7 +1230,7 @@ public class BotFlight {
 		inTheAir.remove(bot.getObjectId());
 		if (bot.isFlying())
 			bot.getFlyController().endFly(true);
-		if (falling && !bot.isDead() && bot.getZ() < World.getInstance().getWorldMap(bot.getWorldId()).getDeathLevel()) {
+		if (falling && !bot.isDead() && bot.getZ() < deathLevelOf(bot.getWorldId())) {
 			// the engine's own rule for a body under the death level, applied now rather than whenever its zone check next comes round
 			log.info("Bot {} fell into the void after {} s", bot.getName(), (System.currentTimeMillis() - takenOffAt) / 1000f);
 			bot.getController().die();

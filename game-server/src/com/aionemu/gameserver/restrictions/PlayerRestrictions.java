@@ -32,7 +32,6 @@ import com.aionemu.gameserver.skillengine.model.SkillType;
 import com.aionemu.gameserver.skillengine.model.TransformType;
 import com.aionemu.gameserver.utils.PacketSendUtility;
 import com.aionemu.gameserver.utils.audit.AuditLogger;
-import com.aionemu.gameserver.world.zone.ZoneName;
 
 /**
  * @author lord_rex, Sippolo
@@ -224,7 +223,7 @@ public class PlayerRestrictions {
 			return false;
 		}
 
-		if (!(target instanceof Creature creature) || creature.isDead() || creature.getLifeStats().isAboutToDie()) {
+		if (!(target instanceof Creature creature) || creature.isDead() || creature.getLifeStats().isAboutToDie() || !player.canTarget(creature)) {
 			PacketSendUtility.sendPacket(player, SM_ATTACK_RESPONSE.STOP_INVALID_TARGET(player.getGameStats().getAttackCounter()));
 			return false;
 		}
@@ -316,12 +315,9 @@ public class PlayerRestrictions {
 			}
 		}
 
-		if (item.getItemTemplate().hasAreaRestriction()) {
-			ZoneName restriction = item.getItemTemplate().getUseArea();
-			if (!player.isInsideItemUseZone(restriction)) {
-				PacketSendUtility.sendPacket(player, SM_SYSTEM_MESSAGE.STR_CANNOT_USE_ITEM_INVALID_LOCATION());
-				return false;
-			}
+		if (item.getItemTemplate().hasAreaRestriction() && !player.isInsideItemUseZone(item.getItemTemplate().getUseArea())) {
+			PacketSendUtility.sendPacket(player, SM_SYSTEM_MESSAGE.STR_CANNOT_USE_ITEM_INVALID_LOCATION());
+			return false;
 		}
 
 		if (!item.getItemTemplate().isClassSpecific(player.getCommonData().getPlayerClass())) {

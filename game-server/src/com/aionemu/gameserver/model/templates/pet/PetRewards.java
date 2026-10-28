@@ -1,13 +1,8 @@
 package com.aionemu.gameserver.model.templates.pet;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.*;
 
 /**
  * @author Rolandas
@@ -26,10 +21,7 @@ public class PetRewards {
 	protected boolean loved = false;
 
 	public List<PetFeedResult> getResults() {
-		if (results == null) {
-			results = new ArrayList<>();
-		}
-		return this.results;
+		return results == null ? List.of() : results;
 	}
 
 	public FoodType getType() {

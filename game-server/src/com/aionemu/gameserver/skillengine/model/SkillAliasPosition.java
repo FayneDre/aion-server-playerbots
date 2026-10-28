@@ -1,9 +1,9 @@
 package com.aionemu.gameserver.skillengine.model;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlAttribute;
+import jakarta.xml.bind.annotation.XmlType;
 
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "alias_pos")
@@ -15,6 +15,8 @@ public class SkillAliasPosition {
     private float y;
     @XmlAttribute(name = "z", required = true)
     private float z;
+    @XmlAttribute(name = "h")
+    private byte h;
 
     public float getX() {
         return x;
@@ -26,5 +28,9 @@ public class SkillAliasPosition {
 
     public float getZ() {
         return z;
+    }
+
+    public byte getHeading() {
+        return h;
     }
 }

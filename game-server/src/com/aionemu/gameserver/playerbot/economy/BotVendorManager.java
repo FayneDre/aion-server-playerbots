@@ -28,7 +28,6 @@ import com.aionemu.gameserver.model.templates.item.actions.AbstractItemAction;
 import com.aionemu.gameserver.model.templates.item.actions.ItemActions;
 import com.aionemu.gameserver.model.templates.item.actions.SkillUseAction;
 import com.aionemu.gameserver.model.templates.tradelist.TradeListTemplate;
-import com.aionemu.gameserver.model.templates.tradelist.TradeListTemplate.TradeTab;
 import com.aionemu.gameserver.model.templates.tradelist.TradeNpcType;
 import com.aionemu.gameserver.model.trade.TradeItem;
 import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
@@ -341,25 +340,25 @@ public class BotVendorManager {
 		if (kinds > 0) {
 			// Asked for in full first, and then for one of each. The price is the engine's to work out -- it reads the vendor's own rate and the
 			// server's modifier -- so rather than copy that sum here and watch it drift, the purse is tested by offering the order and seeing.
-			if (TradeService.performBuyFromShop(vendor, bot, order))
+			if (TradeService.buyFromShop(vendor, bot, order))
 				bought = kinds;
 			else {
 				TradeList smaller = new TradeList();
 				for (TradeItem item : order.getTradeItems())
 					smaller.addItem(item.getItemId(), 1);
-				bought = TradeService.performBuyFromShop(vendor, bot, smaller) ? kinds : 0;
+				bought = TradeService.buyFromShop(vendor, bot, smaller) ? kinds : 0;
 			}
 		}
 		bought += buySerums(bot, vendor, onSale); // after the flasks, which matter more and are paid for first
 		TradeList shards = new TradeList(); // an order of their own, for the reason the serums have one
 		if (BotPowerShards.addToOrder(bot, shards, onSale)) {
-			if (TradeService.performBuyFromShop(vendor, bot, shards))
+			if (TradeService.buyFromShop(vendor, bot, shards))
 				bought++;
 			else { // a purse too light for the whole order still buys a few
 				TradeList fewer = new TradeList();
 				for (TradeItem item : shards.getTradeItems())
 					fewer.addItem(item.getItemId(), Math.min(item.getCount(), BotPowerShards.SHARDS_AT_LEAST));
-				if (TradeService.performBuyFromShop(vendor, bot, fewer))
+				if (TradeService.buyFromShop(vendor, bot, fewer))
 					bought++;
 			}
 		}
@@ -373,8 +372,8 @@ public class BotVendorManager {
 		if (goods == null || goods.getTradeNpcType() != TradeNpcType.NORMAL)
 			return Set.of();
 		Set<Integer> onSale = new HashSet<>();
-		for (TradeTab tab : goods.getTradeTablist()) {
-			GoodsList list = DataManager.GOODSLIST_DATA.getGoodsListById(tab.getId());
+		for (int tabId : goods.getTradeTabIds()) {
+			GoodsList list = DataManager.GOODSLIST_DATA.getGoodsListById(tabId);
 			if (list != null && list.getItemIdList() != null)
 				onSale.addAll(list.getItemIdList());
 		}
@@ -409,7 +408,7 @@ public class BotVendorManager {
 		TradeList order = new TradeList();
 		if (!bot.getCommonData().isDaeva() || !addToOrder(bot, order, onSale, BotPotionManager.RESTORES_FLIGHT))
 			return 0;
-		return TradeService.performBuyFromShop(vendor, bot, order) ? 1 : 0;
+		return TradeService.buyFromShop(vendor, bot, order) ? 1 : 0;
 	}
 
 	/**
