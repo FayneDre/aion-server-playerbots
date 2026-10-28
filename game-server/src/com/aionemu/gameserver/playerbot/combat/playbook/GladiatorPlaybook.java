@@ -23,7 +23,7 @@ import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
- * How a gladiator plays, after the guide's "Gladiateur 101". The plan, milestone by milestone, is {@code docs/classes/gladiator-plan.md}.
+ * How a gladiator plays, after the guide's "Gladiateur 101". The plan, milestone by milestone, is {@code docs/classes/history/gladiator-plan.md}.
  * <p>
  * Built so far: the bans (milestone 1), the posture (milestone 2), survival (milestone 3), the conditionals (milestone 4), the areas (milestone 5; the
  * bystander rule itself is the generic order's, in {@code BotSkillManager.cast}) and the openers, burst and divine power (milestone 6). The chains' later

@@ -24,7 +24,7 @@ import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
  * What a test session needs from the server besides the bots themselves: a mark in the log where something looked wrong, the revision being tested, and
- * the detail of every cast on demand. The plan is {@code docs/architecture/test-harness-plan.md}.
+ * the detail of every cast on demand. The plan is {@code docs/architecture/history/test-harness-plan.md}.
  */
 public final class BotDiagnostics {
 

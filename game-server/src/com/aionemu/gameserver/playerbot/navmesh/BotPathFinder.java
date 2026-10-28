@@ -17,7 +17,7 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
  * Finds a route over a generated map.
  * <p>
  * A\* over the grid of walkable surfaces, then string pulling to turn the staircase it produces into the handful of waypoints a bot actually walks.
- * Grid A\* is chosen over a polygon navmesh for the reasons in docs/navigation/navmesh-plan.md: far less code, and a result that can be looked at.
+ * Grid A\* is chosen over a polygon navmesh for the reasons in docs/navigation/history/navmesh-plan.md: far less code, and a result that can be looked at.
  */
 public class BotPathFinder {
 

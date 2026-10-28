@@ -1,7 +1,7 @@
 # A bot's career
 
 How a bot gains levels, where it lives as it grows, and what stops it growing out of its region. Split out of
-[population.md](population.md), which it was outgrowing.
+[population.md](how-it-works.md), which it was outgrowing.
 
 `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` **stat**, so a bot's pace is adjustable per character with no core patch. Dwell time is
 therefore the control knob, and it is set to **1%** of the ordinary rate.

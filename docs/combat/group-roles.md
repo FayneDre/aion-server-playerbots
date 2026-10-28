@@ -8,8 +8,8 @@ What a bot's role changes about how it fights, and only ever inside a group. Spl
 
 | Role | Classes | What changes |
 |---|---|---|
-| `TANK` | templar | Roars whenever it can, saves its single target taunts for a monster hitting a mate, and stays on its feet while the group is engaged rather than sitting to heal. Its own rules: [templar-plan.md](../classes/templar-plan.md) |
-| `HEALER` | cleric | Weighs the danger a member is in as well as its health, and joins the attack only with mana to spare. Its heals, cleanses and buffs are the playbook's: [cleric-plan.md](../classes/cleric-plan.md) |
+| `TANK` | templar | Roars whenever it can, saves its single target taunts for a monster hitting a mate, and stays on its feet while the group is engaged rather than sitting to heal. Its own rules: [templar-plan.md](../classes/history/templar-plan.md) |
+| `HEALER` | cleric | Weighs the danger a member is in as well as its health, and joins the attack only with mana to spare. Its heals, cleanses and buffs are the playbook's: [cleric-plan.md](../classes/history/cleric-plan.md) |
 | `SUPPORT` | chanter, songweaver | Tends to the group first, then fights |
 | `DAMAGE` | everything else | Assists the tank's target before the leader's |
 
@@ -54,7 +54,7 @@ Whoever it is on, not the worst case: the aggro list says who is most hated, not
 it merely holds a grudge against — a monster hates everything that has touched it, and answering every grudge would mean taunting things already
 looking at the tank.
 
-A templar also never casts Stubborn Spirit or Bodyguard, and in a group no area attack on enemies other than its own roar: see [templar-plan.md](../classes/templar-plan.md).
+A templar also never casts Stubborn Spirit or Bodyguard, and in a group no area attack on enemies other than its own roar: see [templar-plan.md](../classes/history/templar-plan.md).
 
 ## The mark
 

@@ -59,12 +59,14 @@ whatever needs the socket tests the socket. See [docs/built.md](docs/built.md) a
 - [docs/roadmap.md](docs/roadmap.md) — **start here**: what is left, by priority, with what blocks each one.
 - [docs/built.md](docs/built.md) — what already works, and the reasoning most of it was paid for twice.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command.
-- [docs/patch-notes.md](docs/patch-notes.md) — every test patch, in French for the testers, by git tag; `tag-patch.ps1` refuses a patch without its entry.
+- [docs/patch-notes/current.md](docs/patch-notes/current.md) — every test patch, in French for the testers, by git tag; `tag-patch.ps1` refuses a patch without its entry.
 - [docs/traps/](docs/traps/) — what the engine, the world data and the skill engine do to a bot that no documentation warns about.
 
-Folders: `architecture/` (module layout, moving a body, test harness), `traps/`, `population/`, `combat/`, `classes/` (one plan per class guide,
-and the French skill glossaries `skill-lookup.ps1 -Name` reads), `gear/`, `navigation/`, `flight/`, `capitals/`, `social/` (chat, player
-interactions, cohorts), `feedback/` (one file per tester report). A new document goes in the folder of its topic and gets a line in the index.
+Folders: `architecture/`, `traps/`, `population/`, `combat/`, `classes/` (with `glossary/`, the French skill names `skill-lookup.ps1 -Name`
+reads), `gear/`, `navigation/`, `flight/`, `capitals/`, `social/`, `feedback/` (one file per tester report), `patch-notes/`. In a topic folder,
+`how-it-works.md` says what is true today and is kept up to date with the code; `plans/` holds open plans, `history/` the done ones, unchanged. A
+plan opens with a Status line in fixed words (`not started`, `in progress: <where>`, `built, unverified: <what>`, `done`) and moves to `history/`
+the day it is done. A new document goes in the folder of its topic and gets a line in the index; `check-docs.ps1` checks all of it.
 
 ## Dev environment
 

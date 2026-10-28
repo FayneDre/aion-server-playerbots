@@ -27,7 +27,7 @@ answer you get for a name that never existed — the command cannot tell those a
 | `//bot delete <characterName>` | Deletes the character from the database. Refuses anything that is not on a reserved bot account, so a mistyped name cannot reach a real player, and refuses a bot that is still spawned. |
 | `//bot clear [here\|mapId\|name]` | **Deletes bot characters**, not just their presence — with no argument, every one of them on every map. Same account restriction as `delete`. Name a map and only that map's inhabitants go, counted from where each one actually is: in the world for a bot that is awake, from the database for a sleeper. This argument exists because `clear` is global and `populate` is not — it fills the map you are standing on — so the pair emptied a whole world and refilled one region of it. |
 
-A map normally populates itself on first start from `gameserver.playerbot.populate` — see [population.md](population/population.md). `populate` is for adding to
+A map normally populates itself on first start from `gameserver.playerbot.populate` — see [population.md](population/how-it-works.md). `populate` is for adding to
 a map by hand, or for a map the config does not cover.
 
 ## Putting bots in and out of the world
@@ -49,7 +49,7 @@ a map by hand, or for a map the config does not cover.
 | `//bot attack <characterName>` | Sets the bot on your target, or on you if you have none — which is what makes it usable in a duel. |
 | `//bot stop <characterName>` | Ends the fight. |
 | `//bot come <characterName>` | Walks the bot to where you stand, and makes that its new home, so it will come back there when it has nothing to do. Answers that it is blocked when no route exists. |
-| `//bot gate [characterName]` | Has a sorcerer bot open a gate to its faction's capital at its feet (Summon Rift, level 22, a minute's cooldown, no item): the one named, or with no name the sorcerer bot in your group. Says why it cannot: not a sorcerer, the skill not learnt or cooling down. The guide's proposal, [sorcerer-plan.md](classes/sorcerer-plan.md). |
+| `//bot gate [characterName]` | Has a sorcerer bot open a gate to its faction's capital at its feet (Summon Rift, level 22, a minute's cooldown, no item): the one named, or with no name the sorcerer bot in your group. Says why it cannot: not a sorcerer, the skill not learnt or cooling down. The guide's proposal, [sorcerer-plan.md](classes/history/sorcerer-plan.md). |
 | `//bot fly <characterName> [height]` | Flies the bot up on a slant, holds it there four seconds, and lands it again where it stood. 25 m by default, capped at 60 and at its own fly zone's ceiling. Refuses with the reason: not a daeva, not in a fly zone, fighting, or short of the flight points the climb *and the landing back down* would cost. |
 | `//bot flyto <characterName>` | Flies the bot to where **you** stand, climbing over whatever is in the way and landing on the walkable ground nearest your feet. The one way to aim a bot at a terrace, a ledge or a rooftop it has no way of walking to. Refuses past 300 m, and refuses any path that would leave its fly zone — a body that leaves one in flight is dumped out of flight and written into the audit log. |
 | `//bot land <characterName>` | Brings a flying bot down now, straight onto the ground beneath it, wherever it has got to. |
@@ -59,7 +59,7 @@ a map by hand, or for a map the config does not cover.
 
 Flight is at its first milestone: a bot can leave the ground and come back, and nothing decides to do it on its own yet. The landing is flown rather
 than fallen, because falling is client side and a bot out of flight points would otherwise hang in the air for ever — see
-[flight-plan.md](flight/flight-plan.md).
+[flight-plan.md](flight/history/flight-plan.md).
 
 ## What a bot is, and what it carries
 
@@ -68,13 +68,13 @@ than fallen, because falling is client side and a bot out of flight points would
 | `//bot kind <characterName> [resident\|adventurer]` | With no third word, says which it is. A **resident** gains no experience, so the region it lives in keeps inhabitants of its own level; an **adventurer** levels normally. Takes effect on the next spawn, and on a spawned bot straight away. |
 | `//bot bag <characterName>` | What the bot is carrying, and its kinah. Read from the bot in memory, not from the database, which only ever sees a bot when it despawns. |
 | `//bot sell <characterName>` | Sends the bot to a shop now instead of waiting for a full bag. Says so if it has nothing worth selling, or if the map has no shop. Refused for a player's own bot: nothing in a companion's bag is ever sold, put on, identified or bound by the bot itself. |
-| `//bot regear <characterName\|all>` | Brings a bot up to what it would be given if it were created today: takes off anything it should not be wearing — the other faction's gear, npc costume, event pieces, anything that expires, armour of the wrong type, a weapon its class does not fight with — and fills every place still empty. It also tops up the four speed scrolls (running, flight, attack, casting: 20 of each, the strongest its level reads), which no vendor sells and creation hands over too. A bot is dressed once, at creation, so a world settled before a change to the wardrobe never sees it otherwise — and the only alternative was deleting the population and building it again, losing every level, home and name. `all` does every spawned bot and saves each as it goes, so an interrupted pass keeps the half it finished. See [bot-gear.md](gear/bot-gear.md) and [bot-gear-obtainability.md](gear/bot-gear-obtainability.md). **Leaves a player's own characters alone**, named or under `all`: a companion made with `//bot create`, or a character made in game and spawned as a bot, keeps exactly the gear, enchantments and stones its owner gave it, and the command says so. |
+| `//bot regear <characterName\|all>` | Brings a bot up to what it would be given if it were created today: takes off anything it should not be wearing — the other faction's gear, npc costume, event pieces, anything that expires, armour of the wrong type, a weapon its class does not fight with — and fills every place still empty. It also tops up the four speed scrolls (running, flight, attack, casting: 20 of each, the strongest its level reads), which no vendor sells and creation hands over too. A bot is dressed once, at creation, so a world settled before a change to the wardrobe never sees it otherwise — and the only alternative was deleting the population and building it again, losing every level, home and name. `all` does every spawned bot and saves each as it goes, so an interrupted pass keeps the half it finished. See [bot-gear.md](gear/how-it-works.md) and [bot-gear-obtainability.md](gear/bot-gear-obtainability.md). **Leaves a player's own characters alone**, named or under `all`: a companion made with `//bot create`, or a character made in game and spawned as a bot, keeps exactly the gear, enchantments and stones its owner gave it, and the command says so. |
 
 ## Diagnosis
 
 | Command | What it does |
 |---|---|
-| `//bot nav` | Which maps' navigation meshes are loaded in memory. A map missing here is one where bots will not travel; see [navmesh-plan.md](navigation/navmesh-plan.md). |
+| `//bot nav` | Which maps' navigation meshes are loaded in memory. A map missing here is one where bots will not travel; see [navmesh-plan.md](navigation/history/navmesh-plan.md). |
 | `//bot number [region]` | How many inhabitants a map holds, by faction, and what it asks for. A map id or the start of a map's name; yours by default. |
 | `//bot pool [map\|here]` | What the last population review concluded: how many inhabitants are awake, how many exist, and how many the region wants right now — split between the villages and the countryside, because the two are filled differently and only the split says which half is short. A line per map, or just the one asked for, by id or by part of its name; `here` means the map you are standing on. |
 | `//bot position [auto\|standard\|spread]` | Reads or sets when grouped bots stand where their class belongs in a fight (tank on the far side, melee behind the enemy, ranged back from it): `auto` against a boss only, a hero or legendary monster, `standard` never, `spread` always. Otherwise melee walks into contact and ranged classes close to their reach. Takes effect at once and lasts until the next restart, when `gameserver.playerbot.positioning` applies again. `//bot positioning on\|off` still works and means `auto\|standard`. The log samples how well placed they are every 200 looks either way, so two modes can be compared in the same session. |
@@ -96,11 +96,11 @@ after a restart, not who is standing there now.
 in the world, so a map reading 12 inhabitants tells you nothing about whether it holds 12 or 60. The review runs every 30 seconds, and the first one is
 half a minute after startup — before that the command says so rather than printing an empty table. A map whose line never moves is a map at its target;
 a map short of its target for review after review is usually one where somebody is standing in the only place the missing inhabitants live, which is a
-refusal by design and not a fault. See [population.md](population/population.md).
+refusal by design and not a fault. See [population.md](population/how-it-works.md).
 
 ## Testing
 
-Made for test sessions, and for whoever reads their log afterwards; the plan is [test-harness-plan.md](architecture/test-harness-plan.md).
+Made for test sessions, and for whoever reads their log afterwards; the plan is [test-harness-plan.md](architecture/history/test-harness-plan.md).
 
 | Command | What it does |
 |---|---|
@@ -108,8 +108,8 @@ Made for test sessions, and for whoever reads their log afterwards; the plan is 
 | `//bot squad [form <leader> <member>... \| disband <name>]` | Bot-only groups, for watching a group fight with no player in it. `form` brings the members to the leader and groups them under it; the leader keeps playing on its own, pulling round the place it stood (its camp), and waits before each pull for every member to be alive and rested; the members follow and assist it as they would a player. A squad is never put to sleep by the director, nor dissolved for having no player. `disband` and any member's name ends it; alone, the command lists squads with each member's health and mana. Same race, six at most. |
 | `//bot version` | The revision, branch and build date the server runs. A report names it, so the fix it is about can be found. |
 | `//bot debug [combat\|all\|off]` | Logs the detail of the bot module until the next restart: `combat` (or `on`) is every cast with its target and every fight started and given up, `all` is the whole module. `off` gives back what `logback.xml` set. |
-| `//bot speech [on\|off]` | Reads or sets whether bots speak in the capitals, by shout, heard round the speaker: a store keeper calls out its store every 2 to 4 minutes, a resident of 20 and over asks for a group every 3 to 6 minutes, only near a real player, never the same bot twice in half an hour. Covers the chat channels too ([chat-channels-plan.md](social/chat-channels-plan.md)). `off` lasts until the next restart. See [capital-life-plan.md](capitals/capital-life-plan.md). |
-| `//bot chat <region\|trade\|group> [text]` | Has the bot nearest you, of your faction and on your map, say a line in the Region, Trade or Find Group channel of its faction: a fixed test line, or the text given. Needs the chat server connected (`gameserver.chatserver.enable` and the chat password in `mygs.properties`), and goes nowhere if nobody reads the channel. See [chat-channels-plan.md](social/chat-channels-plan.md). |
+| `//bot speech [on\|off]` | Reads or sets whether bots speak in the capitals, by shout, heard round the speaker: a store keeper calls out its store every 2 to 4 minutes, a resident of 20 and over asks for a group every 3 to 6 minutes, only near a real player, never the same bot twice in half an hour. Covers the chat channels too ([chat-channels-plan.md](social/history/chat-channels-plan.md)). `off` lasts until the next restart. See [capital-life-plan.md](capitals/history/capital-life-plan.md). |
+| `//bot chat <region\|trade\|group> [text]` | Has the bot nearest you, of your faction and on your map, say a line in the Region, Trade or Find Group channel of its faction: a fixed test line, or the text given. Needs the chat server connected (`gameserver.chatserver.enable` and the chat password in `mygs.properties`), and goes nowhere if nobody reads the channel. See [chat-channels-plan.md](social/history/chat-channels-plan.md). |
 
 **Without a game client.** The server reads `bot-commands.txt` in its `game-server` folder every three seconds and runs each line as the words after
 `//bot`, answering in the log as `BOT INBOX`. `tools/bot-command.ps1 '<command>', ...` appends the lines and prints the answers. There is no caller, so

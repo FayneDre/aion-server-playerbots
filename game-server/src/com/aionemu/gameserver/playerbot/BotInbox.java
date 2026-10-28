@@ -29,7 +29,7 @@ import com.aionemu.gameserver.utils.PositionUtil;
  * answer goes to the log as {@code BOT INBOX}. {@code tools/bot-command.ps1} appends to the file. There is no caller, so only the commands that need no
  * position are taken here, plus {@code spawn <name> near <bot>}, which uses a bot in place of the player a spawn normally stands next to, and
  * {@code teleport <name> <map> <x> <y> <z>}, which a player would do by walking.
- * The plan is {@code docs/architecture/test-harness-plan.md}.
+ * The plan is {@code docs/architecture/history/test-harness-plan.md}.
  */
 public final class BotInbox {
 

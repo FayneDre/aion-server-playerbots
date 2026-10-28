@@ -1,16 +1,16 @@
 # What is built, and what it cost to learn
 
 What works today and the reasoning behind it, kept because most of these decisions were paid for twice. For what is **left**, see
-[roadmap.md](roadmap.md); for how things work, see [playerbot-architecture.md](architecture/playerbot-architecture.md),
-[population.md](population/population.md), [combat-prototype.md](combat/combat-prototype.md), [navigation-prototype.md](navigation/navigation-prototype.md) and
-[navmesh-plan.md](navigation/navmesh-plan.md).
+[roadmap.md](roadmap.md); for how things work, see [playerbot-architecture.md](architecture/how-it-works.md),
+[population.md](population/how-it-works.md), [combat-prototype.md](combat/history/combat-prototype.md), [navigation-prototype.md](navigation/navigation-prototype.md) and
+[navmesh-plan.md](navigation/history/navmesh-plan.md).
 
 ## Where it stands
 
 Bots are real `Player` objects with no connection, driven by `PlayerBotAI`. They load from the database, spawn visible to real clients, fight with class skills, chase, loot, rest, die and resurrect, work a 60 m camp, and plan routes over a generated navmesh. Several run at once without interfering.
 
 Verified in game. Run `//bot` for the command list. This file holds the foundations, built up to mid October; what came after has its own plan,
-which says what it cost: flight and the Abyss ([flight/](flight/)), dungeons ([dungeon-navmesh-plan.md](navigation/dungeon-navmesh-plan.md)), the
+which says what it cost: flight and the Abyss ([flight/](flight/)), dungeons ([dungeon-navmesh-plan.md](navigation/history/dungeon-navmesh-plan.md)), the
 class playbooks ([classes/](classes/)), the capitals ([capitals/](capitals/)) and the chat ([social/](social/)). The index is [README.md](README.md).
 
 ## Done: the vendor run
@@ -89,14 +89,14 @@ A bot is passed over when a group looks for a new leader — leading means answe
 
 **Economy.** Selling is the first step. Then the broker (`BrokerService`), then player shops. (`PvpService` no longer throws when a bot kills a real player: that dereference was guarded along with the rest of the `isOnline()` work.)
 
-**Bot population.** A map populates itself on first startup, from one configuration line, with its own navmesh generated if missing and its database schema brought up to date if it lacks anything. Bots live on reserved accounts from id 900000, keep a home, a level drawn from where they live and a face of their own. See [population.md](population/population.md).
+**Bot population.** A map populates itself on first startup, from one configuration line, with its own navmesh generated if missing and its database schema brought up to date if it lacks anything. Bots live on reserved accounts from id 900000, keep a home, a level drawn from where they live and a face of their own. See [population.md](population/how-it-works.md).
 
 **Saving.** Spawned bots are written every 5 minutes, and on a clean shutdown. Nothing else writes them: the engine's `PeriodicSaveService` covers legion warehouses only, and real players are saved when they log out, a door a bot never uses. This matters more than it used to, now that bots gain levels and skills unattended over hours.
 
 ## Done: the pool
 
 Inhabitants are created asleep and the director wakes them, which is what makes a world of two thousand something that can be tried rather than only
-calculated — every bot used to be awake from the moment it was created. The model and the numbers are in [population.md](population/population.md); what the building
+calculated — every bot used to be awake from the moment it was created. The model and the numbers are in [population.md](population/how-it-works.md); what the building
 of it cost is here.
 
 **Attention could not be applied to the whole population, and the reason was geometric.** The design scaled every region's target by how much it was being
@@ -142,7 +142,7 @@ arrival — "these and nobody else" is the safer statement for a population crea
 
 A bot used to be one of two things, and a resident gained no experience so that its region kept inhabitants of its own level. It worked, and it was
 the wrong answer: it produced two species, and a resident was not really a character. Replaced by one kind of bot that levels and travels, with a
-stationary *flow* rather than stationary individuals — see [population.md](population/population.md).
+stationary *flow* rather than stationary individuals — see [population.md](population/how-it-works.md).
 
 What the model got right and kept: a level belongs to a region rather than to a camp, a bot has a home that is not simply the nearest place, and
 settlements are read from the world rather than authored. What it got wrong is recorded in [roadmap.md](roadmap.md) under the density rule.

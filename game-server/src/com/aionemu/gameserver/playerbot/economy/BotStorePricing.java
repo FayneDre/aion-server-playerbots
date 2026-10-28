@@ -8,8 +8,8 @@ import com.aionemu.gameserver.services.trade.PricesService;
  * <p>
  * The data's only price is the template's, which an npc sells at and buys back at a fifth of, and which is the same for a green piece and a gold one
  * of the same level. So for gear the template gives the scale and the floor, the quality gives the worth, and the keeper's temperament and the time
- * the piece has waited move it from there, as written in docs/capitals/bot-stores-plan.md on 20 October. Stones, coins and medals are priced from a broker's
- * range instead ({@link Range}, docs/capitals/bot-store-goods-plan.md).
+ * the piece has waited move it from there, as written in docs/capitals/history/bot-stores-plan.md on 20 October. Stones, coins and medals are priced from a broker's
+ * range instead ({@link Range}, docs/capitals/history/bot-store-goods-plan.md).
  */
 public final class BotStorePricing {
 

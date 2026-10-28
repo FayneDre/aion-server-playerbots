@@ -1,7 +1,7 @@
 # Instance maps to build a navmesh for
 
-Status: the 54 group dungeons have a mesh since 2026-10-10, 45 built and 9 copied, and the table says how much of each was reached from its arrival **in the first pass**: the figures of 11 October, after the glide links and the other fixes, are in [dungeon-navmesh-plan.md](dungeon-navmesh-plan.md) and differ in many rows. The other categories have none. Read from `world_maps.xml` (`instance="true"`), `data/geo` and the
-spawn files on 2026-10-10. How to build one is in [navmesh-plan.md](navmesh-plan.md): `.\tools\navmesh.ps1 300040000,300110000`.
+Status: the 54 group dungeons have a mesh since 2026-10-10, 45 built and 9 copied, and the table says how much of each was reached from its arrival **in the first pass**: the figures of 11 October, after the glide links and the other fixes, are in [dungeon-navmesh-plan.md](history/dungeon-navmesh-plan.md) and differ in many rows. The other categories have none. Read from `world_maps.xml` (`instance="true"`), `data/geo` and the
+spawn files on 2026-10-10. How to build one is in [navmesh-plan.md](history/navmesh-plan.md): `.\tools\navmesh.ps1 300040000,300110000`.
 
 ## What the data says
 
@@ -9,7 +9,7 @@ spawn files on 2026-10-10. How to build one is in [navmesh-plan.md](navmesh-plan
   are made of placed meshes alone, the way Sanctum and Reshanta are, and the generator takes their size from `world_size` for that reason.
 - **86 distinct geometries.** Several instances reuse one map under other ids (a hard mode, a training copy, a legion barracks): the `geo` and `png` files are byte
   for byte the same. A mesh built once serves them all, if it may be copied under the other ids (to be checked in `NavmeshService`: is the id only the file name?).
-- **Most are interiors on several floors**, which is the case [navigation-stuck-plan.md](navigation-stuck-plan.md) says the rough route handles badly (it has no height). Build
+- **Most are interiors on several floors**, which is the case [navigation-stuck-plan.md](history/navigation-stuck-plan.md) says the rough route handles badly (it has no height). Build
   one small dungeon first and look at it before the batch.
 - Nothing here is populated: bots live in the open world, and no code puts one in an instance yet. The meshes come before that work, not with it.
 

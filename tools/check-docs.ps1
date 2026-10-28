@@ -7,10 +7,13 @@
     The rules were written in CLAUDE.md and kept by discipline, which did not hold: on 27 October ten plans had a status days out of date, one of them
     saying "nothing here is built yet" about four built milestones. The same lesson as check-bot-docs.ps1: what a script can see, a script checks.
 
-    Errors (exit 1): a link to a file that does not exist, a document docs/README.md does not link to, a *-plan.md with no Status line in its first lines.
-    Warnings (exit 0 if nothing else): a document over 200 lines, the monthly patch note archives excepted; and a plan that names, in backticks, a class
-    of the bot module changed since the last patch tag, while the plan itself was not touched. That last one is a question rather than a fault: the
-    change may not concern the plan, but it is the moment its Status line goes stale, and nobody else asks.
+    Errors (exit 1): a link to a file that does not exist, a document docs/README.md does not link to, a plan (in plans/ or history/) or a backlog.md
+    with no Status line in its first lines in the fixed words (reference, not started, in progress, built, unverified, done), a done plan still in
+    plans/ or an open one in history/.
+    Warnings (exit 0 if nothing else): a document over 200 lines, the monthly patch note archives excepted; a topic folder with no how-it-works.md;
+    and an open plan or a how-it-works.md that names, in backticks, a class of the bot module changed since the last patch tag, while the document
+    itself was not touched. That last one is a question rather than a fault: the change may not concern the document, but it is the moment it goes
+    stale, and nobody else asks.
 
     Called by deploy.ps1 and tag-patch.ps1, which print what it says and carry on.
 
@@ -30,6 +33,9 @@ $warnings = @()
 function Get-Relative([string]$path) { $path.Substring($root.Length + 1).Replace('\', '/') }
 
 $files = @(Get-ChildItem $docs -Recurse -Filter '*.md') + @(Get-Item (Join-Path $root 'CLAUDE.md'))
+$statusWords = 'reference|not started|in progress|built, unverified|done'
+# topics that explain a system have their how-it-works.md: what is true today, kept up to date, while plans/ and history/ keep how it got there
+$noSystem = 'traps', 'feedback', 'patch-notes'
 $linkPattern = '\]\(([^)#\s]+)(#[^)]*)?\)'
 
 foreach ($file in $files) {
@@ -42,13 +48,28 @@ foreach ($file in $files) {
     }
     if ($file.DirectoryName.StartsWith($docs)) {
         $lines = ([regex]::Matches($text, "`n")).Count + [int](-not $text.EndsWith("`n"))
-        if ($lines -gt 200 -and $file.Name -notmatch '^patch-notes-\d{4}-\d{2}\.md$') {
-            $warnings += "$(Get-Relative $file.FullName): $lines lines, over the 200 the conventions allow; split it by topic"
+        $relative = Get-Relative $file.FullName
+        if ($lines -gt 200 -and $relative -notmatch '^docs/patch-notes/\d{4}-\d{2}\.md$') {
+            $warnings += "${relative}: $lines lines, over the 200 the conventions allow; split it by topic"
         }
-        if ($file.Name -like '*-plan.md') {
+        # a plan lives in plans/ while it is open and in history/ once done; either way its first lines say which, in the fixed words
+        $folder = Split-Path -Leaf $file.DirectoryName
+        if ($folder -in 'plans', 'history' -or $file.Name -eq 'backlog.md') {
             $head = ($text -split "`n" | Select-Object -First 8) -join "`n"
-            if ($head -notmatch '(?m)^\**Status') { $errors += "$(Get-Relative $file.FullName): a plan with no Status line at its top" }
+            if ($head -notmatch "(?m)^Status: ($statusWords)\b") {
+                $errors += "${relative}: no Status line at its top in the fixed words ($($statusWords.Replace('|', ', ')))"
+            } elseif ($folder -eq 'history' -and $Matches[1] -ne 'done') {
+                $errors += "${relative}: in history/ but its Status is '$($Matches[1])'; an open plan goes in plans/"
+            } elseif ($folder -eq 'plans' -and $Matches[1] -eq 'done') {
+                $errors += "${relative}: done but still in plans/; move it to history/"
+            }
         }
+    }
+}
+
+foreach ($topic in Get-ChildItem $docs -Directory | Where-Object { $_.Name -notin $noSystem }) {
+    if (-not (Test-Path (Join-Path $topic.FullName 'how-it-works.md'))) {
+        $warnings += "docs/$($topic.Name): no how-it-works.md saying how the system works today"
     }
 }
 
@@ -72,7 +93,7 @@ try {
         # a doc not yet committed counts as touched too: a plan written today names classes changed today, and is not stale for it
         $touched = @(git diff --name-only "$lastTag" HEAD -- docs) + @(git diff --name-only HEAD -- docs) + @(git ls-files --others --exclude-standard -- docs) |
             ForEach-Object { $_.Replace('/', '\') }
-        foreach ($plan in $files | Where-Object { $_.Name -like '*-plan.md' }) {
+        foreach ($plan in $files | Where-Object { (Split-Path -Leaf $_.DirectoryName) -eq 'plans' -or $_.Name -eq 'how-it-works.md' }) {
             if ($touched -contains (Get-Relative $plan.FullName).Replace('/', '\')) { continue }
             $text = [IO.File]::ReadAllText($plan.FullName)
             $named = @($classes | Where-Object { $text -match ('`' + $_ + '[`.(#]') })

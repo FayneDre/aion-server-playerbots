@@ -8,7 +8,7 @@
 
     Refuses, each time saying why:
     - a dirty tree: a build from uncommitted code has a revision ending in -DIRTY, which matches nothing anyone can look at afterwards;
-    - docs/patch-notes.md with no entry for the tag: a patch nobody wrote up is one a tester cannot tell apart from the last;
+    - docs/patch-notes/current.md with no entry for the tag: a patch nobody wrote up is one a tester cannot tell apart from the last;
     - a deployed jar whose revision is -DIRTY, or is not HEAD with nothing but docs and tools committed since (the patch note is written after the deploy):
       twice a deploy from a clean tree kept the previous -DIRTY jar, because Maven repackages nothing when no source changed;
     - a patch note entry that does not name that revision, which is the one //bot version will show the testers.
@@ -82,11 +82,11 @@ try {
             throw "The deployed jar is revision $deployed, and code changed since ($($since -join ', ')). Deploy HEAD, then tag."
         }
     }
-    $notes = Join-Path $repoRoot 'docs\patch-notes.md'
+    $notes = Join-Path $repoRoot 'docs\patch-notes\current.md'
     $notesText = [IO.File]::ReadAllText($notes).Replace("`r`n", "`n")
     $entry = [regex]::Match($notesText, "(?ms)^## $([regex]::Escape($tag))( [^\n]*)?\n.*?(?=^## |\z)")
     if (-not $entry.Success) {
-        throw "docs/patch-notes.md has no entry for this patch. Add a section headed '## $tag', commit it, and run this again."
+        throw "docs/patch-notes/current.md has no entry for this patch. Add a section headed '## $tag', commit it, and run this again."
     }
     if ($entry.Value -notmatch [regex]::Escape($deployed)) {
         throw "The entry '## $tag' does not name revision $deployed, which //bot version will show. Write it in the entry, as the earlier ones do."

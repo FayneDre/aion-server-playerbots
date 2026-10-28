@@ -1,6 +1,6 @@
 # Where a bot's gear may come from
 
-Two of the three questions that decide a piece, split out of [bot-gear.md](bot-gear.md) to keep both files
+Two of the three questions that decide a piece, split out of [bot-gear.md](how-it-works.md) to keep both files
 readable: can this bot reach it at all, and is it this bot's faction. What makes one piece better than another
 stays there.
 
@@ -80,5 +80,5 @@ of them shields. Both paths now ask, and `//bot regear` takes off what is alread
 
 ## See also
 
-- [bot-gear.md](bot-gear.md) — ranking, quality by level, and the right kind of piece.
+- [bot-gear.md](how-it-works.md) — ranking, quality by level, and the right kind of piece.
 - [world-and-data-traps.md](../traps/world-and-data-traps.md) — the filter that hid accessories, and the `cName` shapes.

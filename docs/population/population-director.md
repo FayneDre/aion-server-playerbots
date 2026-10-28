@@ -1,6 +1,6 @@
 # The pool and the director
 
-How a region is kept holding the people it should. Split out of [population.md](population.md), which it was
+How a region is kept holding the people it should. Split out of [population.md](how-it-works.md), which it was
 outgrowing.
 
 Every bot character is in the pool; only some of them are in the world. The pool is not a thing anybody maintains — it is the world-owned residents in
@@ -66,7 +66,7 @@ nearness, and the village maps are keyed by the centre the plan itself holds; se
 get stuck. Following a *player* between regions is a different matter and is cheap — see [roadmap.md](../roadmap.md) under Flight.
 
 **And a place no walker can reach is no longer the same as a place nobody can live at.** A village on a terrace is kept in the plan when it shares a
-fly zone with somewhere on the mainland a bot could fly to, and its residents fly in and out: see [flight-plan.md](../flight/flight-plan.md). Eltnen's marooned
+fly zone with somewhere on the mainland a bot could fly to, and its residents fly in and out: see [flight-plan.md](../flight/history/flight-plan.md). Eltnen's marooned
 village, the one that cost seventeen inhabitants their shops, is back in the plan for that reason rather than by having the rule relaxed.
 
 What the director still does not do — stocking, pre-filling a map before a player arrives, and rehousing a bot that outgrew its region — is in

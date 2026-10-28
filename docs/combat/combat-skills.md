@@ -1,6 +1,6 @@
 # How a bot chooses a skill
 
-`BotSkillManager` picks the skills, `PlayerBotAI.useBestSkill` decides which question to ask first. Everything here is read from the skill data rather than from lists of skill ids, because a list is a thing to maintain and the data already knows. For where this sits in the wider plan see [combat-prototype.md](combat-prototype.md).
+`BotSkillManager` picks the skills, `PlayerBotAI.useBestSkill` decides which question to ask first. Everything here is read from the skill data rather than from lists of skill ids, because a list is a thing to maintain and the data already knows. For where this sits in the wider plan see [combat-prototype.md](history/combat-prototype.md).
 
 ## The order, in one place
 

@@ -23,7 +23,7 @@ import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
- * How a cleric plays, after the guide's "Clerc 101". The plan, milestone by milestone, is {@code docs/classes/cleric-plan.md}.
+ * How a cleric plays, after the guide's "Clerc 101". The plan, milestone by milestone, is {@code docs/classes/history/cleric-plan.md}.
  * <p>
  * The guide's rule for a cleric is rationing: it heals who needs it with the spell that fits and no more, cleanses, and only then does damage. So the playbook
  * decides every heal and every buff of the class, and the generic order, which casts the strongest heal at one threshold for everybody, is told to leave them

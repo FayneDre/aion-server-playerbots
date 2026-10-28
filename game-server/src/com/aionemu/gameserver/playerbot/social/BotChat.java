@@ -34,7 +34,7 @@ import com.aionemu.gameserver.world.World;
 import com.aionemu.gameserver.world.zone.ZoneInstance;
 
 /**
- * What bots say in the chat channels: Region, Trade and Find Group. See docs/social/chat-channels-plan.md.
+ * What bots say in the chat channels: Region, Trade and Find Group. See docs/social/history/chat-channels-plan.md.
  * <p>
  * A bot has no client and so no chat session: the chat server says its line for it ({@code SM_CS_BOT_MESSAGE}), in the channel of the bot's own race,
  * which a player of the other race never reads.

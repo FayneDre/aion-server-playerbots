@@ -1,0 +1,107 @@
+# Bots' private stores
+
+Status: done; bought from in game.
+
+Built, milestone 2 of [living-capitals-plan.md](living-capitals-plan.md). Designed and built 20 October 2026, a purchase checked in
+`exchange.log` the same day, reworked on 23 October looked over in game on 24 October,
+and the hourly renewal, night stores and the boat rider validated on 27 October. Decisions taken by the user on 20 October: stock generated
+at the keeper's level, the prices below, and (milestone 5) bots buying from players' stores, dropped on 23 October. What the stores sell since 24
+October is in [bot-store-goods-plan.md](bot-store-goods-plan.md).
+
+## The engine already allows it
+
+The private store is generic: `PrivateStoreService.createStoreWithItems(player, TradePSItem[])`, then `openPrivateStore(player, name)`.
+
+- A player clicking the bot gets `SM_PRIVATE_STORE` through `PlayerController.onDialogSelect(BUY)`.
+- A purchase goes `CM_BUY_ITEM` → `sellStoreItem`, which asks `seller.isOnline()`: true for a bot, since that means "is present". The kinah moves and
+  `EXCHANGE_LOG` has the line.
+- The store's name is written in `SM_PLAYER_INFO`, so a newcomer sees it.
+- The engine allows **at most 10 lines**, one race only, items tradeable and not equipped, and no store while moving, flying, fighting or seated.
+- While a store is open, `PlayerRestrictions` refuses skills and item use. A teleport closes the store; **leaving the world does not**, so the bot
+  module closes it itself (`PlayerBotLeaveWorldService`).
+
+## Who keeps a store, and when
+
+- **The keepers.** Eight in ten residents of level 20 and over on a town map, chosen by object id, so the same characters are the merchants every day.
+- **Their hours: a rota.** A town's merchants are sorted in an order of their own (`TownRoutine.rotaOrder`), and a window of 44 of them,
+  the 40 stores and four for those that cannot reach a stall, goes round it once a day (`TownRoutine.onRota`). A town has the same number of
+  stores at every hour, and a merchant keeps its store for one stretch a day, about 14 hours in a town of 77 merchants. Before, each merchant had
+  a shift drawn from its id: day shifts first (none at night), then any hour, and the count was chance times the town's size, 26 in Sanctum
+  against 40 in Pandaemonium on 23 October. Stand-ins making up the difference were tried the same day and swapped stalls in a loop.
+  A merchant with no way to its stall gives its turn to the next for 6 hours (`BotDay.STALL_UNREACHABLE_MILLIS`); one turned away because
+  every stall is taken keeps it, or the window runs round the whole town in minutes. Stock renewal is unchanged: every 60 to 90 minutes.
+- **Stalls are a grid** (`BotStores.stallsOf`): spots 6 m apart within a market's spread, on walkable ground joined to its middle, worked out
+  once and logged ("Market at ... holds N stalls"): Sanctum 152, Pandaemonium 109. Spots drawn round the middle at each asking turned
+  keepers away from markets with room left. After a restart, a town reaches about 40 within 15 minutes: keepers from the far quarters walk or
+  take the boat, holding their stall on the way.
+- **Renewed every hour or so** during a shift (`BotStores.renewIfDue`, 60 to 90 minutes by keeper): the store shuts for a moment, what has waited
+  unsold for two hours is taken away for good, the shelf is stocked up to 8 lines and the store opens again. Also asked for by the tester; it is what
+  bounds the generated goods, a keeper putting out 8 lines an hour at most.
+- **The cap.** At most 40 stores open on a map: the crowd test of 20 October gives about 40 characters standing in sight above 40 fps.
+- **During a shift** the resident walks to its stall, opens its store, and does nothing else: the tick returns at once (`BotDay.keepsStore`). It
+  refuses duels (busy) and closes the store to join a group, as a player would.
+
+## Where stores stand
+
+**Sanctum has markets of its own** (`BotStores.MARKETS`), from a tester's notes of 20 October, after the stalls round the brokers and warehouses
+put nearly every store in one hall: the street from the Exalted Path (1357 1512) by its middle (1400 1513) to the Elyos Square (1451 1511), 10 each;
+the entrance of the Hall of Prosperity (1471 1442), 40; the hall itself (1403 1412), 30. A keeper tries its own market first, then the others.
+**Pandaemonium** has four since 23 October, also from a tester's notes, 10 each, 20 m round: the Vifrost Bridge (1609 1400), Market Street
+(1393 1401), Pandaemonium Plaza (1300 1415) and by the Temple of Gold (1323 1481). Before them, its stalls were bunched in three spots: about 80 in
+one hall, 35 in two others. Stalls stand 6 m apart since the same day, after Market Street was found packed at 3 m, and
+Sanctum's markets were widened to match (18 to 22 m), with a sixth round the Elyos Square (1529 1512). The rule below holds for a map with no markets of its own.
+
+
+Players put their stores near the broker and the warehouse. A stall is a spot within 15 m of a broker or a warehouse keeper (`TownServices`), on
+walkable ground, at least 6 m from any other stall and any character, chosen from the keeper's object id so it is the same every day. Taken stalls are
+registered per map (`BotStores`), so two keepers never share one.
+
+## What a store sells
+
+A store has **a theme**, as a player's does, which gives it its name. The theme is the keeper's, by object id.
+
+| theme | lines | content |
+|---|---|---|
+| gear for a class | 6 to 8 | weapons and armour one class wears, of the keeper's faction, from 20 levels under the keeper's to 5 over |
+| accessories | 6 to 8 | earrings, necklaces, rings, belts, same rules |
+| stones | 5 to 8 | manastones up to ten levels over the keeper's, and the upgrade items |
+| coins and medals | 5 to 8 | the guide's coins and medals, by keeper level |
+| bric-à-brac | 6 to 8 | a third of the keepers: a little of each of the others, round the keeper's level |
+
+What each theme holds and at what price since 24 October is in [bot-store-goods-plan.md](bot-store-goods-plan.md).
+
+Enchantment stones had a theme of their own at first: they come in grades about 30 apart, so such a store held one line. Stalls are looked for
+round the floor in front of a keeper's counter (`BotVendorManager.frontOf`): round its feet, 27 of 31 Pandaemonium merchants found no stall or no way
+to it on the first start, 20 October.
+
+- **Quality** is drawn: blue 70, gold 25, eternal 5, eternal from level 60 only (the guide's rule of 24 October; green 70, blue 25, gold 5
+  under the bots' own ceiling before).
+- **Only reachable, tradeable gear** (`BotGearSources`, `BotGearFit.isObtainable`, `BotEquipManager.isPlayerGear`, `ItemTemplate.isTradeable`).
+- **Stock comes into the keeper's bag** through `ItemService.addItem`, as many lines as the bag has room for, up to 8 whenever the store
+  opens or is renewed. The shelf is kept in memory; after a restart, what in the bag fits the keeper's
+  theme goes back on it, as freshly stocked. Left out at first, it filled four Sanctum keepers' bags after a day of restarts, and they opened nothing.
+- **Names are in French**, since the testers play in French: "Équipement templier 15-40", "Bijoux 20-45", "Pierres 10-50", "Pièces et
+  médailles", "Bric-à-brac 35-45".
+- **Quality is drawn for gear only**: stones are drawn by kind (upgrade items, single, two-stat, ancient), then evenly within.
+
+## At what price (`BotStorePricing`)
+
+The data's only price is the template's `price`. An npc buys at **20%** of it and sells at 100%; the price does not depend on quality.
+
+- **Floor**: 1.25 × what an npc pays (0.25 × template), so nothing bought from a bot sells to an npc at a profit.
+- **Gear**: what an npc pays × the quality factor: common 1.3, green 1.6, blue 2.5, gold 4, epic 6. A level 30 chestpiece (template 518 000): green
+  165 000, blue 260 000, gold 415 000.
+- **Manastones**: 300 × the stone's level × the quality factor; their template prices are meaningless. **Goods a price guide named**
+  (enchantment stones, coins, medals): the broker's range, the temperament placing the keeper in it, the unsold stopping at its bottom
+  ([bot-store-goods-plan.md](bot-store-goods-plan.md)).
+- **Temperament**: ±15% per keeper, by object id.
+- **Unsold**: 10% less per full hour since the piece was stocked, down to the floor, which a piece reaches within a day. A restart counts
+  the hours again from nought.
+- **The shelf is neither worn nor sold to an npc** between two shifts (`BotStores.isOnShelf`, asked by `BotEquipManager` and `BotVendorManager`).
+- Not built: the rise after a quick sale, which needs a hook on the sale itself.
+
+## Checks
+
+- A player buys from a bot in game; the kinah moves; `EXCHANGE_LOG` has the line.
+- A row of stores with their names shown, measured for fps as the crowd test was.
+- No keeper walks with its store open, and none is left with an open store after a sleep.

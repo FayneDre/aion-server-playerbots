@@ -1,6 +1,6 @@
 # Making a piece better than it is
 
-Choosing the right piece is [bot-gear.md](bot-gear.md). This is the other half: what the game lets a character
+Choosing the right piece is [bot-gear.md](how-it-works.md). This is the other half: what the game lets a character
 do to a piece it already owns, and what the engine charges for it. Both turn out to be nearly free here,
 because the stats are applied when the piece is equipped and nothing has to be simulated.
 
@@ -84,5 +84,5 @@ bots are not yet reaching.
 
 ## See also
 
-- [bot-gear.md](bot-gear.md) — where gear comes from, whose faction it is, and which piece to pick.
+- [bot-gear.md](how-it-works.md) — where gear comes from, whose faction it is, and which piece to pick.
 - [stigmas.md](stigmas.md) — the other thing a character sockets, with rules of its own.

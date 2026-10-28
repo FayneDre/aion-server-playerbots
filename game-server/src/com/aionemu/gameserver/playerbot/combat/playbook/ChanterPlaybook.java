@@ -17,7 +17,7 @@ import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 
 /**
- * How a chanter plays, after the guide's "Aède 101". The plan, milestone by milestone, is {@code docs/classes/chanter-plan.md}.
+ * How a chanter plays, after the guide's "Aède 101". The plan, milestone by milestone, is {@code docs/classes/history/chanter-plan.md}.
  * <p>
  * Built so far: the seam (milestone 1), the mantras in the guide's order (2), the buffs that are the chanter's own to time (3): Protective Ward,
  * Block Curtain, Perfect Parry with Parrying Strike, Ascension Spell, Unstoppable, Swiftwing and the dispel, and the rationing of its heals (4): none for

@@ -43,7 +43,7 @@ public class BotPresence {
 	 * meanwhile covers 155000 square metres of settlement against Poeta's 10670 — fourteen times the ground — and the ratio gave it three times the
 	 * people. So the village felt crowded and the capital deserted at one and the same setting, which is what counting the wrong thing looks like.
 	 * <p>
-	 * These three densities were settled together, against a world total, and none of them can be moved on its own — see {@code docs/population/population.md}.
+	 * These three densities were settled together, against a world total, and none of them can be moved on its own — see {@code docs/population/how-it-works.md}.
 	 * The short of it: the 28 maps worth populating come to about two thousand inhabitants, which divides into a thousand a faction because the world
 	 * was built in mirror.
 	 */

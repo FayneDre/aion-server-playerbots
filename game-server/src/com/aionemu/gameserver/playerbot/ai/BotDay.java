@@ -357,7 +357,7 @@ class BotDay {
 
 	/**
 	 * @return true while this resident should be keeping its store: a town's merchant of level 20 and over, on its shift, free of any group, and not
-	 *         turned away from a stall within the last half hour. See docs/capitals/bot-stores-plan.md.
+	 *         turned away from a stall within the last half hour. See docs/capitals/history/bot-stores-plan.md.
 	 */
 	boolean keepsStore() {
 		Player bot = ai.getOwner();

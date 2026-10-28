@@ -34,7 +34,7 @@ import com.aionemu.gameserver.world.zone.ZoneInstance;
  * <p>
  * <b>It decides the phases and moves nothing.</b> The body is flown by {@link BotMoveController}, on the movement tick the engine already runs for
  * every moving creature: this hands over a leg, waits for it to be reached, and hands over the next. It used to step the body itself, in a loop of its
- * own, and that loop then had its first step wait 7.8 seconds behind eighty bots thinking. Moving a body is movement; see {@code docs/flight/flight-plan.md}.
+ * own, and that loop then had its first step wait 7.8 seconds behind eighty bots thinking. Moving a body is movement; see {@code docs/flight/history/flight-plan.md}.
  * <p>
  * <b>And coming down is the hard half.</b> Falling is entirely client side: {@code CM_MOVE} is what sets {@code MovementMask.FALL} and calls
  * {@code updateFalling}, and no server code moves anything downwards. A bot that runs out of flight points at height does not fall — it hangs there,

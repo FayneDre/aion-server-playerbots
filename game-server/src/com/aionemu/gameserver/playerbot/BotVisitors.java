@@ -28,7 +28,7 @@ import com.aionemu.gameserver.world.World;
  * <p>
  * A capital's residents are made at the level of its monsters, as everywhere, so they are mostly under 30 or from 45 to 49: on 23 October
  * Pandaemonium held 18 bots of 50 and over among 135, and a tester saw none. More than 270 bots of 50 and over live in the Abyss, Inggison and
- * Gelkmaros and never came. See {@code docs/capitals/capital-life-plan.md}.
+ * Gelkmaros and never came. See {@code docs/capitals/history/capital-life-plan.md}.
  * <p>
  * A visitor is a sleeper woken at a teleporter of the capital, where players arrive, while a real player is in the capital. It lives the town day
  * there for 20 to 40 minutes, keeps no store and is rehomed by nothing, then walks back to the teleporter and is taken home. Where it lives is kept
