@@ -60,6 +60,7 @@ History: [population-churn-followup.md](population/history/population-churn-foll
 
 | File | What it holds |
 |---|---|
+| [how-it-works.md](combat/how-it-works.md) | **How a bot fights today**: the two ticks, what it fights, how it picks a skill, where it stands, death. |
 | [combat-skills.md](combat/combat-skills.md) | How a bot chooses a skill: the in-fight order, upkeep versus abilities kept in hand, openers. |
 | [group-roles.md](combat/group-roles.md) | What tank, healer, support and damage change, only ever inside a group. |
 
@@ -68,7 +69,8 @@ History: [combat-prototype.md](combat/history/combat-prototype.md) (milestones M
 
 ## Classes — [classes/](classes/)
 
-The pattern is the same for every class: a `ClassPlaybook`, rules by skill group, a pure `decide`, a data test. The French skill names, one file
+[how-it-works.md](classes/how-it-works.md): **how a class playbook works**, the seam, the pattern every one follows, writing one for a new class.
+The French skill names, one file
 per class, are in [glossary/](classes/glossary/README.md): [templar](classes/glossary/templar.md), [chanter](classes/glossary/chanter.md),
 [cleric](classes/glossary/cleric.md), [ranger](classes/glossary/ranger.md), [gladiator](classes/glossary/gladiator.md),
 [sorcerer](classes/glossary/sorcerer.md); `skill-lookup.ps1 -Name` reads them all.

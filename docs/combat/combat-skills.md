@@ -195,4 +195,6 @@ A proc arms something that fires later, so its own effects say nothing about whi
 
 ## What is still missing
 
-An authored rotation per `PlayerClass` — a named opener into a named chain into a named finisher, skills conditional on the fight's state, mana cost weighed against damage. Everything here is read from the data instead, which is why it holds for all fifteen classes at once and needs no table to keep in step with upstream. An authored rotation would beat it for the classes someone sits down and writes, and rot for the rest; it is worth doing once bots have been watched fighting long enough to say which classes actually play badly.
+An authored rotation per class exists for six classes since October, from a guide each: the playbooks, consulted before
+everything here ([../classes/how-it-works.md](../classes/how-it-works.md)). The other classes play this generic order alone, which holds for
+all of them at once and needs no table to keep in step with upstream.
