@@ -1,11 +1,13 @@
-# Bot navigation
+# Bot navigation: the foundations of September
+
+Status: done; what is still true is in [../how-it-works.md](../how-it-works.md).
 
 How bots move: what plans the way, what walks it, and where each one must not be trusted. The foundations, written in September; what was built on
-them since is in the other files of this folder (see the [index](../README.md)).
+them since is in the other files of this folder (see the [index](../../README.md)).
 
 ## Who decides what
 
-`geoEngine` answers only *"is this line blocked?"* and *"how high is the ground here?"*. There is no graph and no neighbour query, so path planning needs a navmesh built beforehand — that is [navmesh-plan.md](history/navmesh-plan.md), and it is done.
+`geoEngine` answers only *"is this line blocked?"* and *"how high is the ground here?"*. There is no graph and no neighbour query, so path planning needs a navmesh built beforehand — that is [navmesh-plan.md](navmesh-plan.md), and it is done.
 
 Two layers now share the work, and **the whole class of bugs this system has produced came from blurring the line between them**:
 
@@ -37,7 +39,7 @@ A geo probe is an infinitely thin line; the **client** collides a body-sized cap
 
 **Gatherables are not in the geo data at all.** They are spawned objects, so no ray reports them, yet the client collides with them. `gatherableClearance` handles them without geo: the bot already knows the ones around it, so each leg is clamped against any gatherable within 1.5 m of its path.
 
-Nothing in the geo API can be cast lower, so this cannot be fixed by probing differently. The geometry itself is loaded in full, so the fix is to use it directly rather than through rays: see [navmesh-plan.md](history/navmesh-plan.md). Engine NPCs never hit this because they follow authored waypoints. It is a hard limit of the current approach, not a tuning problem.
+Nothing in the geo API can be cast lower, so this cannot be fixed by probing differently. The geometry itself is loaded in full, so the fix is to use it directly rather than through rays: see [navmesh-plan.md](navmesh-plan.md). Engine NPCs never hit this because they follow authored waypoints. It is a hard limit of the current approach, not a tuning problem.
 
 `BotGeoHelper.walkableCorridor` therefore casts three probes: the centre one, plus two deviated by `atan(BOT_RADIUS / reach)` so they end up ±0.5 m aside at the far end. The shortest of the three wins. Cost is 3× a probe, paid once per leg, not per tick.
 
@@ -105,6 +107,6 @@ Idle bots return to their **anchor**, set at spawn and moved by `//bot come`, so
   than one sidestep — a building, a ravine, a U-shaped wall — is abandoned by design.
 - Chases are bounded by time and leash, so a fleeing target escapes, and targets more than 8 m above or below are ignored (`BotTargetSelector`).
 - The last few metres to a creature are reactive, so a mob standing tight against a low prop can still be approached badly.
-- Height is no longer out of reach for travel: bots fly and glide ([flight-plan.md](../flight/history/flight-plan.md)), follow glide links and rides
-  ([openworld-navigation-plan.md](plans/openworld-navigation-plan.md)), and long routes are planned in two passes ([long-walk-planner.md](history/long-walk-planner.md)).
+- Height is no longer out of reach for travel: bots fly and glide ([flight-plan.md](../../flight/history/flight-plan.md)), follow glide links and rides
+  ([openworld-navigation-plan.md](../plans/openworld-navigation-plan.md)), and long routes are planned in two passes ([long-walk-planner.md](long-walk-planner.md)).
 - Crossing maps is still not navigation: a bot follows its player into an instance, or is put beside them, but never travels to another map on its own.

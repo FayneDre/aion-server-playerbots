@@ -3,7 +3,7 @@
 Status: done; validated in game on 27 October.
 
 Milestones 1 to 5 built and unit tested, validated in game against a boss on 27 October; since the second group tests it applies to bosses only by default (`//bot position auto|standard|spread`, see the last section). The before and after figures of milestone 2 are still to be taken. Source: the guide's page on positioning for the members of a group (two pages and a diagram, in French) and its page on aggro distance.
-Where the module stands today is in [group-roles.md](../group-roles.md) and [navigation-prototype.md](../../navigation/navigation-prototype.md); this file is the distance
+Where the module stands today is in [group-roles.md](../group-roles.md) and [navigation-prototype.md](../../navigation/history/navigation-prototype.md); this file is the distance
 between that and what it describes. Step 0, the measuring, is done and its figures are below.
 
 ## What it asks for
@@ -126,7 +126,7 @@ and on its mana. Before, it walked into melee to swing.
 ## Risks
 
 - **Dancing.** An enemy that follows the tank moves the whole formation. Tolerances and the recompute step are the defence, and they are guesses until step 2.
-- **Reactive steering.** Closing in from the far side is the sort of move that gets a bot stuck on a rock ([navigation-prototype.md](../../navigation/navigation-prototype.md)).
+- **Reactive steering.** Closing in from the far side is the sort of move that gets a bot stuck on a rock ([navigation-prototype.md](../../navigation/history/navigation-prototype.md)).
 - **Packs.** With several enemies on the tank, the anchor is the marked one and the others are wherever they stand. Good enough for a pull of two or three.
 - **Walls.** Indoors, the side opposite the group may be stone. A candidate with no ground is dropped, and a role with no candidate stays where it is.
 - **The tank still reaches the far side by walking there**, through a pack's cone if that is the way. Until step 5 that is the one place a bot can draw a new

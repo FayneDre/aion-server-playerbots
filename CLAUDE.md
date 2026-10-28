@@ -45,7 +45,7 @@ game-server/src/com/aionemu/gameserver/playerbot/
 `geoEngine` (`game-server/src/com/aionemu/gameserver/geoEngine/`) only provides collision/raycasting (line of sight, ground height) — no path planning.
 The bot module therefore generates its own grid navmesh offline (`tools/navmesh.ps1`) and plans on it with A\* (`BotPathFinder`): 26 open-world maps
 and 45 dungeons, with glide, ride and flight links. Raycast steering is only the fallback where no mesh answers. See
-[docs/navigation/navigation-prototype.md](docs/navigation/navigation-prototype.md) and the rest of that folder.
+[docs/navigation/how-it-works.md](docs/navigation/how-it-works.md) and the rest of that folder.
 
 ### Headless `Player` lifecycle: built
 

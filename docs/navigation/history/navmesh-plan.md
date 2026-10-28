@@ -6,7 +6,7 @@ Status: done; the design, kept for its reasons.
 
 ## Why
 
-[navigation-prototype.md](../navigation-prototype.md) walks as far towards a goal as a ray allows, sidesteps, and gives up. In play it fails three ways, all observed:
+[navigation-prototype.md](navigation-prototype.md) walks as far towards a goal as a ray allows, sidesteps, and gives up. In play it fails three ways, all observed:
 
 - **Obstacles under a metre** (a log, a branch) — every geo probe is raised `COLLISION_CHECK_Z_OFFSET` (1 m) at both ends, so the server walks through what the client blocks, and the correction reads as a teleport.
 - **Concave geometry** — a dead end or a U-shaped wall makes reactive steering bounce between two detours until the anti-stuck timeout fires.

@@ -92,11 +92,12 @@ have no plan yet ([roadmap.md](roadmap.md), "Group play").
 | File | What it holds |
 |---|---|
 | [backlog.md](navigation/backlog.md) | **What is left, as seen in game** (27 October): sliding, obstacles, long journeys, gliding, parasitic moves, dungeons. |
-| [navigation-prototype.md](navigation/navigation-prototype.md) | How a bot moves: mesh versus probes, legs, detours, the anti-stuck bounds. |
+| [how-it-works.md](navigation/how-it-works.md) | **How a bot moves today**: the layers, the mesh and its links, planning and its budgets, walking, what happens when it does not get there. |
 | [instance-navmesh-list.md](navigation/instance-navmesh-list.md) | The 110 instance maps by category, and which share a geometry. |
 | [plans/openworld-navigation-plan.md](navigation/plans/openworld-navigation-plan.md) | Glide and ride links, journeys given up. In progress: next, the day plans given up. |
 
-History: [navmesh-plan.md](navigation/history/navmesh-plan.md) (path planning on a generated grid, N0 to N6),
+History: [navigation-prototype.md](navigation/history/navigation-prototype.md) (the foundations of September),
+[navmesh-plan.md](navigation/history/navmesh-plan.md) (path planning on a generated grid, N0 to N6),
 [long-walk-planner.md](navigation/history/long-walk-planner.md) (routes over 150 m),
 [navigation-stuck-plan.md](navigation/history/navigation-stuck-plan.md) (bots stuck round obelisks),
 [obstacle-steering-plan.md](navigation/history/obstacle-steering-plan.md) (steps aside and rescue teleports),

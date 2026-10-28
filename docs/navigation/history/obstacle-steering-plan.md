@@ -45,7 +45,7 @@ nearby ground. Reported by the user as too frequent and breaking immersion.
 
 ## Why, from the code
 
-Movement has two layers ([navigation-prototype.md](../navigation-prototype.md)):
+Movement has two layers ([navigation-prototype.md](navigation-prototype.md)):
 
 1. **Planned waypoints** from the navmesh, walked as given. String pulling only keeps a straight stretch when `BotPathFinder.hasClearLine` says it
    stays on walkable ground the whole way: these are sound.

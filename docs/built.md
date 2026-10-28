@@ -2,7 +2,7 @@
 
 What works today and the reasoning behind it, kept because most of these decisions were paid for twice. For what is **left**, see
 [roadmap.md](roadmap.md); for how things work, see [playerbot-architecture.md](architecture/how-it-works.md),
-[population.md](population/how-it-works.md), [combat-prototype.md](combat/history/combat-prototype.md), [navigation-prototype.md](navigation/navigation-prototype.md) and
+[population.md](population/how-it-works.md), [combat-prototype.md](combat/history/combat-prototype.md), [navigation](navigation/how-it-works.md) and
 [navmesh-plan.md](navigation/history/navmesh-plan.md).
 
 ## Where it stands
