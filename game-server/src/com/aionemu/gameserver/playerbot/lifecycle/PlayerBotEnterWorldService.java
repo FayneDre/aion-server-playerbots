@@ -94,6 +94,9 @@ public class PlayerBotEnterWorldService {
 		// character nobody asked. The same silence stops setExp calling onLevelChange, which is why a bot never learns the skills of a level it
 		// gains, and why learnMissingSkills below exists at all.
 		bot.getCommonData().setOnline(true);
+		// PlayerEnterWorldService sets the bag's size as a player logs on; a bot that never did kept the 27 slots every bag starts with, so a trade
+		// that would fit its real bag was refused as too heavy
+		bot.setCubeLimit();
 		// what a friend's list shows: PlayerEnterWorldService says it as a player logs on, and a bot that never did stayed offline in every list
 		bot.getFriendList().setStatus(FriendList.Status.ONLINE, bot.getCommonData());
 		// Weapon away, whatever the character was doing when it last left. WEAPON_EQUIPPED lives on the Player object and nothing clears it on the way

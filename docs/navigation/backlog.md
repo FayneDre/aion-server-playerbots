@@ -77,3 +77,11 @@ mauvaise qualité ?"*
   a route to nowhere; narrow corridors where the body's width erosion closes passages.
 - First step: `measure.sh` and `nav-stats` per instance map during a run, against the open world's figures, and the dungeon and the moments the user
   saw, to tell the mesh from the mover.
+
+## 7. Bots hovering in Draupnir Cave
+
+*"Les bots se mettent à planer dans Draupnir alors que le chemin est largement praticable à pied."* (tester, 28 October, a group at level 41 to 43)
+
+- Not looked at yet. Two suspects to tell apart: the flight rule choosing the air for a trip a walk would make (`BotFlight.worthFlyingTo`, the
+  following-in-the-air rule when the player flies), or a mesh of the cave that has no ground route where the walk exists.
+- First step: the map and a journey from the tester, then `NavmeshTool replay` on it, with and without the flight links.

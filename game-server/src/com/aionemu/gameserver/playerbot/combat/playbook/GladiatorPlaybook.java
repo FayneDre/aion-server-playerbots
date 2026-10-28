@@ -579,6 +579,9 @@ final class GladiatorPlaybook implements ClassPlaybook {
 		if (aimedAt == null)
 			return false;
 		boolean cast = BotSkillManager.tryCastGroup(bot, aimedAt, move.group);
+		if (cast && (move == Move.SLAUGHTER || move == Move.DEFENSE_PREPARATION)) // toggles: a posture that flips every few seconds must be visible in the log
+			log.info("Gladiator {} switches {} (group of {}, tank dead: {})", bot.getName(), move, bot.getPlayerGroup() == null ? 1 : bot.getPlayerGroup().size(),
+				groupOf(bot, target).tankDead());
 		if (cast)
 			log.debug("Gladiator {} casts {} at {}% health{}", bot.getName(), move, bot.getLifeStats().getHpPercentage(),
 				move.aim == Aim.SECOND ? ", pulling " + second.getName() + " as a second" : "");

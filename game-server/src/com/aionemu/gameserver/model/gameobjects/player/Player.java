@@ -123,7 +123,7 @@ public class Player extends Creature {
 	private Summon summon;
 	private Pet pet;
 	private Kisk kisk;
-	private boolean isResByPlayer = false;
+	private volatile boolean isResByPlayer = false;
 	private int resurrectionSkill = 0;
 	private boolean isFlyingBeforeDeath = false;
 	private Npc postman = null;

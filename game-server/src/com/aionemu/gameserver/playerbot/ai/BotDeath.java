@@ -88,6 +88,7 @@ final class BotDeath {
 					// the window a resurrection opens is clicked by the player it is cast on, so for a bot the decision tick clicks it: taking a resurrection
 					// instead of the obelisk is what a player does when one is offered, and it is what a chanter's Light of Resurrection is for
 					resurrectionPending = true;
+					log.info("Bot {} has been offered a resurrection and takes it in {} ms", ai.getOwner().getName(), ACCEPT_RESURRECTION_DELAY_MILLIS);
 					reviveTask.cancel(false);
 					reviveTask = BotScheduler.getInstance().schedule(this::acceptResurrection, ACCEPT_RESURRECTION_DELAY_MILLIS);
 				}
@@ -230,6 +231,9 @@ final class BotDeath {
 						BotScheduler.getInstance().schedule(() -> takeHomeWhenRecovered(home, TAKEN_HOME_LOOKS), TAKEN_HOME_DELAY_MILLIS);
 				}
 			}
+		} catch (RuntimeException e) {
+			// swallowed by the scheduler otherwise: the bot stayed dead with the offer standing and was offered it again every tick, silently
+			log.error("Bot " + bot.getName() + " failed to come back from its death", e);
 		} finally {
 			// cleared last, so the decision tick cannot mistake the bot for freshly dead while it is being brought back
 			synchronized (ai.combatLock) {
