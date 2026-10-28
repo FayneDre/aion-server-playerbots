@@ -1,8 +1,8 @@
 # Module structure: plan
 
-Status: in progress: steps 1 to 4 deployed and validated, step 5 deployed and measured on 28 October.
+Status: done; all five steps deployed, each measured against two baselines and validated, the last on 28 October 2026.
 
-All five steps built on 27 October 2026; steps 1 to 4 deployed, step 4 measured and validated that evening. Step 5 on the branch `structure/step5-ai`, to deploy and measure on its own. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
+All five steps built on 27 October 2026; steps 1 to 4 deployed and step 4 measured that evening, step 5 deployed and measured on 28 October. Decided on 27 October 2026. Five of the eight points of that day's review of the module, in the order below. Points 6 to 8
 (one accessor for `instanceof PlayerBotAI`, one thread owning each bot's state, tuning constants as properties) are kept for later, on evidence.
 
 Why: navigation is far from finished and has to become very stable and fast, and the five class playbooks still to write must be testable before
@@ -117,3 +117,8 @@ rescue, 1792 after the chase, plus four anchor readers):
 
 Two traps met: the moved log lines changed logger, and `nav-stats.ps1` matched rescues and deaths by `PlayerBotAI` (it now takes either name, so
 old logs still read); and `BotMemoryTest` failed on a checkout with CRLF endings (fixed on the main branch). 404 tests.
+Deployed 28 October (`6993b7f`), measured 18:15-18:45 with a player in game against the same two baselines, step 4 beside them: 12 of 17 counters
+inside the band. Out of it: rescues 55 (37 and 43; step 4 52), of the same kinds in the same shares in all four windows (put back home 37, 21,
+35, 39; searches out of budget 15, 10, 14, 18) and none seen by a player; no headway 39 (21 to 28), spread over 30 bots at most 2 each, written by
+`BotMoveController`, which step 5 did not touch; routes refused 759 and day plans given up 525, at the top of the band. Arrivals and routes planned
+follow the fights started, which were 17 039 against 17 079 to 17 926. **Validated.** The branch and its worktree are removed.

@@ -3,7 +3,7 @@
 Status: not started; the user's six points from the game, worked once the module structure plan is done.
 
 Written on 27 October 2026 from the user's notes, to be worked once the module structure plan is done
-([module-structure-plan.md](../architecture/plans/module-structure-plan.md)). Navigation is the priority after it. Each point is the user's words, what
+([module-structure-plan.md](../architecture/history/module-structure-plan.md)). Navigation is the priority after it. Each point is the user's words, what
 is already known, and where to look first. Rules: measure before and after (`tools/measure.sh`, `tools/compare-measures.ps1`), with two
 baseline windows, since two windows of the same code differed by up to 30 % on 27 October.
 

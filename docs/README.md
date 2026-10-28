@@ -32,9 +32,9 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 |---|---|
 | [how-it-works.md](architecture/how-it-works.md) | Why bots are real `Player` objects, the core patches (`setAi`, `setMoveController`), the package layout, the reuse map. |
 | [moving-a-body.md](architecture/moving-a-body.md) | Driving a body from the server: what a movement packet carries, how often, and the task manager that drops a body that arrived. |
-| [plans/module-structure-plan.md](architecture/plans/module-structure-plan.md) | Untangling the module before navigation goes further. In progress: step 5 measured on 28 October. |
 
-History: [test-harness-plan.md](architecture/history/test-harness-plan.md) (notes in the log, feedback zips, patch tags, the command inbox).
+History: [module-structure-plan.md](architecture/history/module-structure-plan.md) (the module untangled before navigation went further, five steps, each measured),
+[test-harness-plan.md](architecture/history/test-harness-plan.md) (notes in the log, feedback zips, patch tags, the command inbox).
 
 ## Traps — [traps/](traps/)
 

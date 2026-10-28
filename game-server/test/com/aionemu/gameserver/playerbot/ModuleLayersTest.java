@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
  * first time a fix is quicker written the wrong way round: the class playbooks reached into the AI that calls them nine times before 27 October 2026.
  * <p>
  * Each rule names a package, every package under it included, and a package it must not import. Imports only: a fully qualified name in the code would
- * pass, and is not how this code base is written. See {@code docs/architecture/plans/module-structure-plan.md}.
+ * pass, and is not how this code base is written. See {@code docs/architecture/history/module-structure-plan.md}.
  */
 class ModuleLayersTest {
 
