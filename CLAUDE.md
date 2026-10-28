@@ -114,6 +114,8 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
   (into the server's `log/bot-measures`, plus the day plans given up as journeys), and `NavmeshTool replay <file>` plans those journeys again
   offline. `tools/compare-measures.ps1 -Before a,b -After c` puts reports side by side per half hour and marks what left the band
   of the reports before. A measurement tool written in a scratch folder is lost with the session: write it here.
+- `tools/sync-install.ps1 -From <commit>` brings the installed servers in line after an upstream merge: libraries, data and configuration files
+  the install still holds as the repository had them, and the SQL to run by hand. `deploy.ps1` copies only the jars and the handlers.
 - `tools/check-server-log.ps1` reads the game server log for errors, a log that has gone silent (a console clicked into pauses the whole server) and the
   number of bots in the world; `start-server.ps1` runs it after startup. `tools/skill-lookup.ps1` finds skills by name (French ones through the glossary), group, id or class, with their group,
   cooldown, reach and tier. Use them before reading the data by hand.

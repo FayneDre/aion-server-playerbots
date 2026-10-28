@@ -43,3 +43,9 @@ Falling is still the client's (`updateFalling` runs on move packets), so the rul
 - **The database**: `game-server/sql/update.sql` carries the statements upstream added (`players.pvp_exp`, `player_recipes.production_limit`, two
   `player_appearance` columns renamed, `house_scripts` compressed). A backup first, then the statements, before the new server starts.
 - **Logs** now roll by size (100 MB, 5 files) from `logging.properties`.
+
+`tools/sync-install.ps1 -From <first parent of the merge>` does the three first on request and shows them without `-Apply`. Its dry run of 28 October:
+48 data and configuration files to replace or remove, 47 libraries to add and 23 to remove over the three servers, 22 lines of SQL. Two files were
+edited in the install and are left for a hand merge: the chat server's `network.properties` (the game server password; upstream added an
+`auth_timeout_seconds` line) and the game server's `logback.xml` (three DEBUG loggers for the chanter and ranger playbooks, left from a debugging
+session; the merged file has none).
