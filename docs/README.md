@@ -148,4 +148,4 @@ One file per report: each point, what the log showed, the cause and the change. 
 | [feedback-2026-10-20.md](feedback/feedback-2026-10-20.md) | 19 and 20 October, group play in Eltnen. Validated in game on 27 October. |
 | [feedback-2026-10-21.md](feedback/feedback-2026-10-21.md) | 21 October, the capitals. Validated in game on 27 October; point 3 became the capital visitors. |
 | [feedback-2026-10-25.md](feedback/feedback-2026-10-25.md) | 25 October, cleric thresholds, invitations, shards, wings, lava. Shipped in patch-2026-10-25-2. |
-| [feedback-2026-10-28.md](feedback/feedback-2026-10-28.md) | 28 October, resurrection not taken, gladiator postures, Draupnir hovering, trades with a companion. Trades fixed. |
+| [feedback-2026-10-28.md](feedback/feedback-2026-10-28.md) | 28 October, resurrection not taken, gladiator postures, Draupnir hovering, trades with a companion. Trades: cause found, not fixed. |
