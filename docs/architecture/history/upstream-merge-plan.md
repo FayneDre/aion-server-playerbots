@@ -72,3 +72,15 @@ a glide` 0 (9 and 13). The glide counter is made by two to four bots a window (6
 those bots stand after a restart: 8 glides were planned in the first nine minutes, and the sampled give-up journeys replayed offline plan the same
 way with the old and the new jar. Channel lines 65 and 52, as before. No ERROR line from the start. The heap held 2.0 of 2.5 GB.
 Merged into `feature/playerbots` by fast-forward; `4.8` follows `upstream/4.8`. The jars name revision `08a087a`: the next deploy corrects it.
+
+## For the testers' servers
+
+Their installs are copies of the repository of the day, updated with `git pull` and `deploy.ps1 -Restart`, which carried two jars: after this merge
+that leaves an install that does not start. `deploy.ps1` now builds the login server too and runs `sync-install.ps1 -LibsOnly -Apply` (the
+login and chat servers are stopped for their jars with `-Restart`, which then starts the stack again). What it cannot do for them is the database
+and the files they edited: a tester runs `sync-install.ps1 -From <the patch tag they last deployed>` once (it shows first, `-Apply` does it), takes the SQL
+it writes after a `mysqldump` and before the restart, and merges by hand the files it lists as edited.
+Rehearsed on 28 October on an install rebuilt from `patch-2026-10-25-2` (the tag's configuration and static data, the libraries of before the merge):
+50 data and configuration files replaced, none left, libraries identical to the real install after the merge (22, 17 and 17 jars), the second
+`-LibsOnly` pass resolving nothing. Not rehearsed: the SQL (the database user may not create a schema), run for real the same day, and `deploy.ps1`
+end to end, which the running server prevents.

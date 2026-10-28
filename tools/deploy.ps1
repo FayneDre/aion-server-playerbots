@@ -1,13 +1,16 @@
 <#
 .SYNOPSIS
-    Builds the game-server and chat-server modules and deploys them to a local server installation.
+    Builds the game, login and chat server modules and deploys them to a local server installation.
 
 .DESCRIPTION
-    Copies the two artifacts the server actually loads:
+    Copies the artifacts the servers actually load:
       - the compiled jars (game-server + commons) into <server>/game-server/libs
       - the handler sources (data/handlers) which the server compiles at startup
       - the chat server's jar into <server>/chat-server/libs, when it changed
-    Config files are never touched, so local settings (mygs.properties, credentials) survive a deploy.
+      - the libraries the poms ask for, and the login server's jar and commons for the login and chat servers (sync-install.ps1 -LibsOnly: nothing is
+        resolved while the poms are as at the last sync; a login or chat server that is running is stopped for it with -Restart, else left as it is)
+    Config files are never touched, so local settings (mygs.properties, credentials) survive a deploy. After an upstream merge that changed the data,
+    the configuration or the database, sync-install.ps1 does those once, by hand (see docs/architecture/history/upstream-merge-plan.md).
 
 .PARAMETER ServerRoot
     Root of the server installation, containing the game-server/login-server/chat-server folders.
@@ -95,12 +98,17 @@ if (-not $SkipBuild) {
         # what every other build in this repo relies on -- but a test nothing runs is a test that rots, and the population director's two worst
         # faults of 2026-10-04 were each a ten line assertion over a pure function. Overridden for the one build whose output reaches a server.
         # quoted: PowerShell splits a bare -Dmaven.test.skip=false on the dots and hands Maven ".test.skip=false" as a lifecycle phase
-        & mvn -q -pl game-server,chat-server -am @phases '-Dmaven.test.skip=false'
+        & mvn -q -pl game-server,login-server,chat-server -am @phases '-Dmaven.test.skip=false'
         if ($LASTEXITCODE -ne 0) { throw "Build failed (exit code $LASTEXITCODE)" }
     } finally {
         Pop-Location
     }
 }
+
+# The libraries the poms ask for, and the jars the login and chat servers load from their own folders. Moving to Netty 4.2 on 28 October left an
+# install that did not start: deploy.ps1 carried two jars and the rest was a copy made once. Nothing happens while the poms are as at the last sync.
+Write-Host 'Checking libraries...' -ForegroundColor Cyan
+& (Join-Path $PSScriptRoot 'sync-install.ps1') -LibsOnly -Apply -StopRunning:$Restart -ServerRoot $ServerRoot
 
 Write-Host 'Deploying jars...' -ForegroundColor Cyan
 $libs = Join-Path $targetGameServer 'libs'
