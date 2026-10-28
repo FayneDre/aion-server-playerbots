@@ -205,7 +205,10 @@ final class BotDeath {
 					PlayerReviveService.skillRevive(bot);
 					ai.convalescence().forget();
 					ai.enterState(AIState.IDLE);
-					log.info("Bot {} accepted a resurrection at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
+					if (bot.isDead())
+						log.warn("Bot {} took a resurrection and is still dead", bot.getName());
+					else
+						log.info("Bot {} accepted a resurrection at {} {} {}", bot.getName(), bot.getX(), bot.getY(), bot.getZ());
 				}
 				case INSTANCE_ENTRANCE -> {
 					PlayerReviveService.instanceRevive(bot);
