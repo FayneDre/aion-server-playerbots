@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Brings the installed servers in line with the repository: the libraries and the servers' own jars, and after an upstream merge the data and
-    configuration files upstream changed and the SQL it added. Shows what it would do; changes nothing without -Apply.
+    configuration files upstream changed and the SQL it added (through apply-sql.ps1). Shows what it would do; changes nothing without -Apply.
 
 .DESCRIPTION
     deploy.ps1 used to copy the jars of the game and chat servers and the handlers, and nothing else, so a merge that moves to new libraries (Netty 4.2,
@@ -12,8 +12,8 @@
       (commons in the login and chat servers, the login server's jar) are copied when they differ;
     - a file the install still holds as the repository had it (-From) is replaced by the new one (-To), or removed if upstream removed it;
     - a file the install holds otherwise, edited here, is left alone and named, for a hand merge;
-    - the SQL added to game-server/sql/update.sql since -From is written to a file and the command to run it printed, never run: it renames columns the
-      running server reads, so it goes between stopping the old server and starting the new one, after a backup.
+    - the statements of game-server/sql/update.sql the database has not had yet are listed, and with -Apply run once each after a backup
+      (apply-sql.ps1, which deploy.ps1 also runs: this is the same step, shown here with the rest).
 
     deploy.ps1 calls it with -LibsOnly, which is the part that is safe on every deploy: nothing is resolved while the poms are as they were at the last
     sync (a stamp in the install), and a server that is running keeps its jars unless -StopRunning says it may be stopped.
@@ -41,7 +41,6 @@ param(
     [string]$From,
     [string]$To = 'HEAD',
     [string]$ServerRoot = $env:AION_SERVER_HOME,
-    [string]$SqlOut = (Join-Path $env:TEMP 'aion-upstream-update.sql'),
     [switch]$LibsOnly,
     [switch]$StopRunning,
     [switch]$Apply
@@ -199,17 +198,9 @@ foreach ($module in $modules) {
 if ($Apply -and $resolve -and $everythingDone) { Set-Content $stampFile $pomHash -Encoding ascii }
 
 # ---- SQL --------------------------------------------------------------------------------------------------------------------------------------
-# the merged update.sql is upstream's statements and then the bot tables (which SchemaUpdater creates by itself); the first are the ones to run
+# the statements of update.sql the database has not had yet, once each, after a backup (apply-sql.ps1; deploy.ps1 runs it too)
 if (-not $LibsOnly) {
-    git -C $repo diff --quiet $From $To -- game-server/sql/update.sql
-    if ($LASTEXITCODE -ne 0) {
-        $sql = (Get-Text $To 'game-server/sql/update.sql').Split("`n")
-        $end = 0
-        while ($end -lt $sql.Count -and $sql[$end] -notmatch 'playerbot_') { $end++ }
-        [IO.File]::WriteAllText($SqlOut, (($sql[0..($end - 1)] -join "`n").TrimEnd() + "`n"), [Text.Encoding]::GetEncoding(28591))
-        Write-Output "SQL upstream added, in $SqlOut. Between stopping the old server and starting the new one, after a backup of aion_gs:"
-        Write-Output "  mysql -u <user> -p aion_gs < $SqlOut"
-    }
+    & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Apply:$Apply
 }
 
 if (-not $Apply) { Write-Output 'Nothing changed: -Apply does it.' }

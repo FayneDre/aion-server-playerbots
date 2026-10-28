@@ -10,7 +10,7 @@
       - the libraries the poms ask for, and the login server's jar and commons for the login and chat servers (sync-install.ps1 -LibsOnly: nothing is
         resolved while the poms are as at the last sync; a login or chat server that is running is stopped for it with -Restart, else left as it is)
     Config files are never touched, so local settings (mygs.properties, credentials) survive a deploy. After an upstream merge that changed the data,
-    the configuration or the database, sync-install.ps1 does those once, by hand (see docs/architecture/history/upstream-merge-plan.md).
+    the configuration, sync-install.ps1 -From does those once (see docs/architecture/history/upstream-merge-plan.md); the database is apply-sql.ps1, below.
 
 .PARAMETER ServerRoot
     Root of the server installation, containing the game-server/login-server/chat-server folders.
@@ -18,6 +18,9 @@
 
 .PARAMETER SkipBuild
     Deploy the existing build output without running Maven again.
+
+.PARAMETER SkipSql
+    Do not apply the statements of update.sql the database has not had yet (apply-sql.ps1 does it after the build, from a backup, with the game server stopped).
 
 .PARAMETER Restart
     Stop the running game server before deploying and start the whole stack again afterwards.
@@ -31,7 +34,8 @@
 param(
     [string]$ServerRoot = $env:AION_SERVER_HOME,
     [switch]$SkipBuild,
-    [switch]$Restart
+    [switch]$Restart,
+    [switch]$SkipSql
 )
 
 $ErrorActionPreference = 'Stop'
@@ -103,6 +107,14 @@ if (-not $SkipBuild) {
     } finally {
         Pop-Location
     }
+}
+
+# The schema changes the database has not had yet, once each, from a backup. Only with something new does it do anything, and then the game server
+# must be stopped, which a deploy has asked of it since the start (-Restart stops it; without, it refuses). A failing statement stops the deploy:
+# a server started on a half migrated schema fails in ways that are harder to read.
+if (-not $SkipSql) {
+    Write-Host 'Checking the database...' -ForegroundColor Cyan
+    & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Apply
 }
 
 # The libraries the poms ask for, and the jars the login and chat servers load from their own folders. Moving to Netty 4.2 on 28 October left an

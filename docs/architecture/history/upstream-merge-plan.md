@@ -76,11 +76,14 @@ Merged into `feature/playerbots` by fast-forward; `4.8` follows `upstream/4.8`. 
 ## For the testers' servers
 
 Their installs are copies of the repository of the day, updated with `git pull` and `deploy.ps1 -Restart`, which carried two jars: after this merge
-that leaves an install that does not start. `deploy.ps1` now builds the login server too and runs `sync-install.ps1 -LibsOnly -Apply` (the
-login and chat servers are stopped for their jars with `-Restart`, which then starts the stack again). What it cannot do for them is the database
-and the files they edited: a tester runs `sync-install.ps1 -From <the patch tag they last deployed>` once (it shows first, `-Apply` does it), takes the SQL
-it writes after a `mysqldump` and before the restart, and merges by hand the files it lists as edited.
-Rehearsed on 28 October on an install rebuilt from `patch-2026-10-25-2` (the tag's configuration and static data, the libraries of before the merge):
-50 data and configuration files replaced, none left, libraries identical to the real install after the merge (22, 17 and 17 jars), the second
-`-LibsOnly` pass resolving nothing. Not rehearsed: the SQL (the database user may not create a schema), run for real the same day, and `deploy.ps1`
-end to end, which the running server prevents.
+that would have left an install that does not start. `deploy.ps1` now builds the login server too, runs `sync-install.ps1 -LibsOnly -Apply` (the
+login and chat servers are stopped for their jars with `-Restart`, which then starts the stack again) and `apply-sql.ps1` (a table in the database
+remembers the statements of `update.sql` it has had; with something new, the game server stopped, a dump in `<install>/backups` first, each statement
+once). What a script cannot do for a tester is the files they edited themselves: `sync-install.ps1 -From <the patch tag they last deployed>` once,
+which shows first and lists the ones it leaves for a hand merge. A database that already has the statements, run by hand as here on 28 October, is told
+so once with `apply-sql.ps1 -MarkApplied -Apply` (done for the real database).
+Rehearsed on 28 October: the files and libraries on an install rebuilt from `patch-2026-10-25-2` (50 data and configuration files replaced, none left,
+libraries identical to the real install after the merge, the second pass resolving nothing); the SQL runner on scratch statements in a scratch ledger
+(a duplicate column recorded as already there, the cut at the bot tables, a failing statement stopping the run with the ones before it kept, a rerun
+going on from there, `-MarkApplied`). Not rehearsed: `deploy.ps1` end to end, which the running server prevents, and a first run on a real
+unmigrated database (the database user may not create a schema; the same statements ran by hand the same day).
