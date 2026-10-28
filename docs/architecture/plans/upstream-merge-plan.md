@@ -49,3 +49,7 @@ Falling is still the client's (`updateFalling` runs on move packets), so the rul
 edited in the install and are left for a hand merge: the chat server's `network.properties` (the game server password; upstream added an
 `auth_timeout_seconds` line) and the game server's `logback.xml` (three DEBUG loggers for the chanter and ranger playbooks, left from a debugging
 session; the merged file has none).
+
+The SQL also holds a migration of every player's skills to level 1 (upstream stopped using the skill's grade as its level), which bots take
+with everyone else. New server settings to know: at most 2 characters per computer (`multi_client.max_clients_per_computer`; bots have no
+connection and are not counted), and a client that stalls or does not authenticate in 60 s is disconnected.

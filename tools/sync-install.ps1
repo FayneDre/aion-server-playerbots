@@ -116,10 +116,14 @@ foreach ($module in 'game-server', 'login-server', 'chat-server') {
 }
 
 # ---- SQL --------------------------------------------------------------------------------------------------------------------------------------
-$added = @(git -C $repo diff -U0 $From $To -- game-server/sql/update.sql | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' } | ForEach-Object { $_.Substring(1) })
-if ($added.Count -gt 0) {
-    Set-Content $SqlOut $added -Encoding utf8
-    Write-Output "SQL upstream added: $($added.Count) lines in $SqlOut. Between stopping the old server and starting the new one, after a backup of aion_gs:"
+# the merged update.sql is upstream's statements and then the bot tables (which SchemaUpdater creates by itself); the first are the ones to run
+git -C $repo diff --quiet $From $To -- game-server/sql/update.sql
+if ($LASTEXITCODE -ne 0) {
+    $sql = (Get-Text $To 'game-server/sql/update.sql').Split("`n")
+    $end = 0
+    while ($end -lt $sql.Count -and $sql[$end] -notmatch 'playerbot_') { $end++ }
+    [IO.File]::WriteAllText($SqlOut, (($sql[0..($end - 1)] -join "`n").TrimEnd() + "`n"), [Text.Encoding]::GetEncoding(28591))
+    Write-Output "SQL upstream added, in $SqlOut. Between stopping the old server and starting the new one, after a backup of aion_gs:"
     Write-Output "  mysql -u <user> -p aion_gs < $SqlOut"
 }
 
