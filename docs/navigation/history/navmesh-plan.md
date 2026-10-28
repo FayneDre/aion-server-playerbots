@@ -2,7 +2,7 @@
 
 Status: done; the design, kept for its reasons.
 
-**N0 to N6 done** for navigation; this file is the design, kept for its reasons. Replacing reactive steering with real path planning. What it is used for is in [built.md](../../built.md); what is still missing, [roadmap.md](../../roadmap.md).
+**N0 to N6 done** for navigation; this file is the design, kept for its reasons. Replacing reactive steering with real path planning. What it is used for today is in [../how-it-works.md](../how-it-works.md); what is still missing, [roadmap.md](../../roadmap.md).
 
 ## Why
 

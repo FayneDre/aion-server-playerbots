@@ -1,180 +1,37 @@
-# What is built, and what it cost to learn
+# What is built
 
-What works today and the reasoning behind it, kept because most of these decisions were paid for twice. For what is **left**, see
-[roadmap.md](roadmap.md); for how things work, see [playerbot-architecture.md](architecture/how-it-works.md),
-[population.md](population/how-it-works.md), [combat-prototype.md](combat/history/combat-prototype.md), [navigation](navigation/how-it-works.md) and
-[navmesh-plan.md](navigation/history/navmesh-plan.md).
+What works today, one paragraph a topic, each pointing to the document that says how it works. For what is **left**, see [roadmap.md](roadmap.md);
+for every document, [README.md](README.md). Rewritten on 28 October 2026: the reasoning this file used to hold moved to the topic it belongs to.
 
 ## Where it stands
 
-Bots are real `Player` objects with no connection, driven by `PlayerBotAI`. They load from the database, spawn visible to real clients, fight with class skills, chase, loot, rest, die and resurrect, work a 60 m camp, and plan routes over a generated navmesh. Several run at once without interfering.
+Bots are real `Player` objects with no connection, driven by `PlayerBotAI`, about 950 of them awake on 26 maps. They live, level and travel on their
+own, fight with class skills, group with players, keep stores, talk in the channels and fly. Everything shipped up to `patch-2026-10-25-2` was
+validated in game on 27 October, except duels, friends and trades with a companion. `//bot` lists the commands ([bot-commands.md](bot-commands.md)).
 
-Verified in game. Run `//bot` for the command list. This file holds the foundations, built up to mid October; what came after has its own plan,
-which says what it cost: flight and the Abyss ([flight/](flight/)), dungeons ([dungeon-navmesh-plan.md](navigation/history/dungeon-navmesh-plan.md)), the
-class playbooks ([classes/](classes/)), the capitals ([capitals/](capitals/)) and the chat ([social/](social/)). The index is [README.md](README.md).
+## By topic
 
-## Done: the vendor run
+- **The module** ([architecture/how-it-works.md](architecture/how-it-works.md)): why a bot is a real `Player`, the two core patches (`setAi`,
+  `setMoveController`), the packages and their layers, `isOnline()` meaning "is present" (whatever needs the socket tests the socket), saving every
+  5 minutes and on a clean shutdown. Driving a body: [architecture/moving-a-body.md](architecture/moving-a-body.md).
+- **Population** ([population/how-it-works.md](population/how-it-works.md)): one kind of bot that levels and travels; villages always full, the
+  countryside breathing with attention; inhabitants created asleep in a pool the director wakes; careers that move a bot's home as it grows. What the
+  pool cost to build: [population/history/the-pool.md](population/history/the-pool.md).
+- **Combat** ([combat/how-it-works.md](combat/how-it-works.md)): two ticks, targets chosen alone or read from the group's aggro, skills from the class's
+  playbook then the generic order read from the data, retreat from a fight it cannot win, death and revival.
+- **Classes** ([classes/how-it-works.md](classes/how-it-works.md)): six playbooks from guides (templar, chanter, cleric, ranger, gladiator,
+  sorcerer), rules by skill group, pure decisions, data tests.
+- **Gear** ([gear/how-it-works.md](gear/how-it-works.md)): what a bot wears and how it is upgraded, stigmas; selling junk, dressing in the best of what
+  it owns and drinking potions: [gear/looking-after-itself.md](gear/looking-after-itself.md).
+- **Navigation** ([navigation/how-it-works.md](navigation/how-it-works.md)): a generated navmesh for 26 open-world maps and 45 dungeon geometries,
+  A\* in one or two passes, glide, ride and flight links, a mover that walks the plan and probes only where the mesh is silent, bounded rescues.
+- **Flight** ([flight/how-it-works.md](flight/how-it-works.md)): take-off, cruise and flown descents, following a flying player, Reshanta's islands
+  crossed by air.
+- **Groups and players** ([social/how-it-works.md](social/how-it-works.md)): invitations, following, instances, the Find Group window, requests,
+  the chat channels. Why groups work the way they do: [social/groups.md](social/groups.md).
+- **Capitals** ([capitals/how-it-works.md](capitals/how-it-works.md)): a town day, private stores at broker prices, high-level visitors, shouts.
 
-Wired into `PlayerBotAI.botTick`, right after the health check and before roaming, so a bot heals before travelling and never abandons a fight to go shopping. `//bot sell <name>` forces a trip for testing without waiting for a bag to fill. Verified in game: a bot walks to the nearest shop, sells, returns to its anchor.
+## Known limits and traps
 
-**Arriving is not finding.** The shop spots come from spawn data — where an npc was placed, not where it stands. A bot that reached a spot with nothing on it re-issued a move to the point it was already standing on, arrived instantly, found nothing again, and did that for ever. Two changes end it: the bot walks to a shop keeper it can actually see rather than to a recorded coordinate, and a spot it reaches with no keeper in sight is dropped for ten minutes so the next trip goes elsewhere.
-
-**Gear nobody here will ever wear is sold, whatever its quality.** Selling went by quality alone, so a green breastplate looted by a priest was neither worn nor sold and sat in the bag for good — and since a full bag is what sends a bot shopping, one such piece bought it an endless round of trips that sold a handful of greys and changed nothing. Two tests decide, both of them permanent: the wrong class, race or gender, and a mastery this class is never taught anywhere in its skill tree — plate for a priest, a bow for a templar. What the bot cannot wear because of its **level** is kept: it grows into that. "Does not have the mastery" is not an answer either, since masteries are taught as late as level fifty; "will never be taught it" is.
-
-The trigger needed two conditions, not one: `hasFullBag(bot)` alone loops forever on a bag full of gear, quest items or anything rare, since nothing there is ever sold. `BotVendorManager.hasJunk(bot)` is required too.
-
-**Selling goes through `TradeService.performSellToShop`**, the engine's own sale. It did not at first: that path gates on `PlayerRestrictions.canTrade`, which used to reject anything not `isOnline()`, so every sale silently failed, and its rules — price, sell limit, repurchase list, kinah — were copied into `BotVendorManager.sellJunk`. Once `isOnline()` was fixed at the root (below), the copy had nothing left to justify it and was deleted.
-
-## Done: looking after itself
-
-**A bot wears the best of what it owns.** Without this it fights for hours in the gear it spawned with, looting better pieces and walking past them in its own bag. Whether it is *allowed* to wear something is never asked: `Equipment.equipItem` already weighs the abyss rank, the mastery skills, the class, the level, the race, the gender and the room left in the bag, so trying is the question — the same bargain the skill code makes, and for the same reason: a second copy of the engine's rules would drift from it.
-
-A weapon is only ever weighed against a weapon and armour against armour. Slots overlap in ways that make a free-for-all dangerous — a shield and a two handed weapon claim the same hand, so a shield that merely scored higher would strip the weapon and the weapon would not win it back. Anything finer than that is too strict: the first attempt insisted on the same item group, which is the *material*, and it blocked every real upgrade, since levelling gear crosses from leather to cloth and back with whatever drops.
-
-**Worthwhile gear is bound to the bot before it is worn**, and this is what kept three attempts at equipping wearing nothing at all — `equipItem` does not refuse a soul bound piece, it asks about it and returns null. See [engine-traps.md](traps/engine-traps.md); it is the clearest example of the whole family.
-
-**A piece that scores higher can still be unwearable for good** — a mace a priest has no mastery for, a piece for the other race — and nothing short of trying says so. After a fruitless look the bot leaves its bag alone for a minute, or it would stop and sheathe on every tick of its life for one such item.
-
-**Dressing is committed to, not waited for.** Reading a piece and binding one each take five seconds with the weapon away, standing still, undone by a single step or blow. A bot that farms is in its weapon stance almost always and spends its idle moments walking, so the quiet window never came on its own. The bot now stops, sheathes and holds its tick until the piece is on. Measured: three pieces worn per bot before, four and climbing after.
-
-**Gear is identified before it is worn.** A piece that rolls bonus stats drops unidentified (`tuneCount == -1`) and the engine refuses to equip it, which is why the first version of this quietly wore nothing at all. Identifying costs nothing but five seconds: `CM_TUNE` calls `identifyItem` with no scroll when the item is unknown, and the scroll a player buys is for re-rolling a piece that has already been read. Only pieces worth wearing are read, and the judgement holds either way, since identifying rolls bonus stats without touching the level or quality it was judged on. Those five seconds are watched by an observer that cancels them if their owner moves or fights, so the bot holds its tick until they are over.
-
-Which piece is better is judged on its level first and its quality second. That is a proxy and says so: comparing what items actually grant would mean weighing attack against defence against a resistance, which has no answer that holds for every class.
-
-**Bots drink.** A class with no heal of its own had nothing between being hurt and sitting down, and healers spent their last mana without ever reaching for the flask that would have given it back. Potions are found by what they do rather than by a list of item ids — an item whose use casts a skill that heals — and used through the same path the client packet takes, so the prison, the abnormal states, the cooldown and "this would do nothing at full health" are all still the engine's call. That path only became reachable once `isOnline()` stopped meaning "has a socket".
-
-## Then
-
-**Skill rotation (M7).** Bots heal, buff, cast from a skill's own range rather than walking into melee first, shield themselves when a fight turns, and open with a burst — they open with a class's own move — a leap, or a walk in under stealth — and they no longer pick the attacks that leap backwards. They follow their skill chains, do not re-apply a debuff already on the target, and chanters run their mantras. See [combat-skills.md](combat/combat-skills.md). They lead with their strongest skill rather than their newest, which the id ordering had badly wrong. On top of those tiers read from the data, six classes now have an authored playbook from a guide ([classes/](classes/)); the other five still play the tiers alone.
-
-## Done: groups
-
-Invite a bot from the client like anyone else and it joins: the decision tick answers the question window it can never see. `ResponseRequester.respond` returns false when nothing is pending, so asking is the whole test and no engine api had to be widened.
-
-**Following is the anchor, not a new behaviour.** A grouped bot points its camp anchor at its leader every tick, and every rule it already had — roam the camp, come back when it is clear, break off a chase that leaves it — travels with the group for free. There is no second set of movement rules to keep in step with the first. A leader on another map is ignored rather than walked to: that is travel, not navigation, and bots cannot travel yet. The one exception is an instance: a bot whose player has entered one is registered with it and teleported beside them, the way the portal lets in a member, and joins them again when they come out; one left in an instance with no group is put at its exit (`BotInstances`). Dead inside, it revives at the instance's entrance, not at the obelisk.
-
-**A follower keeps walking while its next route is planned.** On a map with glides every plan is answered off the tick thread, and a leader moves
-more than the 2 m that called for a new one between ticks: the route in hand was thrown away and the bot stood waiting, and a plan that arrived
-mid-walk was taken from its first waypoint, behind the bot. Within 8 m of drift the old route is walked on, an answer for where the destination was
-a moment ago is taken, and a new route starts from where the bot has got to (`BotMoveController.resumeIndex`). A leader who glides down is copied:
-the followers note where it left the ground and the points it was seen at in the air, walk to the edge and glide the same way (`LeaderGlides`).
-
-**An offer in the Find Group window is answered by bots** (`BotRecruiter`, `RecruitPlan`). Every five seconds the offers of the Instance Groups tab are read: the seats are the members the player asked for, within what the instance takes; the roles a tank, a healer and a support before damage, the player's own class counted; the levels the player's give or take two, four if nobody of the role is that close, inside the instance's entry range. A recruit is woken from the pool beside the player, or taken from the world's free bots when the pool has nobody, invited, and joins on its next tick; once out of the group, or never in it after 30 s, it is teleported home and takes up the home it had when recruited. Nothing moves a home while a bot is a recruit or in an instance: asked from the wrong map, the rules that rehouse a bot wrote another map's coordinates as its home (seven recruits on 18 October, repaired by hand), and the director leaves instance maps out of its review. This client's portal statues never open the recruitment page, so the server needs `gameserver.instance_group.form_anywhere = true` for the Post Offer button to work at all. `//bot come` has no effect on a grouped bot, since the leader sets the anchor a tick later.
-
-**A grouped bot has no initiative of its own.** It fights what the group fights and otherwise stands by the leader: no picking targets, no roaming, no errands, no shop runs. A member that pulls what it likes is worse than no member, since it brings a second mob into a fight nobody chose and wanders off while it does. Defending itself is not initiative and is untouched — it still comes ahead of everything.
-
-The leader's target is taken first so a group converges instead of each member helping whoever is nearest, and bots pile onto it through `forceClaim`. The level gap a bot applies to its own fights is deliberately not applied: the group chose this fight, and refusing to help because the mob is big is the one thing a member must not do.
-
-**A group mate's attacker is assisted, not just the leader's selection.** Reading `getTarget()` alone left a bot standing by while its leader was being eaten, because a player whose selection is elsewhere — or who never clicked the mob that jumped them — is being attacked all the same. The mob's aggro list is asked instead: it remembers who it is fighting whatever anyone has selected. The leader's attacker comes first, then any member's.
-
-**Healing and buffing reach the group.** The bot uses the same skills it heals and buffs itself with, aimed at a group mate — minus those that cannot leave their caster, which the data says and the engine does not: aimed elsewhere, a skill marked `first_target="ME"` is not refused but quietly turned back on the caster, and reported as a success. Over five thousand skills are marked that way, including the Bandage Heal every character knows, so every class kept "healing" its ally by bandaging itself. See [engine-traps.md](traps/engine-traps.md). Allies are healed below 75%, a higher bar than the bot uses for itself, because a bot can sit down and regenerate what it does not heal while an ally it leaves hurt stays hurt. In a fight an ally's life comes before the bot's damage but after the bot's own survival.
-
-**Selecting a target is not fighting it.** Players click mobs to read their level, and a group whose bots pull whatever the leader looks at is unusable, so the mob's own aggro list decides: it holds a grudge against whoever hit it, and equally against whoever it chose to attack, which means a leader under attack is assisted too.
-
-Resting gives way to following: a bot that has fallen behind walks instead of sitting down, since resting takes it out of the fight for as long as it lasts.
-
-**Each follower has its own place around the leader**, not the leader's own feet. Everyone aiming at the same point is what made bots pile onto their leader and jostle for it; a slot each fixes both at once, and removing that competition is most of what read as restlessness. The places are laid out in **world** directions rather than relative to where the leader faces — tied to a facing, the formation would swing round every time the leader turned on the spot and send everyone running for nothing. Members are ordered by object id so a bot keeps its place from tick to tick, and each sits a little off its exact share of the circle and a little nearer or further than the rest, by an amount fixed to its own id — an exact share of an exact circle is what a surveyor would lay out, and it reads that way. Since everything downstream already works off the anchor, moving the anchor to that place is all "stand with the group" needed.
-
-Following also stops re-planning on every tick: a leader at a run drifts past the replan distance each second, and each new plan turns the bot a little differently. It now keeps its plan until its place has drifted more than `RETARGET_STEP`, the same guard chasing a target has always used.
-
-**A follower stops when it arrives, rather than finishing its leg.** The leg in progress aims at wherever the leader stood when it was issued, so letting it run walks the bot past a leader who has turned round, and the next tick walks it back — the small pacing of a follower forever arriving where its leader no longer is. Stopping is safe because the ai reads whether the bot is travelling from the move controller rather than from a flag of its own, so nothing is left believing the journey is still on.
-
-**Following re-aims every tick**, unlike returning to a camp. `returnToAnchor` waits for the current leg to end before looking again, which is right for an anchor that does not move and wrong for a leader who is walking: the bot heads for where the leader stood a leg ago, so the longer the journey the further behind it arrives. `moveToPoint` is built to be called repeatedly and keeps its plan unless the destination shifted more than a couple of metres, so the lag is bounded by that distance instead of by the length of a leg.
-
-A bot that catches up from far away **appears rather than walks into view** for its leader, because a client is only told about characters in its known list; the group map dot comes from team updates, which have no such range. That is what a real player at the same distance would look like too.
-
-A bot is passed over when a group looks for a new leader — leading means answering invitations and setting loot rules. That has a tail: a team keeps its leader field when that member leaves, and nothing replaces a leader a bot may not become, so the group of a player who has just walked out still names them. Bots followed that ghost until `leaderToFollow` started checking the leader is still a member. A group with no player left in it is then left outright, rather than leaving bots counting each other as team mates for targeting and loot for ever.
-
-**Left for later:** a group of bots alone has no one to decide for it, short of a `//bot squad`. A bot cut off from its player by a teleporter, a lift or a door is put beside them after about 13 s (`PlayerBotAI.freeItself`, 19 October), and one that accepts an invitation from over 50 m is brought to the player (25 October).
-
-**Economy.** Selling is the first step. Then the broker (`BrokerService`), then player shops. (`PvpService` no longer throws when a bot kills a real player: that dereference was guarded along with the rest of the `isOnline()` work.)
-
-**Bot population.** A map populates itself on first startup, from one configuration line, with its own navmesh generated if missing and its database schema brought up to date if it lacks anything. Bots live on reserved accounts from id 900000, keep a home, a level drawn from where they live and a face of their own. See [population.md](population/how-it-works.md).
-
-**Saving.** Spawned bots are written every 5 minutes, and on a clean shutdown. Nothing else writes them: the engine's `PeriodicSaveService` covers legion warehouses only, and real players are saved when they log out, a door a bot never uses. This matters more than it used to, now that bots gain levels and skills unattended over hours.
-
-## Done: the pool
-
-Inhabitants are created asleep and the director wakes them, which is what makes a world of two thousand something that can be tried rather than only
-calculated — every bot used to be awake from the moment it was created. The model and the numbers are in [population.md](population/how-it-works.md); what the building
-of it cost is here.
-
-**Attention could not be applied to the whole population, and the reason was geometric.** The design scaled every region's target by how much it was being
-watched. That cannot work for settlements: a player arrives at a bind obelisk in a town, every villager's home is one centre with fifteen metres of
-scatter, and so the whole village sits inside the ninety five metres a client is told about. A village thinned while nobody looked could never be refilled
-while somebody stood in it — the one place a person looks at would be the one place the director was unable to fix. Settlements became a fixed cast and the
-countryside became the part that breathes. It also happens to be the arrangement the data already had: settlement density never depended on whether a map
-was busy, only the hunting grounds did.
-
-**Three things were wrong before any of this and only became visible once something other than an operator decided when a bot leaves.** `delete()` despawns
-with `FADE_OUT`, so every departure was watched; the departure did not leave its group, so a player kept a ghost in their party window; and `cancel(false)`
-does not stop a tick that has begun, so a bot could be removed from the world in the middle of deciding something and then try to walk. All three are in
-[engine-traps.md](traps/engine-traps.md) or fixed at the source.
-
-**Creating a character asleep nearly dressed it in nothing.** Dressing used to happen after entering the world, and the comment said why: equipping was
-believed to ask whether its wearer was spawned. It does not — a broadcast to a non-spawned object reaches its empty known list and stops. The real
-dependency was the opposite way round and quieter: the outfitter refuses armour to a character that does not hold its mastery, and a character read back
-from the database holds level-1 skills whatever its level, because teaching happened on the way in ([world-and-data-traps.md](traps/world-and-data-traps.md)).
-Teach, then dress.
-
-**Verified in game, on Poeta.** A cleared map repopulated to 36 inhabitants over **29 distinct homes** — against 16, twelve of them in Akarios, before
-`populate` learned to fill the places still short. A player standing on the map took the target to 37, and the pool filled in waves of 25: 23 arrived,
-then 10, then nothing, with **the same two refused at every review** because the player was stood on the ground those two live on. The region holds two
-short, on purpose, for as long as somebody is looking at the place that is missing them. That is the whole rule, observed rather than reasoned about.
-
-**A bot is busy most of the time, which is what paces departures.** Emptying a map measured 4 to 6 leaving a review against 15 to 21 put off as "in a
-fight or on a road" — so the rate is set by how often bots are idle, not by the budget of 25, which is almost never the binding constraint. A surplus of
-27 took three or four minutes to go, with nobody watching. `tryRetire` is what produces that, and it is the right trade: no bot is ever taken out of the
-world mid-swing.
-
-**The surge had nobody to draw on, and only the game showed it.** `populate` created the *quiet* plan, because that is what `population.md` calls the
-establishment — "what gets created and kept". But the busy countryside is twice as dense, so on Poeta a player's arrival raised the target from 19 to 37
-against a pool of 19: fourteen awake, five asleep, and a map with a player on it no busier than an empty one. Two things were wrong at once. The pool has
-to be stocked at the busy plan, and the countryside has to be counted **per map** rather than per place — thirteen homes were spread over fifty one
-hunting grounds, so the plan kept asking for hunters at grounds nobody lived at while inhabitants slept at grounds already worked. A village is a place a
-player walks into; a hunting ground is interchangeable with the next one.
-
-**The pool is a query, not a collection.** Which characters exist is the database's answer; a copy of it kept in memory is a second truth to drift. So the
-pool is the world-owned residents that are not in the set of spawned bots, and `in_world` went from a full-table rewrite on every change to one row per
-arrival — "these and nobody else" is the safer statement for a population created once and the wrong one for a loop running every thirty seconds.
-
-## Retired: residents and adventurers
-
-A bot used to be one of two things, and a resident gained no experience so that its region kept inhabitants of its own level. It worked, and it was
-the wrong answer: it produced two species, and a resident was not really a character. Replaced by one kind of bot that levels and travels, with a
-stationary *flow* rather than stationary individuals — see [population.md](population/how-it-works.md).
-
-What the model got right and kept: a level belongs to a region rather than to a camp, a bot has a home that is not simply the nearest place, and
-settlements are read from the world rather than authored. What it got wrong is recorded in [roadmap.md](roadmap.md) under the density rule.
-
-## Known limits
-
-Kept in one place, [roadmap.md](roadmap.md) ("Known limits"), where they are reviewed with each patch. Three that this file used to list are gone:
-bots flee a fight they are losing (`retreatIfLosing`, never in a group), follow their player into an instance or are put beside them when cut off,
-and fly; and the probes' blindness under a metre no longer applies along a planned route, which is walked on the mesh.
-
-## `isOnline()` means "is present", not "has a socket"
-
-`Player.isOnline()` was `getClientConnection() != null`, and 81 call sites used it to ask whether a character is **there** — can be given experience, counted in a group, offered a trade. Bots broke that equation: they are in the world, act in it, and have no connection by design.
-
-Patching each site as it bit was going nowhere. A bot in a group would have earned no experience at all, not even for its own kills, because `PlayerTeamRewardStats.accept` skips members that are not online — and a grouped kill no longer takes the solo reward path. The same filter sits across loot distribution.
-
-So the method now answers the question its callers ask: `bot || getClientConnection() != null`, with an explicit flag set as the bot enters the world. Real players are unaffected, by construction.
-
-The counterpart is that **whatever needs the socket must test the socket**. Six places did not:
-
-| Where | Was | Now |
-|---|---|---|
-| `PacketSendUtility.sendPacket` | `isOnline()` as the null guard — the one hot path, and it would have thrown on every packet sent to a bot | tests the connection |
-| `MultiClientingService` | dereferenced the connection of every world player, bots included | skips connectionless players |
-| `World` (out of bounds kick) | dereferenced with no guard | null checked |
-| `PunishmentService` | dereferenced with no guard | null checked |
-| `PvpService` (PL logging) | dereferenced with no guard | null checked |
-| `ChangeLeaderEvent` | would have handed a group to a bot | bots are passed over: leading means answering invitations, which they cannot |
-
-Three of those were already broken before any of this: they walk the world player list, which has contained bots all along. Legion and friend lists are untouched — they use a different `isOnline()`, on `PlayerCommonData`, fed by the database column, where a bot is correctly absent.
-
-## Traps
-
-Moved to [engine-traps.md](traps/engine-traps.md) and [world-and-data-traps.md](traps/world-and-data-traps.md), which are where to look first when a bot does
-nothing and says nothing about why. The first is what the engine does; the second is what the world and its data are.
+Known limits are kept in one place, [roadmap.md](roadmap.md) ("Known limits"), reviewed with each patch. What the engine and the data do to a bot that
+nothing warns about is in [traps/](traps/): where to look first when a bot does nothing and says nothing about why.

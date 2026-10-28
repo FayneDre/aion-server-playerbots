@@ -1,7 +1,7 @@
 # How a world gets its inhabitants
 
 The model, and the arithmetic it rests on. For what is left to build, see [roadmap.md](../roadmap.md); for the model this replaces, see
-[built.md](../built.md) under "Retired: residents and adventurers".
+[history/the-pool.md](history/the-pool.md) under "Retired: residents and adventurers".
 
 ## The problem, stated properly
 

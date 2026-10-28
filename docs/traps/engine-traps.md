@@ -31,7 +31,7 @@ A bot has to **commit**: stop, put the weapon away, and hold its decision tick u
 
 ## `isOnline()` asked one question and answered another
 
-It was `getClientConnection() != null`, and 81 call sites used it to mean "is this character present". Fixed at the root — see [built.md](../built.md). The general shape is worth keeping in mind: **a method whose name asks one question while its body answers another will be used for the question in its name.**
+It was `getClientConnection() != null`, and 81 call sites used it to mean "is this character present". Fixed at the root — see [the architecture](../architecture/how-it-works.md). The general shape is worth keeping in mind: **a method whose name asks one question while its body answers another will be used for the question in its name.**
 
 ## Whatever the client does by itself must be redone server side
 

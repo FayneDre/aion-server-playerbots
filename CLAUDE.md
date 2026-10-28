@@ -50,14 +50,14 @@ and 45 dungeons, with glide, ride and flight links. Raycast steering is only the
 ### Headless `Player` lifecycle: built
 
 No upstream code path constructs a `Player` without an `AionConnection`; `lifecycle/` does, and `Player.isOnline()` now means "is present", so
-whatever needs the socket tests the socket. See [docs/built.md](docs/built.md) and [docs/traps/](docs/traps/) before touching either.
+whatever needs the socket tests the socket. See [docs/architecture/how-it-works.md](docs/architecture/how-it-works.md) and [docs/traps/](docs/traps/) before touching either.
 
 ### Design docs
 
 [docs/README.md](docs/README.md) is the index: every document by topic, with each plan's status. The ones to open first:
 
 - [docs/roadmap.md](docs/roadmap.md) — **start here**: what is left, by priority, with what blocks each one.
-- [docs/built.md](docs/built.md) — what already works, and the reasoning most of it was paid for twice.
+- [docs/built.md](docs/built.md) — what already works, one paragraph a topic, each pointing to its `how-it-works.md`.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command.
 - [docs/patch-notes/current.md](docs/patch-notes/current.md) — every test patch, in French for the testers, by git tag; `tag-patch.ps1` refuses a patch without its entry.
 - [docs/traps/](docs/traps/) — what the engine, the world data and the skill engine do to a bot that no documentation warns about.

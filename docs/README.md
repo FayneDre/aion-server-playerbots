@@ -1,6 +1,6 @@
 # Documentation
 
-Every document of the bot module, by topic. Start with [roadmap.md](roadmap.md) for what is left, and [built.md](built.md) for what works and why.
+Every document of the bot module, by topic. Start with [roadmap.md](roadmap.md) for what is left, and [built.md](built.md) for what works, a paragraph a topic.
 Last checked 28 October 2026.
 
 ## How the folders work
@@ -21,7 +21,7 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 | File | What it holds |
 |---|---|
 | [roadmap.md](roadmap.md) | **Start here**: what is left, by priority, with what blocks each item. |
-| [built.md](built.md) | What already works, and the reasoning most of it was paid for twice. |
+| [built.md](built.md) | What already works, one paragraph a topic, each pointing to its `how-it-works.md`. |
 | [bot-commands.md](bot-commands.md) | Every `//bot` command, and the one number that decides who may run them (`check-bot-docs.ps1` keeps it complete). |
 | [patch-notes/current.md](patch-notes/current.md) | Every test patch, in French for the testers, newest first, by git tag; older ones in [patch-notes/2026-10.md](patch-notes/2026-10.md). |
 | [feedback/README.md](feedback/README.md) | What a useful tester report holds, the commands to type during a session, the template. |
@@ -54,7 +54,8 @@ Where to look first when a bot does nothing and says nothing about why.
 | [population-director.md](population/population-director.md) | The pool and the director: how a region keeps the people it should. |
 | [bot-careers.md](population/bot-careers.md) | How a bot gains levels, where it lives as it grows, what keeps it out of trouble. |
 
-History: [population-churn-followup.md](population/history/population-churn-followup.md) (the churn of 4 October, the equality audit, the watchdog).
+History: [the-pool.md](population/history/the-pool.md) (what the pool cost to build, and the residents it replaced),
+[population-churn-followup.md](population/history/population-churn-followup.md) (the churn of 4 October, the equality audit, the watchdog).
 
 ## Combat and groups — [combat/](combat/)
 
@@ -87,6 +88,7 @@ have no plan yet ([roadmap.md](roadmap.md), "Group play").
 | [how-it-works.md](gear/how-it-works.md) | What a bot wears: the stats that rank a piece, the quality ceiling, the right kind of piece for a class, wings, power shards. |
 | [bot-gear-obtainability.md](gear/bot-gear-obtainability.md) | Where a piece can be reached from, what is vetoed outright, whose faction it is. |
 | [bot-gear-upgrades.md](gear/bot-gear-upgrades.md) | Enchantment and manastones on a piece already chosen. |
+| [looking-after-itself.md](gear/looking-after-itself.md) | Selling junk, wearing the best of what it owns, identifying and binding, drinking potions: what each cost to learn. |
 | [stigmas.md](gear/stigmas.md) | How a bot gets its stigma stones, and what the engine demands before one is socketed. |
 
 ## Navigation — [navigation/](navigation/)
@@ -130,6 +132,7 @@ History, all built: [living-capitals-plan.md](capitals/history/living-capitals-p
 | File | What it holds |
 |---|---|
 | [how-it-works.md](social/how-it-works.md) | **How bots deal with players today**: groups, requests, the chat channels. |
+| [groups.md](social/groups.md) | Why groups work the way they do: following as the anchor, no initiative, assisting, slots, leaders. |
 | [plans/player-interactions-plan.md](social/plans/player-interactions-plan.md) | Trades with a companion, friends, duels. Built, unverified in game. |
 | [plans/cohort-plan.md](social/plans/cohort-plan.md) | Bots in an alliance. Not started. |
 

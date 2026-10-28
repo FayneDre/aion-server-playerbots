@@ -1,11 +1,13 @@
 # Playerbot module architecture
 
+Status: reference: why a bot is a real `Player`, the core patches, the package layout and its layer rules, what `isOnline()` means.
+
 ## Why this design
 
 Bots are **real `Player` objects** driven by server-side AI, not NPCs wearing player models and not external clients speaking the network protocol. Three findings from the engine drive every decision below:
 
 1. **Player loading is already connection-free.** `services/player/PlayerService.java:102` `getPlayer(int objId, Account)` and `services/AccountService.java:75` `loadAccount(int)` never touch `AionConnection`. The `players` table has an `account_id` column with no foreign key (accounts live in the login-server DB), so bot characters need no login-server account.
-2. **Packet sending is already null-safe.** `utils/PacketSendUtility.java:75` guards with `if (player.isOnline())`, and `Player.isOnline()` is `getClientConnection() != null`. Every broadcast helper funnels through it, so a connectionless bot no-ops for itself while **nearby real players still receive its attack and cast packets**.
+2. **Packet sending is already null-safe.** `utils/PacketSendUtility.java:75` guards with `if (player.isOnline())`, and `Player.isOnline()` is `getClientConnection() != null`. Every broadcast helper funnels through it, so a connectionless bot no-ops for itself while **nearby real players still receive its attack and cast packets**. (That was the finding; `isOnline()` has since come to mean "is present" and the guard tests the connection itself: see the end of this file.)
 3. **The existing AI managers cannot be reused.** `ai/manager/*` (`AttackManager`, `SkillAttackManager`, `SimpleAttackManager`, `FollowManager`, `WalkManager`) and every `ai/handler/*` are typed `NpcAI`, not `AbstractAI`. A `Player`-typed AI must re-implement their equivalents. They are small; `SimpleAttackManager` is the reference.
 
 ## AI attachment: the first core patch
@@ -88,7 +90,7 @@ selection, beside `BotDirector`.
 | `world/geo/GeoService.java` | two more overloads of `getClosestCollision`: one taking the ray's start point, one taking a map instead of a body | Additive; the first now delegates to the second. The bot module tests each stretch of a flight from its own start, and asks whether a place is under a roof before anybody stands there |
 | `model/team/TemporaryPlayerTeam.java` | `getBrandedTarget(int)`, a four line reader of the brand map | Minimal — the map was `protected` with no reader, and only bots need to look at a brand without a client |
 | `skillengine/effect/EffectTemplate.java` | One accessor: `getHitType()` | Minimal — a getter over an existing protected field, no behaviour |
-| `model/gameobjects/player/Player.java` | `isOnline()` means "is present"; adds `setBot()`/`isBot()` | Low per line, wide in effect — see [built.md](../built.md) |
+| `model/gameobjects/player/Player.java` | `isOnline()` means "is present"; adds `setBot()`/`isBot()` | Low per line, wide in effect — see the end of this file |
 | `PacketSendUtility`, `World`, `MultiClientingService`, `PunishmentService`, `PvpService`, `ChangeLeaderEvent` | One null check each, on the connection instead of on `isOnline()` | Minimal — and three of them were already missing a guard |
 | `services/findgroup/FindGroupService.java` | `getInstanceGroups()`, a read-only view of the Instance Groups offers | Additive, no existing line touched. The offers were private with no reader, and `BotRecruiter` answers them |
 | `ShutdownHook.java` | One line: `PlayerBotService.onShutdown()` after the leave world tasks | Low — nothing else saves bots (see below) |
@@ -132,8 +134,33 @@ Creation clones an existing character's race, gender and appearance, because a d
 ## Known risks
 
 1. **Enter/leave-world duplication drifts from upstream.** `PlayerBotEnterWorldService` and `PlayerBotLeaveWorldService` mirror an ordered call list from core services. Keep them as a bare ordered list with a javadoc header naming the source file and the commit reviewed against; re-diff both on every upstream merge.
-2. **`isOnline()` doubles as a validity test.** It now means "is present" ([built.md](../built.md)); whatever needs the socket must test the socket. Audit each new call on any path a bot touches.
+2. **`isOnline()` doubles as a validity test.** It now means "is present" (the end of this file); whatever needs the socket must test the socket. Audit each new call on any path a bot touches.
 3. **Tick reentrancy.** `AbstractAI` has a `thinking` latch, but our scheduled tick and engine-fired events (`MOVE_ARRIVED`, `ATTACK`) run on different pool threads. Guard behavior dispatch per bot; never mutate `Player` state from the tick thread while a cast is in flight.
 4. **A crash loses up to five minutes.** Bots are saved every 5 minutes and on a clean shutdown (`PlayerBotService.onShutdown`, which drains the registry through the normal leave path); nothing writes them in between.
 
 Settled since this file was first written: `PvpService` no longer dereferences a bot's connection, and the shutdown hook saves every bot.
+
+## `isOnline()` means "is present", not "has a socket"
+
+`Player.isOnline()` was `getClientConnection() != null`, and 81 call sites used it to ask whether a character is **there** — can be given experience, counted in a group, offered a trade. Bots broke that equation: they are in the world, act in it, and have no connection by design.
+
+Patching each site as it bit was going nowhere. A bot in a group would have earned no experience at all, not even for its own kills, because `PlayerTeamRewardStats.accept` skips members that are not online — and a grouped kill no longer takes the solo reward path. The same filter sits across loot distribution.
+
+So the method now answers the question its callers ask: `bot || getClientConnection() != null`, with an explicit flag set as the bot enters the world. Real players are unaffected, by construction.
+
+The counterpart is that **whatever needs the socket must test the socket**. Six places did not:
+
+| Where | Was | Now |
+|---|---|---|
+| `PacketSendUtility.sendPacket` | `isOnline()` as the null guard — the one hot path, and it would have thrown on every packet sent to a bot | tests the connection |
+| `MultiClientingService` | dereferenced the connection of every world player, bots included | skips connectionless players |
+| `World` (out of bounds kick) | dereferenced with no guard | null checked |
+| `PunishmentService` | dereferenced with no guard | null checked |
+| `PvpService` (PL logging) | dereferenced with no guard | null checked |
+| `ChangeLeaderEvent` | would have handed a group to a bot | bots are passed over: leading means answering invitations, which they cannot |
+
+Three of those were already broken before any of this: they walk the world player list, which has contained bots all along. Legion and friend lists are untouched — they use a different `isOnline()`, on `PlayerCommonData`, fed by the database column, where a bot is correctly absent.
+
+## Saving
+
+Spawned bots are written every 5 minutes, and on a clean shutdown. Nothing else writes them: the engine's `PeriodicSaveService` covers legion warehouses only, and real players are saved when they log out, a door a bot never uses. This matters more than it used to, now that bots gain levels and skills unattended over hours.
