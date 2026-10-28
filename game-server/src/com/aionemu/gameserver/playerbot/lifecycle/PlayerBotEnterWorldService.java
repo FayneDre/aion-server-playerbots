@@ -9,6 +9,7 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.BindPointPosition;
 import com.aionemu.gameserver.model.gameobjects.player.FriendList;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.items.storage.StorageType;
 import com.aionemu.gameserver.model.skill.PlayerSkillEntry;
 import com.aionemu.gameserver.model.templates.portal.InstanceExit;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
@@ -36,6 +37,8 @@ public class PlayerBotEnterWorldService {
 
 	/** How far a resident may be found from home before a restart puts it back. Further than any errand it has business running. */
 	private static final float STRAYED_TOO_FAR = 150f;
+	/** Rows of nine slots a bot's bag has beyond the 27 every bag starts with: 81 slots, where the fullest bag held 34 pieces. */
+	private static final int BOT_BAG_EXPANSION_ROWS = 6;
 
 	private PlayerBotEnterWorldService() {
 	}
@@ -94,9 +97,11 @@ public class PlayerBotEnterWorldService {
 		// character nobody asked. The same silence stops setExp calling onLevelChange, which is why a bot never learns the skills of a level it
 		// gains, and why learnMissingSkills below exists at all.
 		bot.getCommonData().setOnline(true);
-		// PlayerEnterWorldService sets the bag's size as a player logs on; a bot that never did kept the 27 slots every bag starts with, so a trade
-		// that would fit its real bag was refused as too heavy
-		bot.setCubeLimit();
+		// The engine never checks a bag's limit when an item is added, so the flasks and potions a bot buys had taken 613 of 1950 bags past their 27
+		// slots (1035 were at 27 or more). A trade is refused when the receiver has fewer free slots than pieces offered, and a bag past its limit has
+		// none: the tester's companion was "always full", and could neither give nor take. A bot has no use for a small bag, so it gets one of the size a
+		// player reaches with expansions.
+		bot.getInventory().setLimit(StorageType.CUBE.getLimit() + BOT_BAG_EXPANSION_ROWS * bot.getInventory().getRowLength());
 		// what a friend's list shows: PlayerEnterWorldService says it as a player logs on, and a bot that never did stayed offline in every list
 		bot.getFriendList().setStatus(FriendList.Status.ONLINE, bot.getCommonData());
 		// Weapon away, whatever the character was doing when it last left. WEAPON_EQUIPPED lives on the Player object and nothing clears it on the way
