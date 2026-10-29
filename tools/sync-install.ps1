@@ -183,9 +183,15 @@ foreach ($module in $modules) {
         Remove-Item $wanted -Recurse -Force -ErrorAction SilentlyContinue
         # the compile phase, with nothing compiled, is what lets the reactor find commons on a clone that has never been built (without a phase Maven asks
         # the local repository for it and fails); the project's own jars are left out of the copy, since $own drops them below anyway
+        # Windows PowerShell 5.1 turns a native command's stderr into a terminating error under 'Stop' once it is redirected, and a JDK warning from
+        # Maven is stderr: the exit code is what says whether it worked
+        $previousPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
         $listing = mvn -q -f (Join-Path $repo 'pom.xml') "-Dmaven.main.skip=true" "-Dmaven.test.skip=true" compile dependency:copy-dependencies -pl $module -am `
             "-DoutputDirectory=$wanted" -DincludeScope=runtime "-DexcludeGroupIds=com.aionemu" 2>&1
-        if ($LASTEXITCODE -ne 0) {
+        $mavenExit = $LASTEXITCODE
+        $ErrorActionPreference = $previousPreference
+        if ($mavenExit -ne 0) {
             $listing | Select-Object -Last 25 | ForEach-Object { Write-Output "  mvn: $_" }
             throw "Could not list the libraries of $module"
         }
