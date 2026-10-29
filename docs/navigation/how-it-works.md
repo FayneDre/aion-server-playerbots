@@ -86,6 +86,8 @@ turns that into a route marked partial (`gaveUp` with waypoints), and `BotMoveCo
 walking the last stretch straight at the goal. Before any stretch, `goalIsCutOffFromTheGuide` asks the fine grid whether the goal joins either of the
 guide's last two points, and a proof that it does not answers "goal cut off" at once rather than after the walk.
 
+**Errands in town** (`BotDay.runErrand`): the spot before a keeper's counter is joined to the counter, which says nothing about the street (on 29 October a counter stood on a podium of 66 cells, another on a platform of 704, a third in a closed zone of 8 642, none joined to the town's ground). The spot is also asked for as a capped walk from the spot to the bot, from the spot's side so that an island closes in milliseconds, and if it fails the next keepers of the same service are asked, three at most, before the spell is spent at home. The 13 near misses of the 704 cell platform are steps of 1 m onto another island; a step tolerance of 1.5 m does not join it to the street, so no change of the mesh would.
+
 ## What the figures are
 
 `tools/measure.sh` and `nav-stats.ps1` count, per half hour: day plans given up, routes refused, steps aside (by kind of leg), could not move at all,

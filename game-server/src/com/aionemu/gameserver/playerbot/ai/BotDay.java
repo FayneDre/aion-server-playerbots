@@ -22,6 +22,7 @@ import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.playerbot.world.BotQuestGrounds;
@@ -473,18 +474,17 @@ class BotDay {
 		Player bot = ai.getOwner();
 		if (occupationDestination == null) {
 			Vector3f keeper = TownServices.keeperOf(bot, spell.service(), spell.seed());
-			// Round the floor in front of the counter, not round the keeper's feet. Each spot round its feet was tested for a way to them, and they stand
-			// behind their counters on ground nothing joins: each test ran out of its budget, a second to four, up to a dozen an errand, on the thread that
-			// thinks for eight bots. Pandaemonium's brokers, warehouses and teleporter were most of the capitals' slow searches on 23 October. Sell trips
-			// learnt this on 18 October (BotVendorManager.frontOf).
-			Vector3f counter = keeper == null ? null : BotVendorManager.frontOf(bot.getWorldId(), keeper);
-			Vector3f around = counter != null ? counter : keeper;
-			Vector3f spot = around == null ? null
-				: BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
-			// Wider when the counter is crowded. Pandaemonium's brokers and warehouses stand in its markets since 23 October, and with store keepers
-			// at their stalls round them nothing was free within 6 m: two errands in three refused there, and visitors sent back to their teleporter.
-			if (spot == null && around != null)
-				spot = BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
+			Vector3f spot = errandSpot(keeper);
+			// The keeper the resident keeps to is the first choice, and when no spot before it is a walk from where the bot stands -- the keeper on a
+			// podium of sixty cells, or in a part of the town the streets do not join -- the next keepers of the same service are asked, a few at most.
+			// On 29 October 115 errands in half an hour were refused, thirty of them for three such counters, from every corner of Pandaemonium and Sanctum.
+			if (spot == null) {
+				List<Vector3f> keepers = TownServices.keepersOf(bot, spell.service());
+				for (int next = 1; spot == null && next < Math.min(keepers.size(), ERRAND_KEEPERS_ASKED); next++) {
+					keeper = keepers.get(Math.floorMod(spell.seed() + next, keepers.size()));
+					spot = errandSpot(keeper);
+				}
+			}
 			if (spot == null || isOutOfReach(spot)) {
 				log.info("Bot {} finds no way to the {} keeper{}, and spends the spell {}", bot.getName(), spell.service(),
 					keeper == null ? " (none on the map)" : " at " + Math.round(keeper.getX()) + " " + Math.round(keeper.getY()) + " " + Math.round(keeper.getZ()),
@@ -505,6 +505,38 @@ class BotDay {
 		if (!ai.returnToAnchor())
 			return giveUp();
 		return true;
+	}
+
+	/** How many keepers of a service an errand asks about at most: the resident's own, and the next ones if no spot before it can be walked to. */
+	private static final int ERRAND_KEEPERS_ASKED = 3;
+	/** The longest walk an errand's spot may be from the bot, as a multiple of the straight distance plus a margin: the ramps and stairs of a tower town are long. */
+	private static final float ERRAND_DETOUR_FACTOR = 6, ERRAND_DETOUR_METRES = 60;
+
+	/**
+	 * @return A spot before the keeper's counter that this bot can walk to from where it stands, or null. Round the floor in front of the counter, not
+	 *         round the keeper's feet: each spot round its feet was tested for a way to them, and they stand behind their counters on ground nothing
+	 *         joins, each test running out of its budget on the thread that thinks for eight bots (Pandaemonium's brokers, warehouses and teleporter were
+	 *         most of the capitals' slow searches on 23 October; sell trips learnt this on 18 October, {@link BotVendorManager#frontOf}). The spot is
+	 *         joined to the counter, which says nothing about the street: a counter on a podium of sixty-six cells joins its own podium, so the walk
+	 *         from the bot is asked for as well, a capped one asked from the spot's side.
+	 */
+	private Vector3f errandSpot(Vector3f keeper) {
+		if (keeper == null)
+			return null;
+		Player bot = ai.getOwner();
+		Vector3f counter = BotVendorManager.frontOf(bot.getWorldId(), keeper);
+		Vector3f around = counter != null ? counter : keeper;
+		Vector3f spot = BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
+		// Wider when the counter is crowded. Pandaemonium's brokers and warehouses stand in its markets since 23 October, and with store keepers
+		// at their stalls round them nothing was free within 6 m: two errands in three refused there, and visitors sent back to their teleporter.
+		if (spot == null)
+			spot = BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
+		if (spot == null || isOutOfReach(spot))
+			return null;
+		// asked from the spot to the bot, not the other way: ground walks the same both ways, and a search that starts on an island closes on it in
+		// milliseconds, where one that starts in the street and looks for the island goes through all of the street first
+		return NavmeshService.getInstance().canWalkWithin(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ(), bot.getX(), bot.getY(), bot.getZ(),
+			ERRAND_DETOUR_FACTOR, ERRAND_DETOUR_METRES) ? spot : null;
 	}
 
 	/**

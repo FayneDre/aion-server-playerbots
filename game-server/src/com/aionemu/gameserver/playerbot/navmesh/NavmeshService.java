@@ -379,6 +379,17 @@ public class NavmeshService {
 		return BotPathFinder.isWithinWalk(mesh, fromX, fromY, fromZ, toX, toY, toZ, maxLength);
 	}
 
+	/**
+	 * @return true if a walk of at most {@code factor} times the straight distance plus {@code metres} joins the two spots, or if the map has no mesh to ask.
+	 *         The question of {@link #canReachNearby}, for a caller that knows how long a detour it accepts.
+	 */
+	public boolean canWalkWithin(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ, float factor, float metres) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return true;
+		return BotPathFinder.isWithinWalk(mesh, fromX, fromY, fromZ, toX, toY, toZ, (float) Math.hypot(toX - fromX, toY - fromY) * factor + metres);
+	}
+
 	/** A search that took longer than this is logged with its ends, which is what finding out why takes ({@code NavmeshTool <map> path}). */
 	private static final long SLOW_SEARCH_MILLIS = 1000;
 
