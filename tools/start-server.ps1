@@ -66,6 +66,25 @@ function Get-JavaArguments([string]$Script) {
     return $null
 }
 
+<#
+    The major version of the java.exe a server would be started with, or 0 when there is none. The servers are built for Java 25: an older one
+    stops at once with an UnsupportedClassVersionError, on a console that closes with the JVM, so the only thing a user sees is a port that
+    never opens. 'java -version' writes to stderr, which Windows PowerShell 5.1 turns into an error under 'Stop' once redirected.
+#>
+function Get-JavaMajor {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $said = & java.exe -version 2>&1 | ForEach-Object { "$_" }
+    } catch {
+        return 0
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+    if (($said -join ' ') -match 'version "(\d+)') { return [int]$Matches[1] }
+    return 0
+}
+
 function Start-AionServer([string]$Name, [int]$Port) {
     if (Test-PortListening $Port) {
         Write-Host "$Name already running (port $Port)" -ForegroundColor Yellow
@@ -78,6 +97,11 @@ function Start-AionServer([string]$Name, [int]$Port) {
         throw "Not found: $script"
     }
 
+    $javaMajor = Get-JavaMajor
+    if ($javaMajor -lt 25) {
+        throw "$Name needs Java 25 or later, and the java.exe found first on the PATH is " + $(if ($javaMajor -eq 0) { 'missing or unreadable' } else { "version $javaMajor" }) + ". Install Java 25 and put it first on the PATH."
+    }
+
     Write-Host "Starting $Name..." -ForegroundColor Cyan
     # Java is started directly rather than through start.bat, so that stopping the server also closes its window.
     # A batch script cannot be interrupted quietly: cmd asks whether to terminate the job, and start.bat then waits
@@ -86,10 +110,10 @@ function Start-AionServer([string]$Name, [int]$Port) {
     # restart-on-exit-code-2 loop, which a development server does not need.
     $arguments = Get-JavaArguments $script
     if ($arguments) {
-        Start-Process -FilePath 'java.exe' -ArgumentList $arguments -WorkingDirectory $folder
+        $process = Start-Process -FilePath 'java.exe' -ArgumentList $arguments -WorkingDirectory $folder -PassThru
     } else {
         Write-Host "  no java command found in start.bat, falling back to it (its window will outlive the server)" -ForegroundColor Yellow
-        Start-Process -FilePath $script -WorkingDirectory $folder
+        $process = Start-Process -FilePath $script -WorkingDirectory $folder -PassThru
     }
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
@@ -97,6 +121,15 @@ function Start-AionServer([string]$Name, [int]$Port) {
         if (Test-PortListening $Port) {
             Write-Host "$Name is up (port $Port)" -ForegroundColor Green
             return
+        }
+        # A JVM that has stopped will never listen, and its window went with it: say so now, with what its log still holds, rather than after the timeout
+        if ($process -and $process.HasExited) {
+            $said = @()
+            foreach ($logFile in 'server_errors.log', 'server_console.log') {
+                $path = Join-Path $folder "log\$logFile"
+                if (Test-Path $path) { $said += "--- last lines of $logFile"; $said += Get-Content $path -Tail 15 }
+            }
+            throw "$Name stopped with exit code $($process.ExitCode) before it listened on port $Port. $($said -join [Environment]::NewLine)"
         }
         Start-Sleep -Milliseconds 500
     }
