@@ -183,6 +183,27 @@ public class BotPathFinder {
 		return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
 	}
 
+	/**
+	 * @return true if the fine grid joins the goal to neither of the last two points of a rough guide that carries heights: the stretch the walk would end on
+	 *         is proved shut, which the walk would only learn at its end. A hunting ground on a plateau the rough grid counts as joined to the ground
+	 *         below sent a bot of Eltnen a kilometre, through every monster on the way, to be refused over the last 90 m on 29 October. Two points rather
+	 *         than one, so that a guide point on the wrong floor does not refuse a journey the walk would have made; a guide without heights (the older
+	 *         kind) is not asked, and a search that merely ran out of room proves nothing.
+	 */
+	private static boolean goalIsCutOffFromTheGuide(Navmesh mesh, List<Vector3f> guide, float goalX, float goalY, float goalZ, Avoidance avoid) {
+		if (guide.size() < 3)
+			return false;
+		for (int back = 2; back <= 3 && guide.size() - back >= 0; back++) {
+			Vector3f point = guide.get(guide.size() - back);
+			if (Float.isNaN(point.getZ()))
+				return false;
+			Route last = findDirectPath(mesh, point.getX(), point.getY(), point.getZ(), goalX, goalY, goalZ, SNAP_RANGE, avoid);
+			if (!last.isEmpty() || last.gaveUp())
+				return false;
+		}
+		return true;
+	}
+
 	/** How far a journey that ran out of budget must have been planned for the bot to walk that much and plan the rest from where it stands, in metres. */
 	private static final float MIN_PLANNED_METRES = 60f;
 
@@ -209,6 +230,9 @@ public class BotPathFinder {
 		List<Vector3f> guide = coarseRoute(mesh, startX, startY, startZ, goalX, goalY, goalZ);
 		if (guide.isEmpty())
 			return new Route(List.of(), shareGround(mesh, startX, startY, goalX, goalY));
+
+		if (goalIsCutOffFromTheGuide(mesh, guide, goalX, goalY, goalZ, avoid))
+			return new Route(List.of(), false, Set.of(), Set.of(), Map.of(), true);
 
 		List<Vector3f> full = new ArrayList<>();
 		float fromX = startX, fromY = startY, fromZ = startZ;
