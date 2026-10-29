@@ -51,7 +51,7 @@ $repo = Split-Path -Parent $PSScriptRoot
 if (-not $ServerRoot) { throw 'Set AION_SERVER_HOME or pass -ServerRoot.' }
 if (-not $LibsOnly) {
     if (-not $From) { $From = (git -C $repo rev-parse "$To^1").Trim() }
-    Write-Output "Install $ServerRoot holds the files of $($From.Substring(0, [Math]::Min(9, $From.Length))); target $To."
+    Write-Output "Install $ServerRoot holds the files of $(if ($From -match '^[0-9a-f]{12,}$') { $From.Substring(0, 9) } else { $From }); target $To."
 }
 
 # a file of a revision, as the bytes git holds, read back as one character a byte so that two can be compared whatever their encoding
@@ -181,8 +181,14 @@ foreach ($module in $modules) {
     if ($resolve) {
         $wanted = Join-Path $env:TEMP "aion-deps-$module"
         Remove-Item $wanted -Recurse -Force -ErrorAction SilentlyContinue
-        mvn -q -f (Join-Path $repo 'pom.xml') dependency:copy-dependencies -pl $module -am "-DoutputDirectory=$wanted" -DincludeScope=runtime | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "Could not list the libraries of $module" }
+        # the compile phase, with nothing compiled, is what lets the reactor find commons on a clone that has never been built (without a phase Maven asks
+        # the local repository for it and fails); the project's own jars are left out of the copy, since $own drops them below anyway
+        $listing = mvn -q -f (Join-Path $repo 'pom.xml') "-Dmaven.main.skip=true" "-Dmaven.test.skip=true" compile dependency:copy-dependencies -pl $module -am `
+            "-DoutputDirectory=$wanted" -DincludeScope=runtime "-DexcludeGroupIds=com.aionemu" 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            $listing | Select-Object -Last 25 | ForEach-Object { Write-Output "  mvn: $_" }
+            throw "Could not list the libraries of $module"
+        }
         $need = @(Get-ChildItem $wanted -Filter '*.jar' | Where-Object { $_.Name -notmatch $own -and $_.Name -notmatch '-linux-' })
         $have = @(Get-ChildItem $libs -Filter '*.jar' | Where-Object { $_.Name -notmatch $own })
         $add = @($need | Where-Object { $have.Name -notcontains $_.Name })
