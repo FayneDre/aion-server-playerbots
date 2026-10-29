@@ -67,12 +67,19 @@ Tout se lance dans PowerShell, depuis le dossier du dépôt (celui qui contient 
    (`<serveur>\<chemin affiché par le script>`). Pour voir exactement ce que le dépôt a changé dans l'un d'eux :
    `git diff <tag> HEAD -- <chemin>` (les lignes qui commencent par `+` sont les ajouts). Ne rien retirer de vos propres réglages.
    Pour les fichiers du patch du 28/10, voici quoi faire :
-   - `game-server/config/network/network.properties` : ajouter ces quatre lignes (n'importe où dans le fichier) :
-     `gameserver.network.packet.processor.max_pending_per_connection = 500`, `gameserver.network.client.max_pending_server_packets = 20000`,
-     `gameserver.network.client.max_send_stall_seconds = 60`, `gameserver.network.client.auth_timeout_seconds = 60`. La ligne
-     `gameserver.network.flood.connections` vaut `true` dans le dépôt (c'était `false`) : si la vôtre est à `false`, la passer à `true`, sauf choix de
-     votre part.
-   - `chat-server/config/network/network.properties` : ajouter `chatserver.network.client.auth_timeout_seconds = 60`.
+   - `game-server/config/network/network.properties` : ajouter ces quatre lignes, **telles quelles, une par ligne, sans virgule ni point à la fin**
+     (une virgule après `60` empêche le serveur de démarrer : « Error parsing "60," as int ») :
+
+     ```
+     gameserver.network.packet.processor.max_pending_per_connection = 500
+     gameserver.network.client.max_pending_server_packets = 20000
+     gameserver.network.client.max_send_stall_seconds = 60
+     gameserver.network.client.auth_timeout_seconds = 60
+     ```
+
+     La ligne `gameserver.network.flood.connections` vaut `true` dans le dépôt (c'était `false`) : si la vôtre est à `false`, la passer à `true`,
+     sauf choix de votre part.
+   - `chat-server/config/network/network.properties` : ajouter la ligne `chatserver.network.client.auth_timeout_seconds = 60` (sans rien après le 60).
    - `game-server/config/logback.xml`, `login-server/config/logback.xml`, `chat-server/config/logback.xml` : fichiers techniques que personne ne règle.
      Le plus simple est de les remplacer par ceux du dépôt, depuis le dossier du dépôt :
      `Copy-Item game-server\config\logback.xml <serveur>\game-server\config\logback.xml -Force` (et pareil pour `login-server` et `chat-server`).
