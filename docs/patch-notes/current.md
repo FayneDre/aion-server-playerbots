@@ -61,7 +61,23 @@ Tout se lance dans PowerShell, depuis le dossier du dépôt (celui qui contient 
 3. **Appliquer** : la même commande avec `-Apply` (`.\tools\sync-install.ps1 -From <tag> -Apply`). Elle remplace les fichiers, met les bibliothèques
    à jour, sauvegarde la base dans `<serveur>\backups\aion_gs-<date>.sql`, puis passe chaque instruction SQL une seule fois (un registre
    `schema_applied_sql` est créé). Si une instruction échoue, elle s'arrête avec l'erreur : corriger, puis relancer la même commande.
-4. **Fusionner à la main les fichiers `LEFT`** de l'étape 2, s'il y en avait. `mygs.properties` n'est jamais touché.
+4. **Reporter à la main ce qui a changé dans les fichiers `LEFT`** (si l'étape 2 n'en a listé aucun, passer à la 5). Ce sont des fichiers que vous
+   avez modifiés : le script les a laissés tels quels, donc les nouveautés du dépôt n'y sont pas. **Aucun n'empêche le serveur de démarrer** :
+   sans ces lignes il utilise les valeurs par défaut. À faire une fois, avec un éditeur de texte, sur le fichier de l'installation
+   (`<serveur>\<chemin affiché par le script>`). Pour voir exactement ce que le dépôt a changé dans l'un d'eux :
+   `git diff <tag> HEAD -- <chemin>` (les lignes qui commencent par `+` sont les ajouts). Ne rien retirer de vos propres réglages.
+   Pour les fichiers du patch du 28/10, voici quoi faire :
+   - `game-server/config/network/network.properties` : ajouter ces quatre lignes (n'importe où dans le fichier) :
+     `gameserver.network.packet.processor.max_pending_per_connection = 500`, `gameserver.network.client.max_pending_server_packets = 20000`,
+     `gameserver.network.client.max_send_stall_seconds = 60`, `gameserver.network.client.auth_timeout_seconds = 60`. La ligne
+     `gameserver.network.flood.connections` vaut `true` dans le dépôt (c'était `false`) : si la vôtre est à `false`, la passer à `true`, sauf choix de
+     votre part.
+   - `chat-server/config/network/network.properties` : ajouter `chatserver.network.client.auth_timeout_seconds = 60`.
+   - `game-server/config/logback.xml`, `login-server/config/logback.xml`, `chat-server/config/logback.xml` : fichiers techniques que personne ne règle.
+     Le plus simple est de les remplacer par ceux du dépôt, depuis le dossier du dépôt :
+     `Copy-Item game-server\config\logback.xml <serveur>\game-server\config\logback.xml -Force` (et pareil pour `login-server` et `chat-server`).
+     Sans cela le serveur démarre, mais les journaux ne tournent pas (le fichier grossit sans limite).
+   - `game-server/config/administration/admin.properties` : rien à faire. Le dépôt a supprimé le réglage `enchant_info` ; une ligne en trop est ignorée.
 5. **Construire et relancer** : `.\tools\deploy.ps1 -Restart`. Il construit les trois serveurs, passe les tests, copie les jars (dont ceux de la
    connexion et de la discussion) et redémarre connexion, discussion puis jeu. La première fois, la construction est plus longue (bibliothèques).
 6. **Vérifier** : dans `<serveur>\game-server\log\server_console.log`, attendre « Connected to login server » (le jeu ne l'écrit qu'à la fin, deux à
