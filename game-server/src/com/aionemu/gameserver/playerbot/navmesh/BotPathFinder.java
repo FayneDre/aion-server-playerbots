@@ -79,10 +79,18 @@ public class BotPathFinder {
 	 *          walking straight at the goal, but it must not conclude the place is unreachable.
 	 * @param goalCutOff Set on a proof that the goal stands on ground nothing walks onto (see {@link #provenIfPocket}): the refusal is the goal's, and
 	 *          says nothing against the spot the bot stands on.
+	 * @param planned The stretches of a long journey that were planned before the search ran out of budget, from the start towards the goal. Only a route
+	 *          with no waypoints that {@code gaveUp} carries any, and it is not a route: asked whether a place can be reached, an answer with waypoints
+	 *          would read as yes. Whoever plans a journey to walk it may walk this much and plan the rest from there.
 	 */
-	public record Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights, Map<Integer, Integer> rides, boolean goalCutOff) {
+	public record Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights, Map<Integer, Integer> rides, boolean goalCutOff,
+		List<Vector3f> planned) {
 
 		static final Route NONE = new Route(List.of(), true);
+
+		public Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights, Map<Integer, Integer> rides, boolean goalCutOff) {
+			this(waypoints, gaveUp, glides, flights, rides, goalCutOff, List.of());
+		}
 
 		public Route(List<Vector3f> waypoints, boolean gaveUp, Set<Integer> glides, Set<Integer> flights, Map<Integer, Integer> rides) {
 			this(waypoints, gaveUp, glides, flights, rides, false);
@@ -175,6 +183,21 @@ public class BotPathFinder {
 		return findLongPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid);
 	}
 
+	/** How far a journey that ran out of budget must have been planned for the bot to walk that much and plan the rest from where it stands, in metres. */
+	private static final float MIN_PLANNED_METRES = 60f;
+
+	/**
+	 * @return The answer of a long search that ran out of budget: no route and no proof, as ever, with the stretches already planned when they take the
+	 *         bot a fair way, which the planner of a journey may walk. 223 of the 523 day plans given up in half an hour on 29 October were such searches,
+	 *         the bot standing where it had been while most of the way was already known.
+	 */
+	private static Route outOfBudget(Navmesh mesh, List<Vector3f> full, Avoidance avoid) {
+		if (full.size() < 2
+			|| Math.hypot(full.get(full.size() - 1).getX() - full.get(0).getX(), full.get(full.size() - 1).getY() - full.get(0).getY()) < MIN_PLANNED_METRES)
+			return new Route(List.of(), true);
+		return new Route(List.of(), true, Set.of(), Set.of(), Map.of(), false, smooth(mesh, full, avoid));
+	}
+
 	/**
 	 * Plans roughly on the 4 m grid, then fills in the detail one stretch at a time.
 	 * <p>
@@ -193,7 +216,7 @@ public class BotPathFinder {
 		int next = 0;
 		while (next < guide.size()) {
 			if (System.currentTimeMillis() > deadline)
-				return new Route(List.of(), true);
+				return outOfBudget(mesh, full, avoid);
 			// a guide point can land on a patch the fine grid cannot reach, since a coarse cell counts as routable on a quarter of its ground.
 			// skipping it and aiming further along is what keeps one awkward spot from failing the whole journey
 			Route stretch = Route.NONE;
@@ -214,7 +237,7 @@ public class BotPathFinder {
 						stretch.gaveUp());
 			}
 			if (stretch.isEmpty())
-				return new Route(List.of(), true);
+				return stretch.gaveUp() ? outOfBudget(mesh, full, avoid) : new Route(List.of(), true);
 
 			List<Vector3f> waypoints = stretch.waypoints();
 			full.addAll(full.isEmpty() ? waypoints : waypoints.subList(1, waypoints.size()));

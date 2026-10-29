@@ -148,6 +148,15 @@ public class NavmeshService {
 			else
 				log.debug("Path search for {} gave up short of {} {}", bot.getName(), goalX, goalY);
 		}
+		if (route.isEmpty() && route.gaveUp() && !route.planned().isEmpty()) {
+			// a search out of budget that had planned a fair way: the bot walks what is known and asks again from there, instead of standing still
+			// and giving the journey up. Only here, on the journeys bots walk: a question of whether a place can be reached never sees this.
+			log.info("Path search for {} ran out of budget after {} ms, and walks the {} m already planned towards {} {}", bot.getName(),
+				System.currentTimeMillis() - began, Math.round(PositionUtil.getDistance(route.planned().get(0).getX(), route.planned().get(0).getY(),
+					route.planned().get(route.planned().size() - 1).getX(), route.planned().get(route.planned().size() - 1).getY())),
+				Math.round(goalX), Math.round(goalY));
+			route = new BotPathFinder.Route(route.planned(), false);
+		}
 		long took = System.currentTimeMillis() - began;
 		if (took >= SLOW_SEARCH_MILLIS)
 			log.info("Journey search for {} on map {} took {} ms ({}, {} ms of processor, on {}, wings {}, {} creature(s) kept away from, avoiding {}): NavmeshTool {} path {} {} {} {} {} {}",
