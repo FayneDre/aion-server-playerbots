@@ -96,6 +96,10 @@ class BotDay {
 	private volatile Vector3f home;
 	/** Places this bot has proved it cannot get to, so it stops choosing them. */
 	private final Set<Vector3f> unreachable = ConcurrentHashMap.newKeySet();
+	/** Places a search gave up on without proving anything, and until when they are left alone: the budget it needed may be there another time. */
+	private final Map<Vector3f, Long> unprovenRefusals = new ConcurrentHashMap<>();
+	/** How long a place the search merely gave up on is left alone, as long as the controller's own memory of such a refusal. */
+	private static final long UNPROVEN_REFUSAL_MILLIS = 300000;
 	/** The destination whose way there has already been weighed for a flight, so a trip is decided once and not on every tick of the walk. */
 	private volatile Vector3f flightConsideredFor;
 	/** Deaths since the clock below started, which is how a home proves itself lethal without anybody working out why. */
@@ -484,7 +488,7 @@ class BotDay {
 			// at their stalls round them nothing was free within 6 m: two errands in three refused there, and visitors sent back to their teleporter.
 			if (spot == null && around != null)
 				spot = BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
-			if (spot == null || unreachable.contains(spot)) {
+			if (spot == null || isOutOfReach(spot)) {
 				log.info("Bot {} finds no way to the {} keeper{}, and spends the spell {}", bot.getName(), spell.service(),
 					keeper == null ? " (none on the map)" : " at " + Math.round(keeper.getX()) + " " + Math.round(keeper.getY()) + " " + Math.round(keeper.getZ()),
 					BotVisitors.isVisitor(bot) ? "visiting" : "at home");
@@ -523,9 +527,9 @@ class BotDay {
 			// Where the game itself sends a character of this level, taken from the quest data, and only then a hunting ground picked by level. The
 			// quests know things a level band cannot: which valley a character of four is meant to be clearing, and which one belongs to eights.
 			Vector3f ground = BotQuestGrounds.groundFor(bot.getWorldId(), bot.getRace(), bot.getLevel(), home(), BotPlaces.WANDERING_RANGE, pick);
-			if (ground == null || unreachable.contains(ground))
+			if (ground == null || isOutOfReach(ground))
 				ground = BotPlaces.groundToWork(bot.getWorldId(), home(), bot.getLevel(), pick);
-			occupationDestination = ground != null && !unreachable.contains(ground) ? ground : null;
+			occupationDestination = ground != null && !isOutOfReach(ground) ? ground : null;
 		}
 		if (occupationDestination != null)
 			ai.setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
@@ -567,7 +571,7 @@ class BotDay {
 				town ? new Vector3f(bot.getX(), bot.getY(), bot.getZ()) : null, range);
 			// a place already known to be out of reach is no destination at all. Nowhere suitable nearby means staying put rather than setting off
 			// across the region: the fallback used to be "any settlement", which is exactly the walk this is meant to prevent.
-			occupationDestination = elsewhere != null && !unreachable.contains(elsewhere) ? elsewhere : null;
+			occupationDestination = elsewhere != null && !isOutOfReach(elsewhere) ? elsewhere : null;
 		}
 		if (occupationDestination == null)
 			return false;
@@ -649,8 +653,34 @@ class BotDay {
 	}
 
 	private boolean isRefused(Vector3f spot) {
-		return unreachable.stream()
-			.anyMatch(refused -> PositionUtil.getDistance(refused.getX(), refused.getY(), refused.getZ(), spot.getX(), spot.getY(), spot.getZ()) < REFUSED_SPOT_RADIUS);
+		long now = System.currentTimeMillis();
+		return unreachable.stream().anyMatch(refused -> isNear(refused, spot))
+			|| unprovenRefusals.entrySet().stream().anyMatch(refused -> refused.getValue() > now && isNear(refused.getKey(), spot));
+	}
+
+	private static boolean isNear(Vector3f refused, Vector3f spot) {
+		return PositionUtil.getDistance(refused.getX(), refused.getY(), refused.getZ(), spot.getX(), spot.getY(), spot.getZ()) < REFUSED_SPOT_RADIUS;
+	}
+
+	/** @return true if the place is one this bot proved it cannot reach, or one a search gave up on lately without proving anything. */
+	private boolean isOutOfReach(Vector3f place) {
+		return unreachable.contains(place) || unprovenRefusals.getOrDefault(place, 0L) > System.currentTimeMillis();
+	}
+
+	/**
+	 * Remembers a place the bot was refused the way to. A proof (no route exists) is kept for good; a search that gave up, or a goal cut off, proves
+	 * nothing: 223 of the 523 day plans given up in half an hour on 29 October were searches out of budget, and each one had put its place on the list
+	 * for the rest of the bot's life, wherever the bot stood when it asked.
+	 */
+	private void refuse(Vector3f place) {
+		BotMoveController moves = ai.moves();
+		if (moves != null && moves.isRefusalUnproven()) {
+			long now = System.currentTimeMillis();
+			unprovenRefusals.values().removeIf(until -> until <= now);
+			unprovenRefusals.put(place, now + UNPROVEN_REFUSAL_MILLIS);
+		} else {
+			unreachable.add(place);
+		}
 	}
 
 	/**
@@ -689,7 +719,7 @@ class BotDay {
 			return;
 		log.info("Bot {} cannot get to its hunting ground at {} {}, and does something else ({})", ai.getOwner().getName(),
 			Math.round(occupationDestination.getX()), Math.round(occupationDestination.getY()), journey(occupationDestination));
-		unreachable.add(occupationDestination);
+		refuse(occupationDestination);
 		forget();
 		Vector3f where = home();
 		if (where != null)
@@ -727,7 +757,7 @@ class BotDay {
 		// the list — so forgetting a refusal means choosing the same unreachable place on the next tick, for ever. One bot standing in a pocket of
 		// the map cut off from the villages asked sixty times in three minutes.
 		if (occupationDestination != null)
-			unreachable.add(occupationDestination);
+			refuse(occupationDestination);
 		if (spell != null && BotPresence.isTown(ai.getOwner().getWorldId())) {
 			// in town the spell goes on: an errand refused is spent at home, and a home refused where the resident stands
 			spellGivenUp = spell.activity() == TownRoutine.Activity.HOME || spell.activity() == TownRoutine.Activity.SIT;
