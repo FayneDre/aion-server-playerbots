@@ -216,8 +216,16 @@ public class PlayerBotEnterWorldService {
 		Vector3f spot = BotPlaces.spotAround(bot.getWorldId(), home, BotPlaces.reachAt(bot.getWorldId(), home), 8, bot.getObjectId(), null);
 		if (spot == null)
 			spot = home; // nowhere around it will do, and the middle of its village still beats wherever it had strayed to
-		bot.setPosition(World.getInstance().createPosition(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ(), bot.getHeading(),
-			bot.getInstanceId()));
+		try {
+			bot.setPosition(World.getInstance().createPosition(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ(), bot.getHeading(),
+				bot.getInstanceId()));
+		} catch (NullPointerException e) {
+			// The roster keeps a home's coordinates and not its map, so a bot saved on another map (grouped, and carried off by its player) is told to go
+			// "home" on the map it stands on, where those coordinates are nowhere: Xanonra and Yrianra, saved on map 210090000 with a home at 2047 1500,
+			// could not be restored at all on 29 October. They stay where they were saved, and the day takes them home from there.
+			LoggerFactory.getLogger(PlayerBotEnterWorldService.class).info("Bot {} is saved on map {}, which its home at {} {} is not on, and stays where it was saved",
+				bot.getName(), bot.getWorldId(), Math.round(spot.getX()), Math.round(spot.getY()));
+		}
 	}
 
 	/**

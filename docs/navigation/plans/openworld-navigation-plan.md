@@ -1,6 +1,6 @@
 # Open world navigation: plan
 
-Status: in progress: next, the day plans given up.
+Status: in progress: the day plans given up, worked on 29 October (partial routes, a goal proved cut off before the walk, proofs shared between bots, town errands vetted; six measured windows in [backlog.md](../backlog.md)); the last four are built, not yet measured.
 
 Milestones 0 and 1 done on 11 October (fights given up 53 % to 0 in ten minutes); 2 written on 24 maps on 24 October (575k links), after they had been lost on 18 October; what is left is under "Open after 24 October", searches out of time worked through on 25 October. Written on 11 October, after the dungeon work rebuilt the long-walk planner ([long-walk-planner.md](../history/long-walk-planner.md)) and the
 obelisk audit went from 151 routes found to 173 with none lost. Each milestone below is verifiable on its own, in this order, and none needs the next.

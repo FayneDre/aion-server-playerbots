@@ -1,6 +1,6 @@
 # Combat: how it works today
 
-Status: reference, written on 28 October 2026 from the code and the references beside it. The detail is in [combat-skills.md](combat-skills.md) (how a
+Status: reference, written on 28 October 2026 from the code and the references beside it. Reviewed 29 October: `BotDay` changed for navigation (errands, shared refusals), nothing of what is described here. The detail is in [combat-skills.md](combat-skills.md) (how a
 skill is chosen) and [group-roles.md](group-roles.md) (what a role changes in a group); each class's own rules are in
 [../classes/how-it-works.md](../classes/how-it-works.md). What is left is in [roadmap.md](../roadmap.md), "Group play".
 
