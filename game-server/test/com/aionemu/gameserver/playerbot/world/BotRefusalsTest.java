@@ -41,4 +41,21 @@ class BotRefusalsTest {
 		BotRefusals.remember(9006, new Vector3f(1000, 1000, 100), GOAL, true);
 		assertTrue(BotRefusals.isRefused(9006, new Vector3f(2500, 300, 50), GOAL));
 	}
+
+	@Test
+	void aGoalRefusedFromThreeDifferentPlacesIsRefusedFromAnywhere() {
+		BotRefusals.remember(9007, new Vector3f(1000, 1000, 100), GOAL, false);
+		BotRefusals.remember(9007, new Vector3f(1200, 1000, 100), GOAL, false);
+		assertFalse(BotRefusals.isRefused(9007, new Vector3f(2000, 300, 50), GOAL), "two places say little");
+		BotRefusals.remember(9007, new Vector3f(1000, 1300, 100), GOAL, false);
+		assertTrue(BotRefusals.isRefused(9007, new Vector3f(2000, 300, 50), GOAL));
+	}
+
+	@Test
+	void theSameGroundCountsOnce() {
+		BotRefusals.remember(9008, new Vector3f(1000, 1000, 100), GOAL, false);
+		BotRefusals.remember(9008, new Vector3f(1005, 1000, 100), GOAL, false);
+		BotRefusals.remember(9008, new Vector3f(1000, 1008, 100), GOAL, false);
+		assertFalse(BotRefusals.isRefused(9008, new Vector3f(2000, 300, 50), GOAL));
+	}
 }

@@ -18,12 +18,14 @@ import com.aionemu.gameserver.utils.PositionUtil;
  * A "no way" holds for a start on the same ground, which is taken as within {@value #SAME_GROUND_METRES} m across and {@value #SAME_FLOOR_METRES} m in
  * height of where it was proved, since a town's floors lie above one another and the stairs may be the way from one and not from the other. A goal cut
  * off is the goal's doing, whoever asks, and is kept for a shorter time, since the last stretch is judged from a guide that depends on the start.
+ * A goal refused from {@value #REFUSED_FROM_THIS_MANY_PLACES} places that are not the same ground is taken for one nobody reaches: on 29 October one spot
+ * before a keeper's counter in Pandaemonium was refused from thirty places across the town, and the proof of each held only for the bot that asked.
  */
 public final class BotRefusals {
 
 	private static final float SAME_GROUND_METRES = 30, SAME_FLOOR_METRES = 5, SAME_GOAL_METRES = 3;
 	private static final long NO_WAY_MILLIS = 20 * 60_000L, CUT_OFF_MILLIS = 10 * 60_000L;
-	private static final int MOST_PER_MAP = 2000;
+	private static final int MOST_PER_MAP = 2000, REFUSED_FROM_THIS_MANY_PLACES = 3;
 
 	private record Refusal(Vector3f from, Vector3f goal, boolean goalsDoing, long until) {
 	}
@@ -51,13 +53,16 @@ public final class BotRefusals {
 		if (refusals == null)
 			return false;
 		long now = System.currentTimeMillis();
+		int places = 0;
 		for (Refusal known : refusals) {
 			if (known.until <= now || PositionUtil.getDistance(known.goal.getX(), known.goal.getY(), known.goal.getZ(), goal.getX(), goal.getY(), goal.getZ()) > SAME_GOAL_METRES)
 				continue;
+			// each entry is a start no earlier one covered, so the entries for a goal are the different places it was refused from
+			places++;
 			if (known.goalsDoing || PositionUtil.getDistance(known.from.getX(), known.from.getY(), from.getX(), from.getY()) <= SAME_GROUND_METRES
 				&& Math.abs(known.from.getZ() - from.getZ()) <= SAME_FLOOR_METRES)
 				return true;
 		}
-		return false;
+		return places >= REFUSED_FROM_THIS_MANY_PLACES;
 	}
 }
