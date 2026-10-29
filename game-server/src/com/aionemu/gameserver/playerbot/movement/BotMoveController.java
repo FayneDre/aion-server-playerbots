@@ -110,6 +110,12 @@ public class BotMoveController extends PlayerMoveController {
 	private volatile float goalX, goalY, goalZ;
 	/** Waypoints from the navmesh, empty when walking without a plan. */
 	private volatile List<Vector3f> route = List.of();
+	/**
+	 * Whether {@link #route} is only the first part of the journey, planned before the search ran out of budget. Once its waypoints are behind the bot
+	 * the rest is planned again from where it stands: the route in hand would otherwise be taken for one that leads to the goal, and its last stretch
+	 * walked straight at the destination without a plan, over whatever is between.
+	 */
+	private volatile boolean routePartial, pendingPartial;
 	private int routeIndex;
 	/** A route that arrived from a planning thread, waiting for the next leg to adopt it. */
 	private volatile List<Vector3f> pendingRoute;
@@ -321,7 +327,8 @@ public class BotMoveController extends PlayerMoveController {
 			// the answer away and start the wait over
 			routeIndex = resumeIndex();
 			aimAtNextWaypoint();
-		} else if (isPlanComing(x, y) || !route.isEmpty() && PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= REPLAN_DISTANCE) {
+		} else if (isPlanComing(x, y)
+			|| !route.isEmpty() && !(routePartial && routeIndex >= route.size()) && PositionUtil.getDistance(plannedForX, plannedForY, x, y) <= REPLAN_DISTANCE) {
 			if (log.isDebugEnabled())
 				log.debug("Bot {} asks for no route to {}: {}", owner.getName(), describe(x, y, z),
 					isPlanComing(x, y) ? "one is on its way" : "the one in hand leads there, at waypoint " + routeIndex + " of " + route.size());
@@ -652,6 +659,7 @@ public class BotMoveController extends PlayerMoveController {
 		pendingGlides = answer.glides();
 		pendingFlights = answer.flights();
 		pendingRides = answer.rides();
+		pendingPartial = answer.gaveUp(); // before the route itself, which is what the walk looks for
 		pendingRoute = planned;
 		log.info("Bot {} has a route of {} waypoints to {} from {}{}", owner.getName(), planned.size(), String.format("%.1f %.1f", forX, forY),
 			String.format("%.1f %.1f", fromX, fromY), why);
@@ -690,6 +698,7 @@ public class BotMoveController extends PlayerMoveController {
 			return false;
 		pendingRoute = null;
 		route = planned;
+		routePartial = pendingPartial;
 		routeGlides = pendingGlides;
 		routeFlights = pendingFlights;
 		routeRides = pendingRides;

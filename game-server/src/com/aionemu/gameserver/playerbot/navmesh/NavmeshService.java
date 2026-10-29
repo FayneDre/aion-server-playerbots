@@ -155,7 +155,7 @@ public class NavmeshService {
 				System.currentTimeMillis() - began, Math.round(PositionUtil.getDistance(route.planned().get(0).getX(), route.planned().get(0).getY(),
 					route.planned().get(route.planned().size() - 1).getX(), route.planned().get(route.planned().size() - 1).getY())),
 				Math.round(goalX), Math.round(goalY));
-			route = new BotPathFinder.Route(route.planned(), false);
+			route = new BotPathFinder.Route(route.planned(), true); // gaveUp with waypoints is how a route says it is only the first part
 		}
 		long took = System.currentTimeMillis() - began;
 		if (took >= SLOW_SEARCH_MILLIS)
