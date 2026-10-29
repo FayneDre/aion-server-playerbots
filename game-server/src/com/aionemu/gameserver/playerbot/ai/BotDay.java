@@ -25,6 +25,7 @@ import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.playerbot.world.BotQuestGrounds;
+import com.aionemu.gameserver.playerbot.world.BotRefusals;
 import com.aionemu.gameserver.playerbot.world.StrandedPlaces;
 import com.aionemu.gameserver.playerbot.world.TownServices;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -484,7 +485,7 @@ class BotDay {
 			// at their stalls round them nothing was free within 6 m: two errands in three refused there, and visitors sent back to their teleporter.
 			if (spot == null && around != null)
 				spot = BotPlaces.spotAround(bot.getWorldId(), around, ERRAND_SPREAD_CROWDED, RESTING_SPOTS, bot.getObjectId(), this::isTakenOrRefused);
-			if (spot == null || unreachable.contains(spot)) {
+			if (spot == null || isOutOfReach(spot)) {
 				log.info("Bot {} finds no way to the {} keeper{}, and spends the spell {}", bot.getName(), spell.service(),
 					keeper == null ? " (none on the map)" : " at " + Math.round(keeper.getX()) + " " + Math.round(keeper.getY()) + " " + Math.round(keeper.getZ()),
 					BotVisitors.isVisitor(bot) ? "visiting" : "at home");
@@ -523,9 +524,9 @@ class BotDay {
 			// Where the game itself sends a character of this level, taken from the quest data, and only then a hunting ground picked by level. The
 			// quests know things a level band cannot: which valley a character of four is meant to be clearing, and which one belongs to eights.
 			Vector3f ground = BotQuestGrounds.groundFor(bot.getWorldId(), bot.getRace(), bot.getLevel(), home(), BotPlaces.WANDERING_RANGE, pick);
-			if (ground == null || unreachable.contains(ground))
+			if (ground == null || isOutOfReach(ground))
 				ground = BotPlaces.groundToWork(bot.getWorldId(), home(), bot.getLevel(), pick);
-			occupationDestination = ground != null && !unreachable.contains(ground) ? ground : null;
+			occupationDestination = ground != null && !isOutOfReach(ground) ? ground : null;
 		}
 		if (occupationDestination != null)
 			ai.setAnchor(occupationDestination.getX(), occupationDestination.getY(), occupationDestination.getZ());
@@ -567,7 +568,7 @@ class BotDay {
 				town ? new Vector3f(bot.getX(), bot.getY(), bot.getZ()) : null, range);
 			// a place already known to be out of reach is no destination at all. Nowhere suitable nearby means staying put rather than setting off
 			// across the region: the fallback used to be "any settlement", which is exactly the walk this is meant to prevent.
-			occupationDestination = elsewhere != null && !unreachable.contains(elsewhere) ? elsewhere : null;
+			occupationDestination = elsewhere != null && !isOutOfReach(elsewhere) ? elsewhere : null;
 		}
 		if (occupationDestination == null)
 			return false;
@@ -650,7 +651,31 @@ class BotDay {
 
 	private boolean isRefused(Vector3f spot) {
 		return unreachable.stream()
-			.anyMatch(refused -> PositionUtil.getDistance(refused.getX(), refused.getY(), refused.getZ(), spot.getX(), spot.getY(), spot.getZ()) < REFUSED_SPOT_RADIUS);
+			.anyMatch(refused -> PositionUtil.getDistance(refused.getX(), refused.getY(), refused.getZ(), spot.getX(), spot.getY(), spot.getZ()) < REFUSED_SPOT_RADIUS)
+			|| isRefusedForAll(spot);
+	}
+
+	/** @return true if this bot proved it cannot reach the place, or the planner has proved as much for a bot standing about where this one does. */
+	private boolean isOutOfReach(Vector3f place) {
+		return unreachable.contains(place) || isRefusedForAll(place);
+	}
+
+	private boolean isRefusedForAll(Vector3f place) {
+		Player bot = ai.getOwner();
+		return BotRefusals.isRefused(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), place);
+	}
+
+	/**
+	 * Remembers a place the bot was refused the way to, for itself for good, and for the bots round it when the refusal is a proof.
+	 */
+	private void refuse(Vector3f place) {
+		unreachable.add(place);
+		BotMoveController moves = ai.moves();
+		String why = moves == null ? "" : moves.refusal();
+		if ("no way".equals(why) || "goal cut off".equals(why)) {
+			Player bot = ai.getOwner();
+			BotRefusals.remember(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), place, "goal cut off".equals(why));
+		}
 	}
 
 	/**
@@ -689,7 +714,7 @@ class BotDay {
 			return;
 		log.info("Bot {} cannot get to its hunting ground at {} {}, and does something else ({})", ai.getOwner().getName(),
 			Math.round(occupationDestination.getX()), Math.round(occupationDestination.getY()), journey(occupationDestination));
-		unreachable.add(occupationDestination);
+		refuse(occupationDestination);
 		forget();
 		Vector3f where = home();
 		if (where != null)
@@ -727,7 +752,7 @@ class BotDay {
 		// the list — so forgetting a refusal means choosing the same unreachable place on the next tick, for ever. One bot standing in a pocket of
 		// the map cut off from the villages asked sixty times in three minutes.
 		if (occupationDestination != null)
-			unreachable.add(occupationDestination);
+			refuse(occupationDestination);
 		if (spell != null && BotPresence.isTown(ai.getOwner().getWorldId())) {
 			// in town the spell goes on: an errand refused is spent at home, and a home refused where the resident stands
 			spellGivenUp = spell.activity() == TownRoutine.Activity.HOME || spell.activity() == TownRoutine.Activity.SIT;
