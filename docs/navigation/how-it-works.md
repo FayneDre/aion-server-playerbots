@@ -75,10 +75,16 @@ From the bottom up, each bound feeding the next:
    same goal continues the journey rather than resetting the watch.
 2. **Given up three times** on one destination (`GIVE_UPS_BEFORE_REFUSING`): left alone for five minutes.
 3. **The AI's refusals**: a chase lasts 15 s and keeps within the leash of the anchor (`BotChase`); a target not reached is ignored for 10 s; a day
-   plan whose place cannot be reached puts it in `BotDay.unreachable` (for good, today, proof or not: point 3 of the backlog).
+   plan whose place cannot be reached puts it in `BotDay.unreachable` (for good, proof or not). A refusal the planner **proved** ("no way", "goal cut off") is also kept for every bot in `BotRefusals`: for a start on the same ground (30 m, 5 m in height) for 20 minutes, for a goal cut off whoever asks for 10, and for a goal (the same stretch of floor, 10 m) refused from three different places, from anywhere. A search that merely ran out of budget is never shared.
 4. **Rescue** (`BotRescue.freeItself`): 12 refusals in a row mean the bot is wedged where it stands, 6 destinations given up from one spot that the
    spot is the fault. It is stepped out of a pocket, put beside its leader, flown, or taken home; in a player's sight only a step of 12 m at most. A
    grouped bot within 200 m of its leader is waiting, not stuck (a player flown off to a ledge). A bot whose every journey fails four times in five minutes is freed the same way (`LostTrail`). About 40 a half hour on 900 bots.
+
+**Long journeys that run out of road.** A long search (`findLongPath`) that runs out of budget, or meets a stretch it cannot plan, still answers "gave up",
+but carries the stretches planned so far (`Route.planned`) when they cover 60 m or more; `NavmeshService.findRoute`, which only plans journeys bots walk,
+turns that into a route marked partial (`gaveUp` with waypoints), and `BotMoveController` plans again once its waypoints are behind the bot, instead of
+walking the last stretch straight at the goal. Before any stretch, `goalIsCutOffFromTheGuide` asks the fine grid whether the goal joins either of the
+guide's last two points, and a proof that it does not answers "goal cut off" at once rather than after the walk.
 
 ## What the figures are
 

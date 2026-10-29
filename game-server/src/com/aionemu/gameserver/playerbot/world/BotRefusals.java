@@ -23,7 +23,7 @@ import com.aionemu.gameserver.utils.PositionUtil;
  */
 public final class BotRefusals {
 
-	private static final float SAME_GROUND_METRES = 30, SAME_FLOOR_METRES = 5, SAME_GOAL_METRES = 3;
+	private static final float SAME_GROUND_METRES = 30, SAME_FLOOR_METRES = 5, SAME_GOAL_METRES = 10, SAME_GOAL_FLOOR_METRES = 3;
 	private static final long NO_WAY_MILLIS = 20 * 60_000L, CUT_OFF_MILLIS = 10 * 60_000L;
 	private static final int MOST_PER_MAP = 2000, REFUSED_FROM_THIS_MANY_PLACES = 3;
 
@@ -55,7 +55,10 @@ public final class BotRefusals {
 		long now = System.currentTimeMillis();
 		int places = 0;
 		for (Refusal known : refusals) {
-			if (known.until <= now || PositionUtil.getDistance(known.goal.getX(), known.goal.getY(), known.goal.getZ(), goal.getX(), goal.getY(), goal.getZ()) > SAME_GOAL_METRES)
+			// the spot before a counter is drawn from the bot's own id, so the bots that went to one keeper aimed at points a few metres apart
+			// (1302 1516 to 1306 1526 on 29 October): the same goal is the same stretch of floor, not the same point
+			if (known.until <= now || PositionUtil.getDistance(known.goal.getX(), known.goal.getY(), goal.getX(), goal.getY()) > SAME_GOAL_METRES
+				|| Math.abs(known.goal.getZ() - goal.getZ()) > SAME_GOAL_FLOOR_METRES)
 				continue;
 			// each entry is a start no earlier one covered, so the entries for a goal are the different places it was refused from
 			places++;

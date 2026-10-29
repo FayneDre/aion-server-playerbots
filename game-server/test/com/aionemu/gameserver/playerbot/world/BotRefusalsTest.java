@@ -27,7 +27,8 @@ class BotRefusalsTest {
 	@Test
 	void itIsAboutThatGoalOnly() {
 		BotRefusals.remember(9003, new Vector3f(1000, 1000, 100), GOAL, false);
-		assertFalse(BotRefusals.isRefused(9003, new Vector3f(1000, 1000, 100), new Vector3f(1310, 1520, 200)));
+		assertFalse(BotRefusals.isRefused(9003, new Vector3f(1000, 1000, 100), new Vector3f(1330, 1520, 200)));
+		assertFalse(BotRefusals.isRefused(9003, new Vector3f(1000, 1000, 100), new Vector3f(1300, 1520, 210)), "another floor");
 	}
 
 	@Test
@@ -57,5 +58,13 @@ class BotRefusalsTest {
 		BotRefusals.remember(9008, new Vector3f(1005, 1000, 100), GOAL, false);
 		BotRefusals.remember(9008, new Vector3f(1000, 1008, 100), GOAL, false);
 		assertFalse(BotRefusals.isRefused(9008, new Vector3f(2000, 300, 50), GOAL));
+	}
+
+	@Test
+	void pointsAFewMetresApartAreOneGoal() {
+		BotRefusals.remember(9009, new Vector3f(1000, 1000, 100), new Vector3f(1302, 1516, 210), false);
+		BotRefusals.remember(9009, new Vector3f(1200, 1000, 100), new Vector3f(1306, 1526, 210), false);
+		BotRefusals.remember(9009, new Vector3f(1000, 1300, 100), new Vector3f(1304, 1521, 210), false);
+		assertTrue(BotRefusals.isRefused(9009, new Vector3f(2000, 300, 50), new Vector3f(1305, 1519, 210)));
 	}
 }
