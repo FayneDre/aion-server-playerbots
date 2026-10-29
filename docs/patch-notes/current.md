@@ -40,22 +40,33 @@ fourchette d'avant. **Aucun maillage à régénérer, mais une procédure à sui
 - Un groupe avec un bot et quelques lignes de discussion dans les canaux (région, commerce, recherche de groupe).
 - Les bots sont environ 950 au démarrage ; rien d'anormal dans `server_errors.log`.
 
-**À faire sur chaque serveur de test, dans cet ordre**
-0. Avoir `mysql.exe` et `mysqldump.exe` (dans le PATH, ou sous `C:\Program Files\MySQL`) et un accès Internet pour Maven : les nouvelles
-   bibliothèques se téléchargent à la première construction.
-1. `.\tools\stop-server.ps1`, puis `git pull`.
-2. `.\tools\sync-install.ps1 -From <le tag du dernier patch déployé>` (par exemple `patch-2026-10-25-2`). Il ne change rien tant qu'on n'ajoute pas
-   `-Apply` ; il liste ce qu'il ferait : les fichiers de données et de configuration que le dépôt d'origine a changés (remplacés seulement si vous ne les
-   aviez pas modifiés), les bibliothèques (Netty 4.2, jakarta, logback, MySQL, Hikari : à ajouter ; les anciennes : à retirer) et les instructions SQL
-   à passer. **Lire la liste. Les lignes `LEFT` sont des fichiers que vous avez modifiés : le script n'y touche pas, à fusionner à la main**
-   (`git diff <tag> HEAD -- <fichier>`). `mygs.properties` n'est jamais touché.
-3. Relancer la même commande avec `-Apply`. Elle remplace les fichiers, met les bibliothèques à jour et passe le SQL : **sauvegarde de la base d'abord**
-   (`<serveur>\backups\aion_gs-<date>.sql`), puis les instructions, une fois chacune (un registre `schema_applied_sql` est créé dans la base). Si une
-   instruction échoue, le script s'arrête avec l'erreur, et on relance après correction.
-4. `.\tools\deploy.ps1 -Restart` : construit les trois serveurs, passe les tests, copie les jars et relance connexion, discussion et jeu. La première
-   fois, compter quelques minutes de plus (bibliothèques).
-5. Au démarrage, attendre la ligne « Connected to login server » puis « Connected to chat server » dans `server_console.log` ; `//bot version` en jeu
-   doit afficher `ed3400a`.
+**À faire sur chaque serveur de test, dans cet ordre** (une seule fois, de bout en bout ; compter une demi-heure la première fois)
+
+Tout se lance dans PowerShell, depuis le dossier du dépôt (celui qui contient `tools`). `<tag>` est le tag du dernier patch que vous avez déployé
+(par exemple `patch-2026-10-25-2`) : c'est lui qui dit au script quels fichiers de l'installation sont encore ceux du dépôt.
+
+0. **Avant de commencer** : `mysql.exe` et `mysqldump.exe` doivent être trouvables (dans le PATH, ou sous `C:\Program Files\MySQL`) et le serveur
+   MySQL doit tourner. Il faut Java 25, Maven et un accès Internet : les nouvelles bibliothèques se téléchargent la première fois.
+1. **Arrêter le serveur de jeu** : `.\tools\stop-server.ps1` (il sauvegarde les joueurs ; ne jamais fermer la fenêtre à la main). Puis `git pull`.
+   Le dépôt doit contenir le correctif du 29/10 : sans lui, `sync-install.ps1` s'arrête sur « Could not list the libraries of game-server » (il ne
+   trouvait pas `commons` dans un dépôt jamais construit).
+2. **Regarder ce qui va changer, sans rien toucher** : `.\tools\sync-install.ps1 -From <tag>`. La sortie se lit ainsi :
+   - `REPLACE` / `REMOVE` / `ADD` : fichiers de données ou de configuration que vous n'aviez pas modifiés ; ils seront mis à jour.
+   - `LEFT` : fichiers que **vous** avez modifiés et que le dépôt d'origine a changés aussi. Le script n'y touche pas : à fusionner à la main après
+     (`git diff <tag> HEAD -- <fichier>`). Les réglages réseau, `admin.properties` et `logback.xml` y figurent le plus souvent.
+   - `Libraries of ...: N to add, N to remove` : bibliothèques à ajouter (Netty 4.2, jakarta, logback, MySQL, Hikari) et anciennes à retirer.
+   - `SQL: N statement(s)` : instructions de base de données à passer.
+   - La dernière ligne, « Nothing changed: -Apply does it. », confirme que rien n'a été modifié. Si une ligne rouge s'affiche à la place, s'arrêter
+     et envoyer la sortie complète (elle contient les dernières lignes de Maven, préfixées `mvn:`).
+3. **Appliquer** : la même commande avec `-Apply` (`.\tools\sync-install.ps1 -From <tag> -Apply`). Elle remplace les fichiers, met les bibliothèques
+   à jour, sauvegarde la base dans `<serveur>\backups\aion_gs-<date>.sql`, puis passe chaque instruction SQL une seule fois (un registre
+   `schema_applied_sql` est créé). Si une instruction échoue, elle s'arrête avec l'erreur : corriger, puis relancer la même commande.
+4. **Fusionner à la main les fichiers `LEFT`** de l'étape 2, s'il y en avait. `mygs.properties` n'est jamais touché.
+5. **Construire et relancer** : `.\tools\deploy.ps1 -Restart`. Il construit les trois serveurs, passe les tests, copie les jars (dont ceux de la
+   connexion et de la discussion) et redémarre connexion, discussion puis jeu. La première fois, la construction est plus longue (bibliothèques).
+6. **Vérifier** : dans `<serveur>\game-server\log\server_console.log`, attendre « Connected to login server » (le jeu ne l'écrit qu'à la fin, deux à
+   cinq minutes après le démarrage, une fois les bots prêts : ne pas se connecter avant). `//bot version` en jeu doit afficher la révision de votre
+   dépôt (`git rev-parse --short HEAD`).
 
 **En cas de problème** : revenir en arrière demande le code, les bibliothèques et la base ensemble. La base d'avant est dans `<serveur>\backups`
 (à restaurer avec `mysql`, serveur arrêté) ; le code, avec `git checkout <tag>` puis `.\tools\sync-install.ps1 -LibsOnly -Apply`. Dans le doute, ne pas
