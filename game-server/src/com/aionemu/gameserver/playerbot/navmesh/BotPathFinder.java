@@ -187,8 +187,8 @@ public class BotPathFinder {
 	private static final float MIN_PLANNED_METRES = 60f;
 
 	/**
-	 * @return The answer of a long search that ran out of budget: no route and no proof, as ever, with the stretches already planned when they take the
-	 *         bot a fair way, which the planner of a journey may walk. 223 of the 523 day plans given up in half an hour on 29 October were such searches,
+	 * @return The answer of a long search that ran out of budget, or came to a stretch it could not plan: no route and no proof, as ever, with the
+	 *         stretches already planned when they take the bot a fair way, which the planner of a journey may walk. 223 of the 523 day plans given up in half an hour on 29 October were such searches,
 	 *         the bot standing where it had been while most of the way was already known.
 	 */
 	private static Route outOfBudget(Navmesh mesh, List<Vector3f> full, Avoidance avoid) {
@@ -236,8 +236,11 @@ public class BotPathFinder {
 					System.out.printf("walk: stretch %d of %d from %.1f %.1f %.1f to %.1f %.1f %.1f failed (gave up %b)%n", target, guide.size(), fromX, fromY, fromZ, toX, toY, guideZ,
 						stretch.gaveUp());
 			}
+			// a stretch that ran out of room and one the mesh proved shut both leave what came before it planned: the bot walks that far, and asks again
+			// from there, where the same stretch is the first and gives the plain answer. Eight of the thirty long give-ups replayed on 29 October were a
+			// stretch refused at once, thrown away together with every stretch planned before it
 			if (stretch.isEmpty())
-				return stretch.gaveUp() ? outOfBudget(mesh, full, avoid) : new Route(List.of(), true);
+				return outOfBudget(mesh, full, avoid);
 
 			List<Vector3f> waypoints = stretch.waypoints();
 			full.addAll(full.isEmpty() ? waypoints : waypoints.subList(1, waypoints.size()));
