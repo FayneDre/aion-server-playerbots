@@ -535,8 +535,14 @@ class BotDay {
 			return null;
 		// asked from the spot to the bot, not the other way: ground walks the same both ways, and a search that starts on an island closes on it in
 		// milliseconds, where one that starts in the street and looks for the island goes through all of the street first
-		return NavmeshService.getInstance().canWalkWithin(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ(), bot.getX(), bot.getY(), bot.getZ(),
-			ERRAND_DETOUR_FACTOR, ERRAND_DETOUR_METRES) ? spot : null;
+		if (NavmeshService.getInstance().canWalkWithin(bot.getWorldId(), spot.getX(), spot.getY(), spot.getZ(), bot.getX(), bot.getY(), bot.getZ(),
+			ERRAND_DETOUR_FACTOR, ERRAND_DETOUR_METRES))
+			return spot;
+		// told to the bots standing about, so that the next one skips this spot before asking for it again: up to three keepers, two dozen capped walks
+		// each, on the thread that thinks for eight bots. A capped walk is not a proof, which is why it is kept for the shared memory's twenty minutes
+		// and from this ground only, until three different places have asked
+		BotRefusals.remember(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), spot, false);
+		return null;
 	}
 
 	/**
