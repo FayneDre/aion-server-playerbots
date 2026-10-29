@@ -10,6 +10,8 @@ baseline windows, since two windows of the same code differed by up to 30 % on 2
 Baseline of 27 October evening, per 30 minutes, a player in game: day plans given up 377 and 522, routes refused 562 and 744, steps aside 944 and
 1035, could not move at all 22 and 38, rescue teleports 37 and 43, routes with a glide 9 and 13 (of about 29 000 planned).
 
+Third window, 29 October 18:28 to 18:58, a player in game, the code of `patch-2026-10-28` plus the bag fix: day plans given up 523, routes refused 739, steps aside 991, could not move at all 42, rescue teleports 45, routes with a glide 12 (of 28 718 planned): inside the band of the first two. The 523 plans by reason: 223 `long` (the search ran out of budget; median 374 m, longest 1614 m), 198 `noway` (68 of them in Pandaemonium), 46 `cutoff`, 46 `again`, 6 `as-near-as-it-gets`, 4 `no-headway`. The journey searches that gave up spent 580 s of wall time on the route threads in the half hour. Reports: `bot-measures/nav-2026-10-29-1828*.txt` in the server's log folder.
+
 ## 1. A bot slides for an instant before it runs
 
 *"Sur certaines animations où le bot se repose puis se lève et devrait enchaîner sa course, il glisse un court instant avant de courir. Plusieurs
