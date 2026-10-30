@@ -100,6 +100,7 @@ have no plan yet ([roadmap.md](roadmap.md), "Group play").
 | [how-it-works.md](navigation/how-it-works.md) | **How a bot moves today**: the layers, the mesh and its links, planning and its budgets, walking, what happens when it does not get there. |
 | [instance-navmesh-list.md](navigation/instance-navmesh-list.md) | The 110 instance maps by category, and which share a geometry. |
 | [plans/openworld-navigation-plan.md](navigation/plans/openworld-navigation-plan.md) | Glide and ride links, journeys given up. In progress: next, the day plans given up. |
+| [plans/mesh-defects-plan.md](navigation/plans/mesh-defects-plan.md) | **What to correct in the meshes** (30 October): the cave ramp of Morheim, islets under monsters, cuts between grounds. Audit done, nothing corrected yet. |
 
 History: [navigation-prototype.md](navigation/history/navigation-prototype.md) (the foundations of September),
 [navmesh-plan.md](navigation/history/navmesh-plan.md) (path planning on a generated grid, N0 to N6),

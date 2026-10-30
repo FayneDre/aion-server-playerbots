@@ -101,6 +101,9 @@ public class NavmeshTool {
 		if (args.length == 2 && args[1].equals("fieldreach")) {
 			System.exit(FieldReach.run(Integer.parseInt(args[0])));
 		}
+		if (args.length == 2 && args[1].equals("fieldbreaks")) {
+			System.exit(FieldBreaks.run(Integer.parseInt(args[0])));
+		}
 		if (args.length == 2 && args[1].equals("glidecheck")) {
 			GlideCheck.run(Integer.parseInt(args[0]));
 			return;

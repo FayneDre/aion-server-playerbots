@@ -110,7 +110,7 @@ final class GapReport {
 	}
 
 	/** @return The surface of a region nearest the spot in height within three metres, looking a few cells round it, or -1. */
-	private static int nearestSurface(Heightfield field, int[] region, float x, float y, float z) {
+	static int nearestSurface(Heightfield field, int[] region, float x, float y, float z) {
 		int cellX = (int) (x / Heightfield.CELL_SIZE), cellY = (int) (y / Heightfield.CELL_SIZE);
 		int best = -1;
 		for (int dy = -4; dy <= 4; dy++) {
@@ -148,7 +148,7 @@ final class GapReport {
 	 * @return Across, up, then x, y, z of a cell of the first regions and of the second, then the first region met, for the nearest meeting of the two; null if they come within no
 	 *         window.
 	 */
-	private static float[] closest(Heightfield field, int[] region, Set<Integer> first, int second) {
+	static float[] closest(Heightfield field, int[] region, Set<Integer> first, int second) {
 		float[] best = null;
 		float bestScore = Float.MAX_VALUE;
 		for (int column = 0; column < field.width() * field.height(); column++) {
