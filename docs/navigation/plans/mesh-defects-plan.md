@@ -1,6 +1,6 @@
 # Mesh defects: what to correct for the meshes to be as exact as they can be
 
-Status: in progress: audit of 30 October done (open world, monster pairs), no correction applied yet.
+Status: in progress: point 2 (islets) corrected in code and measured, not yet deployed or seen in game; point 1 (the ramp) explained in two causes, not corrected.
 
 Written on 30 October 2026 after a tester reported bots that cannot get past the entrance of a cave in Morheim (and said the same happens in a cave of
 Altgard). The planner proved the way shut, in 55 ms, so the fault is in the mesh and not in the search budget. Everything below is measured unless a
@@ -22,12 +22,17 @@ On 20 maps: **818 pairs refused**, 335 end on an islet, 159 lie between two stre
    (region of 645 cells, z 519.3 at 774 337) and the cave (437 000 cells, z 522.4 and up) are three pieces that do not join. One placed model covers the ramp,
    `bu_d_outpostcave_02b.cgf`, with faces of 46 to 58 degrees. Raising the building slope limit of the map to 62 degrees (as for Teminon, `MapSlopes`) made
    two surfaces walkable and **did not join the pieces**: the route is still "No route exists". Around the ramp 18 to 60 of the 169 cells within 3 m
-   are blocked. Not found yet: whether erosion by the body's width eats a narrow ramp, or a ceiling or wall of the model blocks it.
-   Needed: a report of why each cell of a column is blocked (erosion, headroom, a wall, a no-walk volume).
+   are blocked. Found with `NavmeshTool <map> whyblocked <x> <y> <z>`, which says which step of the generator takes the ground at a spot:
+   (a) the ramp cells are removed by the **erosion** by a body's width (one cell, 0.5 m, in the open world; none in the instances), and a mesh built
+   with `-Dnavmesh.erode=0` joins the ramp foot to the cave (a route of 47 m); (b) the 18 m between the spot where the bots stand (766 314) and the ramp
+   foot (771 330) are shut at the **walls** step by the steep faces of `na_d_icerock_b_04d.cgf` (columns 767 318 and 768 322), and that stays shut
+   without erosion. Morheim without erosion: pairs refused 205 to 19, but the entrance route still fails.
 2. **Islets under monsters: 335 pairs.** A spawn spot falls on a patch of a few cells (1 to 17 at Morheim) that props isolate: tents
-   (`bu_d_lehpartent_02b` alone: 6 breaks, 38 pairs at Morheim), fires, pots, barrels, sacks, fences. The large ground is 1 to 3 m away. Two corrections to
-   try, each measured against the 335: snap a monster's spot to the large ground within 3 m when a bot aims at it, or join an islet to the large ground
-   next to it in the mesh. The first leaves the mesh alone.
+   (`bu_d_lehpartent_02b` alone: 6 breaks, 38 pairs at Morheim), fires, pots, barrels, sacks, fences. The large ground is 1 to 3 m away.
+   Done on 30 October (`BotPathFinder.findPath`, the mesh untouched): a goal on an islet is aimed past, at the nearest large ground within 4 m. Pairs
+   refused 818 to 562 over 20 maps; Morheim 205 to 81, of which 40 are refused both ways and 41 only from the monster's islet, which a bot never starts
+   from; the cuts between large grounds stay at 159. Left: the islets with no large ground within 4 m, such as Altgard's (`whyblocked` there: the
+   walls step takes 331 walkable surfaces within 6 m to 194, the erosion to 77).
 3. **The plateau of 210030000: 40 pairs.** 2055 cells joined to the main ground at 5.1 m across and 4.0 m up, at the foot of `na_l_rockybig_03b.cgf`. Decide
    whether it is a cliff (then bots must leave those monsters alone) or a missing link.
 4. **Scattered cuts, about 120 pairs.** Underwater stairs (`bu_ru_ldf5under_waterstair*`, 7 and 4 pairs), snow cliffs (`na_d_snowrock_cliff*`),
