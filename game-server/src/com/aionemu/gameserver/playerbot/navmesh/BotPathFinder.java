@@ -134,7 +134,68 @@ public class BotPathFinder {
 	 * @param air whether the air along a glide is clear, asked only of links the plan would use
 	 */
 	static Route findPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid, GlideRoutes.AirTest air) {
-		return provenIfPocket(mesh, searchPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air), goalX, goalY, goalZ);
+		Route answer = provenIfPocket(mesh, searchPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air), goalX, goalY, goalZ);
+		if (!answer.isEmpty() || answer.gaveUp())
+			return answer;
+		Vector3f offIslet = groundOffIslet(mesh, goalX, goalY, goalZ);
+		if (offIslet == null)
+			return answer;
+		Route aimedPast = provenIfPocket(mesh, searchPath(mesh, startX, startY, startZ, offIslet.getX(), offIslet.getY(), offIslet.getZ(), avoid, air), offIslet.getX(),
+			offIslet.getY(), offIslet.getZ());
+		return aimedPast.isEmpty() ? answer : aimedPast;
+	}
+
+	/** A patch of ground of fewer cells than this is an islet: a spot among props that a body stands on and cannot leave, such as the corner of a tent. */
+	private static final int ISLET_CELLS = 100;
+	/** How far from a goal on an islet the large ground it is aimed at instead may be, in metres: where a monster in the clutter can be reached from. */
+	private static final float ISLET_REACH = 4f;
+	/** How many islets in a row are passed over before the goal is left alone. */
+	private static final int ISLETS_PASSED = 4;
+
+	/**
+	 * @return The nearest ground within {@link #ISLET_REACH} of a goal that stands on an islet and is not itself on one, or null when the goal's ground goes on
+	 *         past {@link #ISLET_CELLS} cells or there is none. A search for the goal is proved vain at once, since nothing walks onto the islet: monsters
+	 *         stand among the tents, fires and barrels of a camp and 335 of the 818 pairs of neighbouring monsters the planner refused on 30 October ended on one.
+	 *         A bot that goes to the ground beside them is where the reactive layer finishes the last metres, as it does for a creature that stands on a rock.
+	 */
+	private static Vector3f groundOffIslet(Navmesh mesh, float goalX, float goalY, float goalZ) {
+		long goal = nodeAt(mesh, goalX, goalY, goalZ, SNAP_RANGE);
+		if (goal == -1)
+			return null;
+		Set<Long> passed = groundOf(mesh, goal, ISLET_CELLS);
+		if (passed == null)
+			return null;
+		int reach = Math.round(ISLET_REACH / mesh.cellSize()), centreX = mesh.cellX(goalX), centreY = mesh.cellY(goalY);
+		for (int attempt = 0; attempt < ISLETS_PASSED; attempt++) {
+			long best = -1;
+			float bestScore = Float.MAX_VALUE;
+			for (int offsetY = -reach; offsetY <= reach; offsetY++) {
+				for (int offsetX = -reach; offsetX <= reach; offsetX++) {
+					int cellX = centreX + offsetX, cellY = centreY + offsetY;
+					if (!mesh.contains(cellX, cellY))
+						continue;
+					for (int surface = 0; surface < mesh.surfaceCount(cellX, cellY); surface++) {
+						long candidate = key(mesh, cellX, cellY, surface);
+						float gap = Math.abs(mesh.surfaceZ(cellX, cellY, surface) - goalZ);
+						// a metre of height counts as one across, and a surface a step above or below is ground of another floor
+						float score = (float) Math.hypot(offsetX, offsetY) * mesh.cellSize() + gap;
+						if (!mesh.isWalkable(cellX, cellY, surface) || gap > SNAP_RANGE || score >= bestScore || passed.contains(candidate))
+							continue;
+						bestScore = score;
+						best = candidate;
+					}
+				}
+			}
+			if (best == -1)
+				return null;
+			Set<Long> ground = groundOf(mesh, best, ISLET_CELLS);
+			if (ground == null) {
+				int cellX = keyX(mesh, best), cellY = keyY(mesh, best);
+				return new Vector3f((cellX + 0.5f) * mesh.cellSize(), (cellY + 0.5f) * mesh.cellSize(), mesh.surfaceZ(cellX, cellY, keySurface(best)));
+			}
+			passed.addAll(ground); // another islet: the next nearest ground is looked for past it
+		}
+		return null;
 	}
 
 	/**
@@ -723,16 +784,18 @@ public class BotPathFinder {
 	 */
 	public static boolean isPocket(Navmesh mesh, float x, float y, float z, int maxCells) {
 		long start = nodeAt(mesh, x, y, z, SNAP_RANGE);
-		if (start == -1)
-			return false;
+		return start != -1 && groundOf(mesh, start, maxCells) != null;
+	}
 
+	/** @return Every cell joined to the start by the route search's own steps when that is no more than {@code maxCells}, null when there is more. */
+	private static Set<Long> groundOf(Navmesh mesh, long start, int maxCells) {
 		Set<Long> reached = new HashSet<>();
 		ArrayDeque<Long> pending = new ArrayDeque<>();
 		reached.add(start);
 		pending.add(start);
 		while (!pending.isEmpty()) {
 			if (reached.size() > maxCells)
-				return false;
+				return null;
 			long current = pending.poll();
 			int cellX = keyX(mesh, current), cellY = keyY(mesh, current);
 			float z0 = mesh.surfaceZ(cellX, cellY, keySurface(current));
@@ -752,7 +815,7 @@ public class BotPathFinder {
 				}
 			}
 		}
-		return true;
+		return reached;
 	}
 
 	/**
