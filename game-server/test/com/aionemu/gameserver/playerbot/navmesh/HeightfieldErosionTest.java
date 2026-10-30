@@ -100,6 +100,45 @@ class HeightfieldErosionTest {
 		assertFalse(walkableAt(field, 1, 6, FLOOR), "the floor against the wall is still shaved");
 	}
 
+	/** Two rooms, x under 3 and x over 5, joined by a corridor one cell wide along y = 4: narrower than the erosion leaves. */
+	private static Heightfield twoRoomsAndANarrowCorridor() {
+		return field((x, y) -> x < 3 || x > 5 || y == 4 ? List.of(new Surface(FLOOR, true)) : List.of(new Surface(FLOOR, false)));
+	}
+
+	private static boolean joined(Heightfield field, int fromX, int toX) {
+		int[] region = field.regions(BotPathFinder.STEP_TOLERANCE);
+		int from = field.columnStart(fromX, 4), to = field.columnStart(toX, 4);
+		return region[from] != 0 && region[from] == region[to];
+	}
+
+	@Test
+	void aCorridorNarrowerThanTheErosionCutsTheRoomsApartUntilItsPassageIsKept() {
+		Heightfield field = twoRoomsAndANarrowCorridor();
+		BitSet before = field.copyOfWalkable();
+		field.erode(1, BotPathFinder.STEP_TOLERANCE, 1);
+		assertFalse(walkableAt(field, 4, 4, FLOOR), "the corridor is all edge");
+		assertFalse(joined(field, 1, 7), "so the rooms stand apart");
+
+		int given = field.keepPassages(before, 4, 8, BotPathFinder.STEP_TOLERANCE, 1);
+
+		assertTrue(given > 0);
+		assertTrue(walkableAt(field, 4, 4, FLOOR), "the way between the rooms is given back");
+		assertTrue(joined(field, 1, 7), "and a body can walk from one room to the other");
+		assertFalse(walkableAt(field, 0, 1, FLOOR), "the rim of a room stays shaved");
+	}
+
+	@Test
+	void aPassageIsOnlyKeptForGroundOfEnoughCells() {
+		Heightfield field = twoRoomsAndANarrowCorridor();
+		BitSet before = field.copyOfWalkable();
+		field.erode(1, BotPathFinder.STEP_TOLERANCE, 1);
+
+		int given = field.keepPassages(before, 100, 8, BotPathFinder.STEP_TOLERANCE, 1);
+
+		assertEquals(0, given, "seven cells of a room are a speck at this bound");
+		assertFalse(joined(field, 1, 7));
+	}
+
 	@Test
 	void shavingAFloorLeavesTheRoofAboveIt() {
 		Heightfield field = field(x -> x == WALL_X ? List.of(new Surface(FLOOR, false), new Surface(ROOF, true))

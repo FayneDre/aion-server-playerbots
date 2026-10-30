@@ -125,6 +125,14 @@ public class HeightfieldBuilder {
 		return builder.rasterize();
 	}
 
+	/**
+	 * With a number above 0, the stretches of ground of at least that many cells that the erosion cut off from the rest are joined back by the shortest way through what it
+	 * took ({@link Heightfield#keepPassages}): {@code -Dnavmesh.keepPassages=4}. Off by default, for it is being measured.
+	 */
+	private static final int KEEP_PASSAGES = Integer.getInteger("navmesh.keepPassages", 0);
+	/** How many cells of ground taken the way back may cross, 4 m by default. */
+	private static final int PASSAGE_REACH_CELLS = Integer.getInteger("navmesh.passageReach", 8);
+
 	/** Called with the field after each step that can take ground away, by name: how the tools ask which step took the ground at a spot. */
 	private java.util.function.BiConsumer<String, Heightfield> stages = (name, field) -> {
 	};
@@ -180,8 +188,15 @@ public class HeightfieldBuilder {
 		blockWalls(field);
 		stages.accept("walls", field);
 		// the steeper of the map's two slopes, as the path finder steps with (MapSlopes.tangent): a stair a route climbs is not an edge to shave
-		field.erode(agentRadius, BotPathFinder.STEP_TOLERANCE, (float) Math.tan(Math.acos(Math.min(slopeCosine, buildingCosine))));
+		float slopeTangent = (float) Math.tan(Math.acos(Math.min(slopeCosine, buildingCosine)));
+		BitSet beforeErosion = KEEP_PASSAGES > 0 ? field.copyOfWalkable() : null;
+		field.erode(agentRadius, BotPathFinder.STEP_TOLERANCE, slopeTangent);
 		stages.accept("erosion", field);
+		if (beforeErosion != null) {
+			int given = field.keepPassages(beforeErosion, KEEP_PASSAGES, PASSAGE_REACH_CELLS, BotPathFinder.STEP_TOLERANCE, slopeTangent);
+			System.out.printf("Kept the passages the erosion shut: %d surfaces given back%n", given);
+			stages.accept("passages kept", field);
+		}
 		return field;
 	}
 

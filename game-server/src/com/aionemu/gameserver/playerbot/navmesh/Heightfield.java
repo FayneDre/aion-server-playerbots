@@ -232,11 +232,15 @@ public class Heightfield {
 	 * @param slopeTangent How steep a body walks up, as the rise over the run: 1 for the engine's 45 degrees.
 	 */
 	public int[] regions(float climbTolerance, float slopeTangent) {
+		return regionsOf(walkable, climbTolerance, slopeTangent);
+	}
+
+	private int[] regionsOf(BitSet ground, float climbTolerance, float slopeTangent) {
 		int[] region = new int[surfaces.length];
 		int[] stack = new int[surfaces.length];
 		int next = 0;
 		for (int origin = 0; origin < region.length; origin++) {
-			if (region[origin] != 0 || !walkable.get(origin))
+			if (region[origin] != 0 || !ground.get(origin))
 				continue;
 			int id = ++next, top = 0;
 			stack[top++] = origin;
@@ -255,7 +259,7 @@ public class Heightfield {
 					// every walkable height of the neighbouring column, not just its highest: which one a body steps onto depends on where it is
 					// standing, and that is exactly what a single label per column cannot say
 					for (int neighbour = columnStart(nextX, nextY); neighbour < columnEnd(nextX, nextY); neighbour++) {
-						if (region[neighbour] != 0 || !walkable.get(neighbour))
+						if (region[neighbour] != 0 || !ground.get(neighbour))
 							continue;
 						if (Math.abs(surfaces[neighbour] - z) > reach)
 							continue;
@@ -361,6 +365,125 @@ public class Heightfield {
 			}
 		}
 		return coarse;
+	}
+
+	/** @return Which surfaces are walkable now, to be kept across a step that takes ground away. */
+	BitSet copyOfWalkable() {
+		return (BitSet) walkable.clone();
+	}
+
+	/**
+	 * Gives back the ground the erosion took where it was the only link between stretches of ground that joined before it.
+	 * <p>
+	 * The erosion shaves a body's width from every edge, and a passage narrower than that vanishes: the ramp into a cave, a gap between two rocks. The stretches on
+	 * its two sides then stand as ground of their own, and a route between them is proved shut, though a body walks it. So each stretch left of fewer cells than
+	 * the largest of its region as it was before the erosion, and of at least {@code minCells}, looks outward through the cells the erosion took, a few steps at most,
+	 * for ground of a stretch already joined, and takes back only the cells on the shortest such way. Everywhere else the erosion stands, so a wall keeps a body's
+	 * width off it.
+	 *
+	 * @param beforeErosion {@link #copyOfWalkable} as it was before {@link #erode}
+	 * @param minCells how small a stretch may be and still be joined back: fewer cells than this is a speck the erosion made of a patch of ground among props
+	 * @param reachCells how many cells of ground taken the way back may cross
+	 * @return how many surfaces were given back
+	 */
+	int keepPassages(BitSet beforeErosion, int minCells, int reachCells, float climbTolerance, float slopeTangent) {
+		int[] before = regionsOf(beforeErosion, climbTolerance, slopeTangent);
+		int[] after = regionsOf(walkable, climbTolerance, slopeTangent);
+		int labels = 0;
+		for (int label : after)
+			labels = Math.max(labels, label);
+		int[] size = new int[labels + 1], regionBefore = new int[labels + 1];
+		for (int i = 0; i < after.length; i++) {
+			if (after[i] != 0) {
+				size[after[i]]++;
+				regionBefore[after[i]] = before[i];
+			}
+		}
+		Map<Integer, Integer> largest = new HashMap<>(); // per region as it was before, the stretch of it that is largest now
+		for (int label = 1; label <= labels; label++)
+			largest.merge(regionBefore[label], label, (known, other) -> size[other] > size[known] ? other : known);
+		boolean[] joined = new boolean[labels + 1];
+		largest.values().forEach(label -> joined[label] = true);
+		int[][] cells = new int[labels + 1][];
+		List<Integer> fragments = new ArrayList<>();
+		for (int label = 1; label <= labels; label++) {
+			if (!joined[label] && size[label] >= minCells) {
+				cells[label] = new int[size[label]];
+				fragments.add(label);
+			}
+		}
+		int[] filled = new int[labels + 1];
+		for (int i = 0; i < after.length; i++) {
+			if (after[i] != 0 && cells[after[i]] != null)
+				cells[after[i]][filled[after[i]]++] = i;
+		}
+		fragments.sort((first, second) -> size[second] - size[first]); // the larger first, so that a smaller one may join onto it
+		int restored = 0;
+		for (int label : fragments) {
+			restored += joinBack(label, cells[label], after, joined, beforeErosion, reachCells, climbTolerance, slopeTangent);
+			cells[label] = null;
+		}
+		return restored;
+	}
+
+	/** @return How many surfaces were given back to join the stretch to ground already joined, 0 when none is within reach. */
+	private int joinBack(int label, int[] stretch, int[] region, boolean[] joined, BitSet beforeErosion, int reachCells, float climbTolerance, float slopeTangent) {
+		Map<Integer, Integer> cameFrom = new HashMap<>(); // a surface the erosion took and the surface it was reached from
+		int[] layer = stretch;
+		for (int depth = 0; depth < reachCells && layer.length > 0; depth++) {
+			List<Integer> next = new ArrayList<>();
+			for (int surface : layer) {
+				int column = columnOf(surface);
+				int x = column % width, y = column / width;
+				float z = surfaces[surface];
+				for (int direction = 0; direction < NEIGHBOUR_X.length; direction++) {
+					int nextX = x + NEIGHBOUR_X[direction], nextY = y + NEIGHBOUR_Y[direction];
+					if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height)
+						continue;
+					boolean diagonal = NEIGHBOUR_X[direction] != 0 && NEIGHBOUR_Y[direction] != 0;
+					float reach = CELL_SIZE * (diagonal ? 1.41421f : 1) * slopeTangent + climbTolerance;
+					// A step across the corner of a wall is not a passage: it is what the erosion shut on purpose, and the pass this gives ground back for must not open it
+					// again. 7 stretches through the walls of a store on Sanctum's upper floor came of it before this was asked.
+					if (diagonal && !(hasGroundAt(beforeErosion, x + NEIGHBOUR_X[direction], y, z, CELL_SIZE * slopeTangent + climbTolerance)
+						&& hasGroundAt(beforeErosion, x, y + NEIGHBOUR_Y[direction], z, CELL_SIZE * slopeTangent + climbTolerance)))
+						continue;
+					for (int neighbour = columnStart(nextX, nextY); neighbour < columnEnd(nextX, nextY); neighbour++) {
+						if (Math.abs(surfaces[neighbour] - z) > reach)
+							continue;
+						if (walkable.get(neighbour)) {
+							if (region[neighbour] != label && region[neighbour] != 0 && joined[region[neighbour]])
+								return giveBack(surface, cameFrom, label, region, joined);
+						} else if (beforeErosion.get(neighbour) && !cameFrom.containsKey(neighbour)) {
+							cameFrom.put(neighbour, surface);
+							next.add(neighbour);
+						}
+					}
+				}
+			}
+			layer = next.stream().mapToInt(Integer::intValue).toArray();
+		}
+		return 0;
+	}
+
+	/** @return true if the column has a surface of the given ground within {@code reach} of the height. */
+	private boolean hasGroundAt(BitSet ground, int x, int y, float z, float reach) {
+		for (int i = columnStart(x, y); i < columnEnd(x, y); i++) {
+			if (ground.get(i) && Math.abs(surfaces[i] - z) <= reach)
+				return true;
+		}
+		return false;
+	}
+
+	/** Walks the way back from the surface that met joined ground to the stretch, making each surface the erosion took on it walkable again. */
+	private int giveBack(int meeting, Map<Integer, Integer> cameFrom, int label, int[] region, boolean[] joined) {
+		int given = 0;
+		for (Integer surface = meeting; cameFrom.containsKey(surface); surface = cameFrom.get(surface)) {
+			walkable.set(surface);
+			region[surface] = label;
+			given++;
+		}
+		joined[label] = true;
+		return given;
 	}
 
 	/** Clears every surface of the given columns, used for the no-walk volumes the game authors itself. */

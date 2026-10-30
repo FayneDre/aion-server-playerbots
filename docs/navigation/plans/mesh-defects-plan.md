@@ -74,6 +74,21 @@ preference is a guess.
 | **E. Finer grid** | Cells of 25 cm instead of 50, so the same one cell is 25 cm. | Fewer passages lost. | Four times the memory, on a machine where the meshes already take 570 MB. Probably out. |
 | **F. Two layers** | The eroded mesh for ordinary routes, the raw ground as a second try when there is none. | No passage lost. | Twice the storage; the second try may cross walls unnoticed. |
 
+**A measured (31 October)**, `Heightfield.keepPassages`, off by default, `-Dnavmesh.keepPassages=4` (stretches of at least 4 cells; the way back may cross 8 cells, `navmesh.passageReach`).
+Refused pairs both ways and stretches through a wall, as the generator's audit counts them:
+
+| 9 maps (Morheim, Altgard, `220040000`, `210040000`, `210050000`, `220070000`, `210020000`, `210030000`, `220050000`) | Refused pairs | Wall stretches |
+|---|---|---|
+| Erosion 1 (today) | 365 | 28 |
+| Erosion 0 | 184 | 92 |
+| A, no step across a wall corner | 227 | 36 |
+| **A, with the corner rule (kept)** | **266** | **29** |
+
+Without the corner rule A reopened 7 stretches through the store walls of Sanctum's upper floor (`col_storebase_wall_07g.cgf`, a step across a corner the erosion
+had shut on purpose); the rule (a diagonal step only when both neighbours beside it were ground before the erosion) costs about 40 refusals and brings the walls back.
+On the 23 maps the version without the rule gave 624 to 464 refusals and 49 to 76 wall stretches. Strong on `210040000` (81 to 32), Altgard (27 to 20), `220040000`
+(54 to 37); nothing on `220080000` (194 to 182, the map with most of the refusals left), `220010000` (8 to 8). Not run on the two largest maps with the rule. Not yet seen in game.
+
 None of them settles everything alone. The erosion is one of the causes, with the walls step (a rock such as `na_d_icerock_b_04d.cgf` at the Morheim entrance),
 cuts that are real cliffs (`210030000`) and authored no-walk volumes (`walk_obstacle4_08m`), which are meant.
 
