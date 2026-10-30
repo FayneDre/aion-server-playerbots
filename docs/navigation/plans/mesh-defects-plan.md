@@ -89,6 +89,12 @@ had shut on purpose); the rule (a diagonal step only when both neighbours beside
 On the 23 maps the version without the rule gave 624 to 464 refusals and 49 to 76 wall stretches. Strong on `210040000` (81 to 32), Altgard (27 to 20), `220040000`
 (54 to 37); nothing on `220080000` (194 to 182, the map with most of the refusals left), `220010000` (8 to 8). Not run on the two largest maps with the rule. Not yet seen in game.
 
+**Caveat on every figure of the erosion and A runs.** The meshes of those runs were generated in a folder of their own, without the map's `.glide` file, and every
+open-world map has one: a pair a bot reaches by gliding was counted as refused. `220080000` gives 194 refused pairs that way and **61** with the server's glide links
+(the first figure was read as "the map with most of the refusals"; it is not). The comparison of the variants under the same condition stands, and the wall
+stretches (counted by the audit during generation, with no glide) are not touched, but the absolute refusal counts are too high where glides matter. The glide links are
+numbered by the regions of the mesh they were made for, so a variant's mesh needs its own (`NavmeshTool <map> glides`) before the pairs are counted: to redo.
+
 None of them settles everything alone. The erosion is one of the causes, with the walls step (a rock such as `na_d_icerock_b_04d.cgf` at the Morheim entrance),
 cuts that are real cliffs (`210030000`) and authored no-walk volumes (`walk_obstacle4_08m`), which are meant.
 
