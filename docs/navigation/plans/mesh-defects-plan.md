@@ -57,6 +57,26 @@ On 20 maps: **818 pairs refused**, 335 end on an islet, 159 lie between two stre
 13. Glide, flight and ride links (`glidecheck`, `flights`, `rides`).
 14. What spawns after the generation (doors, objects), which only the probes cover.
 
+## E. Options for the erosion (30 October)
+
+The erosion by a body's width (one cell, 0.5 m, in the open world; none in the instances) is the largest cause of refused pairs on the maps measured: with
+`-Dnavmesh.erode=0` Morheim goes from 205 refused pairs to 19, `210040000` from 81 to 20. It also lets routes through walls: `110010000` goes from 0 to 34
+stretches through a placed model at the audit, `210040000` from 2 to 10 on long routes, `210050000` from 6 to 14 (the reason it was added on 18 October, for
+the citadel of Verteron and the castle of Teminon). So zero everywhere is measured and is not the answer. Nothing below is measured yet; the order of
+preference is a guess.
+
+| | Principle | For | Against or unknown |
+|---|---|---|---|
+| **A. Erosion that keeps passages** | Erode everywhere, then give back the cells taken that joined two grounds joined before. | Walls stay kept off; a passage comes back only where one is needed. | To write and measure. A passage given back may run close to a wall. |
+| **B. Erosion as a cost, not a hole** | Eroded cells stay walkable at a high cost, like `Avoidance`: the planner avoids them while another way exists. | No passage is lost. | String pulling may cut a corner along a wall, so it would have to refuse those cells; one more state per cell in the file and in memory. |
+| **C. Erode only against what it protects** | Erode next to the walls of buildings and castles, not next to small props (tents, pots, barrels) or ledges. | Goes at the cause of the islets: props isolate patches of ground. | Models must be told apart (a tent is a `bu_` like a house); not known to hold on every map. |
+| **D. Per map or per zone** | A list of maps or boxes where the erosion is 0, as `MapSlopes` and `DroppedFaces` do. | Simple, safe, aimed. Settles the Morheim cave at once. | By hand, for every case; nothing finds the cases. |
+| **E. Finer grid** | Cells of 25 cm instead of 50, so the same one cell is 25 cm. | Fewer passages lost. | Four times the memory, on a machine where the meshes already take 570 MB. Probably out. |
+| **F. Two layers** | The eroded mesh for ordinary routes, the raw ground as a second try when there is none. | No passage lost. | Twice the storage; the second try may cross walls unnoticed. |
+
+None of them settles everything alone. The erosion is one of the causes, with the walls step (a rock such as `na_d_icerock_b_04d.cgf` at the Morheim entrance),
+cuts that are real cliffs (`210030000`) and authored no-walk volumes (`walk_obstacle4_08m`), which are meant.
+
 ## D. What it takes to call a mesh better
 
 15. **A regression check before any correction**: on every open-world map, the pairs refused (`fieldbreaks`), the audit, and the replay of the journeys given up
