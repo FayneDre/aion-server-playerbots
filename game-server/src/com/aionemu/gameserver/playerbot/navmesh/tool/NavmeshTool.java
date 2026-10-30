@@ -101,6 +101,10 @@ public class NavmeshTool {
 		if (args.length == 2 && args[1].equals("fieldreach")) {
 			System.exit(FieldReach.run(Integer.parseInt(args[0])));
 		}
+		if (args.length == 5 && args[1].equals("whyblocked")) {
+			WhyBlocked.run(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]));
+			return;
+		}
 		if (args.length == 2 && args[1].equals("fieldbreaks")) {
 			System.exit(FieldBreaks.run(Integer.parseInt(args[0])));
 		}

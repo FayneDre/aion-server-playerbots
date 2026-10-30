@@ -63,6 +63,11 @@ public class HeightfieldBuilder {
 	}
 
 	public static Heightfield build(int mapId) throws IOException {
+		return build(mapId, null);
+	}
+
+	/** @param stages told, after each step of the build that can take ground away, which step it was and the field as it stands; null to build without. */
+	public static Heightfield build(int mapId, java.util.function.BiConsumer<String, Heightfield> stages) throws IOException {
 		// null for the maps that ship without a heightmap, whose ground is placed meshes only: their grid comes from the world map list instead
 		TerrainData terrain = TerrainData.load(mapId);
 		// only a map with no image at all: one whose image is there and is not a heightmap has terrain this cannot read, and meshes alone would be wrong
@@ -113,9 +118,16 @@ public class HeightfieldBuilder {
 		List<Integer> worldSize = terrain != null ? terrain.worldSize() : List.of(mapSize, mapSize);
 		int width = (int) (worldSize.get(0) / Heightfield.CELL_SIZE);
 		int height = (int) (worldSize.get(1) / Heightfield.CELL_SIZE);
-		return new HeightfieldBuilder(terrain, solids, noWalkVolumes, width, height,
-			instance ? Heightfield.INSTANCE_AGENT_RADIUS_CELLS : Heightfield.AGENT_RADIUS_CELLS, MapSlopes.cosine(mapId), MapSlopes.buildingCosine(mapId)).rasterize();
+		HeightfieldBuilder builder = new HeightfieldBuilder(terrain, solids, noWalkVolumes, width, height,
+			instance ? Heightfield.INSTANCE_AGENT_RADIUS_CELLS : Heightfield.AGENT_RADIUS_CELLS, MapSlopes.cosine(mapId), MapSlopes.buildingCosine(mapId));
+		if (stages != null)
+			builder.stages = stages;
+		return builder.rasterize();
 	}
+
+	/** Called with the field after each step that can take ground away, by name: how the tools ask which step took the ground at a spot. */
+	private java.util.function.BiConsumer<String, Heightfield> stages = (name, field) -> {
+	};
 
 	private static PlacedMesh place(GeoModel model, GeoPlacement placement, List<DroppedFaces.Plane> dropped) {
 		float[] vertices = new float[model.vertices().length];
@@ -160,11 +172,16 @@ public class HeightfieldBuilder {
 
 		Heightfield field = new Heightfield(width, height, offsets, surfaces, walkable);
 		field.sortColumns();
+		stages.accept("surfaces sampled", field);
 		field.applyHeadroom();
+		stages.accept("head room", field);
 		field.block(noWalkColumns());
+		stages.accept("no-walk volumes", field);
 		blockWalls(field);
+		stages.accept("walls", field);
 		// the steeper of the map's two slopes, as the path finder steps with (MapSlopes.tangent): a stair a route climbs is not an edge to shave
 		field.erode(agentRadius, BotPathFinder.STEP_TOLERANCE, (float) Math.tan(Math.acos(Math.min(slopeCosine, buildingCosine))));
+		stages.accept("erosion", field);
 		return field;
 	}
 

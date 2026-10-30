@@ -54,7 +54,7 @@ final class FieldBreaks {
 		}
 		Navmesh mesh = Navmesh.open(mapId);
 		List<Apart> apart = new ArrayList<>();
-		int reached = 0, gaveUp = 0, noFooting = 0;
+		int reached = 0, gaveUp = 0, noFooting = 0, fromAnIslet = 0;
 		for (float[][] pair : pairs) {
 			float[] from = InstanceReach.snapped(mesh, pair[0]), to = InstanceReach.snapped(mesh, pair[1]);
 			if (from == null || to == null) {
@@ -66,12 +66,14 @@ final class FieldBreaks {
 				reached++;
 			else if (route.gaveUp())
 				gaveUp++;
+			else if (!BotPathFinder.findPath(mesh, to[0], to[1], to[2], from[0], from[1], from[2]).isEmpty())
+				fromAnIslet++; // refused one way only: a bot walks from where it stands, and a monster's islet is never that
 			else
 				apart.add(new Apart(from, to));
 		}
 		int asked = pairs.size() - noFooting;
-		System.out.printf(Locale.ROOT, "Map %d: %d of %d neighbouring monster pairs reached (%.1f%%), %d proved apart, %d gave up, %d without footing%n", mapId, reached, asked,
-			asked == 0 ? 0f : reached * 100f / asked, apart.size(), gaveUp, noFooting);
+		System.out.printf(Locale.ROOT, "Map %d: %d of %d neighbouring monster pairs reached (%.1f%%), %d proved apart, %d refused from the first spot only, %d gave up, %d without footing%n",
+			mapId, reached, asked, asked == 0 ? 0f : reached * 100f / asked, apart.size(), fromAnIslet, gaveUp, noFooting);
 		if (apart.isEmpty())
 			return gaveUp == 0 ? 0 : 1;
 
