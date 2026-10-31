@@ -274,7 +274,7 @@ Qui est le meilleur DPS de la zone ? || Le premier qui ne meurt pas, et c'est pa
 Je suis en retard pour le raid || Tu es en retard pour tout, c'est ta marque de fabrique
 Le café ou la potion ? || Le café, ça soigne le moral. La potion, juste les PV
 C'est quoi ton secret pour le farm ? || Aucun. Je suis têtu, et un peu con
-J'ai trouvé un truc rare ! || Ah oui ? Le mot "rare" te va bien aussi
+J'ai trouvé un truc rare ! || Comme ton bon sens, alors
 Pourquoi les tanks sont toujours en colère ? || Parce qu'ils prennent tout dans la gueule
 Tu fais quoi ce soir ? || Je farm. Et je pleure. Mais surtout je farm
 On se refait un donjon ? || Seulement si tu promets de ne pas me soigner

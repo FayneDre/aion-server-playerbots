@@ -343,6 +343,7 @@ public final class BotChat {
 		if (!read || now < nextReaction.getOrDefault(key, 0L) || random.nextInt(100) >= LEVEL_UP_REACTION_PERCENT)
 			return;
 		nextReaction.put(key, now + REACTION_GAP_MILLIS);
+		nextRegion.merge(key, now + REGION_SHORTEST * 1000L, Math::max); // a reaction is a Region line: the channel keeps its pace
 		speak(bot, BotChatLines.levelUp(random, bot.getLevel()), now);
 		List<Player> others = locals.stream().filter(other -> other != bot).toList();
 		if (!others.isEmpty() && random.nextInt(100) < CONGRATULATION_PERCENT)
@@ -368,6 +369,7 @@ public final class BotChat {
 		if (!read || near.isEmpty())
 			return;
 		nextReaction.put(key, now + REACTION_GAP_MILLIS);
+		nextRegion.merge(key, now + REGION_SHORTEST * 1000L, Math::max);
 		sayLater(near.get(random.nextInt(near.size())), BotChatLines.deathReaction(random, dead.getName()), now);
 	}
 
