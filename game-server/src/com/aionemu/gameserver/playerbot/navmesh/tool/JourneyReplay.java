@@ -56,7 +56,7 @@ final class JourneyReplay {
 			if (mesh == null)
 				continue;
 			long started = System.nanoTime();
-			BotPathFinder.Route route = BotPathFinder.findPath(mesh, p[0], p[1], p[2], p[3], p[4], p[5]);
+			BotPathFinder.Route route = BotPathFinder.findPathNear(mesh, p[0], p[1], p[2], p[3], p[4], p[5]);
 			long ms = (System.nanoTime() - started) / 1_000_000;
 			String outcome = !route.isEmpty() ? (route.glides().isEmpty() && route.rides().isEmpty() && route.flights().isEmpty() ? "found on foot" : "found with links")
 				: route.gaveUp() ? "gave up" : route.goalCutOff() ? "goal cut off" : "no way";

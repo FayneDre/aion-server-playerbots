@@ -41,9 +41,12 @@ public final class MapSlopes {
 	private MapSlopes() {
 	}
 
+	/** Whether {@code navmesh.slope} is set: read once, for the generator asks about a zone once for every terrain sample and every triangle of a map. */
+	private static final boolean SLOPE_OVERRIDDEN = Integer.getInteger("navmesh.slope") != null;
+
 	/** @return The cosine of the steepest slope of the zone the spot lies in, 1 (no relaxation) outside every zone of the map; the property {@code navmesh.slope} switches the zones off. */
 	static float zoneCosine(int mapId, float x, float y) {
-		if (Integer.getInteger("navmesh.slope") != null)
+		if (SLOPE_OVERRIDDEN)
 			return 1f;
 		for (Zone zone : ZONES) {
 			if (zone.contains(mapId, x, y))
@@ -55,7 +58,7 @@ public final class MapSlopes {
 	/** @return The cosine of the steepest slope of any zone of the map, 1 when it has none. */
 	static float steepestZoneCosine(int mapId) {
 		float steepest = 1f;
-		if (Integer.getInteger("navmesh.slope") == null) {
+		if (!SLOPE_OVERRIDDEN) {
 			for (Zone zone : ZONES) {
 				if (zone.mapId() == mapId)
 					steepest = Math.min(steepest, (float) Math.cos(Math.toRadians(zone.degrees())));

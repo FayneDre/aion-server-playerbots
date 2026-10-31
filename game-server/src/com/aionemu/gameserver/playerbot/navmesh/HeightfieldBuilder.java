@@ -84,9 +84,22 @@ public class HeightfieldBuilder {
 	/** @return true for the props (pr_ in the data: pots, barrels, fires, sacks) that are not structure, and the tents, which a body brushes past and which islands of ground are made round in a camp. */
 	static boolean isDecor(String modelName) {
 		String file = modelName.substring(modelName.lastIndexOf('/') + 1);
-		if (file.contains("tent"))
-			return true;
-		return file.startsWith("pr_") && STRUCTURE.stream().noneMatch(file::contains);
+		// structure first, whatever else the name says (a tent_wall is a wall), and by a word inside the name, which errs the safe way: trail, outdoor and poster are left shaved
+		if (STRUCTURE.stream().anyMatch(file::contains))
+			return false;
+		return file.startsWith("pr_") || isTent(file);
+	}
+
+	/** Words that end in tent and are no tent. */
+	private static final java.util.Set<String> NOT_TENTS = java.util.Set.of("content", "extent", "intent", "potent", "patent");
+
+	/** @return true for a name with a word that ends in tent or tentsnow (lehpartent, lehpartentsnow), and not for the words that merely end so. */
+	private static boolean isTent(String file) {
+		for (String word : file.split("[_.]")) {
+			if ((word.endsWith("tent") || word.endsWith("tentsnow")) && !NOT_TENTS.contains(word))
+				return true;
+		}
+		return false;
 	}
 
 	public static Heightfield build(int mapId) throws IOException {
@@ -223,8 +236,7 @@ public class HeightfieldBuilder {
 		stages.accept("erosion", field);
 		if (beforeErosion != null) {
 			int given = field.keepPassages(beforeErosion, KEEP_PASSAGES, PASSAGE_REACH_CELLS, BotPathFinder.STEP_TOLERANCE, slopeTangent);
-			System.out.printf("Kept the passages the erosion shut: %d surfaces given back%n", given);
-			stages.accept("passages kept", field);
+			stages.accept("passages kept: " + given + " surfaces given back", field);
 		}
 		return field;
 	}

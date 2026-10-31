@@ -1,5 +1,6 @@
 package com.aionemu.gameserver.playerbot.navmesh.tool;
 
+import com.aionemu.gameserver.playerbot.navmesh.MapSlopes;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
 import com.aionemu.gameserver.playerbot.navmesh.GeoDataReader;
 import com.aionemu.gameserver.playerbot.navmesh.GeoPlacement;
@@ -52,7 +53,7 @@ final class GapReport {
 			return 2;
 		}
 		Heightfield field = HeightfieldBuilder.build(mapId);
-		int[] region = field.regions(BotPathFinder.STEP_TOLERANCE);
+		int[] region = field.regions(BotPathFinder.STEP_TOLERANCE, MapSlopes.tangent(mapId));
 		Map<Integer, Integer> sizes = new HashMap<>();
 		for (int r : region)
 			if (r != 0)

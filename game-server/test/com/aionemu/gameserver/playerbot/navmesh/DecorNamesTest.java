@@ -29,6 +29,25 @@ class DecorNamesTest {
 	}
 
 	@Test
+	void structureWinsOverTheWordTent() {
+		assertFalse(decor("bu_d_tent_wall_01a.cgf"), "a tent wall is a wall");
+		assertFalse(decor("bu_d_tent_pole_01a.cgf"));
+	}
+
+	@Test
+	void wordsThatMerelyEndInTentAreNoTent() {
+		assertFalse(decor("bu_d_extent_01a.cgf"));
+		assertFalse(decor("bu_d_content_01a.cgf"));
+		assertTrue(decor("bu_d_tent_01a.cgf"), "the word itself");
+	}
+
+	@Test
+	void aNameThatMerelyContainsAStructureWordIsLeftShavedTheSafeWay() {
+		assertFalse(decor("pr_d_trail_01a.cgf"), "rail inside trail");
+		assertFalse(decor("pr_d_outdoor_01a.cgf"), "door inside outdoor");
+	}
+
+	@Test
 	void buildingsAndNaturalModelsAreNot() {
 		assertFalse(decor("bu_d_icetemplestair_01a.cgf"));
 		assertFalse(decor("na_l_rockybig_03b.cgf"));

@@ -134,14 +134,26 @@ public class BotPathFinder {
 	 * @param air whether the air along a glide is clear, asked only of links the plan would use
 	 */
 	static Route findPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid, GlideRoutes.AirTest air) {
-		Route answer = provenIfPocket(mesh, searchPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air), goalX, goalY, goalZ);
+		return provenIfPocket(mesh, searchPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air), goalX, goalY, goalZ);
+	}
+
+	/**
+	 * As {@link #findPath}, and a goal that stands on an islet is aimed past, at the nearest large ground within {@link #ISLET_REACH}: the route a bot walks towards a creature
+	 * that stands among the props of a camp, which it finishes by the reactive layer. Not for the questions whether a place can be reached ({@code NavmeshService.canReach},
+	 * {@code reach}): a route that ends beside the goal is no proof that the goal is a place a body stands on and leaves, and a resident put on an islet would spend its life on it.
+	 */
+	public static Route findPathNear(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
+		return findPathNear(mesh, startX, startY, startZ, goalX, goalY, goalZ, Avoidance.NONE, GlideRoutes.AirTest.ALWAYS);
+	}
+
+	static Route findPathNear(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid, GlideRoutes.AirTest air) {
+		Route answer = findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air);
 		if (!answer.isEmpty() || answer.gaveUp())
 			return answer;
 		Vector3f offIslet = groundOffIslet(mesh, goalX, goalY, goalZ);
 		if (offIslet == null)
 			return answer;
-		Route aimedPast = provenIfPocket(mesh, searchPath(mesh, startX, startY, startZ, offIslet.getX(), offIslet.getY(), offIslet.getZ(), avoid, air), offIslet.getX(),
-			offIslet.getY(), offIslet.getZ());
+		Route aimedPast = findPath(mesh, startX, startY, startZ, offIslet.getX(), offIslet.getY(), offIslet.getZ(), avoid, air);
 		return aimedPast.isEmpty() ? answer : aimedPast;
 	}
 

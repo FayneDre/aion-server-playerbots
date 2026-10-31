@@ -164,9 +164,11 @@ class BotPathFinderTest {
 		// the same 3 m square ringed by a wall of one cell: a monster stands inside it, among the props of a camp, and the field is a metre away
 		Navmesh pocketed = meshOf((x, y) -> (x >= 60 && x < 66 && y >= 60 && y < 66) ? (x > 60 && x < 65 && y > 60 && y < 65 ? OPEN : SOLID) : OPEN);
 
-		BotPathFinder.Route route = BotPathFinder.findPath(pocketed, 5, 5, HEIGHT, 31.5f, 31.5f, HEIGHT);
+		BotPathFinder.Route route = BotPathFinder.findPathNear(pocketed, 5, 5, HEIGHT, 31.5f, 31.5f, HEIGHT);
 
 		assertFalse(route.isEmpty(), "the ground beside the islet is a place to go to");
+		assertTrue(BotPathFinder.findPath(pocketed, 5, 5, HEIGHT, 31.5f, 31.5f, HEIGHT).isEmpty(),
+			"but the question whether the islet itself can be reached is still no: a resident must not be put on it");
 		Vector3f last = route.waypoints().getLast();
 		assertTrue(Math.hypot(last.getX() - 31.5f, last.getY() - 31.5f) <= 4.5, "it ends within a few metres of the goal: " + last);
 	}
@@ -176,7 +178,7 @@ class BotPathFinderTest {
 		// 25 cells of ground in a solid block 24 cells wide: eleven metres to the field, past what a bot is sent to instead
 		Navmesh far = meshOf((x, y) -> (x >= 40 && x < 89 && y >= 40 && y < 89) ? (x >= 62 && x < 67 && y >= 62 && y < 67 ? OPEN : SOLID) : OPEN);
 
-		BotPathFinder.Route route = BotPathFinder.findPath(far, 5, 5, HEIGHT, 32.5f, 32.5f, HEIGHT);
+		BotPathFinder.Route route = BotPathFinder.findPathNear(far, 5, 5, HEIGHT, 32.5f, 32.5f, HEIGHT);
 
 		assertTrue(route.isEmpty());
 		assertFalse(route.gaveUp(), "the islet is proved out of reach, as before");

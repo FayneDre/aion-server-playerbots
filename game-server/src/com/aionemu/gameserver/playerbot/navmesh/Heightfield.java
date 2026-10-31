@@ -1,6 +1,7 @@
 package com.aionemu.gameserver.playerbot.navmesh;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -419,20 +420,41 @@ public class Heightfield {
 		}
 		fragments.sort((first, second) -> size[second] - size[first]); // the larger first, so that a smaller one may join onto it
 		int restored = 0;
+		int[] cameFrom = new int[surfaces.length]; // per surface the erosion took, the surface it was reached from: read only where reached is set
+		BitSet reached = new BitSet(surfaces.length);
 		for (int label : fragments) {
-			restored += joinBack(label, cells[label], after, joined, beforeErosion, reachCells, climbTolerance, slopeTangent);
+			restored += joinBack(label, cells[label], after, joined, beforeErosion, cameFrom, reached, reachCells, climbTolerance, slopeTangent);
 			cells[label] = null;
 		}
 		return restored;
 	}
 
-	/** @return How many surfaces were given back to join the stretch to ground already joined, 0 when none is within reach. */
-	private int joinBack(int label, int[] stretch, int[] region, boolean[] joined, BitSet beforeErosion, int reachCells, float climbTolerance, float slopeTangent) {
-		Map<Integer, Integer> cameFrom = new HashMap<>(); // a surface the erosion took and the surface it was reached from
+	/** A growing run of surface indices, so that the search for a passage boxes nothing. */
+	private static final class Run {
+		int[] values = new int[64];
+		int size;
+
+		void add(int value) {
+			if (size == values.length)
+				values = Arrays.copyOf(values, size * 2);
+			values[size++] = value;
+		}
+	}
+
+	/**
+	 * @param cameFrom for each surface the erosion took that the search reached, the surface it was reached from
+	 * @param reached the surfaces the erosion took that the search has reached; cleared again before it returns
+	 * @return How many surfaces were given back to join the stretch to ground already joined, 0 when none is within reach.
+	 */
+	private int joinBack(int label, int[] stretch, int[] region, boolean[] joined, BitSet beforeErosion, int[] cameFrom, BitSet reached, int reachCells,
+		float climbTolerance, float slopeTangent) {
+		Run taken = new Run();
 		int[] layer = stretch;
-		for (int depth = 0; depth < reachCells && layer.length > 0; depth++) {
-			List<Integer> next = new ArrayList<>();
-			for (int surface : layer) {
+		int layerSize = stretch.length, given = 0;
+		search: for (int depth = 0; depth < reachCells && layerSize > 0; depth++) {
+			Run next = new Run();
+			for (int n = 0; n < layerSize; n++) {
+				int surface = layer[n];
 				int column = columnOf(surface);
 				int x = column % width, y = column / width;
 				float z = surfaces[surface];
@@ -451,18 +473,25 @@ public class Heightfield {
 						if (Math.abs(surfaces[neighbour] - z) > reach)
 							continue;
 						if (walkable.get(neighbour)) {
-							if (region[neighbour] != label && region[neighbour] != 0 && joined[region[neighbour]])
-								return giveBack(surface, cameFrom, label, region, joined);
-						} else if (beforeErosion.get(neighbour) && !cameFrom.containsKey(neighbour)) {
-							cameFrom.put(neighbour, surface);
+							if (region[neighbour] != label && region[neighbour] != 0 && joined[region[neighbour]]) {
+								given = giveBack(surface, cameFrom, reached, label, region, joined);
+								break search;
+							}
+						} else if (beforeErosion.get(neighbour) && !reached.get(neighbour)) {
+							reached.set(neighbour);
+							cameFrom[neighbour] = surface;
 							next.add(neighbour);
+							taken.add(neighbour);
 						}
 					}
 				}
 			}
-			layer = next.stream().mapToInt(Integer::intValue).toArray();
+			layer = next.values;
+			layerSize = next.size;
 		}
-		return 0;
+		for (int i = 0; i < taken.size; i++)
+			reached.clear(taken.values[i]);
+		return given;
 	}
 
 	/** @return true if the column has a surface of the given ground within {@code reach} of the height. */
@@ -475,9 +504,9 @@ public class Heightfield {
 	}
 
 	/** Walks the way back from the surface that met joined ground to the stretch, making each surface the erosion took on it walkable again. */
-	private int giveBack(int meeting, Map<Integer, Integer> cameFrom, int label, int[] region, boolean[] joined) {
+	private int giveBack(int meeting, int[] cameFrom, BitSet reached, int label, int[] region, boolean[] joined) {
 		int given = 0;
-		for (Integer surface = meeting; cameFrom.containsKey(surface); surface = cameFrom.get(surface)) {
+		for (int surface = meeting; reached.get(surface); surface = cameFrom[surface]) {
 			walkable.set(surface);
 			region[surface] = label;
 			given++;

@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.navmesh.tool;
 
 import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
+import com.aionemu.gameserver.playerbot.navmesh.MapSlopes;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
 import com.aionemu.gameserver.playerbot.navmesh.FlightLinks;
 import com.aionemu.gameserver.playerbot.navmesh.GeoDataReader;
@@ -224,7 +225,10 @@ public class NavmeshTool {
 		report(mapId, models, placements);
 
 		start = System.currentTimeMillis();
-		Heightfield field = HeightfieldBuilder.build(mapId);
+		Heightfield field = HeightfieldBuilder.build(mapId, (stage, built) -> {
+			if (stage.startsWith("passages kept"))
+				System.out.println("Kept the " + stage); // the generation says how much ground the option gave back
+		});
 		System.out.printf("Rasterized %dx%d columns holding %d surfaces (%d walkable) in %d ms%n", field.width(), field.height(),
 			field.surfaceCount(), field.walkableCount(), System.currentTimeMillis() - start);
 		System.out.println("Wrote " + writeHeightImage(mapId, field).toAbsolutePath());
@@ -361,7 +365,7 @@ public class NavmeshTool {
 		int width = field.width(), height = field.height();
 		// the generator's own answer, not a second copy of it: this routine used to flood fill the grid again, by column and by its highest surface,
 		// and a report that disagrees with the map it is reporting on is worse than no report
-		int[] regionOfSurface = field.regions(BotPathFinder.STEP_TOLERANCE);
+		int[] regionOfSurface = field.regions(BotPathFinder.STEP_TOLERANCE, MapSlopes.tangent(mapId));
 
 		// projected onto the grid for drawing and for probing, lowest surface first, since that is the floor a person walks in on
 		int[] island = new int[width * height];
@@ -452,7 +456,7 @@ public class NavmeshTool {
 		System.out.printf("From %.1f %.1f %.1f to %.1f %.1f %.1f%n", startX, startY, startZ, goalX, goalY, goalZ);
 
 		long start = System.currentTimeMillis();
-		BotPathFinder.Route result = BotPathFinder.findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ);
+		BotPathFinder.Route result = BotPathFinder.findPathNear(mesh, startX, startY, startZ, goalX, goalY, goalZ);
 		long elapsed = System.currentTimeMillis() - start;
 		if (result.isEmpty()) {
 			System.out.println((result.gaveUp() ? "Gave up searching after " : "No route exists, established in ") + elapsed + " ms");
@@ -641,7 +645,7 @@ public class NavmeshTool {
 	 */
 	private static void reportSeams(int mapId, float x, float y, float z) throws IOException {
 		Heightfield field = HeightfieldBuilder.build(mapId);
-		int[] region = field.regions(BotPathFinder.STEP_TOLERANCE);
+		int[] region = field.regions(BotPathFinder.STEP_TOLERANCE, MapSlopes.tangent(mapId));
 		int cellX = (int) (x / Heightfield.CELL_SIZE), cellY = (int) (y / Heightfield.CELL_SIZE);
 		int origin = -1;
 		for (int i = field.columnStart(cellX, cellY); i < field.columnEnd(cellX, cellY); i++) {

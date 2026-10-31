@@ -64,7 +64,7 @@ final class FieldReach {
 				noFooting++; // a monster in the middle of geometry is the data's, not the route's
 				continue;
 			}
-			BotPathFinder.Route route = BotPathFinder.findPath(mesh, from[0], from[1], from[2], to[0], to[1], to[2]);
+			BotPathFinder.Route route = BotPathFinder.findPathNear(mesh, from[0], from[1], from[2], to[0], to[1], to[2]);
 			if (!route.isEmpty()) {
 				reached++;
 				continue;

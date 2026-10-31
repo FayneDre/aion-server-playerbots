@@ -122,7 +122,7 @@ public class NavmeshService {
 		// landings only: kept away from on foot as well, even at three times the cost, the search gave up after seven seconds on a journey of 900 m it
 		// planned in under one without them. The Abyss is dangerous to walk, and a bot meets what it meets; it does not fly down into it
 		Map<GlideLink, Boolean> landings = new HashMap<>();
-		BotPathFinder.Route route = BotPathFinder.findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, new GlideRoutes.AirTest() {
+		BotPathFinder.Route route = BotPathFinder.findPathNear(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, new GlideRoutes.AirTest() {
 
 			@Override
 			public boolean isClear(GlideLink link) {
