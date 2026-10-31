@@ -87,6 +87,18 @@ public class Heightfield {
 		return surfaces[index];
 	}
 
+	/** Gives back to the walk every surface of the columns of the box that walked before {@code before}, whatever took it since. */
+	void restoreWalkable(BitSet before, int minCellX, int minCellY, int maxCellX, int maxCellY) {
+		for (int cellY = Math.max(0, minCellY); cellY <= Math.min(height - 1, maxCellY); cellY++) {
+			for (int cellX = Math.max(0, minCellX); cellX <= Math.min(width - 1, maxCellX); cellX++) {
+				for (int surface = columnStart(cellX, cellY); surface < columnEnd(cellX, cellY); surface++) {
+					if (before.get(surface))
+						walkable.set(surface);
+				}
+			}
+		}
+	}
+
 	public boolean isWalkable(int index) {
 		return walkable.get(index);
 	}

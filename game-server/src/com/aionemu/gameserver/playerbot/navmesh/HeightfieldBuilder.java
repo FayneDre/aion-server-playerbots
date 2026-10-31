@@ -244,10 +244,13 @@ public class HeightfieldBuilder {
 		stages.accept("walls", field);
 		// the steeper of the map's two slopes, as the path finder steps with (MapSlopes.tangent): a stair a route climbs is not an edge to shave
 		float slopeTangent = (float) Math.tan(Math.acos(Math.min(Math.min(slopeCosine, buildingCosine), MapSlopes.steepestZoneCosine(mapId))));
-		BitSet beforeErosion = KEEP_PASSAGES > 0 ? field.copyOfWalkable() : null;
+		List<MapOpenings.Unshaved> unshaved = MapOpenings.unshaved(mapId);
+		BitSet beforeErosion = KEEP_PASSAGES > 0 || !unshaved.isEmpty() ? field.copyOfWalkable() : null;
 		field.erode(agentRadius, BotPathFinder.STEP_TOLERANCE, slopeTangent);
 		stages.accept("erosion", field);
-		if (beforeErosion != null) {
+		for (MapOpenings.Unshaved box : unshaved)
+			field.restoreWalkable(beforeErosion, cell(box.minX()), cell(box.minY()), cell(box.maxX()), cell(box.maxY()));
+		if (KEEP_PASSAGES > 0) {
 			field.keepPassages(beforeErosion, KEEP_PASSAGES, PASSAGE_REACH_CELLS, BotPathFinder.STEP_TOLERANCE, slopeTangent);
 			stages.accept("passages kept", field);
 		}

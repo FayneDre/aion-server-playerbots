@@ -19,7 +19,7 @@ final class MapOpenings {
 	 * Morheim, the cave of the east: a rock lip with its foot 1.4 m over the floor ran across the mouth, and its steep face shut a band of cells from wall to wall. The inside was a pocket
 	 * of 308 cells that no route entered, five metres from the entrance (31 October, a group's bots at 768 318 could not follow the player who stood at 771 320).
 	 */
-	private static final List<Opening> OPENINGS = List.of(new Opening(220020000, "na_d_icerock_b_04d.cgf", 755, 305, 790, 335));
+	private static final List<Opening> OPENINGS = List.of(new Opening(220020000, "na_d_icerock_b_04d.cgf", 755, 305, 790, 352));
 
 	/**
 	 * A floor the data does not hold: a flat plane over {@code minX..maxX} by {@code minY..maxY}, at {@code z} where x is {@code minX} and falling {@code fall} metres to the metre of x.
@@ -40,6 +40,22 @@ final class MapOpenings {
 	/** @return the floors the data lacks on this map. */
 	static List<Floor> floors(int mapId) {
 		return FLOORS.stream().filter(floor -> floor.mapId() == mapId).toList();
+	}
+
+	/** A box of a map whose ground the erosion does not shave: a passage narrower than a body that bodies walk through. */
+	record Unshaved(int mapId, float minX, float minY, float maxX, float maxY) {
+	}
+
+	/**
+	 * Morheim, the cave of the east: the corridor that runs north to the way out is shut by the erosion at 776 344,5, where the walls leave one cell of floor. It was given back as long as the cave
+	 * was a stretch of its own, and no more once the floor patch joined it to the west mouth (31 October: the tester could not bring a bot out of the cave). The second box is the floor
+	 * patch itself, for the same reason: the erosion shuts it as soon as the cave is no stretch of its own.
+	 */
+	private static final List<Unshaved> UNSHAVED = List.of(new Unshaved(220020000, 770, 338, 784, 352), new Unshaved(220020000, 767, 316, 774, 323));
+
+	/** @return the boxes of this map whose ground the erosion leaves alone. */
+	static List<Unshaved> unshaved(int mapId) {
+		return UNSHAVED.stream().filter(box -> box.mapId() == mapId).toList();
 	}
 
 	private MapOpenings() {
