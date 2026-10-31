@@ -10,12 +10,15 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 ## Next, by priority
 
 0. **Feedback as it comes**: the user reports from the game while playing; each plan's Status line says what has been seen. On 27 October
-   everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion.
+   everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion. **Worked on 31 October, built and not yet seen in game**: the bots' chat
+   (French or English, jokes and reactions in Region: [chat-fun-and-languages-plan.md](social/plans/chat-fun-and-languages-plan.md), feedback of 25 October) and the bots' stores (food, scrolls, stones of
+   60 and 70, a whole page, the rare goods always in a market: [bot-store-consumables-plan.md](capitals/plans/bot-store-consumables-plan.md), feedback of 29 October).
 1. **Done on 28 October**: the module structure plan ([module-structure-plan.md](architecture/history/module-structure-plan.md), five steps) and the
    merge of 69 upstream commits ([upstream-merge-plan.md](architecture/history/upstream-merge-plan.md)), both measured. Next merge: when `4.8` has moved,
    then `tools/sync-install.ps1` for the install and the SQL; the sooner, the smaller.
-2. **Navigation**, the user's priority: the points in [navigation-backlog.md](navigation/backlog.md): long journeys (worked 25 to 31 October), then sliding, obstacles, gliding,
-   parasitic moves, dungeons, Draupnir. The meshes are checked against what people walked ([verification-tools.md](navigation/verification-tools.md)); options A and C of the erosion are on.
+2. **Navigation**, the user's priority: the points in [navigation-backlog.md](navigation/backlog.md): long journeys (worked 25 to 31 October), then bots that will not glide when the player does, sliding,
+   obstacles, parasitic moves, dungeons, Draupnir. Since 31 October the meshes are checked against what people walked ([verification-tools.md](navigation/verification-tools.md): golden routes, the patrol routes of
+   the data, the ground real players walk) and the erosion's options A and C are on; Morheim's cave is mended. **Waiting for a restart**: the patrol ground in the meshes, the deaths kept out of routes, the doubled budgets.
 3. **A world alive with or without a player**, a lead to explore within the 2560 MB heap: density independent of who is online, sleepers living
    off-world, memory measured first and freed where it can be.
 4. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them.
@@ -30,13 +33,13 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-31 for navigation, 2026-10-27 for the rest. **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-10-31 for navigation, chat and stores, 2026-10-27 for the rest. **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
 for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
 routine, gear and stigmas, merchants' wings and power shards, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with their glide links,
 flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, friends and trades with a companion, steering vetted by the mesh,
-capitals with a town routine, 40 bot stores each with broker prices, visitors of every level, shouted adverts and calls for a group, bots
-speaking in the chat channels, and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
+capitals with a town routine, 40 bot stores each with broker prices (food and scrolls to come), visitors of every level, shouted adverts and calls for a group, bots
+speaking in the chat channels (in French or English from 31 October), and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
 a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron, and a squad crossing Reshanta's upper layer by air. **Watched with a
 player**: a Noschana run, Sanctum's town day, Pandaemonium's visitors and speech. **Validated in game on 27 October**: everything shipped up to `patch-2026-10-25-2`, the six playbooks, positioning against a
 boss and flying with a player among it. **Not watched in game**: duels, friends and trades with a companion. **Not started**: wild PvP, the broker and player shops, legions, gathering, RvR.
@@ -193,7 +196,5 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
 
 ## Done and moved
 
-The population churn of 2026-10-04 ([population-churn-followup.md](population/history/population-churn-followup.md)), the stigma blocker, names, Asmodian settlements and
-the roster's `owner_id` (see [built.md](built.md)), the walking-into-scenery plan of 16 and 17 October
-([obstacle-steering-plan.md](navigation/history/obstacle-steering-plan.md)), and flight milestone 5, the Abyss crossing of 17 and 18 October
-([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)).
+The population churn of 4 October ([population-churn-followup.md](population/history/population-churn-followup.md)), the stigma blocker, names, Asmodian settlements and the roster's `owner_id`
+(see [built.md](built.md)), the walking-into-scenery plan ([obstacle-steering-plan.md](navigation/history/obstacle-steering-plan.md)) and the Abyss crossing ([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)).
