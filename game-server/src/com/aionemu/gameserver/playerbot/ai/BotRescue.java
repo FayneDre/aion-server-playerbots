@@ -123,7 +123,13 @@ final class BotRescue {
 			refusedMoves = 0;
 			return true;
 		}
-		if (moveController.isRefusalUnproven()) {
+		// A search that gave up proves nothing about the goal, but ground that closes in a few thousand cells is a pocket whatever the goal is: a group's bots that landed on
+		// a pillar of one cell, five metres from the player, were refused with "search gave up" for as long as they stood there, and never counted as stuck.
+		Player bot = ai.getOwner();
+		// on the ground only: in the air, over a pocket or not, the ground under the bot says nothing about where it is stuck
+		boolean inAPocket = moveController.isRefusalUnproven() && !bot.isFlying() && !moveController.isGliding() && !moveController.isRiding()
+			&& NavmeshService.getInstance().isPocket(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ());
+		if (moveController.isRefusalUnproven() && !inAPocket) {
 			unprovenGoal = new Vector3f(x, y, z); // weighed when the caller reports the refusal, see destinationRefused
 			return false; // searches that ran out of budget: the journey is off, and nothing is known against the spot the bot stands on
 		}

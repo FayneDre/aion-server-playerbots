@@ -68,7 +68,7 @@ public class HeightfieldBuilder {
 	 * @param building Whether the model is a building ({@code bu_} in the data), whose stairs some maps model as ramps steeper than any ground.
 	 * @param decor Whether the model is a small piece of decor, see {@link #isDecor}: the ground beside it is not shaved by the erosion.
 	 */
-	private record PlacedMesh(float[] vertices, int[] indices, boolean building, boolean decor) {
+	private record PlacedMesh(float[] vertices, int[] indices, boolean building, boolean decor, String file) {
 	}
 
 	/**
@@ -203,8 +203,8 @@ public class HeightfieldBuilder {
 			}
 			indices = Arrays.copyOf(kept, count);
 		}
-		return new PlacedMesh(vertices, indices, placement.modelName().substring(placement.modelName().lastIndexOf('/') + 1).startsWith("bu_"),
-			DECOR_NOT_EDGE && isDecor(placement.modelName()));
+		String file = placement.modelName().substring(placement.modelName().lastIndexOf('/') + 1);
+		return new PlacedMesh(vertices, indices, file.startsWith("bu_"), DECOR_NOT_EDGE && isDecor(placement.modelName()), file);
 	}
 
 	private Heightfield rasterize() {
@@ -275,6 +275,8 @@ public class HeightfieldBuilder {
 				float rise = Math.max(az, Math.max(bz, cz)) - Math.min(az, Math.min(bz, cz));
 				if (rise < STEPPABLE_RISE || !isSteep(ax, ay, az, bx, by, bz, cx, cy, cz, cosineAt(solid.building() ? buildingCosine : slopeCosine, (ax + bx + cx) / 3, (ay + by + cy) / 3)))
 					return; // a step, a floor, a roof: things a body walks on, over or under rather than into
+				if (MapOpenings.isOpen(mapId, solid.file(), (ax + bx + cx) / 3, (ay + by + cy) / 3))
+					return; // rock that overhangs a way a body walks: see MapOpenings
 				float low = Math.min(az, Math.min(bz, cz)), high = Math.max(az, Math.max(bz, cz));
 				if (solid.decor())
 					rasterize(ax, ay, bx, by, cx, cy, column -> field.blockSpanByDecor(column, low, high, STEPPABLE_RISE));
