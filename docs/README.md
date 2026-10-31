@@ -103,7 +103,7 @@ have no plan yet ([roadmap.md](roadmap.md), "Group play").
 | [verification-tools.md](navigation/verification-tools.md) | **Checking the meshes against what a tester walked** (31 October): golden routes, the note's route lines, walked ground. |
 | [plans/openworld-navigation-plan.md](navigation/plans/openworld-navigation-plan.md) | Glide and ride links, journeys given up. In progress: next, the day plans given up. |
 | [plans/mesh-defects-plan.md](navigation/plans/mesh-defects-plan.md) | **What to correct in the meshes** (30 October): the cave ramp of Morheim, islets under monsters, cuts between grounds. In progress: erosion options A and C are on by default since 31 October; Morheim's cave is fixed by hand (`MapOpenings`). |
-| [plans/glide-use-plan.md](navigation/plans/glide-use-plan.md) | Bots gliding on their own (backlog point 4). Not started: analysis, milestone 0 is a measure of the gain. |
+| [history/glide-use-plan.md](navigation/history/glide-use-plan.md) | Bots gliding on their own (backlog point 4). Done 1 November: ambient glides built, the time-saving glide dropped. |
 | [plans/step-links-plan.md](navigation/plans/step-links-plan.md) | Walking over steps of 1 to 2 m (the dock, Altgard, the Fire Temple). In progress: the census is built, the links are not. |
 
 History: [navigation-prototype.md](navigation/history/navigation-prototype.md) (the foundations of September),

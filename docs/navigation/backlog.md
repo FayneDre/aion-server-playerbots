@@ -1,6 +1,6 @@
 # Navigation: what is left, as seen in game
 
-Status: in progress: point 3 (long journeys) is worked and measured (budgets doubled on 31 October, proofs shared between bots, partial routes); point 1 is built, point 4 (gliding) built in its second milestone, point 5 measured and closed; points 2, 6 and 7 are not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [plans/mesh-defects-plan.md](plans/mesh-defects-plan.md).
+Status: in progress: points 1, 3, 4 and 5 are closed (1 November); point 2 is not started; point 6, which now holds the Draupnir report (the former point 7), is not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [plans/mesh-defects-plan.md](plans/mesh-defects-plan.md).
 
 Written on 27 October 2026 from the user's notes, to be worked once the module structure plan is done
 ([module-structure-plan.md](../architecture/history/module-structure-plan.md)). Navigation is the priority after it. Each point is the user's words, what
@@ -31,6 +31,8 @@ not looked at: **bots that will not glide when the player does** (point 4).
 
 ## 1. A bot slides for an instant before it runs
 
+**Closed on 1 November** by the tester: the stand-up animation now finishes before the walk starts (`moveToPoint`, 31 October), the notes below are kept for what they found.
+
 **31 October, built, unverified in game**: `moveToPoint` now holds the walk for the stand-up time (`BotRestManager.STAND_UP_MILLIS`, 1 s) when it is the one that stands a seated bot up. Every other transition (weapon, sit, stand-up through the posture) already went through `BotPosture`, checked by search: no other caller sets off right after an emote. To watch: a bot resting that sets off to follow or to chase.
 
 *"Sur certaines animations où le bot se repose puis se lève et devrait enchaîner sa course, il glisse un court instant avant de courir. Plusieurs
@@ -57,6 +59,8 @@ téléportent plus loin d'un coup."*
 
 ## 3. Long journeys given up
 
+**Closed on 1 November** by the tester. Day plans given up per 30 minutes went from 347 (11:15 on 31 October) to about 200 to 235 (22:00 and 23:52), routes refused from 659 to about 300 to 385; what is left is mostly goals on ground a bot cannot reach (a cliff, a plateau, a pit), which no budget turns into a trip. The notes below are kept for the measures.
+
 **31 October**: of the 33 "long" give-ups sampled from a window and replayed, 8 are found at the old budgets (3 s, levelled pass 1.5 s), 17 at 6 s and 3 s, 21 at 30 s: the levelled pass is the
 budget that matters, and both are doubled (`4318fb938`). A monster the planner proved out of reach is told to the bots near, as a day plan is, and a hunting ground proved out of reach is skipped
 (`BotRefusals`, `BotPlaces.groundToWork`). Measured over four windows, the day plans given up stayed at 317 to 347 and the routes refused at 501 to 659: the variance is larger than these changes.
@@ -70,6 +74,8 @@ budget that matters, and both are doubled (`4318fb938`). A monster the planner p
 
 ## 4. Gliding on their own
 
+**Closed on 1 November** by the tester, [glide-use-plan.md](history/glide-use-plan.md): bots at leisure near a player glide off a ledge (`BotLedgeGlide`); the glide that saves time is dropped, for the links of the files never apply to a journey on foot and the gain is under a third of the walkable descents on the maps sampled.
+
 *"Les bots doivent mieux employer le vol en planant, d'eux-mêmes je n'ai pas l'impression qu'ils l'utilisent ou trop rarement. En groupe ils
 suivent le joueur s'il le fait."*
 
@@ -80,7 +86,7 @@ suivent le joueur s'il le fait."*
   cliff; links from smaller ground where the file stays small; ambient flights (25 to 300 m, half the time, inside a fly zone) are rare because few
   trips start and end in one.
 - Following a player's glide works (`LeaderGlides`, validated 27 October).
-- Plan: [plans/glide-use-plan.md](plans/glide-use-plan.md) (31 October).
+- Plan: [history/glide-use-plan.md](history/glide-use-plan.md) (31 October, done).
 
 ## 5. Every movement that gives a bot away
 
@@ -106,7 +112,7 @@ mauvaise qualité ?"*
 - First step: `measure.sh` and `nav-stats` per instance map during a run, against the open world's figures, and the dungeon and the moments the user
   saw, to tell the mesh from the mover.
 
-## 7. Bots hovering in Draupnir Cave
+### Draupnir Cave (the report that was point 7)
 
 *"Les bots se mettent à planer dans Draupnir alors que le chemin est largement praticable à pied."* (tester, 28 October, a group at level 41 to 43)
 

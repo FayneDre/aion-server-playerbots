@@ -1,6 +1,6 @@
 # Plan: bots that glide on their own (backlog point 4)
 
-Status: built, unverified: milestone 2 (ambient glides) is written and compiled on 31 October, waiting for a deploy and a watch in game; milestone 0 measured (below); milestone 1 is much smaller than first thought.
+Status: done (1 November): milestone 2 (ambient glides) built and closed by the tester; milestone 0 measured (below); milestone 1 dropped, for the reason below.
 
 The tester's words: *"Les bots doivent mieux employer le vol en planant, d'eux-mêmes je n'ai pas l'impression qu'ils l'utilisent ou trop rarement. En groupe ils suivent le joueur s'il le fait."*
 
