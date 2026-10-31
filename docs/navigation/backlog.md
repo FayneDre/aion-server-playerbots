@@ -1,6 +1,6 @@
 # Navigation: what is left, as seen in game
 
-Status: in progress: point 3 (long journeys) is worked and measured (budgets doubled on 31 October, proofs shared between bots, partial routes); point 1 is built and waits for a watch in game; points 2, 4, 5, 6 and 7 are not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [plans/mesh-defects-plan.md](plans/mesh-defects-plan.md).
+Status: in progress: point 3 (long journeys) is worked and measured (budgets doubled on 31 October, proofs shared between bots, partial routes); point 1 is built, point 4 (gliding) built in its second milestone, point 5 measured and closed; points 2, 6 and 7 are not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [plans/mesh-defects-plan.md](plans/mesh-defects-plan.md).
 
 Written on 27 October 2026 from the user's notes, to be worked once the module structure plan is done
 ([module-structure-plan.md](../architecture/history/module-structure-plan.md)). Navigation is the priority after it. Each point is the user's words, what
@@ -83,6 +83,8 @@ suivent le joueur s'il le fait."*
 - Plan: [plans/glide-use-plan.md](plans/glide-use-plan.md) (31 October).
 
 ## 5. Every movement that gives a bot away
+
+**1 November, closed as not worth more: the measure says it is behaviour, not a fault.** 20 minutes (23:52 to 00:12, 157 334 moving bot-seconds): 4.7 reversals of heading over 120 degrees per 100 moving seconds out of a fight, 0.9 in one. By cause: hunting 5.5 per 100 (83 % of all of them: attack, loot, turn to the next monster, as a player does), wandering 3.2, loitering 3.0, sidesteps 17 reversals in all (0.2 %); following a player was not measured (no group). Not corrected. `BotMotionStats` and the "--- motion" sections of `measure.sh` stay, so a later window with a group of bots can read the following. Reopened by a tester's `//bot note` on a movement that looks like a bot, not by the figures.
 
 *"Tous les mouvements parasites qui font bot doivent être éliminés au maximum pour arriver à des mouvements les plus fluides possible."*
 
