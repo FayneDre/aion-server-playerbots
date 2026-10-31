@@ -116,6 +116,9 @@ public class NavmeshTool {
 			WhyBlocked.run(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]));
 			return;
 		}
+		if ((args.length == 2 || args.length == 3) && args[1].equals("glidegain")) {
+			System.exit(GlideGain.run(Integer.parseInt(args[0]), args.length == 3 ? Integer.parseInt(args[2]) : 200));
+		}
 		if ((args.length == 2 || args.length == 3 && args[2].equals("write")) && args[1].equals("walkers")) {
 			System.exit(WalkerRoutes.run(Integer.parseInt(args[0]), args.length == 3));
 		}
@@ -183,7 +186,8 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool <mapId> components   find what is reachable from what");
 			System.out.println("       NavmeshTool obelisks [mapId]   can a body resurrected at each obelisk of each mesh walk away? exit code 1 when one cannot");
 			System.out.println("       NavmeshTool golden <file> [mapId...]   walk the routes a tester walked, both ways, and fail on one that is shut or a detour (tools/golden-routes.txt)");
-			System.out.println("       NavmeshTool replay <file> [every]   plan again the journeys a server gave up (map sx sy sz gx gy gz cause, a line each)");
+			System.out.println("       NavmeshTool <mapId> glidegain [samples]   on sampled descents, what a glide would save over the walk, by drop (backlog point 4)");
+		System.out.println("       NavmeshTool replay <file> [every]   plan again the journeys a server gave up (map sx sy sz gx gy gz cause, a line each)");
 			System.out.println("       NavmeshTool <mapId> walkers   do the patrol routes of the data join by a short walk? (steps no walk of three times the distance joins, by place)");
 			System.out.println("       NavmeshTool <mapId> seams <x> <y> <z>   where the ground under that spot nearly joins its neighbours, and by how much it misses");
 			System.out.println("       NavmeshTool <mapId> stuck <file>   where bots reported being unable to move: on footing or inside geometry");

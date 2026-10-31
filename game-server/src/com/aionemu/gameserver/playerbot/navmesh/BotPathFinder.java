@@ -244,6 +244,17 @@ public class BotPathFinder {
 		return walking.gaveUp() || !gliding.gaveUp() ? walking : gliding;
 	}
 
+	/** The route on foot alone, for the tools that compare it with a glide ({@code NavmeshTool <map> glidegain}). */
+	public static Route walkingOnly(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
+		return findWalkingPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, Avoidance.NONE);
+	}
+
+	/** The route by glides alone, even where a walk exists: what the planner never asks for then, so that a tool can say what a glide would save. */
+	public static Route glidingOnly(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
+		return mesh.hasGlides() ? GlideRoutes.plan(mesh, startX, startY, startZ, goalX, goalY, goalZ, Avoidance.NONE, GlideRoutes.AirTest.ALWAYS)
+			: new Route(List.of(), false);
+	}
+
 	/** The route on foot alone. */
 	static Route findWalkingPath(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid) {
 		float distance = (float) Math.hypot(goalX - startX, goalY - startY);

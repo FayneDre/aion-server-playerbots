@@ -1,6 +1,6 @@
 # Plan: bots that glide on their own (backlog point 4)
 
-Status: not started. Analysed on 1 November from the code; nothing measured yet.
+Status: in progress: milestone 0 measured on 1 November (result below); milestone 2 is next, milestone 1 is much smaller than first thought.
 
 The tester's words: *"Les bots doivent mieux employer le vol en planant, d'eux-mêmes je n'ai pas l'impression qu'ils l'utilisent ou trop rarement. En groupe ils suivent le joueur s'il le fait."*
 
@@ -42,3 +42,13 @@ A bot at the top of a cliff, a rampart or a plateau walks a long way round to th
 - **Planning cost**: a second search on every long walk. Mitigation: small budget, only past 80 m, measured in milestone 4 against the 575 s of route threads the given-up searches already cost in half an hour.
 - **Deaths from falls or landing among monsters**: the glide planner already checks the air and the landing's ground; the take-off and landing must also be outside `DeathSpots`.
 - **Looks wrong at a glance**: a bot gliding down a cliff it could walk is the point, but one that takes off from a flat road is not: the drop minimum and the "ledge" test guard it.
+
+## Milestone 0, measured (1 November)
+
+`NavmeshTool <map> glidegain [samples]` (`tool/GlideGain.java`) samples descents of 80 to 400 m between two walkable places of a map, plans each on foot and by glides alone, and compares by time (run 6 m/s, glide 8 m/s). 150 samples on Eltnen, Morheim, Heiron, Beluslan and Inggison:
+
+- **The glide links in the files never apply to a walkable journey: 0 glide routes on 750 samples.** A link joins two stretches of ground that **no walk joins**; where a walk exists, start and goal are on one stretch, so the planner has no link to offer. Milestone 1 as written
+  ("also plan the glide when the walk is long") cannot work with today's links; it needs a **new kind of link, a shortcut inside one stretch** (a ledge to the ground below, where the walk is at least twice the crow's flight), to be generated and stored.
+- **The bound for such shortcuts is low.** A glide covers 2.5 m for 1 m of drop, so on journeys of 80 m and more it only fits drops over 30 m: nothing below, and 11 to 35 % of the walkable descents above (Eltnen 11, Morheim 14, Heiron 13, Inggison 19, Beluslan 35). Drops of 8 to 30 m: none worth 30 % of the time on journeys of this length.
+
+So a rule that glides to save time would fire on the cliffs of Beluslan and little elsewhere, for a new link file. **Decision taken from the figures: milestone 2 first** (a bot glides off a ledge for the look of it, near a player, onto ground it can see below: no link needed, only the geometry under it and `GlideLinks.MIN_DROP`), then milestone 1 only if the tester asks for time-saving glides, restricted to the big drops with shortcut links on the maps this tool ranks first.
