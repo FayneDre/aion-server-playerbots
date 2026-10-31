@@ -1,0 +1,183 @@
+# What the bots say in the chat channels, in French. A [section] is a list; a line is one thing to say, %s and the like are filled in by the code.
+# <empty> is the empty alternative (nothing said there). A line is drawn at random: one written twice is twice as likely. Lines starting with # are comments.
+
+[sell.opening]
+WTS
+wts
+Vends
+vends
+VDS
+Je vends
+À vendre :
+Dispo :
+<empty>
+
+[sell.closing]
+<empty>
+<empty>
+mp
+MP
+pst
+mp moi
+passez à ma boutique
+en boutique à %s
+stand ouvert à %s
+dispo maintenant
+venez voir
+prix négociable en boutique
+premier arrivé premier servi
+
+[advert]
+Boutique « %s » ouverte à %s, venez voir !
+%s : stand ouvert à %s, passez !
+Ouvert à %2$s : %1$s
+Boutique %s, les prix baissent chaque heure, à %s
+Stock renouvelé : %s, à %s
+Passez voir %s à %s, mp si besoin
+
+[group.opening]
+LFG
+lfg
+Cherche groupe
+cherche grp
+Dispo pour
+Qui monte
+<empty>
+
+[group.closing]
+<empty>
+<empty>
+inv svp
+mp
+invitez-moi
+dispo de suite
+pst
+dispo toute la soirée
+j'connais le donjon
+
+[greeting.morning]
+Bonjour tout le monde
+bonjour %s
+Salut %s, bonne journée à tous
+Bon matin à tous
+'jour
+Bonjour, bon jeu à tous
+
+[greeting.afternoon]
+Salut %s
+salut tout le monde
+Bon aprem à tous
+Yo %s
+Coucou
+slt
+
+[greeting.evening]
+Bonsoir %s
+bonsoir tout le monde
+Bonne soirée à tous
+bsr
+Salut les gens, bonne soirée
+Bonsoir, bon jeu
+
+[greeting.night]
+Encore du monde debout sur %s ?
+Bonne nuit à ceux qui vont dormir
+Les couche-tard de %s, salut
+Calme cette nuit sur %s
+Allez une dernière heure et dodo
+
+[hunting]
+Je farm les %s vers %s
+Ça respawn bien les %s vers %s
+Les %s de %s tapent fort
+Gros farm de %s vers %s
+Encore des %s vers %s...
+Qui veut m'aider avec les %s vers %s ?
+
+[progress]
+Plus que %d%% avant le %d
+%d%% pour monter %d, ça vient
+Encore %d%% et je passe %d !
+Allez, %d%% avant le niveau %d
+
+[chatter]
+Bonne chasse à tous
+Bon courage à ceux qui farment
+J'aime bien %s
+Bon jeu à tous sur %s
+Ça farm dur sur %s
+J'adore cette zone
+Quelqu'un a de la musique à conseiller ?
+Pause café et je reviens
+Le respawn est long par ici
+gg à ceux qui ont up aujourd'hui
+
+[level.question]
+C'est quel niveau vers %s ?
+Les mobs de %s sont de quel lvl ?
+qqn sait le lvl vers %s ?
+%s c'est pour quel niveau ?
+
+[level.answer]
+Vers %s c'est du %d-%d
+%2$d-%3$d vers %1$s
+du %2$d-%3$d
+j'y suis, c'est du %2$d-%3$d
+%s ? lvl %d à %d
+
+[who.question]
+Qqn vers %s ?
+Il y a du monde vers %s ?
+quelqu'un à %s ?
+Qui est vers %s ?
+
+[who.answer]
+Moi, je suis vers %s
+Oui, j'y suis
+ouais moi
+Je suis à %s
+présent vers %s
+
+[hunt.question]
+Ça farm quoi vers %s ?
+Il y a quoi à taper vers %s ?
+qqn sait ce qu'il y a vers %s ?
+
+[hunt.answer]
+Des %s
+des %s surtout
+Je tape des %s là
+Plein de %s
+%s, pas mal d'xp
+
+[role.tank]
+tank
+tank
+MT
+
+[role.healer]
+heal
+soigneur
+healer
+
+[role.support]
+support
+buff
+soutien
+
+[role.damage]
+dps
+DD
+dégâts
+
+[shout.advert]
+Vends %s, passez voir ma boutique !
+%s : de bons prix, venez jeter un œil !
+Boutique ouverte : %s. Les invendus baissent chaque heure !
+%s, le stock vient d'être renouvelé !
+
+[shout.call]
+%s %d cherche un groupe, invitez-moi !
+%s niveau %d dispo pour grouper, invitez-moi !
+Qui monte un groupe ? %s %d partant.
+%s %d cherche des compagnons, invitation bienvenue !

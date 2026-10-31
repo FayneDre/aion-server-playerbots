@@ -43,11 +43,9 @@ public final class BotSpeech {
 	private static final int CALL_LEVEL = 20;
 
 	/** A store's name goes in each, as the store window shows it. */
-	private static final String[] ADVERTS = { "Vends %s, passez voir ma boutique !", "%s : de bons prix, venez jeter un œil !",
-		"Boutique ouverte : %s. Les invendus baissent chaque heure !", "%s, le stock vient d'être renouvelé !" };
+	private static final String[] ADVERTS = ChatText.of("fr").section("shout.advert").toArray(String[]::new);
 	/** The speaker's class and level go in each. Honest: a bot accepts any player's invitation ({@link BotRequests}). */
-	private static final String[] CALLS = { "%s %d cherche un groupe, invitez-moi !", "%s niveau %d dispo pour grouper, invitez-moi !",
-		"Qui monte un groupe ? %s %d partant.", "%s %d cherche des compagnons, invitation bienvenue !" };
+	private static final String[] CALLS = ChatText.of("fr").section("shout.call").toArray(String[]::new);
 
 	/** Whether bots speak at all: {@code //bot speech off} silences them until the next restart or {@code on}. */
 	private static volatile boolean enabled = true;

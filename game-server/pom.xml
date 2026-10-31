@@ -30,6 +30,11 @@
 					<include>aion_gs.sql</include>
 				</includes>
 			</resource>
+			<!-- what the bots say in the chat channels, one file a language: a deploy copies the jar and the handlers, so the words travel inside the jar -->
+			<resource>
+				<directory>data/bot_chat</directory>
+				<targetPath>bot_chat</targetPath>
+			</resource>
 		</resources>
 		<plugins>
 			<plugin>

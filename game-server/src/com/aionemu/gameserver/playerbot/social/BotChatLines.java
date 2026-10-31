@@ -13,41 +13,32 @@ import java.util.random.RandomGenerator;
  */
 final class BotChatLines {
 
-	private static final List<String> SELL_OPENINGS = List.of("WTS", "wts", "Vends", "vends", "VDS", "Je vends", "À vendre :", "Dispo :", "");
-	private static final List<String> SELL_CLOSINGS = List.of("", "", "mp", "MP", "pst", "mp moi", "passez à ma boutique", "en boutique à %s",
-		"stand ouvert à %s", "dispo maintenant", "venez voir", "prix négociable en boutique", "premier arrivé premier servi");
-	private static final List<String> ADVERTS = List.of("Boutique « %s » ouverte à %s, venez voir !", "%s : stand ouvert à %s, passez !",
-		"Ouvert à %2$s : %1$s", "Boutique %s, les prix baissent chaque heure, à %s", "Stock renouvelé : %s, à %s", "Passez voir %s à %s, mp si besoin");
+	/** The words, in French until the language is a setting; see {@link ChatText}. */
+	private static final ChatText TEXT = ChatText.of("fr");
 
-	private static final List<String> GROUP_OPENINGS = List.of("LFG", "lfg", "Cherche groupe", "cherche grp", "Dispo pour", "Qui monte", "");
-	private static final List<String> GROUP_CLOSINGS = List.of("", "", "inv svp", "mp", "invitez-moi", "dispo de suite", "pst", "dispo toute la soirée",
-		"j'connais le donjon");
-	private static final Map<BotRole, List<String>> ROLE_WORDS = Map.of(BotRole.TANK, List.of("tank", "tank", "MT"),
-		BotRole.HEALER, List.of("heal", "soigneur", "healer"), BotRole.SUPPORT, List.of("support", "buff", "soutien"),
-		BotRole.DAMAGE, List.of("dps", "DD", "dégâts"));
+	private static final List<String> SELL_OPENINGS = TEXT.section("sell.opening");
+	private static final List<String> SELL_CLOSINGS = TEXT.section("sell.closing");
+	private static final List<String> ADVERTS = TEXT.section("advert");
 
-	private static final List<String> MORNING = List.of("Bonjour tout le monde", "bonjour %s", "Salut %s, bonne journée à tous", "Bon matin à tous",
-		"'jour", "Bonjour, bon jeu à tous");
-	private static final List<String> AFTERNOON = List.of("Salut %s", "salut tout le monde", "Bon aprem à tous", "Yo %s", "Coucou", "slt");
-	private static final List<String> EVENING = List.of("Bonsoir %s", "bonsoir tout le monde", "Bonne soirée à tous", "bsr", "Salut les gens, bonne soirée",
-		"Bonsoir, bon jeu");
-	private static final List<String> NIGHT = List.of("Encore du monde debout sur %s ?", "Bonne nuit à ceux qui vont dormir", "Les couche-tard de %s, salut",
-		"Calme cette nuit sur %s", "Allez une dernière heure et dodo");
-	private static final List<String> HUNTING = List.of("Je farm les %s vers %s", "Ça respawn bien les %s vers %s", "Les %s de %s tapent fort",
-		"Gros farm de %s vers %s", "Encore des %s vers %s...", "Qui veut m'aider avec les %s vers %s ?");
-	private static final List<String> PROGRESS = List.of("Plus que %d%% avant le %d", "%d%% pour monter %d, ça vient", "Encore %d%% et je passe %d !",
-		"Allez, %d%% avant le niveau %d");
-	private static final List<String> CHATTER = List.of("Bonne chasse à tous", "Bon courage à ceux qui farment", "J'aime bien %s",
-		"Bon jeu à tous sur %s", "Ça farm dur sur %s", "J'adore cette zone", "Quelqu'un a de la musique à conseiller ?",
-		"Pause café et je reviens", "Le respawn est long par ici", "gg à ceux qui ont up aujourd'hui");
-	private static final List<String> LEVEL_QUESTIONS = List.of("C'est quel niveau vers %s ?", "Les mobs de %s sont de quel lvl ?", "qqn sait le lvl vers %s ?",
-		"%s c'est pour quel niveau ?");
-	private static final List<String> LEVEL_ANSWERS = List.of("Vers %s c'est du %d-%d", "%2$d-%3$d vers %1$s", "du %2$d-%3$d", "j'y suis, c'est du %2$d-%3$d",
-		"%s ? lvl %d à %d");
-	private static final List<String> WHO_QUESTIONS = List.of("Qqn vers %s ?", "Il y a du monde vers %s ?", "quelqu'un à %s ?", "Qui est vers %s ?");
-	private static final List<String> WHO_ANSWERS = List.of("Moi, je suis vers %s", "Oui, j'y suis", "ouais moi", "Je suis à %s", "présent vers %s");
-	private static final List<String> HUNT_QUESTIONS = List.of("Ça farm quoi vers %s ?", "Il y a quoi à taper vers %s ?", "qqn sait ce qu'il y a vers %s ?");
-	private static final List<String> HUNT_ANSWERS = List.of("Des %s", "des %s surtout", "Je tape des %s là", "Plein de %s", "%s, pas mal d'xp");
+	private static final List<String> GROUP_OPENINGS = TEXT.section("group.opening");
+	private static final List<String> GROUP_CLOSINGS = TEXT.section("group.closing");
+	private static final Map<BotRole, List<String>> ROLE_WORDS = Map.of(BotRole.TANK, TEXT.section("role.tank"),
+		BotRole.HEALER, TEXT.section("role.healer"), BotRole.SUPPORT, TEXT.section("role.support"),
+		BotRole.DAMAGE, TEXT.section("role.damage"));
+
+	private static final List<String> MORNING = TEXT.section("greeting.morning");
+	private static final List<String> AFTERNOON = TEXT.section("greeting.afternoon");
+	private static final List<String> EVENING = TEXT.section("greeting.evening");
+	private static final List<String> NIGHT = TEXT.section("greeting.night");
+	private static final List<String> HUNTING = TEXT.section("hunting");
+	private static final List<String> PROGRESS = TEXT.section("progress");
+	private static final List<String> CHATTER = TEXT.section("chatter");
+	private static final List<String> LEVEL_QUESTIONS = TEXT.section("level.question");
+	private static final List<String> LEVEL_ANSWERS = TEXT.section("level.answer");
+	private static final List<String> WHO_QUESTIONS = TEXT.section("who.question");
+	private static final List<String> WHO_ANSWERS = TEXT.section("who.answer");
+	private static final List<String> HUNT_QUESTIONS = TEXT.section("hunt.question");
+	private static final List<String> HUNT_ANSWERS = TEXT.section("hunt.answer");
 
 	private BotChatLines() {
 	}
