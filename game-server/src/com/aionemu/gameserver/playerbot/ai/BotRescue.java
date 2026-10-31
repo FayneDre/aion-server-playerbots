@@ -98,8 +98,20 @@ final class BotRescue {
 			return;
 		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), home.getX(), home.getY(), home.getZ());
 		Vector3f doorstep = ground != null ? ground : home;
-		if (PositionUtil.getDistance(here.getX(), here.getY(), here.getZ(), doorstep.getX(), doorstep.getY(), doorstep.getZ()) < STRANDED_AT_HOME)
+		if (PositionUtil.getDistance(here.getX(), here.getY(), here.getZ(), doorstep.getX(), doorstep.getY(), doorstep.getZ()) < STRANDED_AT_HOME) {
+			// At home, which is usually the home's business and no rescue's: but a home on a pocket of ground that closes in a few thousand cells (a ledge in a wall, the top of a
+			// prop) is a home nobody can leave, and the bot stood in it for as long as the server ran: three bots in Pandaemonium on 31 October, one of them inside a wall in front of
+			// a player. It is moved to another home at once, not after three rescues that would put it back where it stood.
+			if (!bot.isFlying() && NavmeshService.getInstance().isPocket(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ())) {
+				Vector3f elsewhere = ai.day().leavePocketHome();
+				if (elsewhere != null) {
+					forgetRefusals();
+					TeleportService.teleportTo(bot, bot.getWorldId(), elsewhere.getX(), elsewhere.getY(), elsewhere.getZ());
+					ai.setAnchor(elsewhere.getX(), elsewhere.getY(), elsewhere.getZ());
+				}
+			}
 			return;
+		}
 		log.info("Bot {} {} from {} {} {}, so it is the spot that leads nowhere", bot.getName(), why, Math.round(here.getX()), Math.round(here.getY()),
 			Math.round(here.getZ()));
 		freeItself(isolated);

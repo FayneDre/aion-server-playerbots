@@ -194,6 +194,26 @@ class BotDay {
 	}
 
 	/**
+	 * Moves the bot's home off a pocket of ground it cannot walk out of, at once. {@link #recordStranding()} waits for three rescues and marks the whole village stranded, which is
+	 * wrong for a pocket in a capital (a ledge inside a wall): the village is fine, one spot of it is not.
+	 *
+	 * @return The new home, or null when the bot is not at home, is somebody's, or no other home was found.
+	 */
+	Vector3f leavePocketHome() {
+		Player bot = ai.getOwner();
+		if (ai.isOwned() || home() == null || isAwayFromHome())
+			return null;
+		Vector3f elsewhere = BotPlaces.homeForLevel(bot.getWorldId(), bot.getLevel(), bot.getRace(), home(), bot.getObjectId() + (int) System.currentTimeMillis());
+		if (elsewhere == null || BotPlaces.isSamePlace(elsewhere, home()))
+			return null;
+		log.info("Bot {} lives on a pocket of ground at {} {} and moves to {} {}", bot.getName(), Math.round(home().getX()), Math.round(home().getY()),
+			Math.round(elsewhere.getX()), Math.round(elsewhere.getY()));
+		forget();
+		moveTo(elsewhere);
+		return elsewhere;
+	}
+
+	/**
 	 * Notes that the bot had to be rescued from where it was standing, and moves it out of a home that keeps producing that.
 	 * <p>
 	 * The sibling of {@link #recordDeath()}, and for the same reason: the rescue puts a bot back at its home, so a home that cannot be walked out of
