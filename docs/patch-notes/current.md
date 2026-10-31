@@ -9,7 +9,7 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 ## patch-2026-10-31 — 31/10/2026
 
 Révision `d840fec`, celle que `//bot version` affiche. **Un gros lot : 104 commits depuis le 28/10 (l'hôtel des ventes rempli par le serveur, le PvP des bots,
-les planés pour le plaisir, beaucoup de navigation).** Aucun SQL à passer, aucun maillage à régénérer, aucun fichier de données qui change. **Deux options
+les planés pour le plaisir, beaucoup de navigation).** Aucun SQL à passer, aucun fichier de données qui change, **mais les maillages sont à régénérer si les vôtres datent d'avant le 31/10** (le générateur a changé : voir « À faire »). **Deux options
 sont activées par défaut : le PvP des bots et l'hôtel des ventes** (voir « À faire » pour les couper).
 
 **Ce qui change pour les joueurs et les testeurs**
@@ -78,7 +78,13 @@ sont activées par défaut : le PvP des bots et l'hôtel des ventes** (voir « �
   Les autres clés (`gameserver.playerbot.broker.*`, `...ambient.glide`, `...chat.language`) sont décrites avec leurs valeurs dans le fichier du dépôt.
 - La mémoire de l'hôtel : environ 300 octets par annonce (6 000 par race : 4 Mo), mesurés par `jcmd <pid> GC.class_histogram`. `broker.size` monte jusqu'à
   12 000 par race sans souci de mémoire ; le temps d'une recherche dans la fenêtre du courtier n'a pas été mesuré à cette taille.
-- Aucun maillage à régénérer. Si vous reconstruisez un maillage, les liens (plané, vol, monture) sont à réécrire après (`tools/links-rewrite.ps1`).
+- **Maillages de navigation : à régénérer si les vôtres datent d'avant le 31/10.** Ils ne sont pas dans le dépôt, chaque installation les génère. Le générateur a changé depuis
+  le 28/10 : érosion qui épargne les passages et les décors, la grotte de Morheim (ouverture, sol, couloir), le sol réellement marché et les routes de patrouille.
+  Un maillage plus ancien n'a pas la grotte de Morheim et garde des passages coupés. Serveur arrêté : `.	ools
+avmesh.ps1 -OpenWorld` (une vingtaine de minutes,
+  réécrit aussi les liens de plané et de vol), puis `.	oolspatrol-ground.ps1` (les routes de patrouille ; facultatif), puis `.	oolseck-golden-routes.ps1`
+  (les routes marchées par les testeurs doivent toutes passer). Une installation déjà régénérée le 31/10 n'a rien à refaire. Après toute reconstruction d'une carte,
+  ses liens sont à réécrire (`tools/links-rewrite.ps1`) ; `navmesh.ps1` les relit avant de construire.
 
 ---
 
