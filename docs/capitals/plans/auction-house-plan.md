@@ -1,6 +1,6 @@
 # Plan: an auction house stocked by the server (AHBot model)
 
-Status: not started. Analysed on 31 October from the engine's `BrokerService`; nothing is written. Asked by the tester: a broker with items for sale, on the model of AzerothCore's AHBot.
+Status: in progress: milestones 0 and 1 built, unverified (the door's instance methods and its save tasks have not run against a database or a server; the pure steps are tested). Milestones 2 and after not started. Analysed on 31 October from the engine's `BrokerService`. Asked by the tester: a broker with items for sale, on the model of AzerothCore's AHBot.
 
 ## What AHBot does, and what we keep
 
@@ -52,8 +52,8 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
 
 ## Milestones
 
-0. **Read the data**: how many tradeable templates there are per mask and quality; which have a price (guide or template) and which would be guessed. A short census, as for the stores.
-1. **The door**: `BrokerService.registerForHouse`, house settling (`settleHouse`) and a test with a house character in a test database. Core patch kept to a few lines.
+0. **Read the data**: how many tradeable templates there are per mask and quality; which have a price (guide or template) and which would be guessed. A short census, as for the stores. **Done**, see below.
+1. **The door**: `BrokerService.registerForHouse`, house settling (`settleHouse`) and tested on the maps without a database. **Built**, see below.
 2. **The house characters**: created at first start on a reserved account, one per race, recorded so a restart finds them.
 3. **The seller**: a timer (every 15 minutes, property) that counts the house's listings per mask and tops each up to its share, with the price rule and stack ranges; first fill spread over
    some minutes so startup is not slowed. Property `gameserver.playerbot.broker.enable` (false by default) and the targets.
@@ -61,6 +61,42 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
 5. **Watch in game**: the tester opens the broker in both capitals: categories filled, prices believable, a purchase works, kinah and inventory right, `exchange.log` has the line.
 6. **The buyer**: the rules above, then a watch with the tester listing goods in range, above range, with no known price, and one far under the range.
 7. **Measure**: heap before and after, tick cost of the pass, listings per category against the targets over a day; compare the broker's average prices with the guide's.
+
+## Milestone 0: the census (31 October, 4.8 item data)
+
+`playerbot/economy/tool/BrokerCensus` (offline, reads `item_templates.xml`; run `java -cp <classes and libraries> ...BrokerCensus` from `game-server/`). Tradeable templates by
+the client's top level category; in brackets, price known by the guide (`BotStoreGoods.rangeOf`, manastones included) / by the template's own price / none.
+
+| Category | Tradeable | Guide / template / none |
+|---|---|---|
+| Weapons | 10650 | 0 / 10649 / 1 |
+| Armour | 18781 | 0 / 18781 / 0 |
+| Accessories | 5649 | 0 / 5649 / 0 |
+| Skill related (stigmas, manuals) | 1796 | 0 / 1796 / 0 |
+| Home decor | 247 | 0 / 247 / 0 |
+| Furniture | 958 | 0 / 958 / 0 |
+| Crafting (materials, designs) | 9113 | 0 / 9113 / 0 |
+| Consumables (stones, scrolls, food) | 3346 | 500 / 2839 / 7 |
+| Other | 1231 | 14 / 1217 / 0 |
+| **All** | **51771** | **514 / 51249 / 8** |
+
+Also: 4850 tradeable templates sit in no category (the client's broker cannot show them: skip), 45388 are not tradeable. Per quality (common / rare / legend / unique / epic / mythic):
+weapons 2553 / 2619 / 2355 / 2413 / 542 / 168, armour 8018 / 4204 / 3493 / 1755 / 946 / 365, accessories 1675 / 1366 / 1343 / 754 / 419 / 92, crafting 2861 / 2595 / 2033 / 883 / 733 / 8,
+consumables 1558 / 748 / 749 / 193 / 79 / 19 (plus 19 junk and 367 / 339 / 98 / 191 / 165 / 52 common to mythic in Other).
+
+Reading: only 514 templates have a guide range (consumables: 500, of which 368 legend, the manastones); everything else has the template's price, which is the gear pricing the stores
+already use (`BotStorePricing.fairPrice`), and only 8 have no price at all (never listed, never bought). The census does not filter quest items, remnants or class and level: that is
+the candidate filter of milestone 3. The template price of crafting materials and recipes is an npc price, so the house's price rule needs a quality factor there before it is believable.
+
+## Milestone 1: the door (built, unverified)
+
+Added to `BrokerService` under a `playerbots` comment, the players' doors untouched:
+- `registerForHouse(race, sellerId, item, price, splitting)`: no fee, no 15-listing cap, no inventory or kinah; the item goes to location BROKER and a save task stores it with its row.
+- `settleHouse(sellerId)`: deletes the seller's settled entries (sold, or expired and already returned by `checkExpiredItems`) and its expired listings, rows and items, in both races.
+- `buyForHouse(listing)`: a live listing becomes a sold settled entry through `putToSettled` (the seller is told and collects the kinah as for any sale), the item is destroyed (deleted
+  row), nothing on the house side. Returns false for a listing that is not live.
+- The pure steps (`listForHouse`, `collectHouseSettlement`, `isLive`) are package-private statics on the maps, tested by `BrokerHouseTest` without a database. **Not tested**: the save tasks,
+  `BrokerDAO` behaviour with a deleted item and its stones, the seller notice, a real sale of a house listing by a player.
 
 ## What can go wrong
 
@@ -74,4 +110,4 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
 
 ## First step proposed
 
-Milestone 0 (the census, read-only), then milestone 1 with its test. No server restart is needed for either.
+Milestone 2 (the house characters). Milestones 0 and 1 need no server restart, but the door is only exercised from milestone 3 on.
