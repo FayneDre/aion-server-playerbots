@@ -500,6 +500,18 @@ public class NavmeshService {
 		return !route.isEmpty() || route.gaveUp();
 	}
 
+	/**
+	 * @return true if the walk from the first spot to the second is proved shut: the search on foot alone ran through all the ground the first spot stands on and found no way. A route that
+	 *         could glide out is not asked about here; for a bot that cannot be told to be stuck, the glides having given up too (see {@code BotRescue.destinationRefused}).
+	 */
+	public boolean isShutOffOnFoot(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return false;
+		BotPathFinder.Route route = BotPathFinder.within(PROOF_BUDGET_MILLIS, () -> BotPathFinder.walkingOnly(mesh, fromX, fromY, fromZ, toX, toY, toZ));
+		return route.isEmpty() && !route.gaveUp();
+	}
+
 	/** How long the walk asked for a note may be searched for, in milliseconds. */
 	private static final long DESCRIBE_BUDGET_MILLIS = 1000;
 

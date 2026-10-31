@@ -65,6 +65,19 @@ final class BotRescue {
 	void destinationRefused() {
 		Player bot = ai.getOwner();
 		Vector3f here = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
+		if (isShutOffFromHome(bot, here)) {
+			// A bot on ground that no walk joins to its home, refused twice: inside a wall of a capital, on a ledge. Waiting for six give-ups took ten minutes of five minute spells, and the
+			// player who was looking at it was looking at a body in a wall (Kalelan in Pandaemonium, 31 October). Lifted even in sight: it is the fault itself.
+			if (++shutOffRefusals >= SHUT_OFF_REFUSALS) {
+				shutOffRefusals = 0;
+				log.info("Bot {} stands at {} {} {} on ground no walk joins to its home, so it is the spot that leads nowhere", bot.getName(), Math.round(here.getX()),
+					Math.round(here.getY()), Math.round(here.getZ()));
+				freeItself(true);
+				return;
+			}
+		} else {
+			shutOffRefusals = 0;
+		}
 		if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isRefusalUnproven()) {
 			// a far place whose searches gave up says nothing about this one (see BotMoveController.refusalUnproven), but every place doing so does
 			Vector3f goal = unprovenGoal;
@@ -84,6 +97,22 @@ final class BotRescue {
 		refusedFrom = null;
 		refusedFromThere = 0;
 		rescueFrom(here, "gave up on " + ISOLATED_REFUSALS + " destinations in a row", true);
+	}
+
+	/** Refusals in a row, from ground no walk joins to home, that lift a bot. */
+	private static final int SHUT_OFF_REFUSALS = 2;
+	private int shutOffRefusals;
+
+	/** @return true if the bot stands on the ground, not owned, with a home, and the walk from here to the ground by that home is proved shut. */
+	private boolean isShutOffFromHome(Player bot, Vector3f here) {
+		if (bot.isFlying() || ai.isOwned() || !(bot.getMoveController() instanceof BotMoveController move) || move.isGliding() || move.isRiding())
+			return false;
+		Vector3f home = ai.day().home();
+		if (home == null)
+			return false;
+		Vector3f ground = NavmeshService.getInstance().groundNear(bot.getWorldId(), home.getX(), home.getY(), home.getZ());
+		Vector3f goal = ground != null ? ground : home;
+		return NavmeshService.getInstance().isShutOffOnFoot(bot.getWorldId(), here.getX(), here.getY(), here.getZ(), goal.getX(), goal.getY(), goal.getZ());
 	}
 
 	/**
