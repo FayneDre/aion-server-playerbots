@@ -44,7 +44,7 @@ public final class BrokerHouse {
 	private static final Logger log = LoggerFactory.getLogger(BrokerHouse.class);
 	private static final long FILL_STEP_MILLIS = 30_000;
 	/** The names a house character is given, tried in order for each race; the name generator's is the fallback. */
-	private static final Map<Race, String> PREFERRED_NAMES = Map.of(Race.ELYOS, "Pontifexel", Race.ASMODIANS, "Mercatorus");
+	private static final Map<Race, String> PREFERRED_NAMES = Map.of(Race.ELYOS, "BotSellerElyos", Race.ASMODIANS, "BotSellerAsmo");
 	/** Listings below this many are not worth a memory figure. */
 	private static final int MEASURABLE = 200;
 

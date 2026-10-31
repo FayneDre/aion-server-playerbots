@@ -116,7 +116,7 @@ All in `playerbot/economy/BrokerHouse*`, started from `PlayerBotService.onStartU
   listing never. One log line per purchase: seller, item, count, price each, total.
 - **Memory**: when the first fill completes, one line gives the heap before and after (after a `System.gc()`), so bytes a listing is read from the log, other growth included.
 - **Not tested**: any database or server behaviour (character creation from the pass thread, the save tasks, the notice to a seller, a real sale), the sizes at 12000, the page time of a search.
-- **To decide**: the ceilings and the material factors are first guesses; the house characters' names ("Pontifexel", "Mercatorus") are placeholders.
+- **To decide**: the ceilings and the material factors are first guesses; the house characters are named BotSellerElyos and BotSellerAsmo (decided).
 
 ## What can go wrong
 

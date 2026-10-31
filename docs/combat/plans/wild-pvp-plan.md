@@ -37,8 +37,7 @@ from its object id: *fighter* (attacks an enemy in range, about 1 bot in 4), *op
 - **Fairness against a lone player.** A bot does not attack a lone player in a party of more than two bots, and withdraws when outnumbered.
 - **A player's own bots.** Bots grouped with a player in a PvP zone help the player against an enemy, whatever their temperament; they never attack
   a player of their own side.
-- **Rewards.** Read what `PvpService` does against repeated kills of one victim; a bot killed by a player gives no abyss points (else a player farms them);
-  a bot's kill of a player follows the engine's rules unchanged.
+- **Rewards.** Decided: a player who kills a bot gets the engine's own rewards (abyss and divine points, kill count, bounties, quest and event credit), exactly as for a player victim; nothing is patched in `PvpService` except the log line of a kill. A bot's kill of a player also follows the engine unchanged.
 - **Tests and traces.** `//bot pvp` (two bots face to face, a forced invasion) listed in `bot-commands.md`; one log line per PvP death or kill for the
   measure; a short chat reaction after a kill of a player (as the other reactions, in both languages).
 
@@ -87,13 +86,7 @@ attacker's kind. `canKeepFighting` already asks `isEnemy` for a `Player` target,
   `BotTargetSelector` for monsters only, so a `Player` target needs no more guarding.
 - Not done: no PvP rotation (stun/immunity answers, no kiting), and a bot in a group never flees a player (a hole in the party).
 
-**Rewards (read from `PvpService.doReward`).** A player kill gives the killer's group AP and DP from the victim's rank and level
-(`calculatePvpApGained`), XP from a PvP table (capped by `PvpExpLimitService`), a kill count with `PER_X_KILLS` bounty items, quest and event credit; the
-victim loses AP in proportion to the damage that counted. The daily limit (`MAX_DAILY_PVP_KILLS`) is **per victim object id**, so a player could farm
-AP by killing many different bots, and `isOnline()` is true for a bot, so bots count as killers. Decision: **a bot victim gives a real player no AP, no DP,
-no kill count, no bounty and no quest or event credit** (patched in two places of `PvpService`, commented); its PvP XP is left (capped already). A bot
-killed by a bot, and a player killed by a bot or by a player, follow the engine unchanged: a bot killer earns AP and bounty like any player, which the
-lead may want to cap if bots ever climb the abyss ranks.
+**Rewards (read from `PvpService.doReward`).** A player kill gives the killer's group AP and DP from the victim's rank and level (`calculatePvpApGained`), XP from a PvP table (capped by `PvpExpLimitService`), a kill count with `PER_X_KILLS` bounty items, quest and event credit; the victim loses AP in proportion to the damage that counted. The daily limit (`MAX_DAILY_PVP_KILLS`) is per victim object id, so a player can in principle farm AP on many different bots. **Decided on 31 October by the tester: a player who kills a bot gets all of it, unchanged**; an earlier patch refusing those rewards was taken out. A bot that kills (a player or a bot) earns AP and bounty like any player, which may be capped if bots ever climb the abyss ranks.
 
 **Traces.** `BotPvpTraces.onKill` (called from `PvpService.doReward` once the winner is known, so one line per kill that involves a bot) writes
 `PVP KILL killer <name> (bot|player <race> <level>) victim <name> (...) at map <id> <x> <y> <z>` to the game log, and the killer bot may say a
