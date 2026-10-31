@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -52,6 +53,46 @@ public class BotTargetSelector {
 				candidates.add(npc);
 		});
 		return candidates.stream().min(Comparator.comparingDouble(npc -> PositionUtil.getDistance(bot, npc))).orElse(null);
+	}
+
+	/**
+	 * Finds the closest enemy player worth attacking, for a bot standing in a PvP zone. Nothing is ever returned unless the PvP option is on and the
+	 * bot is inside such a zone, and {@link Player#isEnemy} then holds only for the other race (or a duel partner).
+	 * <p>
+	 * The rules are those of a monster (in sight, within {@link #MAX_Z_DELTA} in height, never above level + {@link #MAX_LEVEL_GAP}, never beneath
+	 * level - {@value #MIN_LEVEL_GAP}) with two more: the bot's {@link BotTemperament}, and no more than {@link BotPvpRules#MAX_BOTS_ON_A_LONE_PLAYER} bots
+	 * on a player who is in no team.
+	 *
+	 * @param invasion true if the bot is on an invasion, where temperament does not apply (nothing sets this yet)
+	 * @param isIgnored Targets the bot already failed to reach.
+	 */
+	public static Player findPlayerTarget(Player bot, float radius, boolean invasion, Predicate<Creature> isIgnored) {
+		if (!PlayerBotConfig.PVP_ENABLE || !bot.isInsidePvPZone())
+			return null;
+		BotTemperament temperament = BotTemperament.of(bot.getObjectId());
+		if (temperament == BotTemperament.PEACEFUL && !invasion)
+			return null; // saves the scan: such a bot never starts a fight
+		List<Player> candidates = new ArrayList<>();
+		bot.getKnownList().forEachPlayer(player -> {
+			if (isPlayerFairGame(bot, player, radius, temperament, invasion) && !isIgnored.test(player))
+				candidates.add(player);
+		});
+		return candidates.stream().min(Comparator.comparingDouble(player -> PositionUtil.getDistance(bot, player))).orElse(null);
+	}
+
+	private static boolean isPlayerFairGame(Player bot, Player player, float radius, BotTemperament temperament, boolean invasion) {
+		if (player.equals(bot) || player.isDead() || !player.isSpawned() || !bot.isEnemy(player))
+			return false;
+		if (Math.abs(bot.getZ() - player.getZ()) > MAX_Z_DELTA)
+			return false;
+		if (!BotPvpRules.isInLevelBand(bot.getLevel(), player.getLevel(), MAX_LEVEL_GAP, MIN_LEVEL_GAP))
+			return false;
+		if (!temperament.mayStartAgainst(invasion, bot.getLevel(), player.getLevel(), player.getLifeStats().getHpPercentage()))
+			return false;
+		if (PositionUtil.getDistance(bot, player) > radius || !GeoService.getInstance().canSee(bot, player))
+			return false;
+		long botsOnIt = bot.getKnownList().streamPlayers().filter(other -> other.isBot() && !other.equals(bot) && other.getTarget() == player).count();
+		return BotPvpRules.mayJoinAttack(!player.isInTeam(), (int) botsOnIt);
 	}
 
 	/**

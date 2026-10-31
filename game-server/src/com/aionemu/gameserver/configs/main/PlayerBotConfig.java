@@ -45,6 +45,13 @@ public class PlayerBotConfig {
 	@Property(key = "gameserver.playerbot.ambient.glide", defaultValue = "true")
 	public static volatile boolean AMBIENT_GLIDE;
 
+	/**
+	 * Whether bots may attack players of the other race (real players and bots) where the engine makes them enemies, which is a PvP zone. Off, no bot
+	 * ever picks a player as a target and nothing of the PvP behaviour runs.
+	 */
+	@Property(key = "gameserver.playerbot.pvp.enable", defaultValue = "false")
+	public static volatile boolean PVP_ENABLE;
+
 	/** The language of everything bots say in the chat channels and by shout: FR or EN. */
 	@Property(key = "gameserver.playerbot.chat.language", defaultValue = "FR")
 	public static volatile ChatLanguage CHAT_LANGUAGE;

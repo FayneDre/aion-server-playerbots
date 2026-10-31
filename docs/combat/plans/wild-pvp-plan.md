@@ -1,6 +1,7 @@
 # Plan: wild PvP, rifts and the arenas
 
-Status: not started. Analysed on 31 October (roadmap point 8). Nothing of it is written; the engine facts below were read in the code, not yet tried with a bot.
+Status: in progress: milestones 0 and 1 built, unverified in game (the property `gameserver.playerbot.pvp.enable` is false by default; the pure rules are
+tested, `findPlayerTarget` and its wiring in `PlayerBotAI` only compile, no bot has met a player yet). Milestones 2 onwards not started.
 
 ## What the engine already does
 
@@ -41,12 +42,35 @@ from its object id: *fighter* (attacks an enemy in range, about 1 bot in 4), *op
 - **Tests and traces.** `//bot pvp` (two bots face to face, a forced invasion) listed in `bot-commands.md`; one log line per PvP death or kill for the
   measure; a short chat reaction after a kill of a player (as the other reactions, in both languages).
 
+## Milestone 0 result: where PvP really is (read from `world_maps.xml` and `data/static_data/zones`, meshes in the install's `data/navmesh`)
+
+**The plan's first reading was wrong.** 152 of 161 maps carry the `PVP` flag, every open-world map included (Poeta, Verteron, Reshanta...), so
+`Creature.isInsidePvPZone` is true almost everywhere. The `ZoneType.PVP` polygons with `flags="0"` (the ones in Heiron and the others below) are not PvP
+grounds: `ZoneService` builds a `DisablePvPZoneInstance` from them, i.e. **safe zones** that switch PvP off inside. Only polygons with `flags="64"` are
+real PvP polygons, and those are the capitals' arena grounds and the arena instances. So the zone never limits a fight: **the race does**
+(`isPvPEnemyOf`). Two bots or a bot and a player meet as enemies wherever the two races share a map.
+
+| Map | Flagged PvP | Safe polygons (flags 0) | Real PvP polygons (flags 64) | Mesh | Races meet here |
+|---|---|---|---|---|---|
+| Reshanta 400010000 | yes | none | none | yes | yes (the Abyss) |
+| Kaldor 600090000, Levinshor 600100000 | yes | 6 and 4 | none | yes | to check (maps for both races, not verified) |
+| Belus, Aspida, Atanatos, Disillon (4000x0000) | yes | 4 each | none | no | to check (Abyss pieces, not verified) |
+| Heiron, Inggison, Beluslan, Gelkmaros | yes | 3, 2, 3, 2 | none | yes | no (one race's land) |
+| Other Elyos and Asmodian lands (Poeta to Cygnea, Ishalgen to Enshar) | yes | none | none | yes (not Griffoen, Habrok) | no |
+| Sanctum 110010000, Pandaemonium 120010000 | yes | none | 1 each | yes | no (one race's capital) |
+| Arenas 3003x0000 to 30110000 (instances) | yes | none | 6 to 12 each | no | own plan (decision 5) |
+
+Consequences. Off the shared maps a bot of the other race is no enemy, so `findPlayerTarget` returns nothing there with no zone test at all; its
+`isInsidePvPZone` guard only excludes the safe polygons. **Hunting grounds (milestone 3) are the shared maps with a mesh: Reshanta, Kaldor, Levinshor**;
+the four Abyss pieces need a mesh first. The refusal of the other side's islands matters for exactly these maps. The test of milestone 1 ("two bots in the
+Heiron polygon") cannot work: Heiron is Elyos only and its polygons are safe. Use Reshanta.
+
 ## Milestones
 
-0. **Check the ground.** List the PvP maps and zones from the data (maps flagged, polygons), say which have a mesh, and fix the hunting grounds.
+0. **Check the ground (done, see above).** List the PvP maps and zones from the data (maps flagged, polygons), say which have a mesh, and fix the hunting grounds.
 1. **See a player as a target** (smallest, testable alone). `BotTargetSelector.findPlayerTarget` returns an enemy `Player` in a PvP zone, picked with
    the same line-of-sight, height and level rules and the temperament above; used only when the bot stands in a PvP zone **and** the property is on. Test: two bots of different
-   races placed in the Heiron PvP polygon (`//bot squad` + a teleport), they fight; one player of the other race attacked in that polygon is answered.
+   races placed on Reshanta (`//bot squad` + a teleport; Heiron cannot serve, see milestone 0), they fight; one player of the other race attacked there is answered.
 2. **Defence.** A bot attacked by a player (any zone where `isEnemy` holds) fights back or flees below 30% life. Check what `BotAttackManager` does
    today with a `Player` attacker before writing anything; the duel path (milestone already built) is the likely seam.
 2b. **PvP combat behaviour** (see above), then the fairness rule and the player's own bots' help.

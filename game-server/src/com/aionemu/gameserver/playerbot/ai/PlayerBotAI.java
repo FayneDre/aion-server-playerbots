@@ -793,6 +793,9 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 						// refuses it in the same millisecond, and one bot went round three of them 1345 times in forty minutes, logged as "cannot reach"
 						Creature target = BotTargetSelector.findTarget(getOwner(), npc -> isIgnored(npc) || chase.isOffLeash(npc) || isShutOffFromAll(npc));
 						if (target == null)
+							target = BotTargetSelector.findPlayerTarget(getOwner(), BotTargetSelector.CHASE_RADIUS, false,
+								player -> isIgnored(player) || chase.isOffLeash(player) || isShutOffFromAll(player)); // null at once unless PvP is on
+						if (target == null)
 							roam();
 						else if (BotTargetRegistry.claim(target, getOwner())) { // another bot may have picked it in the same tick
 							// the buffs now, with the fight chosen and before the first blow, one a tick: that is when a player puts them up
