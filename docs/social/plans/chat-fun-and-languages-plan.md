@@ -1,6 +1,7 @@
 # Bot chat: fun and troll lines in Region, and a choice of French or English
 
-Status: built, unverified: the words are out of the code, the language is an option, and Region has jokes (22 exchanges and 45 lines to the room in each language); not yet heard in game. Left: the reactions to events (a death, a level up), and the tester's reading of the lines.
+Status: built, unverified: the words are out of the code, the language is an option, and Region has jokes (22 exchanges and 45 lines to the room in each language); not yet heard in game. Reactions to what happens are in too: a bot that dies near another gets a word (30 % of the deaths), a bot that reaches a level says "ding" (60 %) and another sometimes
+congratulates it, at most one reaction in 45 s for a map and a faction and only where a player of the faction reads Region. Left: reactions to a rare monster killed, and the tester's reading of the lines.
 
 Written on 31 October 2026 from the tester's feedback of 25 October ("add fun and troll discussions to the Region channel") and a second request: the
 bots' chat in **French or English, chosen in an options file**, on every channel. What exists is in [../how-it-works.md](../how-it-works.md) and
