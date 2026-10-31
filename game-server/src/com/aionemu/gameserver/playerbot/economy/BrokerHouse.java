@@ -142,7 +142,9 @@ public final class BrokerHouse {
 		for (BrokerItem listing : broker.getListings(race)) {
 			if (listing.getSellerId() != sellerId)
 				continue;
-			if (blacklist.contains(listing.getItemId()) && broker.withdrawForHouse(listing))
+			// withdrawn: what the blacklist names, and what a player never meets on the market (the monsters' gear, event and cash shop goods, test pieces) that an earlier pass listed
+			boolean unwanted = blacklist.contains(listing.getItemId()) || listing.getItem() != null && !BrokerHouseStock.isPlayerGoods(listing.getItem().getItemTemplate());
+			if (unwanted && broker.withdrawForHouse(listing))
 				withdrawn++;
 			else
 				own.add(listing);

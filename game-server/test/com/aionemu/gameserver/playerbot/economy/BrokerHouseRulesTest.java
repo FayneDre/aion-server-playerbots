@@ -39,6 +39,26 @@ class BrokerHouseRulesTest {
 		nonTradeable = data.getItemTemplate(4);
 	}
 
+	// what a player never meets on the market
+
+	private static ItemTemplate named(int id, String name, String cName, int price) throws Exception {
+		String xml = "<item_templates><item_template id=\"" + id + "\" name=\"" + name + "\" level=\"20\" price=\"" + price + "\" mask=\"2\""
+			+ (cName == null ? "" : " cName=\"" + cName + "\"") + "/></item_templates>";
+		return JAXBUtil.deserialize(new StringReader(xml), ItemData.class).getItemTemplate(id);
+	}
+
+	@Test
+	void theMonstersGearTheTestPiecesAndTheEventAndShopGoodsAreNotPlayerGoods() throws Exception {
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(10, "NPC Asmodian Abyss Sword", "npc_sword_mpabyss_01", 5)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(11, "Gold Sword", "npc_sword_n_r_01", 9000)), "the client name says it is a monster's");
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(12, "Practice Sword", "sword_d_n_c_01a", 5)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(13, "[Event] Greater Courage", null, 100)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(14, "[Stamp] Cat", null, 100)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(15, "Test Stone", null, 100)));
+		assertTrue(BrokerHouseStock.isPlayerGoods(named(16, "Manku's Sword", "sword_n_r2_22a", 60850)));
+		assertTrue(BrokerHouseStock.isPlayerGoods(named(17, "Ore", null, 5)), "a cheap material is a material, only gear priced at the placeholder is not a price");
+	}
+
 	// shares
 
 	@Test

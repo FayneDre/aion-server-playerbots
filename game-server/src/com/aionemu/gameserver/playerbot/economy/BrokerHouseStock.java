@@ -79,7 +79,7 @@ public final class BrokerHouseStock {
 	 *         the race, and priced (a guide range or a template price).
 	 */
 	static boolean isCandidate(ItemTemplate template, Race race, Set<Integer> blacklist) {
-		if (!template.isTradeable() || template.isKinah() || template.getItemGroup() == ItemGroup.QUEST || template.getExpireTime() > 0)
+		if (!template.isTradeable() || template.isKinah() || template.getItemGroup() == ItemGroup.QUEST || template.getExpireTime() > 0 || !isPlayerGoods(template))
 			return false;
 		if (blacklist.contains(template.getTemplateId()) || BotStoreGoods.isRemnantStone(template))
 			return false;
@@ -87,6 +87,27 @@ public final class BrokerHouseStock {
 		if (usable != null && usable != Race.PC_ALL && usable != race)
 			return false;
 		return BotStoreGoods.rangeOf(template) != null || template.getPrice() > 0;
+	}
+
+	/** Words that mark a template nobody plays with: a test, a practice or dummy piece, a sample, a debug item. */
+	private static final java.util.regex.Pattern NOT_FOR_PLAYERS = java.util.regex.Pattern.compile("\\b(test|practice|dummy|sample|debug|temp|temporary|event|gm)\\b",
+		java.util.regex.Pattern.CASE_INSENSITIVE);
+	/** The price the data gives a weapon or an armour piece nobody sells or buys: a placeholder, not a price. */
+	private static final int PLACEHOLDER_PRICE = 5;
+
+	/**
+	 * @return false for what the item data holds and a player never meets on the market: the monsters' own gear (named {@code NPC ...}, its client name {@code npc_...}), the cards, tickets, titles
+	 *         and event goods of the cash shop and the events (a name that opens with a bracket, {@code [Event]}, {@code [Stamp]}), test and practice pieces, and gear priced at the data's
+	 *         placeholder. Seen on 31 October in the broker: three NPC swords and a practice sword among the first of 63.
+	 */
+	static boolean isPlayerGoods(ItemTemplate template) {
+		String name = template.getName();
+		if (name == null || name.isBlank() || name.startsWith("[") || name.startsWith("NPC ") || NOT_FOR_PLAYERS.matcher(name).find())
+			return false;
+		String clientName = template.getCName();
+		if (clientName != null && clientName.regionMatches(true, 0, "npc_", 0, 4))
+			return false;
+		return !(template.isWeapon() || template.isArmor()) || template.getPrice() > PLACEHOLDER_PRICE;
 	}
 
 	/** Reads every item template once for the race. Costs a pass over the item data, so the caller keeps the result. */
