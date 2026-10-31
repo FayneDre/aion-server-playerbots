@@ -138,6 +138,7 @@ History, all built: [living-capitals-plan.md](capitals/history/living-capitals-p
 | [groups.md](social/groups.md) | Why groups work the way they do: following as the anchor, no initiative, assisting, slots, leaders. |
 | [plans/player-interactions-plan.md](social/plans/player-interactions-plan.md) | Trades with a companion, friends, duels. Built, unverified in game. |
 | [plans/cohort-plan.md](social/plans/cohort-plan.md) | Bots in an alliance. Not started. |
+| [plans/chat-fun-and-languages-plan.md](social/plans/chat-fun-and-languages-plan.md) | **Fun and troll lines in Region, and the bots' chat in French or English** (31 October). Not started: five decisions are the user's. |
 
 History: [chat-channels-plan.md](social/history/chat-channels-plan.md) (bots in the Region, Trade and Find Group channels).
 
