@@ -88,7 +88,7 @@ suivent le joueur s'il le fait."*
 
 - Known sources: steps aside (about 1000 per 30 minutes, nine in ten "planned, something spawned in the way"); a chase re-routed every 600 ms; a
   follower re-aimed every tick; turning on the spot between two plans; standing up and sitting down at a spot that is refused.
-- Needs a measure of its own first: per bot and minute, changes of heading over 90 degrees and legs under a metre, which would rank the sources.
+- **31 October: the measure is written** (`BotMotionStats`, one `Motion:` log line a minute; `measure.sh` has a "--- motion" section): reversals of heading over 120 degrees between two seconds, in a fight and out of one. Built, waits for a deploy and a first window. Before: per bot and minute, changes of heading over 90 degrees and legs under a metre, which would rank the sources.
   The user's eye stays the judge: a short list of what looks wrong, with `//bot note`, gives the cases.
 
 ## 6. Dungeons worse than the open world

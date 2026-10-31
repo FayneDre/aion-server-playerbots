@@ -623,6 +623,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			ticking = true;
 		}
 		try {
+			BotMotionStats.sample(getOwner(), isAttacking());
 			decide();
 		} catch (RuntimeException e) {
 			// The tick reschedules itself, so an exception thrown anywhere in it used to stop that bot thinking for the rest of its life, silently and
@@ -1854,6 +1855,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			death.cancel();
 		}
 		convalescence.forget(); // a bot that leaves the world mid sickness must not keep its ground reserved
+		BotMotionStats.forget(getOwner());
 		cancelCombat();
 		setStateIfNot(AIState.DESPAWNED);
 		log.info("Bot {} despawned", getOwner().getName());
