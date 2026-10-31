@@ -1,6 +1,6 @@
 # Mesh defects: what to correct for the meshes to be as exact as they can be
 
-Status: in progress: the islets (point 2) and the way into the Morheim cave (point 1) are corrected in code and measured offline; options A and C are written, off by default; none of it is deployed or seen in game.
+Status: in progress: options A and C are on by default and deployed since 31 October (section F); the Morheim cave is fixed by hand and checked by a tester; the long tail of cuts is dispersed and mostly not a mesh fault.
 
 Written on 30 October 2026 after a tester reported bots that cannot get past the entrance of a cave in Morheim (and said the same happens in a cave of
 Altgard). The planner proved the way shut, in 55 ms, so the fault is in the mesh and not in the search budget. Everything below is measured unless a
@@ -117,6 +117,19 @@ and flights; `-OpenWorld` does all): the path finder takes its step from `MapSlo
 
 None of them settles everything alone. The erosion is one of the causes, with the walls step (a rock such as `na_d_icerock_b_04d.cgf` at the Morheim entrance),
 cuts that are real cliffs (`210030000`) and authored no-walk volumes (`walk_obstacle4_08m`), which are meant.
+
+## F. What came of it (31 October)
+
+- **Deployed**: A (passages given back, minimum 4 cells) and C (decor spared) by default, `navmesh.ps1 -Plain` for the old meshes; the 26 open-world meshes were built again with their links; the islet fix; slope zones (Morheim's hill).
+- **Offline** (7 maps, glide links written for each): pairs of neighbouring monsters refused 154 today, 111 with C, 92 with A and C (-40 %); wall stretches 22 to 26. In game, 30 minute windows moved little:
+  day plans given up 347, 317, 347, 317; routes refused 528, 501, 659, 551. Variance is large and one report before is no band; the gain is in the places a tester walked, not in the totals.
+- **The cave of Morheim** took four notes: a rock lip shutting the mouth (`MapOpenings`), a floor the data does not hold between the mouth and the corridor (a patch of floor), the erosion shutting a one-cell
+  corridor and the patch once the cave was no stretch of its own (A only joins stretches that are cut off, never a short cut: boxes the erosion leaves alone). The routes are in `tools/golden-routes.txt`.
+- **What is left of the 75 journeys cut in the 13:25 window** (317 given up): dispersed (no goal more than 3 times), 18 over 400 m, mostly monsters on ground that is a real cliff, islets, or a bot standing in a pocket;
+  the islands of Kaldor (600090000: 7 981 islets, no chain of glides) are right. The replay overestimates: it glides in cities where a bot may not.
+- **The biggest lever found was not the mesh**: 131 "long" give-ups a window, 33 sampled and replayed: 8 found at 3 s, 17 at 6 s, 21 at 30 s (`levelledBudget` is the one that matters). Budgets doubled.
+- **Still open**: Altgard's cave (needs a note), the plateau of 210030000, 220070000's plateau (1654 2723), the "no ground" goal of 210050000 (1557 275), 20 spots without footing in 220070000, 220010000, the 45 dungeons
+  under the new erosion, options B, E and F, and the monsters that hit a bot from ground it cannot reach (`handleAttack` answers them whoever they are).
 
 ## D. What it takes to call a mesh better
 

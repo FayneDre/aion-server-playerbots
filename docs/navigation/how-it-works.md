@@ -42,15 +42,21 @@ planned waypoint walks the plan, since that is what being wedged inside geometry
   flights, it goes to the **route threads** (half the tick threads: four of eight here, `BotScheduler`) while the bot walks straight at its goal,
   and is picked up at the end of the current leg. A
   search waiting in the queue is never asked again for the same journey; one lost for a minute (`PLAN_LOST`) is.
-- **A\* over the fine grid** (`MAX_NODES` 150 000, `PLAN_BUDGET_MILLIS` 3 s), then string pulling to a handful of waypoints. A long route, or a short
+- **A\* over the fine grid** (`MAX_NODES` 150 000, `PLAN_BUDGET_MILLIS` 6 s), then string pulling to a handful of waypoints. A long route, or a short
   one the fine search gives up on, is planned in **two passes** ([history/long-walk-planner.md](history/long-walk-planner.md)): a rough route over 4 m
-  cells and the stretches of ground in each (1.5 s, `navmesh.levelledBudget`), then fine searches between guide points about 40 m apart. Glide links
+  cells and the stretches of ground in each (3 s, `navmesh.levelledBudget`), then fine searches between guide points about 40 m apart. Glide links
   are asked after any empty walk. All three budgets are system properties (`navmesh.planBudget`, `navmesh.levelledBudget`, `navmesh.glideBudget`).
 - **Proofs are cheaper than routes**: a question that only wants to know whether a place is reachable (a shop, an errand) searches 300 ms at most;
   spots round an anchor are asked as a walk capped at three times the distance plus 20 m. Searches over a second are logged with their ends
   (`Path search on map … took … ms`).
-- **On a loaded server the 3 s run out**: of 125 long journeys given up on 25 October, 57 were found offline at the same budget. Walking the stretches
+- **The budgets were doubled on 31 October** (3 s and 1.5 s before): of 33 sampled long journeys given up, 8 were found at the old ones and 17 at these. Before that, on a loaded server the 3 s ran out: of 125 long journeys given up on 25 October, 57 were found offline at the same budget. Walking the stretches
   already planned when time runs out is the next step ([backlog.md](backlog.md), point 3).
+
+- **What a bot is told, beyond the mesh** (31 October, in the code and not in the file): a monster the planner proved out of reach is told to the bots near (`BotRefusals`, as a day plan is);
+  a hunting ground proved out of reach from the bot's home is skipped (`BotPlaces.groundToWork`, not where flying is the rule); a group bot's place beside its leader must be a short walk
+  from the leader's ground, else it stands at the leader's (`PlayerBotAI.walkableFormationSpot`); a bot refused by a search that gave up while standing in a pocket counts as stuck (`BotRescue`);
+  where bots died in the last 15 minutes is ground every route keeps out of where there is another way (`DeathSpots`, a cost and not a wall).
+- **The mesh is checked against what a tester walked**: [verification-tools.md](verification-tools.md) (golden routes, the route lines of `//bot note`, walked ground).
 
 ## Walking
 
