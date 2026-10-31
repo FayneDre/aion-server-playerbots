@@ -647,7 +647,36 @@ public class BotPlaces {
 				continue;
 			within.add(ground.centre());
 		}
-		return within.isEmpty() ? null : within.get(Math.floorMod(pick, within.size()));
+		// from the one picked on, until one the mesh does not prove out of reach from where the bot lives: on 600090000 three residents of a platform were
+		// sent to grounds on others, 500 to 800 m off, and refused the way every time. A proof is remembered, so each pair costs one search at most.
+		for (int i = 0; i < Math.min(within.size(), GROUNDS_ASKED); i++) {
+			Vector3f ground = within.get(Math.floorMod(pick + i, within.size()));
+			if (!isShutOff(worldId, from, ground))
+				return ground;
+		}
+		return null;
+	}
+
+	/** How many hunting grounds one call asks the mesh about, at most: each one not yet known can cost a search on the thread that thinks for the bots. */
+	private static final int GROUNDS_ASKED = 2;
+	private static final Map<Integer, Set<String>> shutOff = new ConcurrentHashMap<>();
+
+	/** @return true if the mesh proved no walk joins the two spots; a search out of budget proves nothing, and only a proof is kept. */
+	private static boolean isShutOff(int worldId, Vector3f from, Vector3f ground) {
+		// where a body can fly the mesh's walk is not the whole of the ways, and a crossing is flown when the walk is refused
+		if (from == null || isFlownEverywhere(worldId) || !flyZonesOf(worldId, from).isEmpty() || !flyZonesOf(worldId, ground).isEmpty())
+			return false;
+		String key = Math.round(from.x) + " " + Math.round(from.y) + " " + Math.round(from.z) + " " + Math.round(ground.x) + " " + Math.round(ground.y) + " " + Math.round(ground.z);
+		Set<String> known = shutOff.computeIfAbsent(worldId, id -> ConcurrentHashMap.newKeySet());
+		if (known.contains(key))
+			return true;
+		// both on footing first: a home centre inside a house has none, and a search from it says no way to everything, which is no proof about the ground
+		NavmeshService mesh = NavmeshService.getInstance();
+		Vector3f standing = mesh.groundNear(worldId, from.x, from.y, from.z), landing = mesh.groundNear(worldId, ground.x, ground.y, ground.z);
+		if (standing == null || landing == null || mesh.isNotProvedOutOfReach(worldId, standing.x, standing.y, standing.z, landing.x, landing.y, landing.z))
+			return false;
+		known.add(key);
+		return true;
 	}
 
 	/**
