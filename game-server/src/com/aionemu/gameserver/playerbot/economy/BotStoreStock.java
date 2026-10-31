@@ -61,6 +61,8 @@ public final class BotStoreStock {
 	private static final int HIGH_STONES_FROM = 60;
 	/** One stones store in so many is wide, selling stones of every level from 10 to its keeper's plus ten (the tester asked for one or two a market). */
 	private static final int WIDE_ONE_IN = 4;
+	/** How many lines of the event scrolls a store holds at most. */
+	private static final int MOST_EVENT_LINES = 2;
 	/** How far under the keeper's level the food a dedicated food store sells goes, and how far over. */
 	private static final int FOOD_UNDER = 25, FOOD_OVER = 5;
 
@@ -175,6 +177,7 @@ public final class BotStoreStock {
 		if (pools.isEmpty())
 			return stocked;
 		int room = Math.min(lines, keeper.getInventory().getFreeSlots());
+		int eventLines = 0;
 		for (int attempt = 0; stocked.size() < room && attempt < room * 4; attempt++) {
 			Theme part = dedicated ? theme : drawPart(pools.keySet());
 			List<ItemTemplate> pool = pools.get(part);
@@ -185,6 +188,11 @@ public final class BotStoreStock {
 			};
 			if (template == null || stocked.contains(template.getTemplateId()))
 				continue;
+			if (BotStoreGoods.isEventScroll(template)) {
+				if (eventLines >= MOST_EVENT_LINES)
+					continue; // two lines of the thirty minute scrolls a store, no more: the tester's rule for them
+				eventLines++;
+			}
 			long count = countOf(template);
 			if (!dedicated)
 				count = Math.max(1, count / 4); // what a session left in the bag, not a merchant's stock: the guide's five silver medals

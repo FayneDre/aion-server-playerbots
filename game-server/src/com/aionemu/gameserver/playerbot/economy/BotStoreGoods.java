@@ -141,6 +141,11 @@ public final class BotStoreGoods {
 		return good != null && good.fromLevel() <= level;
 	}
 
+	/** @return true for one of the thirty minute event scrolls. */
+	static boolean isEventScroll(ItemTemplate template) {
+		return EVENT_SCROLL_IDS.containsKey(template.getTemplateId());
+	}
+
 	/** @return true for an event scroll that a keeper of that level stocks. */
 	static boolean isEventScrollFor(ItemTemplate template, int level) {
 		Good good = EVENT_SCROLL_IDS.get(template.getTemplateId());

@@ -41,7 +41,7 @@ public final class BotStores {
 	/** How many lines a store is stocked up to whenever it opens: the whole page the engine allows, the tester's wish of 29 October (it was 8). */
 	private static final int STOCKED_LINES = MAX_LINES;
 	/** The keeper of each map that holds the rare goods, so that a market always has a store with the All-Powerful stone, the evolution stone and the holy serum. */
-	private static final Map<Integer, Integer> rareKeeper = new ConcurrentHashMap<>();
+	private static final Map<String, Integer> rareKeeper = new ConcurrentHashMap<>();
 	/**
 	 * How often a store is renewed during a shift, and how much later a keeper of its own may come round to it: the tester asked for stores renewed
 	 * regularly, and every keeper on the hour would be every store of a market closing in the same second.
@@ -329,13 +329,15 @@ public final class BotStores {
 	private static boolean keepTheRareGoodsOnTheMap(Player keeper, Shelf shelf) {
 		if (keeper.getLevel() < BotStoreGoods.RARE_FROM_LEVEL)
 			return false;
-		Integer holder = rareKeeper.get(keeper.getWorldId());
+		// by map and side: a store of one side is nothing to the other's market
+		String market = keeper.getWorldId() + "/" + keeper.getRace();
+		Integer holder = rareKeeper.get(market);
 		if (holder != null && holder != keeper.getObjectId()) {
 			Player other = World.getInstance().getPlayer(holder);
 			if (other != null && other.isSpawned() && other.hasStore())
 				return false; // another store of the map holds them
 		}
-		rareKeeper.put(keeper.getWorldId(), keeper.getObjectId());
+		rareKeeper.put(market, keeper.getObjectId());
 		long now = System.currentTimeMillis();
 		boolean added = false;
 		for (int id : BotStoreGoods.rareIds()) {

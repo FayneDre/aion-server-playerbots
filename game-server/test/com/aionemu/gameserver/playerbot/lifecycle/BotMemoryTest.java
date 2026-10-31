@@ -54,7 +54,7 @@ class BotMemoryTest {
 		Map.entry("BotSquads.squads", "by team"), Map.entry("LeaderGlides.watches", "by the leader watched, not by the follower"),
 		Map.entry("BotPlaces.placesByMap", "by map"), Map.entry("BotPlaces.bandByMap", "by map"), Map.entry("BotPlaces.levelsByMap", "by map"),
 		Map.entry("BotPlaces.homesByMap", "by map"), Map.entry("BotPlaces.obelisksByMap", "by map"), Map.entry("BotPlaces.ownersByMap", "by map"),
-		Map.entry("BotRefusals.byMap", "by map"), Map.entry("BotPlaces.shutOff", "by map"), Map.entry("BotStores.rareKeeper", "by map"), Map.entry("DeathSpots.byMap", "by map"), Map.entry("WalkedTrails.known", "by map"), Map.entry("WalkedTrails.lastSeen", "real players only, one small entry each"), Map.entry("BotPlaces.visitSpots", "by map"), Map.entry("BotPlaces.unvisitedUntil", "by map"),
+		Map.entry("BotRefusals.byMap", "by map"), Map.entry("BotPlaces.shutOff", "by map"), Map.entry("DeathSpots.byMap", "by map"), Map.entry("WalkedTrails.known", "by map"), Map.entry("WalkedTrails.lastSeen", "real players only, one small entry each"), Map.entry("BotPlaces.visitSpots", "by map"), Map.entry("BotPlaces.unvisitedUntil", "by map"),
 		Map.entry("BotPresence.establishmentByMap", "by map"), Map.entry("BotPresence.civicByMap", "by map"),
 		Map.entry("BotPresence.fieldByMap", "by map"), Map.entry("BotPresence.busyFieldByMap", "by map"), Map.entry("BotPresence.townByMap", "by map"),
 		Map.entry("StrandedPlaces.byMap", "by map"), Map.entry("TownServices.byMap", "by map"));
