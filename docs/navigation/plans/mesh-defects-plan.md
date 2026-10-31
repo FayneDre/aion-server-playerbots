@@ -128,8 +128,7 @@ cuts that are real cliffs (`210030000`) and authored no-walk volumes (`walk_obst
 - **What is left of the 75 journeys cut in the 13:25 window** (317 given up): dispersed (no goal more than 3 times), 18 over 400 m, mostly monsters on ground that is a real cliff, islets, or a bot standing in a pocket;
   the islands of Kaldor (600090000: 7 981 islets, no chain of glides) are right. The replay overestimates: it glides in cities where a bot may not.
 - **The biggest lever found was not the mesh**: 131 "long" give-ups a window, 33 sampled and replayed: 8 found at 3 s, 17 at 6 s, 21 at 30 s (`levelledBudget` is the one that matters). Budgets doubled.
-- **Still open**: Altgard's cave (needs a note), the plateau of 210030000, 220070000's plateau (1654 2723), the "no ground" goal of 210050000 (1557 275), 20 spots without footing in 220070000, 220010000, the 45 dungeons
-  under the new erosion, options B, E and F, and the monsters that hit a bot from ground it cannot reach (`handleAttack` answers them whoever they are).
+- **Still open**: Altgard's cave (needs a note), the plateau of 210030000, 220070000's plateau (1654 2723), the "no ground" goal of 210050000 (1557 275), 20 spots without footing in 220070000, 220010000, options B, E and F, and the monsters that hit a bot from ground it cannot reach (`handleAttack` answers them whoever they are). The 45 dungeons are untouched by A and C: no erosion in an instance.
 
 ## D. What it takes to call a mesh better
 
