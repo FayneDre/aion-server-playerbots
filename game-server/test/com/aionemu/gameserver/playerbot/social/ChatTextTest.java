@@ -3,44 +3,62 @@ package com.aionemu.gameserver.playerbot.social;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
 class ChatTextTest {
 
-	/** Every kind of line the code draws, which each language's file must hold. */
-	private static final Set<String> SECTIONS = Set.of("sell.opening", "sell.closing", "advert", "group.opening", "group.closing", "role.tank", "role.healer", "role.support",
-		"role.damage", "greeting.morning", "greeting.afternoon", "greeting.evening", "greeting.night", "hunting", "progress", "chatter", "level.question", "level.answer",
-		"who.question", "who.answer", "hunt.question", "hunt.answer", "shout.advert", "shout.call");
+	private static final Object[] NONE = {};
+	private static final Object[] PLACE = { "Morheim" };
+	private static final Object[] GROUP = { "Tank 33", "tank", "Dark Poeta", 33 };
+
+	/** Every kind of line the code draws, with the arguments it draws it with: each language's file must hold all of them and every line must format with its own. */
+	private static final Map<String, Object[]> SHAPES = Map.ofEntries(Map.entry("sell.opening", NONE), Map.entry("sell.closing", PLACE),
+		Map.entry("advert", new Object[] { "Store", "Sanctum" }), Map.entry("group.opening", NONE), Map.entry("group.closing", NONE), Map.entry("role.tank", NONE),
+		Map.entry("role.healer", NONE), Map.entry("role.support", NONE), Map.entry("role.damage", NONE), Map.entry("greeting.morning", PLACE),
+		Map.entry("greeting.afternoon", PLACE), Map.entry("greeting.evening", PLACE), Map.entry("greeting.night", PLACE),
+		Map.entry("hunting", new Object[] { "wolf", "Morheim" }), Map.entry("progress", new Object[] { 40, 12 }), Map.entry("chatter", PLACE),
+		Map.entry("level.question", PLACE), Map.entry("level.answer", new Object[] { "Morheim", 10, 14 }), Map.entry("who.question", PLACE),
+		Map.entry("who.answer", PLACE), Map.entry("hunt.question", PLACE), Map.entry("hunt.answer", new Object[] { "wolf" }), Map.entry("group.ask", GROUP),
+		Map.entry("group.form", GROUP), Map.entry("sell.price", new Object[] { "25k" }), Map.entry("sell.price.each", new Object[] { "25k" }),
+		Map.entry("kinah.unit", NONE), Map.entry("kinah.decimal", NONE), Map.entry("test.line", new Object[] { "region", "Bob" }),
+		Map.entry("shout.advert", new Object[] { "Store" }), Map.entry("shout.call", new Object[] { "Cleric", 33 }));
+
+	/** A placeholder the code did not fill in. */
+	private static final Pattern LEFT = Pattern.compile("%(\\d\\$)?[sdn]");
 
 	@Test
-	void theFrenchFileHoldsEverySectionTheCodeDraws() {
-		ChatText french = ChatText.of("fr");
-
-		assertEquals(SECTIONS, french.names());
-		for (String section : SECTIONS)
-			assertFalse(french.section(section).isEmpty(), section);
+	void everyLanguageHoldsEverySectionTheCodeDraws() {
+		for (String language : List.of("fr", "en"))
+			assertEquals(SHAPES.keySet(), ChatText.of(language).names(), language);
 	}
 
 	@Test
-	void everyLineOfTheFrenchFileFormatsWithTheArgumentsItsCodeGives() {
-		ChatText french = ChatText.of("fr");
-		// places and creatures are text, the levels and the percent are numbers: a line must format with one of the shapes its code gives it
-		Object[][] shapes = { { "Morheim", "Morheim", "Morheim" }, { 12, 14, 16 }, { "Morheim", 12, 14 } };
-		for (String section : SECTIONS) {
-			for (String line : french.section(section)) {
-				boolean formats = false;
-				for (Object[] shape : shapes) {
+	void everyLineOfEveryLanguageFormatsWithTheArgumentsItsCodeGivesIt() {
+		for (String language : List.of("fr", "en")) {
+			ChatText text = ChatText.of(language);
+			for (Map.Entry<String, Object[]> section : SHAPES.entrySet()) {
+				for (String line : text.section(section.getKey())) {
+					String said;
 					try {
-						line.formatted(shape);
-						formats = true;
-						break;
+						said = line.formatted(section.getValue());
 					} catch (java.util.IllegalFormatException e) {
-						// another shape
+						throw new AssertionError(language + " [" + section.getKey() + "] " + line + ": " + e);
 					}
+					assertFalse(LEFT.matcher(said).find(), language + " [" + section.getKey() + "] a placeholder left: " + said);
 				}
-				assertTrue(formats, "[" + section + "] " + line);
+			}
+		}
+	}
+
+	@Test
+	void noLineIsLongerThanTheChatWindowTakes() {
+		for (String language : List.of("fr", "en")) {
+			for (String section : SHAPES.keySet()) {
+				for (String line : ChatText.of(language).section(section))
+					assertTrue(line.length() <= 110, language + " [" + section + "] " + line.length() + " characters: " + line);
 			}
 		}
 	}

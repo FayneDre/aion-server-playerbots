@@ -41,7 +41,6 @@ lfg
 Cherche groupe
 cherche grp
 Dispo pour
-Qui monte
 <empty>
 
 [group.closing]
@@ -149,6 +148,32 @@ des %s surtout
 Je tape des %s là
 Plein de %s
 %s, pas mal d'xp
+
+[group.ask]
+Qui monte %3$s ? %1$s %2$s
+
+[group.form]
+%1$s %2$s pour %3$s
+%3$s, %1$s %2$s
+%1$s (%2$s) %3$s
+%2$s %4$d pour %3$s
+
+[sell.price]
+%1$s
+à %1$s
+- %1$s
+
+[sell.price.each]
+%1$s/u
+
+[kinah.unit]
+kinah
+
+[kinah.decimal]
+,
+
+[test.line]
+Test du canal %1$s, %2$s au rapport.
 
 [role.tank]
 tank

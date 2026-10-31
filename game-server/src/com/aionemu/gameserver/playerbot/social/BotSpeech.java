@@ -11,10 +11,10 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.commons.utils.Rnd;
 import com.aionemu.gameserver.model.ChatType;
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_MESSAGE;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
-import com.aionemu.gameserver.playerbot.economy.BotStoreStock;
 import com.aionemu.gameserver.utils.PacketSendUtility;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.World;
@@ -42,10 +42,6 @@ public final class BotSpeech {
 	/** The lowest level that asks for a group: under it a character is still in the starting valleys. */
 	private static final int CALL_LEVEL = 20;
 
-	/** A store's name goes in each, as the store window shows it. */
-	private static final String[] ADVERTS = ChatText.of("fr").section("shout.advert").toArray(String[]::new);
-	/** The speaker's class and level go in each. Honest: a bot accepts any player's invitation ({@link BotRequests}). */
-	private static final String[] CALLS = ChatText.of("fr").section("shout.call").toArray(String[]::new);
 
 	/** Whether bots speak at all: {@code //bot speech off} silences them until the next restart or {@code on}. */
 	private static volatile boolean enabled = true;
@@ -73,7 +69,8 @@ public final class BotSpeech {
 			if (now >= nextAdvert.getOrDefault(worldId, 0L)) {
 				Player keeper = speaker(bots, listeners, now, bot -> bot.getStore() != null && !bot.getStore().getStoreMessage().isEmpty());
 				if (keeper != null) {
-					say(keeper, String.format(ADVERTS[Rnd.get(0, ADVERTS.length - 1)], keeper.getStore().getStoreMessage()), now);
+					List<String> adverts = BotChatLines.text().section("shout.advert"); // a store's name goes in each, as the store window shows it
+					say(keeper, String.format(adverts.get(Rnd.get(0, adverts.size() - 1)), keeper.getStore().getStoreMessage()), now);
 					nextAdvert.put(worldId, now + Rnd.get(ADVERT_SHORTEST, ADVERT_LONGEST) * 1000L);
 				}
 			}
@@ -81,7 +78,9 @@ public final class BotSpeech {
 				Player resident = speaker(bots, listeners, now,
 					bot -> bot.getStore() == null && bot.getLevel() >= CALL_LEVEL && !bot.isInTeam() && !bot.isDead());
 				if (resident != null) {
-					say(resident, String.format(CALLS[Rnd.get(0, CALLS.length - 1)], capitalised(BotStoreStock.frenchName(resident.getPlayerClass())),
+					ChatText text = BotChatLines.text();
+					List<String> calls = text.section("shout.call"); // the speaker's class and level go in each. Honest: a bot accepts any player's invitation ({@link BotRequests})
+					say(resident, String.format(calls.get(Rnd.get(0, calls.size() - 1)), capitalised(BotChatLines.className(text, resident.getPlayerClass())),
 						resident.getLevel()), now);
 					nextCall.put(worldId, now + Rnd.get(CALL_SHORTEST, CALL_LONGEST) * 1000L);
 				}
@@ -118,13 +117,21 @@ public final class BotSpeech {
 	}
 
 	/** @return What {@code //bot speech} answers, having switched speech on or off when asked to. */
-	public static String command(String setting) {
+	public static String command(String setting, String value) {
+		if (setting != null && setting.equalsIgnoreCase("lang")) {
+			try {
+				PlayerBotConfig.CHAT_LANGUAGE = ChatLanguage.valueOf(value == null ? "" : value.toUpperCase());
+			} catch (IllegalArgumentException e) {
+				return "Usage: //bot speech lang FR|EN (now " + BotChatLines.text().language().toUpperCase() + ")";
+			}
+			return "Bots speak " + PlayerBotConfig.CHAT_LANGUAGE + " until the next start; gameserver.playerbot.chat.language is what a start reads.";
+		}
 		if (setting != null) {
 			switch (setting.toLowerCase()) {
 				case "on" -> enabled = true;
 				case "off" -> enabled = false;
 				default -> {
-					return "Usage: //bot speech [on|off]";
+					return "Usage: //bot speech [on|off|lang FR|EN]";
 				}
 			}
 		}

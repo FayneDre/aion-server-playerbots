@@ -2,6 +2,7 @@ package com.aionemu.gameserver.configs.main;
 
 import com.aionemu.commons.configuration.Property;
 import com.aionemu.gameserver.playerbot.positioning.PositioningMode;
+import com.aionemu.gameserver.playerbot.social.ChatLanguage;
 
 /**
  * Settings for the playerbot system.
@@ -36,4 +37,8 @@ public class PlayerBotConfig {
 	 */
 	@Property(key = "gameserver.playerbot.ambient.flight", defaultValue = "true")
 	public static volatile boolean AMBIENT_FLIGHT;
+
+	/** The language of everything bots say in the chat channels and by shout: FR or EN. */
+	@Property(key = "gameserver.playerbot.chat.language", defaultValue = "FR")
+	public static volatile ChatLanguage CHAT_LANGUAGE;
 }

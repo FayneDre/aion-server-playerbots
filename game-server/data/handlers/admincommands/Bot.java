@@ -106,7 +106,7 @@ public class Bot extends AdminCommand {
 			case "note" -> sendInfo(admin, BotDiagnostics.note(argument(params, 1), admin));
 			case "version" -> sendInfo(admin, BotDiagnostics.version());
 			case "debug" -> sendInfo(admin, BotDiagnostics.debug(argument(params, 1)));
-			case "speech" -> sendInfo(admin, BotSpeech.command(argument(params, 1)));
+			case "speech" -> sendInfo(admin, BotSpeech.command(argument(params, 1), argument(params, 2)));
 			case "chat" -> sendInfo(admin, BotChat.command(admin, params.length > 1 ? params[1] : null, argument(params, 2)));
 			default -> sendInfo(admin);
 		}

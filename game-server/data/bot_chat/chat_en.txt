@@ -1,0 +1,208 @@
+# What the bots say in the chat channels, in English. The same sections as chat_fr.txt, written for an English-speaking channel and not translated word for word.
+# A [section] is a list; a line is one thing to say, %s and the like are filled in by the code. <empty> is the empty alternative (nothing said there).
+# A line is drawn at random: one written twice is twice as likely. Lines starting with # are comments.
+
+[sell.opening]
+WTS
+wts
+Selling
+selling
+WTS:
+For sale:
+Available:
+<empty>
+
+[sell.closing]
+<empty>
+<empty>
+pm
+PM
+pst
+pm me
+come by my store
+in store at %s
+store open at %s
+available now
+come take a look
+price negotiable in store
+first come first served
+
+[advert]
+Store "%s" open at %s, come take a look!
+%s: store open at %s, drop by!
+Open at %2$s: %1$s
+Store %s, prices drop every hour, at %s
+Stock restocked: %s, at %s
+Come see %s at %s, pm if you need anything
+
+[group.opening]
+LFG
+lfg
+LF1M
+Looking for group
+Available for
+<empty>
+
+[group.closing]
+<empty>
+<empty>
+inv pls
+pm
+invite me
+available right now
+pst
+free all evening
+I know the dungeon
+
+[greeting.morning]
+Good morning everyone
+morning %s
+Hi %s, have a great day all
+Good morning to all
+'morning
+Morning, good game everyone
+
+[greeting.afternoon]
+Hi %s
+hello everyone
+Good afternoon all
+Yo %s
+Hey
+hi
+
+[greeting.evening]
+Evening %s
+good evening everyone
+Have a nice evening all
+evening
+Hi folks, good evening
+Evening, good game
+
+[greeting.night]
+Still people up on %s?
+Good night to those going to sleep
+The night owls of %s, hi
+Quiet night on %s
+One more hour and then bed
+
+[hunting]
+Farming %s near %s
+%s respawn nicely near %s
+The %s of %s hit hard
+Big %s farm near %s
+More %s near %s...
+Who wants to help me with the %s near %s?
+
+[progress]
+Only %d%% left before %d
+%d%% to hit %d, almost there
+Another %d%% and I'm %d!
+Come on, %d%% before level %d
+
+[chatter]
+Good hunting everyone
+Good luck to everyone farming
+I like %s
+Good game to all on %s
+Hard farming on %s
+Love this zone
+Anyone got music to recommend?
+Coffee break, brb
+The respawn is slow around here
+gg to everyone who levelled today
+
+[level.question]
+What level is it around %s?
+What level are the mobs in %s?
+anyone know the lvl around %s?
+%s is for what level?
+
+[level.answer]
+Around %1$s it's %2$d-%3$d
+%2$d-%3$d around %1$s
+%2$d-%3$d
+I'm there, it's %2$d-%3$d
+%1$s? lvl %2$d to %3$d
+
+[who.question]
+Anyone around %s?
+Is there anyone near %s?
+anybody at %s?
+Who's around %s?
+
+[who.answer]
+Me, I'm around %s
+Yes, I'm there
+yeah me
+I'm at %s
+here near %s
+
+[hunt.question]
+What's farmable around %s?
+What is there to kill around %s?
+anyone know what's near %s?
+
+[hunt.answer]
+%s
+%s mostly
+Killing %s right now
+Lots of %s
+%s, decent xp
+
+[group.ask]
+Anyone running %3$s? %1$s %2$s
+
+[group.form]
+%1$s %2$s for %3$s
+%3$s, %1$s %2$s
+%1$s (%2$s) %3$s
+%2$s %4$d for %3$s
+
+[sell.price]
+%1$s
+for %1$s
+- %1$s
+
+[sell.price.each]
+%1$s ea
+
+[kinah.unit]
+kinah
+
+[kinah.decimal]
+.
+
+[test.line]
+Channel test %1$s, %2$s reporting in.
+
+[role.tank]
+tank
+tank
+MT
+
+[role.healer]
+heal
+healer
+healer
+
+[role.support]
+support
+buff
+buffer
+
+[role.damage]
+dps
+DPS
+DD
+
+[shout.advert]
+Selling %s, come see my store!
+%s: good prices, come take a look!
+Store open: %s. Unsold items drop in price every hour!
+%s, the stock was just renewed!
+
+[shout.call]
+%s %d looking for a group, invite me!
+%s level %d free to group, invite me!
+Who's making a group? %s %d in.
+%s %d looking for companions, invites welcome!

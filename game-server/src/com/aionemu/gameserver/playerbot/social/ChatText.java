@@ -71,6 +71,7 @@ final class ChatText {
 				throw new IllegalStateException("A line before any [section] in the " + language + " chat file: " + line);
 			current.add(line.equals(EMPTY_MARK) ? "" : line);
 		}
+		sections.replaceAll((name, lines) -> List.copyOf(lines));
 		return new ChatText(language, sections);
 	}
 
@@ -79,7 +80,11 @@ final class ChatText {
 		List<String> lines = sections.get(name);
 		if (lines == null || lines.isEmpty())
 			throw new IllegalStateException("The " + language + " chat file has no section [" + name + "]");
-		return List.copyOf(lines);
+		return lines;
+	}
+
+	String language() {
+		return language;
 	}
 
 	Set<String> names() {

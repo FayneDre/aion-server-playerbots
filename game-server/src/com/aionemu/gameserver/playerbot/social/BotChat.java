@@ -25,7 +25,6 @@ import com.aionemu.gameserver.model.templates.zone.ZoneTemplate;
 import com.aionemu.gameserver.model.trade.TradePSItem;
 import com.aionemu.gameserver.network.chatserver.ChatServer;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
-import com.aionemu.gameserver.playerbot.economy.BotStoreStock;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -332,7 +331,7 @@ public final class BotChat {
 		if (suited.isEmpty())
 			return;
 		Dungeon dungeon = suited.get(random.nextInt(suited.size()));
-		String line = BotChatLines.lookingForGroup(random, BotStoreStock.frenchName(seeker.getPlayerClass()), seeker.getLevel(), BotRole.of(seeker),
+		String line = BotChatLines.lookingForGroup(random, BotChatLines.className(seeker.getPlayerClass()), seeker.getLevel(), BotRole.of(seeker),
 			dungeon.name());
 		offeredAt.put(race + "/dungeon " + dungeon.worldId(), now);
 		spokeAt.put(seeker.getObjectId(), now);
@@ -431,7 +430,7 @@ public final class BotChat {
 				.orElse(null);
 		if (speaker == null)
 			return "No bot of your faction on this map.";
-		String line = text != null ? text : "Test du canal " + channelName.toLowerCase() + ", " + speaker.getName() + " au rapport.";
+		String line = text != null ? text : BotChatLines.testLine(channelName.toLowerCase(), speaker.getName());
 		if (!say(speaker, channel, line))
 			return "The chat server is not connected: set gameserver.chatserver.enable and the chat password.";
 		return speaker.getName() + " says in " + channelName.toLowerCase() + " (" + metaOf(channel, speaker) + "): " + line;

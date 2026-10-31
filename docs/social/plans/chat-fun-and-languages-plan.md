@@ -1,6 +1,6 @@
 # Bot chat: fun and troll lines in Region, and a choice of French or English
 
-Status: not started: the plan is written, the decisions at the end are the user's.
+Status: in progress: the words are out of the code and the language is an option (steps 0 to 2 of the order of work, built and tested, not yet heard in game); the fun and troll lines (steps 3 and 4) are next.
 
 Written on 31 October 2026 from the tester's feedback of 25 October ("add fun and troll discussions to the Region channel") and a second request: the
 bots' chat in **French or English, chosen in an options file**, on every channel. What exists is in [../how-it-works.md](../how-it-works.md) and
@@ -84,6 +84,16 @@ The tester asked for a channel that feels like players mucking about. What makes
 
 About two days of work, most of it writing lines. Nothing here touches movement, combat or the chat server's packet (`CM_BOT_MESSAGE` carries the text
 as it is, accents included, as it does today).
+
+## Decisions taken (31 October)
+
+1. Troll: **crude**, further than the first proposal. The limits that stay: no line names or targets a real player, no hate, no sexual content on a person, nothing real (brands, persons, politics).
+2. One language for the whole options file, as asked; no per-channel keys.
+3. Place and creature names in French when the language is FR: yes, wanted, as a second piece of work on a glossary.
+4. Bots joke about being bots: **yes**.
+5. No BOTH value.
+
+The original questions, for the reasons:
 
 ## Decisions for the user
 
