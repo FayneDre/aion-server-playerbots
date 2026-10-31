@@ -45,6 +45,7 @@ import com.aionemu.gameserver.playerbot.social.BotRequests;
 import com.aionemu.gameserver.playerbot.social.LeaderGlides;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.social.BotTransports;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.positioning.BotPosition;
 import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
@@ -458,12 +459,49 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			return true;
 		// the bot's own place beside the leader, not the leader's feet: everything downstream already works off the anchor, so this is all "stand
 		// with the group" needs to be
-		Vector3f spot = BotGroupManager.formationSpot(getOwner(), leader);
+		Vector3f spot = walkableFormationSpot(leader);
 		setAnchor(spot.getX(), spot.getY(), spot.getZ());
 		// left behind on foot: a player reads a running scroll, and a bot that has one does too
 		if (!leader.isFlying() && !BotFlight.isInTheAir(getOwner()) && PositionUtil.getDistance(getOwner(), leader) > RUNNING_SCROLL_DISTANCE)
 			BotPotionManager.tryScroll(getOwner(), StatEnum.SPEED);
 		return true;
+	}
+
+	/** What the formation spot was last asked about, and the answer: the walk is asked again when the spot has moved or this long has passed. */
+	private static final long FORMATION_RECHECK_MILLIS = 1000;
+	private static final float FORMATION_RECHECK_METRES = 1.5f;
+	private Vector3f formationAsked, formationAnswer;
+	private long formationAskedAt;
+
+	/**
+	 * The bot's place beside the leader, if a short walk joins it to the leader, and the leader's own ground otherwise.
+	 * <p>
+	 * The places are laid out round the leader in world directions and know nothing of what stands there: in the cave of Morheim a bot's place was 3 m from the player,
+	 * in the next chamber behind a wall of rock, a walk of 166 m round the hill, and the bot set off for it and stopped at the wall, "as near as it gets". Asked of the mesh
+	 * at most once a second and when the spot has moved, since a leader on the run moves it at every tick.
+	 */
+	private Vector3f walkableFormationSpot(Player leader) {
+		Vector3f raw = BotGroupManager.formationSpot(getOwner(), leader);
+		long now = System.currentTimeMillis();
+		if (formationAsked != null && formationAnswer != null && now - formationAskedAt < FORMATION_RECHECK_MILLIS
+			&& PositionUtil.getDistance(formationAsked.x, formationAsked.y, raw.x, raw.y) < FORMATION_RECHECK_METRES)
+			return formationAnswer;
+		formationAsked = raw;
+		formationAskedAt = now;
+		formationAnswer = raw;
+		if (leader.isFlying() || BotFlight.isInTheAir(getOwner()))
+			return raw; // the ground says nothing about where a body in the air stands
+		NavmeshService mesh = NavmeshService.getInstance();
+		int world = leader.getWorldId();
+		Vector3f leaderGround = mesh.groundNear(world, leader.getX(), leader.getY(), leader.getZ());
+		Vector3f ground = mesh.groundNear(world, raw.x, raw.y, leader.getZ());
+		if (leaderGround == null)
+			return raw;
+		if (ground == null || !mesh.canReachNearby(world, leaderGround.x, leaderGround.y, leaderGround.z, ground.x, ground.y, ground.z))
+			formationAnswer = new Vector3f(leader.getX(), leader.getY(), leader.getZ());
+		else
+			formationAnswer = ground;
+		return formationAnswer;
 	}
 
 	/**
