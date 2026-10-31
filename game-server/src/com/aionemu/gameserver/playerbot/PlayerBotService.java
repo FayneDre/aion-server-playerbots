@@ -16,6 +16,7 @@ import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.playerbot.combat.BotFlightCrew;
+import com.aionemu.gameserver.playerbot.economy.BrokerHouse;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotEnterWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
@@ -63,6 +64,7 @@ public class PlayerBotService {
 		// world and the fight through these, and fail loudly without them
 		NavmeshService.setHost(new BotNavmeshHost());
 		BotFlight.setCrew(new BotFlightCrew());
+		BrokerHouse.getInstance().start(); // the auction house does not need bots in the world, only its own seller characters
 		if (!PlayerBotConfig.ENABLE) {
 			log.info("Playerbots are disabled, so none is put back into the world. Their characters are left in the database untouched.");
 			return;
@@ -378,6 +380,8 @@ public class PlayerBotService {
 	Player loadAvailableBot(String characterName) {
 		if (World.getInstance().getPlayer(characterName) != null)
 			return null;
+		if (BotRoster.isHouseName(characterName))
+			return null; // the auction house's seller is never logged in, by the roster, the director or a command
 		return PlayerBotLoader.load(characterName);
 	}
 

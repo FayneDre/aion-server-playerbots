@@ -55,4 +55,65 @@ public class PlayerBotConfig {
 	/** The language of everything bots say in the chat channels and by shout: FR or EN. */
 	@Property(key = "gameserver.playerbot.chat.language", defaultValue = "FR")
 	public static volatile ChatLanguage CHAT_LANGUAGE;
+
+	/** Whether the server stocks the broker (the auction house, docs/capitals/plans/auction-house-plan.md). Read at startup. */
+	@Property(key = "gameserver.playerbot.broker.enable", defaultValue = "false")
+	public static boolean BROKER_ENABLE;
+
+	/** Listings the house keeps in each race's broker. */
+	@Property(key = "gameserver.playerbot.broker.size", defaultValue = "6000")
+	public static volatile int BROKER_SIZE;
+
+	/** Minutes between two passes of the house (settling, then topping each category up). */
+	@Property(key = "gameserver.playerbot.broker.interval", defaultValue = "15")
+	public static volatile int BROKER_INTERVAL_MINUTES;
+
+	/** Minutes over which an empty house is first filled, so that the start is not slowed. */
+	@Property(key = "gameserver.playerbot.broker.fill_minutes", defaultValue = "10")
+	public static volatile int BROKER_FILL_MINUTES;
+
+	/** Share of each category (names of the client's top level categories), as {@code NAME:weight} separated by semicolons. */
+	@Property(key = "gameserver.playerbot.broker.category_shares", defaultValue = "WEAPON:12;ARMOR:16;ACCESSORY:8;SKILL_RELATED:4;HOME_DECOR:1;FURNITURE:2;CRAFT:22;CONSUMABLES:30;OTHER:5")
+	public static String BROKER_CATEGORY_SHARES;
+
+	/** Share of each quality inside a category, as {@code NAME:weight} separated by semicolons. */
+	@Property(key = "gameserver.playerbot.broker.quality_shares", defaultValue = "COMMON:25;RARE:30;LEGEND:25;UNIQUE:12;EPIC:7;MYTHIC:1")
+	public static String BROKER_QUALITY_SHARES;
+
+	/** Template ids the house never lists and withdraws if it finds them listed, separated by commas. */
+	@Property(key = "gameserver.playerbot.broker.blacklist", defaultValue = "")
+	public static String BROKER_BLACKLIST;
+
+	/** Whether the house buys players' listings priced in range (needs the house itself to be enabled). */
+	@Property(key = "gameserver.playerbot.broker.buyer.enable", defaultValue = "true")
+	public static boolean BROKER_BUYER_ENABLE;
+
+	/** Seconds between two passes of the buyer. */
+	@Property(key = "gameserver.playerbot.broker.buyer.interval", defaultValue = "60")
+	public static volatile int BROKER_BUYER_INTERVAL_SECONDS;
+
+	/** The most listings one pass of the buyer buys. */
+	@Property(key = "gameserver.playerbot.broker.buyer.max_per_pass", defaultValue = "5")
+	public static volatile int BROKER_BUYER_MAX_PER_PASS;
+
+	/** A listing in range is bought after a random delay between these two numbers of minutes. */
+	@Property(key = "gameserver.playerbot.broker.buyer.min_delay", defaultValue = "1")
+	public static volatile int BROKER_BUYER_MIN_DELAY_MINUTES;
+
+	@Property(key = "gameserver.playerbot.broker.buyer.max_delay", defaultValue = "5")
+	public static volatile int BROKER_BUYER_MAX_DELAY_MINUTES;
+
+	/** How far over the top of the known range, in percent, a unit price may be and still be bought. */
+	@Property(key = "gameserver.playerbot.broker.buyer.tolerance", defaultValue = "5")
+	public static volatile int BROKER_BUYER_TOLERANCE_PERCENT;
+
+	/** Kinah the buyer spends in a day in all, on one seller, and on one kind of item. */
+	@Property(key = "gameserver.playerbot.broker.buyer.daily_kinah", defaultValue = "200000000")
+	public static volatile long BROKER_BUYER_DAILY_KINAH;
+
+	@Property(key = "gameserver.playerbot.broker.buyer.daily_kinah_per_player", defaultValue = "30000000")
+	public static volatile long BROKER_BUYER_DAILY_KINAH_PER_PLAYER;
+
+	@Property(key = "gameserver.playerbot.broker.buyer.daily_kinah_per_item", defaultValue = "50000000")
+	public static volatile long BROKER_BUYER_DAILY_KINAH_PER_ITEM;
 }

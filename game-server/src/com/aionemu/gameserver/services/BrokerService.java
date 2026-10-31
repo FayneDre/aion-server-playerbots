@@ -653,6 +653,32 @@ public class BrokerService {
 		return true;
 	}
 
+	/** @return A snapshot of the live listings of that race's broker, for the house's census and buyer (the maps themselves stay private). */
+	public List<BrokerItem> getListings(Race race) {
+		Map<Integer, BrokerItem> active = getRaceBrokerItems(race);
+		return active == null ? List.of() : new ArrayList<>(active.values());
+	}
+
+	/**
+	 * Takes one of a house's own live listings off the broker and destroys its item (a listing of a blacklisted template, say).
+	 *
+	 * @return false if the listing is not a live one of that race's broker.
+	 */
+	public boolean withdrawForHouse(BrokerItem listing) {
+		Race race = listing.getItemBrokerRace() == BrokerRace.ASMODIAN ? Race.ASMODIANS : Race.ELYOS;
+		Item item = listing.getItem();
+		synchronized (this) {
+			if (!isLive(getRaceBrokerItems(race), listing))
+				return false;
+			getRaceBrokerItems(race).remove(listing.getItemUniqueId());
+		}
+		listing.setPersistentState(PersistentState.DELETED);
+		if (item != null)
+			item.setPersistentState(PersistentState.DELETED);
+		saveManager.add(new BrokerOpSaveTask(listing, item, null, listing.getSellerId()));
+		return true;
+	}
+
 	static boolean isLive(Map<Integer, BrokerItem> active, BrokerItem listing) {
 		return active != null && active.get(listing.getItemUniqueId()) == listing && !listing.isSold() && !listing.isCanceled();
 	}

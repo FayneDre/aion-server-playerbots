@@ -1,6 +1,6 @@
 # Plan: an auction house stocked by the server (AHBot model)
 
-Status: in progress: milestones 0 and 1 built, unverified (the door's instance methods and its save tasks have not run against a database or a server; the pure steps are tested). Milestones 2 and after not started. Analysed on 31 October from the engine's `BrokerService`. Asked by the tester: a broker with items for sale, on the model of AzerothCore's AHBot.
+Status: in progress: milestones 0 to 4 and the buyer (milestone 6, decision 6) built, unverified: nothing has run against a database or a server, only the pure rules are tested. Next: milestone 5, a watch in game with the property on. Analysed on 31 October from the engine's `BrokerService`. Asked by the tester: a broker with items for sale, on the model of AzerothCore's AHBot.
 
 ## What AHBot does, and what we keep
 
@@ -54,12 +54,12 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
 
 0. **Read the data**: how many tradeable templates there are per mask and quality; which have a price (guide or template) and which would be guessed. A short census, as for the stores. **Done**, see below.
 1. **The door**: `BrokerService.registerForHouse`, house settling (`settleHouse`) and tested on the maps without a database. **Built**, see below.
-2. **The house characters**: created at first start on a reserved account, one per race, recorded so a restart finds them.
-3. **The seller**: a timer (every 15 minutes, property) that counts the house's listings per mask and tops each up to its share, with the price rule and stack ranges; first fill spread over
+2. **The house characters** (built): created at first start on a reserved account, one per race, recorded so a restart finds them.
+3. **The seller** (built): a timer (every 15 minutes, property) that counts the house's listings per mask and tops each up to its share, with the price rule and stack ranges; first fill spread over
    some minutes so startup is not slowed. Property `gameserver.playerbot.broker.enable` (false by default) and the targets.
-4. **Settling and relisting**: sold entries deleted, expired ones returned and relisted, an item removed when its template is on the blacklist.
+4. **Settling and relisting** (built): sold entries deleted, expired ones returned and relisted, an item removed when its template is on the blacklist.
 5. **Watch in game**: the tester opens the broker in both capitals: categories filled, prices believable, a purchase works, kinah and inventory right, `exchange.log` has the line.
-6. **The buyer**: the rules above, then a watch with the tester listing goods in range, above range, with no known price, and one far under the range.
+6. **The buyer** (built, unwatched): the rules above, then a watch with the tester listing goods in range, above range, with no known price, and one far under the range.
 7. **Measure**: heap before and after, tick cost of the pass, listings per category against the targets over a day; compare the broker's average prices with the guide's.
 
 ## Milestone 0: the census (31 October, 4.8 item data)
@@ -98,6 +98,26 @@ Added to `BrokerService` under a `playerbots` comment, the players' doors untouc
 - The pure steps (`listForHouse`, `collectHouseSettlement`, `isLive`) are package-private statics on the maps, tested by `BrokerHouseTest` without a database. **Not tested**: the save tasks,
   `BrokerDAO` behaviour with a deleted item and its stones, the seller notice, a real sale of a house listing by a player.
 
+## Milestones 2, 3, 4 and the buyer (built, unverified)
+
+All in `playerbot/economy/BrokerHouse*`, started from `PlayerBotService.onStartUp` and **off** unless `gameserver.playerbot.broker.enable = true` (every property is in `playerbot.properties`, read at startup).
+- **House characters** (`BrokerHouse.sellerOf`): one level 1 character per race, made on a reserved bot account by `PlayerBotCreationService.create` the first time it is needed, its id kept in
+  `server_variables` (`playerbot.house.ELYOS` / `.ASMODIANS`, read by `BotRoster.houseId`) and found again on restart. Never logged in: `PlayerBotService.loadAvailableBot` (the one door every
+  login goes through) refuses it, `BotRoster.isSomebodysOwn` is true for it, `BotCommands.delete` refuses it and `clear` skips it, `hasBotsOn` ignores it.
+- **Seller pass** (every `interval` minutes, 15): per race, settle (`settleHouse`), withdraw the blacklisted templates (`withdrawForHouse`, a second small door), count its listings per top level
+  category, split `size` (6000) by `category_shares` (largest remainder), list what each category lacks, round robin. Each listing: quality drawn by `quality_shares` among those the category has, template drawn
+  by the level curve (weight 6 at item level 20 to 55, 3 to 65, 2 under 20, 1 elsewhere; `BrokerHouseStock`), a stack (gear 1; goods up to 10, materials and consumables up to 100, skewed small), a price.
+  An empty house (under half of `size`) is filled in steps of 30 s, `size / (fill_minutes * 2)` listings a race a step. An expired or sold listing is replaced by a fresh draw, not relisted as it was.
+  Candidates: tradeable, in a client category, not quest, not a remnant stone, no expiry, race fit, a price known.
+- **Price** (`BrokerHousePricing`): market = middle of the guide's range, else `BotStorePricing.fairPrice`; for the crafting category (npc priced) the npc buy-back times a quality factor (2 common, 2.5, 3.5, 5, 7).
+  Ask = market x (0.85 to 1.15 drawn) x 1.05, never under the guide's low or the stores' floor, never over the guide's high.
+- **Buyer pass** (every `buyer.interval` seconds, 60; `BrokerHouseBuyer`): a player's listing whose price for one is at most the top of the known range + 5% (guide high, else the most the house itself would ask) is
+  due 1 to 5 minutes after it was first seen, then bought through `buyForHouse` (item destroyed), at most 5 a pass, under daily ceilings in kinah (200 M in all, 30 M per seller, 50 M per item kind; `BrokerHouseLedger`). No known price, no purchase; a house's
+  listing never. One log line per purchase: seller, item, count, price each, total.
+- **Memory**: when the first fill completes, one line gives the heap before and after (after a `System.gc()`), so bytes a listing is read from the log, other growth included.
+- **Not tested**: any database or server behaviour (character creation from the pass thread, the save tasks, the notice to a seller, a real sale), the sizes at 12000, the page time of a search.
+- **To decide**: the ceilings and the material factors are first guesses; the house characters' names ("Pontifexel", "Mercatorus") are placeholders.
+
 ## What can go wrong
 
 - **Memory**: thousands of `Item`s on a 2560 MB heap shared with 1000 bots. Mitigation: milestone 0 sizes it; the target is a property; measure at every step.
@@ -110,4 +130,4 @@ Added to `BrokerService` under a `playerbots` comment, the players' doors untouc
 
 ## First step proposed
 
-Milestone 2 (the house characters). Milestones 0 and 1 need no server restart, but the door is only exercised from milestone 3 on.
+Milestone 5: set `gameserver.playerbot.broker.enable = true` on a test server, restart, and watch the log (house characters created, fill steps, the memory line) and the broker window.

@@ -126,7 +126,7 @@ History: [flight-plan.md](flight/history/flight-plan.md) (take-off, landing, ter
 
 [how-it-works.md](capitals/how-it-works.md): **how the capitals live today**, the town day, private stores, visitors, speech.
 
-Plans: [plans/bot-store-consumables-plan.md](capitals/plans/bot-store-consumables-plan.md) (food, scrolls, higher stones and more lines in the bots' stores, from the tester's feedback of 29 October; not started). [plans/auction-house-plan.md](capitals/plans/auction-house-plan.md) (an auction house stocked by the server on the AHBot model; not started).
+Plans: [plans/bot-store-consumables-plan.md](capitals/plans/bot-store-consumables-plan.md) (food, scrolls, higher stones and more lines in the bots' stores, from the tester's feedback of 29 October; not started). [plans/auction-house-plan.md](capitals/plans/auction-house-plan.md) (an auction house stocked by the server on the AHBot model; seller, settling and buyer built, unverified).
 
 History, all built: [living-capitals-plan.md](capitals/history/living-capitals-plan.md) (the umbrella plan, milestones 0 to 5),
 [living-capitals-findings.md](capitals/history/living-capitals-findings.md) (Sanctum's bridges and rides, the crowd test, the town routine),
