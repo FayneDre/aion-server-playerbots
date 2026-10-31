@@ -30,6 +30,7 @@ import com.aionemu.gameserver.playerbot.movement.BotGeoHelper.Detour;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.navmesh.Avoidance;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
+import com.aionemu.gameserver.playerbot.navmesh.DeathSpots;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.taskmanager.tasks.MoveTaskManager;
 import com.aionemu.gameserver.utils.PacketSendUtility;
@@ -272,7 +273,8 @@ public class BotMoveController extends PlayerMoveController {
 	 */
 	public boolean moveToPoint(float x, float y, float z) {
 		// taken and cleared first, whatever happens below: it belongs to this call alone, and a leftover would keep the next journey out of ground it has no reason to
-		Avoidance avoid = nextAvoidance;
+		// the ground of the recent deaths of this map is kept out of by every journey where there is another way, whatever else the call asks to avoid
+		Avoidance avoid = DeathSpots.combined(nextAvoidance, DeathSpots.around(owner.getWorldId()));
 		nextAvoidance = Avoidance.NONE;
 		if (isRiding())
 			return true; // on a lift or a boat: on its way, and nothing walks it off
