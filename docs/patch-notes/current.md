@@ -80,11 +80,11 @@ sont activées par défaut : le PvP des bots et l'hôtel des ventes** (voir « �
   12 000 par race sans souci de mémoire ; le temps d'une recherche dans la fenêtre du courtier n'a pas été mesuré à cette taille.
 - **Maillages de navigation : à régénérer si les vôtres datent d'avant le 31/10.** Ils ne sont pas dans le dépôt, chaque installation les génère. Le générateur a changé depuis
   le 28/10 : érosion qui épargne les passages et les décors, la grotte de Morheim (ouverture, sol, couloir), le sol réellement marché et les routes de patrouille.
-  Un maillage plus ancien n'a pas la grotte de Morheim et garde des passages coupés. Serveur arrêté : `.	ools
-avmesh.ps1 -OpenWorld` (une vingtaine de minutes,
-  réécrit aussi les liens de plané et de vol), puis `.	oolspatrol-ground.ps1` (les routes de patrouille ; facultatif), puis `.	oolseck-golden-routes.ps1`
-  (les routes marchées par les testeurs doivent toutes passer). Une installation déjà régénérée le 31/10 n'a rien à refaire. Après toute reconstruction d'une carte,
-  ses liens sont à réécrire (`tools/links-rewrite.ps1`) ; `navmesh.ps1` les relit avant de construire.
+  Un maillage plus ancien n'a pas la grotte de Morheim et garde des passages coupés. Serveur arrêté : `.\tools\navmesh.ps1 -OpenWorld` (une vingtaine de minutes,
+  réécrit aussi les liens de plané et de vol), puis `.\tools\patrol-ground.ps1` (les routes de patrouille ; facultatif), puis `.\tools\check-golden-routes.ps1`
+  (les routes marchées par les testeurs doivent toutes passer ; celles de la jetée de Pandaemonium échouent encore, voir « Ce qui n'est pas réglé »). Une installation
+  déjà régénérée le 31/10 n'a rien à refaire. Après toute reconstruction d'une carte, ses liens sont à réécrire (`tools/links-rewrite.ps1`) ; `navmesh.ps1` les relit
+  avant de construire.
 
 ---
 
