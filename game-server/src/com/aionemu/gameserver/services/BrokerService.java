@@ -591,6 +591,94 @@ public class BrokerService {
 
 	}
 
+	// playerbots: the house's doors (docs/capitals/plans/auction-house-plan.md). The house is a seller that is not a player: no fee, no limit of 15 listings,
+	// nothing taken from an inventory or a purse. Everything below is only added; the players' doors above are untouched.
+
+	/**
+	 * Lists an item for a house seller, without a fee, a listing limit, or any inventory or kinah. The item is owned by the broker from here on.
+	 *
+	 * @return The listing, or null if the race has no broker.
+	 */
+	public BrokerItem registerForHouse(Race race, int sellerId, Item item, long price, boolean splittingAvailable) {
+		Map<Integer, BrokerItem> active = getRaceBrokerItems(race);
+		if (active == null)
+			return null;
+		BrokerItem listing;
+		synchronized (this) {
+			listing = listForHouse(active, race == Race.ASMODIANS ? BrokerRace.ASMODIAN : BrokerRace.ELYOS, sellerId, item, price, splittingAvailable);
+		}
+		saveManager.add(new BrokerOpSaveTask(listing, item, null, sellerId));
+		return listing;
+	}
+
+	/**
+	 * Deletes what a house seller has settled: its sold entries, the listings that expired, and the ones the engine already returned to its settled list.
+	 * Nobody collects for a house, so this is what keeps them from piling up in memory and in the table.
+	 *
+	 * @return The number of entries deleted.
+	 */
+	public int settleHouse(int sellerId) {
+		List<BrokerItem> deleted = new ArrayList<>();
+		synchronized (this) {
+			for (Race race : List.of(Race.ELYOS, Race.ASMODIANS))
+				deleted.addAll(collectHouseSettlement(getRaceBrokerItems(race), getRaceBrokerSettledItems(race), sellerId, System.currentTimeMillis()));
+		}
+		for (BrokerItem entry : deleted)
+			saveManager.add(new BrokerOpSaveTask(entry, entry.getItem(), null, sellerId));
+		return deleted.size();
+	}
+
+	/**
+	 * A house buys a player's listing: it becomes a sold entry the seller collects the kinah of as for any sale, and the item is destroyed. Nothing is
+	 * added to an inventory or taken from a purse on the house side.
+	 *
+	 * @return false if the listing is not a live one of that race's broker.
+	 */
+	public boolean buyForHouse(BrokerItem listing) {
+		Race race = listing.getItemBrokerRace() == BrokerRace.ASMODIAN ? Race.ASMODIANS : Race.ELYOS;
+		Item item = listing.getItem();
+		synchronized (this) {
+			if (!isLive(getRaceBrokerItems(race), listing))
+				return false;
+			getRaceBrokerItems(race).remove(listing.getItemUniqueId());
+			putToSettled(race, listing, true); // the seller is told and collects as for a sale to a player
+		}
+		if (item != null) {
+			item.setPersistentState(PersistentState.DELETED);
+			saveManager.add(new BrokerOpSaveTask(null, item, null, listing.getSellerId()));
+		}
+		if (LoggingConfig.LOG_BROKER_EXCHANGE)
+			log.info("House bought item {} (count: {}) from player: {} (total price: {})", listing.getItemId(), listing.getItemCount(),
+				PlayerService.getPlayerName(listing.getSellerId()), listing.getPrice() * listing.getItemCount());
+		return true;
+	}
+
+	static boolean isLive(Map<Integer, BrokerItem> active, BrokerItem listing) {
+		return active != null && active.get(listing.getItemUniqueId()) == listing && !listing.isSold() && !listing.isCanceled();
+	}
+
+	static BrokerItem listForHouse(Map<Integer, BrokerItem> active, BrokerRace race, int sellerId, Item item, long price, boolean splittingAvailable) {
+		item.setItemLocation(StorageType.BROKER.getId());
+		BrokerItem listing = new BrokerItem(item, price, sellerId, splittingAvailable && item.getItemTemplate().isStackable(), race);
+		active.put(listing.getItemUniqueId(), listing);
+		return listing;
+	}
+
+	/** Removes a seller's settled entries and expired listings from the maps and marks them, and their items, for deletion. */
+	static List<BrokerItem> collectHouseSettlement(Map<Integer, BrokerItem> active, Map<Integer, BrokerItem> settled, int sellerId, long now) {
+		List<BrokerItem> deleted = new ArrayList<>();
+		if (settled != null)
+			settled.values().removeIf(entry -> entry != null && entry.getSellerId() == sellerId && deleted.add(entry));
+		if (active != null)
+			active.values().removeIf(entry -> entry != null && entry.getSellerId() == sellerId && entry.getExpireTime().getTime() <= now && deleted.add(entry));
+		for (BrokerItem entry : deleted) {
+			entry.setPersistentState(PersistentState.DELETED);
+			if (entry.getItem() != null)
+				entry.getItem().setPersistentState(PersistentState.DELETED);
+		}
+		return deleted;
+	}
+
 	private void checkExpiredItems() {
 		long now = System.currentTimeMillis();
 		for (Race race : Arrays.asList(Race.ASMODIANS, Race.ELYOS)) {
