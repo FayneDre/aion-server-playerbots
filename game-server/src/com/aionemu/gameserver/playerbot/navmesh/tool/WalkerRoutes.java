@@ -37,6 +37,8 @@ final class WalkerRoutes {
 	/** A step's height may be off the ground by this much and still be a step on the ground, in metres. */
 	private static final float CLUSTER = 25f;
 	private static final int SHOWN = 40;
+	/** How far a step may be over the ground, in metres, for a floor to be written under it. */
+	private static final float ON_THE_GROUND = 1f;
 
 	private WalkerRoutes() {
 	}
@@ -81,7 +83,8 @@ final class WalkerRoutes {
 					continue;
 				failed++;
 				routeFailed = true;
-				if (write) { // kept once: the file is read as it is, and a step still cut after a build is asked again
+				// a step a body walks is at the height of the ground, as a creature a metre or more over it is not: a floor under its route would be a ceiling over the ground below it
+				if (write && onTheGround(mesh, a) && onTheGround(mesh, b)) {
 					int pieces = Math.max(1, (int) (across / 0.5f));
 					for (int piece = 0; piece <= pieces; piece++) {
 						float t = (float) piece / pieces;
@@ -109,6 +112,12 @@ final class WalkerRoutes {
 				Math.toDegrees(Math.atan2(rise, across)), mapId, example[0][0], example[0][1], example[0][2], example[1][0], example[1][1], example[1][2]);
 		}
 		return failed == 0 ? 0 : 1;
+	}
+
+	/** @return true if there is ground within {@value #ON_THE_GROUND} m of the step's height under it. */
+	private static boolean onTheGround(Navmesh mesh, float[] step) {
+		var ground = BotPathFinder.nearestGround(mesh, step[0], step[1], step[2]);
+		return ground != null && Math.abs(ground.getZ() - step[2]) <= ON_THE_GROUND;
 	}
 
 	/** @return the walker ids the spawn files of this map name. */
