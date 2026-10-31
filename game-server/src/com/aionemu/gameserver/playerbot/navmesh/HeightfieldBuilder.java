@@ -75,10 +75,18 @@ public class HeightfieldBuilder {
 	 */
 	private static final boolean DECOR_NOT_EDGE = Boolean.getBoolean("navmesh.decor");
 
-	/** @return true for the props (pr_ in the data: pots, barrels, fires, sacks) and the tents, which a body brushes past and which islands of ground are made round in a camp. */
+	/**
+	 * Names of props that are structure: a wall set, a pillar, a fence, a gate stand where a body must not go as much as the wall of a house does. Found on 31 October: with every
+	 * {@code pr_} counted as decor, Beluslan gained a stretch through {@code pr_d_wall_set_01a} and two through {@code pr_d_hoborpillar_01a}.
+	 */
+	private static final List<String> STRUCTURE = List.of("wall", "pillar", "column", "fence", "gate", "door", "bridge", "stair", "rail", "barricade", "cover", "palis", "post", "pole", "prison");
+
+	/** @return true for the props (pr_ in the data: pots, barrels, fires, sacks) that are not structure, and the tents, which a body brushes past and which islands of ground are made round in a camp. */
 	static boolean isDecor(String modelName) {
 		String file = modelName.substring(modelName.lastIndexOf('/') + 1);
-		return file.startsWith("pr_") || file.contains("tent");
+		if (file.contains("tent"))
+			return true;
+		return file.startsWith("pr_") && STRUCTURE.stream().noneMatch(file::contains);
 	}
 
 	public static Heightfield build(int mapId) throws IOException {
