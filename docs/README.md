@@ -65,7 +65,7 @@ History: [the-pool.md](population/history/the-pool.md) (what the pool cost to bu
 | [how-it-works.md](combat/how-it-works.md) | **How a bot fights today**: the two ticks, what it fights, how it picks a skill, where it stands, death. |
 | [combat-skills.md](combat/combat-skills.md) | How a bot chooses a skill: the in-fight order, upkeep versus abilities kept in hand, openers. |
 | [group-roles.md](combat/group-roles.md) | What tank, healer, support and damage change, only ever inside a group. |
-| [plans/wild-pvp-plan.md](combat/plans/wild-pvp-plan.md) | Wild PvP, rifts, arenas. Not started: analysis and decisions to take. |
+| [plans/wild-pvp-plan.md](combat/plans/wild-pvp-plan.md) | Wild PvP, rifts, arenas. Not started: decisions taken, milestones listed. |
 
 History: [combat-prototype.md](combat/history/combat-prototype.md) (milestones M0 to M7, kept for their lessons),
 [group-positioning-plan.md](combat/history/group-positioning-plan.md) (where each class stands in a group fight; bosses only by default).
