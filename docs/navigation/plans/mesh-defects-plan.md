@@ -106,7 +106,7 @@ The rule is by name and may be too wide (a `pr_` that is a fence); the figures b
 | A | 35 | 0 / 2 | 16 |
 | A + C | 33 | 0 / 3 | 15 |
 
-`tools/navmesh.ps1 -OpenWorld -KeepPassages -Decor` generates the meshes with both (the glide and flight links are written again after each mesh).
+`tools/navmesh.ps1 -OpenWorld` generates the meshes with both since 31 October (`-Plain` for the old erosion); the glide and flight links are written again after each mesh.
 
 **The way into the Morheim cave, found (31 October).** The entrance route does not take the ramp at 776 342: it goes south-west, west, **over a hill** (733 329 at z 531, 733 333 at z 538)
 and down to the cave (790 375). It exists only if the ground is climbed up to about 62 degrees (`-Dnavmesh.slope=62`; 55 gives a walk of 3 330 m for 66 m, 50 and 45 none), which for the whole map

@@ -72,9 +72,9 @@ public class HeightfieldBuilder {
 	}
 
 	/**
-	 * With {@code -Dnavmesh.decor=true}, the ground beside a small piece of decor is not shaved by the erosion as the ground beside a wall is. Off by default, for it is being measured.
+	 * The ground beside a small piece of decor is not shaved by the erosion as the ground beside a wall is; {@code -Dnavmesh.decor=false} shaves it. On since 31 October, see the plan.
 	 */
-	private static final boolean DECOR_NOT_EDGE = Boolean.getBoolean("navmesh.decor");
+	private static final boolean DECOR_NOT_EDGE = !"false".equalsIgnoreCase(System.getProperty("navmesh.decor"));
 
 	/**
 	 * Names of props that are structure: a wall set, a pillar, a fence, a gate stand where a body must not go as much as the wall of a house does. Found on 31 October: with every
@@ -172,9 +172,9 @@ public class HeightfieldBuilder {
 
 	/**
 	 * With a number above 0, the stretches of ground of at least that many cells that the erosion cut off from the rest are joined back by the shortest way through what it
-	 * took ({@link Heightfield#keepPassages}): {@code -Dnavmesh.keepPassages=4}. Off by default, for it is being measured.
+	 * took ({@link Heightfield#keepPassages}): 4 cells by default, 0 ({@code -Dnavmesh.keepPassages=0}) for the plain erosion. On since 31 October: 154 refused pairs of neighbouring monsters on 7 maps became 92 with it and the decor rule, wall stretches 22 to 26.
 	 */
-	private static final int KEEP_PASSAGES = Integer.getInteger("navmesh.keepPassages", 0);
+	private static final int KEEP_PASSAGES = Integer.getInteger("navmesh.keepPassages", 4);
 	/** How many cells of ground taken the way back may cross, 4 m by default. */
 	private static final int PASSAGE_REACH_CELLS = Integer.getInteger("navmesh.passageReach", 8);
 

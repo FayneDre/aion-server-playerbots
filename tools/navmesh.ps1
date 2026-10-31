@@ -28,12 +28,10 @@
     and the flight links of the maps that had some, since both are read off the ground the mesh describes. What a server needs after a change to the
     generator, as on 18 October (erosion per surface, so that routes keep a body's width from walls): about 25 minutes, with the game server stopped.
 
-.PARAMETER KeepPassages
-    Generates the open-world meshes with the passages the erosion shut given back (navmesh.keepPassages=4, see Heightfield.keepPassages). Read the plan
-    docs/navigation/plans/mesh-defects-plan.md first: the glide links of a mesh made so must be written for it, which -OpenWorld does.
-
-.PARAMETER Decor
-    Generates the open-world meshes without shaving the ground beside small decor (props and tents; navmesh.decor=true, see HeightfieldBuilder).
+.PARAMETER Plain
+    Generates the meshes as before 31 October: no passages given back to the erosion, the ground beside decor shaved like any other (navmesh.keepPassages=0,
+    navmesh.decor=false). The default gives the passages back and spares decor, see docs/navigation/plans/mesh-defects-plan.md; the glide links of a mesh
+    made either way must be written for it, which -OpenWorld does.
 
 .PARAMETER Force
     With -Dungeons: builds again the meshes that already exist. Without it they are left alone, since a dungeon takes minutes to build and one that is already good is not
@@ -59,8 +57,7 @@ param(
     [switch]$Glides,
     [switch]$Dungeons,
     [switch]$OpenWorld,
-    [switch]$KeepPassages,
-    [switch]$Decor,
+    [switch]$Plain,
     [switch]$Force
 )
 
@@ -76,8 +73,7 @@ if (-not $ServerRoot) {
 $gameServer = Join-Path $ServerRoot 'game-server'
 # options of the generator, for the open-world meshes (the instances are not eroded)
 $generatorOptions = @()
-if ($KeepPassages) { $generatorOptions += '-Dnavmesh.keepPassages=4' }
-if ($Decor) { $generatorOptions += '-Dnavmesh.decor=true' }
+if ($Plain) { $generatorOptions += '"-Dnavmesh.keepPassages=0"', '"-Dnavmesh.decor=false"' }
 if (-not (Test-Path (Join-Path $gameServer 'data/geo'))) {
     throw "No geo data found under $gameServer"
 }
