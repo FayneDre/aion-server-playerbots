@@ -14,21 +14,23 @@ Status: not started. Analysed on 31 October (roadmap point 8). Nothing of it is 
 - **Bot side.** `BotTargetSelector` only ever lists `Npc`s (`knownList.forEachNpc`), so a bot never picks a player. Defence against a player who
   attacks it is untested. `BotRequests` already answers duels.
 
-## Decisions to take first (a recommendation each)
+## Decisions taken (31 October)
 
-1. **How wild is it?** Recommendation: **opt-in by population, not by accident.** A property `gameserver.playerbot.pvp.enable` (false by default) switches
-   the whole feature; with it off nothing below runs and no bot ever crosses.
-2. **Who fights whom?** Recommendation: **bots hunt real players and bots of the other race, but never above their level + 3 and never a group of
-   more than two alone.** Player-vs-bot has the testers' interest; bot-vs-bot makes the world look alive without anyone online, but costs ticks.
-3. **Does a bot lose its progress?** Recommendation: death is the usual routine (convalescence); no extra penalty.
-4. **Rifts.** Recommendation: a bot **invades** only through a rift that is open, at a level inside its band, with a short stay (10 to 20 minutes)
-   then goes home by the same rift or its obelisk. Invasion is a daily-plan item with a low weight, so most bots never go.
-5. **Arenas.** Recommendation: **last**, as the roadmap says: they are instances (like the dungeons) and need their own meshes.
+1. **An option**: `gameserver.playerbot.pvp.enable`, false by default; off, nothing below runs.
+2. **Bots attack real players and bots of the other race**, never above their level + 3 and never beneath level - 6.
+3. **No extra death penalty**: the usual convalescence.
+4. **Rifts**: a bot goes through one as a daily-plan item chosen by few bots (low weight: most bots never go, a handful do each hour), for 10 to 20
+   minutes, then goes home. **On such an invasion the bot is there to fight**: it attacks every enemy it meets.
+5. **Arenas are a plan of their own**, not part of this one (instances, own meshes), written later.
+
+**Temperament, so that a bot does not attack on sight.** In a PvP zone met by chance (not an invasion), each bot has a fixed temperament drawn once
+from its object id: *fighter* (attacks an enemy in range, about 1 bot in 4), *opportunist* (attacks only a weakened or lower level enemy, 1 in 4),
+*peaceful* (never starts a fight, only defends itself, 1 in 2), as human players differ. Temperament is ignored during an invasion. The shares are a first guess to tune.
 
 ## Milestones
 
 1. **See a player as a target** (smallest, testable alone). `BotTargetSelector.findPlayerTarget` returns an enemy `Player` in a PvP zone, picked with
-   the same line-of-sight, height and level rules; used only when the bot stands in a PvP zone **and** the property is on. Test: two bots of different
+   the same line-of-sight, height and level rules and the temperament above; used only when the bot stands in a PvP zone **and** the property is on. Test: two bots of different
    races placed in the Heiron PvP polygon (`//bot squad` + a teleport), they fight; one player of the other race attacked in that polygon is answered.
 2. **Defence.** A bot attacked by a player (any zone where `isEnemy` holds) fights back or flees below 30% life. Check what `BotAttackManager` does
    today with a `Player` attacker before writing anything; the duel path (milestone already built) is the likely seam.
@@ -39,7 +41,7 @@ Status: not started. Analysed on 31 October (roadmap point 8). Nothing of it is 
    rift npc, call the same acceptance path as `RVController` (a bot has no window: ask for a direct method, like `BotRequests` does for a trade),
    hunt for the stay's length, return. The Abyss crossing refusal of the other side's islands stays as it is; only this item lifts it, for its own journey.
 5. **Measure.** Same windows as the other work: deaths per hour with the feature on and off, bots in PvP zones, kills of real players, journeys given up.
-6. **Arenas.** Out of this plan: opened separately once the dungeons' instance meshes show the way.
+6. **Arenas.** Out of this plan, own document later.
 
 ## What can go wrong
 
