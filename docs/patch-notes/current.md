@@ -6,6 +6,82 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-10-31 — 31/10/2026
+
+Révision `d840fec`, celle que `//bot version` affiche. **Un gros lot : 104 commits depuis le 28/10 (l'hôtel des ventes rempli par le serveur, le PvP des bots,
+les planés pour le plaisir, beaucoup de navigation).** Aucun SQL à passer, aucun maillage à régénérer, aucun fichier de données qui change. **Deux options
+sont activées par défaut : le PvP des bots et l'hôtel des ventes** (voir « À faire » pour les couper).
+
+**Ce qui change pour les joueurs et les testeurs**
+- **L'hôtel des ventes n'est plus vide.** Deux personnages « maison » (`BotSellerElyos`, `BotSellerAsmo`, jamais connectés) y vendent 6 000 annonces par race,
+  réparties par catégorie, qualité et niveau (surtout 20 à 55), à des prix autour du marché (± 15 %, jamais sous le plancher). **Plus d'objets de PNJ, de test,
+  d'événement, de boutique ni de carte** : tout nom qui commence par un crochet, par « NPC » ou qui contient test, practice, dummy, event, etc. est écarté,
+  et les annonces de ce genre déjà en place ont été retirées au redémarrage.
+- **L'hôtel achète vos annonces** quand leur prix est dans la fourchette connue (au plus le haut de la fourchette + 5 %), **en 1 à 5 minutes**, sans jamais
+  deviner le prix d'un objet : pas de prix connu, pas d'achat. Plafonds par jour : 200 M de kinah en tout, 30 M par vendeur, 50 M par type d'objet. L'objet
+  acheté est détruit quand vous récupérez la vente. Vous touchez le kinah comme pour n'importe quelle vente.
+- **PvP des bots.** Des bots de l'autre race peuvent vous attaquer (et attaquer vos bots) là où le jeu vous rend ennemis, par exemple sur Reshanta. Pas
+  systématiquement : chaque bot a un tempérament fixe, **combattant (1 sur 4), opportuniste (1 sur 4, n'attaque qu'un joueur blessé ou de niveau
+  inférieur) ou pacifique (1 sur 2, ne commence jamais un combat)**. Jamais plus de 3 niveaux au-dessus d'eux, jamais plus de 6 en dessous, et jamais plus de
+  deux bots sur un joueur seul. Un bot attaqué par un joueur riposte, utilise une compétence défensive ou une potion, et **fuit sous 30 % de vie** (50 % à
+  deux adversaires). Un bot de votre groupe vous aide quand un ennemi vous attaque. **Un joueur qui tue un bot reçoit les récompenses normales du jeu**
+  (points d'abysse, primes, quêtes). Après un meurtre, le bot peut dire une phrase en Région.
+- **Boutiques des bots** : de la nourriture, des parchemins de vitesse (5 minutes et 1 heure), des parchemins d'événement de 30 minutes (que le jeu
+  n'autorise pas à l'échange, une exception pour les bots), des pierres 60 et 70 chez la plupart ; une page de 10 lignes ; **les biens rares (pierre
+  toute-puissante, pierre d'évolution, sérum sacré) sont toujours dans une boutique de la carte**.
+- **Le chat des bots** : des blagues et des échanges dans Région, des réactions (un bot meurt, passe un niveau, félicite), et **une option de langue, français
+  ou anglais, pour tous les canaux** (`gameserver.playerbot.chat.language`, ou `//bot speech lang FR|EN` jusqu'au prochain démarrage).
+- **Planés pour le plaisir** : un bot qui flâne près de vous, sur un rebord de 8 à 40 m, plane parfois vers le sol en dessous (une fois toutes les vingt
+  minutes environ). Jamais en chasse, en groupe, sous 70 % de vie ni en ville.
+
+**Ce qui change pour les bots**
+- **Bots dans un mur ou sur un îlot** (Pandaemonium, la jetée) : un bot dont le chez-soi est un îlot de sol reçoit un autre chez-soi tout de suite ; un bot sur un
+  sol que la marche ne joint pas à son chez-soi est replacé chez lui dès le deuxième refus, même sous les yeux d'un joueur.
+- **Moins de morts inutiles** : les boutiques où trois bots sont morts en quinze minutes ne sont plus visitées (55 morts en une demi-heure vers une boutique de
+  la forteresse de Morheim), et les lieux de mort sont évités par les routes pendant quinze minutes.
+- **Longs trajets** : budgets de recherche doublés, trajets partiels marchés, terrains de chasse hors d'atteinte écartés.
+- **La grotte de Morheim** marche (entrée, couloir, sortie) ; **un bot assis ne glisse plus** avant de courir.
+- **Mesures de navigation (31/10), même fenêtre de 30 minutes, 13h25 puis 22h00** : plans abandonnés 317 → 201, routes refusées 551 → 306, morts 275 → 214,
+  téléportations de secours 38 → 23. Ces chiffres varient d'une fenêtre à l'autre (jusqu'à 30 %) : à lire comme une tendance.
+- **Nouvelles lignes de journal** : `Motion:` (une par minute : demi-tours des bots par cause), `PVP KILL` (une par meurtre qui touche un bot), « Broker house »
+  (une par passe de l'hôtel et par achat).
+- **Nouveaux outils** (pour qui lit le dépôt) : `NavmeshTool <carte> glidegain | ledges | steps | walkers`, les routes de référence (`tools/golden-routes.txt`,
+  dont la jetée de Pandaemonium), le sol réellement marché (un point toutes les 0,5 s).
+
+**Ce qui n'est pas réglé** (à ne pas signaler : c'est connu)
+- **La jetée des dirigeables de Pandaemonium** : Toronil et Eriunik sont séparés du reste par une marche de 1 à 2 m (une rampe à la main reste à poser).
+- **La grotte d'Altgard** et **l'entrée du temple du feu de Morheim** : même cause (des marches de 2 m), en attente de vos notes aux deux bouts du passage.
+- **L'hôtel** : quelques anciens objets (« Rank 8 Asmodian Sword », des armes d'une version passée) peuvent encore y être ; **les plafonds de l'acheteur et les
+  prix des matériaux sont des premières valeurs**, à corriger sur ce que vous voyez.
+- **PvP** : pas de rotation de combat propre (étourdissement, immunité, fuite en kite) ; un bot en groupe ne fuit jamais un joueur ; ni terrains de chasse PvP ni
+  invasions par les failles pour l'instant.
+
+**À tester**
+- **L'hôtel** : ouvrir le courtier dans une capitale, parcourir une catégorie (plus d'objets « NPC », de test ni de carte ?), acheter, et mettre un objet en vente
+  dans la fourchette de prix pour voir la maison l'acheter en moins de 5 minutes.
+- **Le PvP** : sur Reshanta, croiser des bots de l'autre race (certains attaquent, d'autres non), se faire attaquer et voir le bot fuir quand il est bas ;
+  `//bot pvp <bot1> <bot2>` lance un combat entre deux bots de races différentes (même carte, moins de 60 m, en vue).
+- **Les planés** : rester près d'un bot qui flâne au bord d'un relief ; il plane de lui-même, sans heurter un mur ni atterrir chez des monstres.
+- **Pandaemonium** : plus de bot dans un mur autour de la jetée ; un bot assis se lève sans glisser.
+- **Les boutiques** : nourriture, parchemins, pierres, les biens rares ; les lignes de chat dans Région, Commerce et Recherche de groupe, en français.
+- Tout ce qui cloche : `//bot note <texte>` près du bot.
+
+**À faire (mise à jour)**
+- Rien de nouveau dans la base : le serveur crée lui-même les deux personnages maison (un par race, sur un compte réservé aux bots) au premier démarrage
+  de l'hôtel, et enregistre leurs numéros dans `server_variables`. **Ne pas les supprimer** (leurs annonces disparaîtraient avec eux).
+- `.\tools\deploy.ps1 -Restart`. Le fichier de réglages du dépôt a de nouvelles clés dans `playerbot.properties` ; un fichier installé qui ne les a pas utilise
+  les valeurs par défaut du code (PvP et hôtel **activés**). Pour les couper, ajouter à la main dans le fichier installé :
+  ```
+  gameserver.playerbot.pvp.enable = false
+  gameserver.playerbot.broker.enable = false
+  ```
+  Les autres clés (`gameserver.playerbot.broker.*`, `...ambient.glide`, `...chat.language`) sont décrites avec leurs valeurs dans le fichier du dépôt.
+- La mémoire de l'hôtel : environ 300 octets par annonce (6 000 par race : 4 Mo), mesurés par `jcmd <pid> GC.class_histogram`. `broker.size` monte jusqu'à
+  12 000 par race sans souci de mémoire ; le temps d'une recherche dans la fenêtre du courtier n'a pas été mesuré à cette taille.
+- Aucun maillage à régénérer. Si vous reconstruisez un maillage, les liens (plané, vol, monture) sont à réécrire après (`tools/links-rewrite.ps1`).
+
+---
+
 ## patch-2026-10-28 — 28/10/2026
 
 Révision `ed3400a`, celle que `//bot version` affiche. **Une mise à jour à ne pas faire à la légère : elle fusionne 69 corrections du dépôt d'origine
@@ -98,103 +174,5 @@ relancer le SQL à la main : le registre sait ce qui est passé. Une base dont l
 
 ---
 
-## patch-2026-10-25-2 — 25/10/2026
-
-Révision `42e6876`, celle que `//bot version` affiche. Les retours du 25/10 : les soins du clerc, les bots invités de loin, les pierres de
-puissance, les ailes, un clerc qui semblait se téléporter, le repos dans la lave. **Aucun maillage à régénérer, aucun changement de base ni de
-configuration, le serveur de chat ne change pas.** Si les liens de vol plané du patch précédent n'ont pas encore été écrits, le faire d'abord.
-
-**Précision sur le chat (patch du 24/10)** : les deux réglages peuvent aussi bien se mettre dans `game-server/config/mygs.properties` que
-directement dans `config/main/gameserver.properties` (`gameserver.chatserver.enable`) et `config/network/network.properties`
-(`gameserver.network.chat.password`) : le serveur lit ces fichiers, puis `mygs.properties` par-dessus.
-
-**Amélioré**
-- **Clerc, seuils de soin corrigés d'après le retour du testeur** : le seuil le plus bas passe en premier. Tank sous 30 % : Éclair de guérison
-  (canalisation, auparavant interdite) ; sous 50 % : L'éclair de la reprise ; sous 60 % : Cure radieuse (pas si un monstre frappe le clerc).
-  Deux membres blessés : Splendeur curative sous 30 %, Splendeur de la récupération sous 50 %, Vent de guérison sous 60 %, avant le soin du tank
-  tant qu'il garde 50 %. Un clerc sous 70 % se soigne par un soin de zone. Le salut en groupe avant 31 avec le mana sous 20 %. Seul, L'éclair de
-  la reprise sur soi sous 30 %.
-- **Lumière de rajeunissement** : posée sur le templier dès le début du combat et relancée à l'expiration. Elle ne l'était jamais : elle
-  attendait que le tank passe sous 95 %.
-- **Un bot qui accepte une invitation à plus de 50 m (ou sur une autre carte) est téléporté à côté du joueur**, et rentre chez lui quand il
-  quitte le groupe. Pas pour une recrue, déjà amenée, ni en instance, ni pour un compagnon (il reste avec son propriétaire).
-- **Pierres de puissance** : les bots achètent celles des marchands avec leurs kinahs (1000, ou 200 si la bourse est légère), les équipent
-  (les deux emplacements avec une arme à deux mains ou deux armes) et activent le mode en combat. Les marchands s'arrêtent au niveau 50 : au-delà,
-  c'est la Premium.
-- **Ailes** : les bots portent à partir du niveau 30 les ailes que les marchands vendent contre des kinahs (niveaux 30, 40 et 50, de leur
-  faction), jamais celles d'une quête, d'une instance, d'une récompense ou des Abysses. Données, pas achetées. Changées en montant de niveau.
-
-**Corrigé**
-- **Un clerc semblait se téléporter devant le monstre mort** : le client arrête un personnage qui lance un sort, et le serveur reprenait la
-  marche ensuite sans le redire. Le mouvement est maintenant renvoyé après chaque sort. C'est l'explication qui colle au retour, pas une cause vue.
-- **Un bot ne se repose plus dans la lave** (ou sur tout sol qui fait des dégâts) : il marche d'abord jusqu'au sol sain le plus proche.
-
-**À tester**
-- Clerc en groupe avec un templier : Lumière de rajeunissement dès le début, Éclair de guérison qui part bien au bout de la canalisation, plus de
-  « saut » à la fin des combats.
-- Inviter un bot à plus de 50 m : il doit apparaître à côté de vous, puis rentrer chez lui une fois sorti du groupe.
-- Ailes visibles sur les bots de niveau 30 et plus ; arme qui brille et pierres qui diminuent en combat.
-- Marais de soufre (Theobomos) : un bot qui combat les pierres de lave doit sortir de la lave avant de s'asseoir.
-
-**À faire sur chaque serveur de test**
-1. `.\tools\stop-server.ps1`, puis `git pull`.
-2. `.\tools\deploy.ps1 -Restart`.
-3. Au démarrage, quelques centaines de bots mettent leurs ailes (« wears new wings » dans le log) et beaucoup partent acheter leurs pierres :
-   les trajets vers les marchands montent les dix premières minutes, puis redescendent.
-
----
-
-## patch-2026-10-25 — 25/10/2026
-
-Révision `d91cda5`, celle que `//bot version` affiche. La navigation des bots, mesurée toute la journée avec un joueur en jeu : moins de trajets
-abandonnés, des bots qui ne se figent plus, moins de mémoire. **Aucun maillage à régénérer, aucun changement de base ni de configuration, le
-serveur de chat ne change pas.** Mais **les liens de vol plané du monde ouvert sont à écrire une fois** (voir « À faire »).
-
-**Action requise : les liens de vol plané du monde ouvert**
-
-Les fichiers `.glide` des cartes du monde ouvert avaient été effacés par la régénération des maillages du 18 octobre, et ne sont pas dans le dépôt
-(ils sont produits sur chaque serveur). Sans eux, les bots ne savent pas descendre d'une falaise ou d'une galerie en planant, et beaucoup de leurs
-trajets échouent (capitales, Reshanta, Inggison, Enshar). Serveur arrêté, une seule fois, depuis le dépôt :
-`.\tools\navmesh.ps1 110010000,120010000,120020000,120080000,210010000,210020000,210030000,210040000,210050000,210060000,210070000,210090000,220010000,220020000,220030000,220040000,220050000,220070000,220080000,220100000,400010000,600010000,600090000,600100000 -Glides`
-Compter un moment (17 Mo de liens au total). Le maillage lui-même n'est pas touché.
-
-**Amélioré**
-- **Les bots ne se figent plus en pleine action.** Certaines vérifications (« ce point près du village est-il atteignable ? », « ce marchand
-  est-il accessible ? ») tournaient sur les fils qui font agir les bots et prenaient jusqu'à 4 s, figeant une centaine de bots à chaque fois :
-  environ 960 s par demi-heure, contre quelques secondes maintenant.
-- **Moins de trajets abandonnés** : 345 à 148 par demi-heure sur l'ensemble des cartes, plans de journée abandonnés 621 à 475.
-  - Dans **Sanctum et Pandaemonium**, la recherche ne prend plus la galerie ou le pont au-dessus du bot pour son étage (68 à 32 abandons).
-  - À **Reshanta**, les recherches ne s'épuisent plus à comparer chaque atterrissage à 1 500 monstres (29 à 13).
-  - Un bot ne retourne plus sans cesse vers un point de flânerie qui lui a été refusé, et un court trajet raté n'est plus recherché trois fois
-    depuis le même endroit.
-- **Les bots perdus sont ramenés** : un bot dont tous les trajets échouent depuis le même endroit (4 destinations différentes en 5 minutes)
-  rentre chez lui. Jamais sous les yeux d'un joueur : il fait alors un pas de côté ou change d'activité.
-- **Villages sans issue** : un village dont les habitants restent coincés à la porte (3 fois en 10 minutes) n'est plus peuplé, ses habitants
-  sont relogés ailleurs sur la même carte. Il redevient habitable dès que le maillage ou les liens de la carte changent.
-- **Un bot coincé à côté d'un joueur** (autour d'un obélisque, derrière une barrière) fait un pas jusqu'à 12 m au lieu de rester sur place.
-- **Mémoire** : la recherche de chemin est plus légère (environ 200 Mo de moins mesurés juste après un démarrage, sans plus de recul).
-
-**Corrigé**
-- Le journal des avertissements ne liste plus chaque bot comme « joueur sans connexion » toutes les demi-heures.
-
-**Connu, pas encore corrigé**
-- À Reshanta, une dizaine de trajets par demi-heure vers des îlots plus hauts ou plus bas échouent encore : le vol direct est refusé au-delà de
-  300 m ou sous un toit. Inggison est désormais la carte qui abandonne le plus de trajets.
-- Un bot qui va vendre peut en principe se retrouver derrière un comptoir d'où il ne sait pas revenir (aucun cas vu) : signaler un bot téléporté
-  juste après une vente.
-- Les pas de côté (environ 900 par demi-heure) n'ont pas bougé.
-
-**À tester**
-- Se promener dans Sanctum et Pandaemonium : des bots figés, qui tournent en rond ou qui disparaissent sous vos yeux ?
-- Reshanta : des bots qui volent d'un îlot à l'autre, ou au contraire qui restent plantés au bord ?
-- Un bot qui vient de vendre et qui est téléporté chez lui juste après (`//bot note` sur place).
-
-**À faire sur chaque serveur de test**
-1. `.\tools\stop-server.ps1`, puis `git pull`.
-2. Écrire les liens de vol plané avec la commande de « Action requise » ci-dessus (une seule fois).
-3. `.\tools\deploy.ps1 -Restart`.
-4. Vérifier qu'il y a bien un fichier `.glide` par carte de la liste dans `game-server/data/navmesh` du serveur (24 fichiers, 17 Mo en tout).
-
----
 
 Older entries: [patch-notes-2026-10.md](2026-10.md).
