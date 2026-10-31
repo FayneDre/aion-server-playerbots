@@ -27,6 +27,18 @@ class DeathSpotsTest {
 	}
 
 	@Test
+	void deathsAreCountedNearAPointAndForgottenWithTime() {
+		DeathSpots.record(MAP + 3, 100, 100, 1000);
+		DeathSpots.record(MAP + 3, 180, 100, 1000);
+		DeathSpots.record(MAP + 3, 900, 900, 1000);
+
+		assertEquals(2, DeathSpots.countNear(MAP + 3, 140, 100, 100, 2000));
+		assertEquals(1, DeathSpots.countNear(MAP + 3, 100, 100, 50, 2000));
+		assertEquals(0, DeathSpots.countNear(MAP + 3, 140, 100, 100, 1000 + DeathSpots.MEMORY_MILLIS + 1));
+		assertEquals(0, DeathSpots.countNear(MAP + 4, 140, 100, 100, 2000), "a map without deaths");
+	}
+
+	@Test
 	void aMapWithoutDeathsHasNothingToAvoid() {
 		assertSame(Avoidance.NONE, DeathSpots.around(MAP + 2, 5));
 	}

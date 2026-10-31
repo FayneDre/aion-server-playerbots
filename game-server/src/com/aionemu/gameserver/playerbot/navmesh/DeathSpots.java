@@ -43,6 +43,18 @@ public final class DeathSpots {
 			spots.add(new Spot(x, y, now + MEMORY_MILLIS));
 	}
 
+	/** @return How many deaths of the last quarter of an hour were within {@code radius} metres of the point on this map. */
+	public static int countNear(int worldId, float x, float y, float radius) {
+		return countNear(worldId, x, y, radius, System.currentTimeMillis());
+	}
+
+	static int countNear(int worldId, float x, float y, float radius, long now) {
+		List<Spot> spots = byMap.get(worldId);
+		if (spots == null)
+			return 0;
+		return (int) spots.stream().filter(spot -> spot.until > now && (spot.x - x) * (spot.x - x) + (spot.y - y) * (spot.y - y) <= radius * radius).count();
+	}
+
 	/** @return What the ground round the recent deaths of this map costs, {@link Avoidance#NONE} when there are none. */
 	public static Avoidance around(int worldId) {
 		return around(worldId, System.currentTimeMillis());

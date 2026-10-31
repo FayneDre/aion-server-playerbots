@@ -35,6 +35,7 @@ import com.aionemu.gameserver.skillengine.effect.EffectType;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.model.trade.TradeList;
 import com.aionemu.gameserver.services.TradeService;
+import com.aionemu.gameserver.playerbot.navmesh.DeathSpots;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.utils.PositionUtil;
 
@@ -65,6 +66,9 @@ public class BotVendorManager {
 	 * every bot's long routes share. Nobody walks across a map to sell; a bot further than this keeps its bag until it is nearer a town.
 	 */
 	private static final float SHOP_TRIP_RANGE = 800f;
+	/** The deaths within this distance of a shop that make its approach too dangerous to walk to, and how many. */
+	private static final float DANGEROUS_SHOP_RADIUS = 150f;
+	private static final int DANGEROUS_SHOP_DEATHS = 3;
 
 	/**
 	 * Shops whose trips gave up for several bots, by map and the spot a trip goes to, with the bots that gave up and when. A search that gives up is no
@@ -162,6 +166,9 @@ public class BotVendorManager {
 		// 1200 m below, and were refused, 210 of the 304 refused routes of 22 bots in half an hour. Nothing joins the layers that a route could find.
 		vendors.removeIf(spot -> Math.abs(spot.z - bot.getZ()) > SHOP_HEIGHT_REACH);
 		vendors.removeIf(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), spot.x, spot.y) > SHOP_TRIP_RANGE);
+		// a shop whose approach has killed several bots lately is left alone for the quarter of an hour the deaths are remembered: on 31 October 55 bots died in half an
+		// hour on the way to one fortress shop of Morheim, each walking 600 m past its guards, the same route taken by the next bot as soon as the last had died
+		vendors.removeIf(spot -> DeathSpots.countNear(bot.getWorldId(), spot.x, spot.y, DANGEROUS_SHOP_RADIUS) >= DANGEROUS_SHOP_DEATHS);
 		vendors.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y, spot.z)));
 		int probed = 0;
 		for (Vector3f spot : vendors) {
