@@ -108,5 +108,5 @@ Idle bots return to their **anchor**, set at spawn and moved by `//bot come`, so
 - Chases are bounded by time and leash, so a fleeing target escapes, and targets more than 8 m above or below are ignored (`BotTargetSelector`).
 - The last few metres to a creature are reactive, so a mob standing tight against a low prop can still be approached badly.
 - Height is no longer out of reach for travel: bots fly and glide ([flight-plan.md](../../flight/history/flight-plan.md)), follow glide links and rides
-  ([openworld-navigation-plan.md](../plans/openworld-navigation-plan.md)), and long routes are planned in two passes ([long-walk-planner.md](long-walk-planner.md)).
+  ([openworld-navigation-plan.md](openworld-navigation-plan.md)), and long routes are planned in two passes ([long-walk-planner.md](long-walk-planner.md)).
 - Crossing maps is still not navigation: a bot follows its player into an instance, or is put beside them, but never travels to another map on its own.

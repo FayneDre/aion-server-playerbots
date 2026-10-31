@@ -101,7 +101,7 @@ have no plan yet ([roadmap.md](roadmap.md), "Group play").
 | [how-it-works.md](navigation/how-it-works.md) | **How a bot moves today**: the layers, the mesh and its links, planning and its budgets, walking, what happens when it does not get there. |
 | [instance-navmesh-list.md](navigation/instance-navmesh-list.md) | The 110 instance maps by category, and which share a geometry. |
 | [verification-tools.md](navigation/verification-tools.md) | **Checking the meshes against what a tester walked** (31 October): golden routes, the note's route lines, walked ground. |
-| [plans/openworld-navigation-plan.md](navigation/plans/openworld-navigation-plan.md) | Glide and ride links, journeys given up. In progress: next, the day plans given up. |
+| [history/openworld-navigation-plan.md](navigation/history/openworld-navigation-plan.md) | Glide and ride links, journeys given up. Done 1 November, closed with backlog point 3. |
 | [history/mesh-defects-plan.md](navigation/history/mesh-defects-plan.md) | **What to correct in the meshes** (30 October): the cave ramp of Morheim, islets under monsters, cuts between grounds. Done 1 November: erosion options A and C on, B, E and F not taken. |
 | [history/glide-use-plan.md](navigation/history/glide-use-plan.md) | Bots gliding on their own (backlog point 4). Done 1 November: ambient glides built, the time-saving glide dropped. |
 | [plans/step-links-plan.md](navigation/plans/step-links-plan.md) | Walking over steps of 1 to 2 m (the dock, Altgard, the Fire Temple). In progress: the census is built, the links are not. |

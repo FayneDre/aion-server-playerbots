@@ -54,7 +54,7 @@ téléportent plus loin d'un coup."*
   own correction when the server walked the bot through something the client collides with, which no log says.
 - Known causes from [obstacle-steering-plan.md](history/obstacle-steering-plan.md): rays blind under a metre, gatherables outside the mesh, the last stretch
   to a creature walked without the mesh, slopes the mesh allows that the client does not climb.
-- First step: milestone 6 of [openworld-navigation-plan.md](plans/openworld-navigation-plan.md), the walk against the plan: log where a leg ended against
+- First step: milestone 6 of [openworld-navigation-plan.md](history/openworld-navigation-plan.md), the walk against the plan: log where a leg ended against
   where it was going, which separates the two kinds of jump. The user's `//bot note` on the spot gives the place.
 
 ## 3. Long journeys given up
@@ -67,7 +67,7 @@ budget that matters, and both are doubled (`4318fb938`). A monster the planner p
 
 *"Un bot doit être capable de faire des longs trajets sans les abandonner, actuellement il y a des problèmes."*
 
-- The agreed next step, measured on 25 October (item 3 of "Open after 24 October" in [openworld-navigation-plan.md](plans/openworld-navigation-plan.md)):
+- The agreed next step, measured on 25 October (item 3 of "Open after 24 October" in [openworld-navigation-plan.md](history/openworld-navigation-plan.md)):
   walk the stretches already planned when the search runs out of time and plan the rest on the way; stop at the nearest reachable point for a hunting
   ground or a stroll; put nothing in `BotDay.unreachable` without a proof; then the levels apart and the glides refused in game.
 - Tools ready: `measure.sh` writes the day plans given up as journeys, `NavmeshTool replay` plans them again offline at any budget.

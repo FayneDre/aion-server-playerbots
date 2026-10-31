@@ -1,7 +1,7 @@
 # Navigation: how it works today
 
-Status: reference, checked against the code on 28 October 2026. What is left is in [backlog.md](backlog.md) and
-[plans/openworld-navigation-plan.md](plans/openworld-navigation-plan.md); why each piece is the way it is, with its numbers, is in `history/`.
+Status: reference, checked against the code on 1 November 2026 (the rescues, the ambient glides and the standing-up wait were added on 31 October). What is left is in [backlog.md](backlog.md) and
+[plans/step-links-plan.md](plans/step-links-plan.md); why each piece is the way it is, with its numbers, is in `history/`.
 
 ## The layers
 
@@ -56,6 +56,9 @@ planned waypoint walks the plan, since that is what being wedged inside geometry
   a hunting ground proved out of reach from the bot's home is skipped (`BotPlaces.groundToWork`, not where flying is the rule); a group bot's place beside its leader must be a short walk
   from the leader's ground, else it stands at the leader's (`PlayerBotAI.walkableFormationSpot`); a bot refused by a search that gave up while standing in a pocket counts as stuck (`BotRescue`);
   where bots died in the last 15 minutes is ground every route keeps out of where there is another way (`DeathSpots`, a cost and not a wall).
+- **Rescues that put a bot back on ground that leads somewhere** (`BotRescue`, `BotDay.leavePocketHome`): a bot refused twice from the same spot whose walk to its home is proved shut (`NavmeshService.isShutOffOnFoot`) is put back home at once, in sight of a player too; a bot whose home is a pocket of ground (under 4000 cells) is given another home; a sell trip skips a shop within 150 m of three deaths of the last 15 minutes (`BotVendorManager.findVendor`).
+- **A bot at leisure glides for the look of it** (`BotLedgeGlide`, `LedgeGlides`, option `gameserver.playerbot.ambient.glide`): while it loiters within 150 m of a real player, one look a minute in twenty finds an edge of 8 to 40 m within 25 m, vetted by the air, the landing and a walk back, and glides off it. The links of the files never apply to a journey on foot (measured on 750 samples), so no glide is chosen to save time.
+- **A seated bot waits for its stand-up animation** before a walk starts (`BotMoveController.moveToPoint`, `BotRestManager.STAND_UP_MILLIS`).
 - **The mesh is checked against what a tester walked**: [verification-tools.md](verification-tools.md) (golden routes, the route lines of `//bot note`, walked ground).
 
 ## Walking

@@ -1,6 +1,6 @@
 # Checking the meshes against what a tester walked
 
-**Status:** built, unverified: the walked-ground recorder has not run on a live server yet; the golden routes, the note's route lines and the patrol-route check have.
+**Status:** built, partly verified: the golden routes, the note's route lines and the patrol-route check work; the walked-ground recorder ran live on 31 October (points on 14 maps) but sampled every two seconds, one point every 5 to 7 m, too thin to join a ground that a step cuts (a regeneration of Pandaemonium with it mended 1 route of 6): since 1 November it samples every half second, not yet seen on a map.
 
 Written on 31 October 2026, after four notes about Morheim's cave each answered by a box written by hand, one of them shutting what the one before had opened.
 Three tools, each for a way that kept costing a round trip with the tester.
@@ -25,7 +25,7 @@ two spots a few metres apart is the signature of a wall between them: look at it
 
 ## 3. Walked ground: `data/navmesh/<map>.walked`
 
-`WalkedTrails` (started with the bot service) samples every real player every two seconds; a player on the ground who has moved 1.5 to 12 m across and less than 1.2 m up or down since
+`WalkedTrails` (started with the bot service) samples every real player every half second (every two seconds until 31 October); a player on the ground who has moved 1.5 to 12 m across and less than 1.2 m up or down since
 the last sample leaves a point (x y z), one per metre of ground and height. Bots, flights, glides, teleports, falls and the dead leave none. No name is written.
 
 The generator (`HeightfieldBuilder`) reads the file: a patch of floor 1.5 m across goes under each point, so a hole in the data has a floor, and at the end the surfaces round each point

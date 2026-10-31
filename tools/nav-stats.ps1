@@ -3,7 +3,7 @@
     Sums up how the bots moved, from the game server's log: fights started and given up for want of a way, routes planned and refused, bots wedged.
 
 .DESCRIPTION
-    The figures the open world plan is measured by (docs/navigation/plans/openworld-navigation-plan.md, milestone 0). The give-ups are counted per bot and per target as well
+    The figures the open world plan is measured by (docs/navigation/history/openworld-navigation-plan.md, milestone 0). The give-ups are counted per bot and per target as well
     as in total, because a total hides what the first count of them showed: one bot made 404 of 594, going round three monsters it could not reach.
     Steps aside and rescue teleports are broken down the same way (docs/navigation/history/obstacle-steering-plan.md, milestone 0): per minute, by kind of leg, by
     length, by bot and by 20 m square, and the teleports by whether a real player saw them.
