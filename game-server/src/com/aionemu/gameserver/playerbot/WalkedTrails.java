@@ -16,7 +16,7 @@ import com.aionemu.gameserver.playerbot.navmesh.WalkedGround;
 import com.aionemu.gameserver.world.World;
 
 /**
- * Writes down where real players walk: every two seconds each one standing on the ground, moved a walk's step since the last sample, is a point of {@link WalkedGround} if no point
+ * Writes down where real players walk: every half second each one standing on the ground, moved a walk's step since the last sample, is a point of {@link WalkedGround} if no point
  * of that metre of ground (and height) is known yet. Positions only, no name: the file says where ground is, not who stood on it.
  * <p>
  * Bots are left out, for what a bot walks is what the mesh already says. A flight, a glide, a teleport and a lift are no walk and leave no point.
@@ -24,7 +24,7 @@ import com.aionemu.gameserver.world.World;
 public final class WalkedTrails {
 
 	private static final Logger log = LoggerFactory.getLogger(WalkedTrails.class);
-	private static final long SAMPLE_MILLIS = 2000;
+	private static final long SAMPLE_MILLIS = 500;
 
 	private static final Map<Integer, Set<Long>> known = new ConcurrentHashMap<>();
 	private static final Map<Integer, float[]> lastSeen = new ConcurrentHashMap<>();

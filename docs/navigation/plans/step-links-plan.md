@@ -1,6 +1,6 @@
 # Plan: walking over steps of one to two metres
 
-Status: in progress: step 1 (the census, `NavmeshTool <map> steps`) built and run on two maps on 31 October; the links themselves are not written.
+Status: in progress: step 1 (the census) and the denser recorder (a point every half second, was two seconds) built on 31 October; the step links themselves are put off until the denser data shows walked risers: not worth writing before. Altgard, the Fire Temple and the dock stay by hand, from the tester's notes.
 
 ## The problem
 
@@ -21,7 +21,7 @@ Results, 31 October:
 
 ## What follows
 
-1. **Denser walked ground**: sample every second (and on any change of heading over 30 degrees), keep the points of every player rather than the first on a map, and let the census count a walked edge by a point within 3 m. This makes the data the decision rests on.
+1. **Denser walked ground** (built: every half second): sample every second (and on any change of heading over 30 degrees), keep the points of every player rather than the first on a map, and let the census count a walked edge by a point within 3 m. This makes the data the decision rests on.
 2. **Step links** (walking, both ways, one per walked riser, of at most 2.1 m, between grounds of 400 cells or more) written with the glide links, read by the planner as a hop of the walking search. Only where a walked point or a golden route crosses the riser.
 3. **By hand where nobody has walked**: Altgard's cave and the Fire Temple wait for the tester's notes (`//bot note` at both ends of the passage), each one a golden route first and a ramp or a link after.
 4. **Checks**: `tools/check-golden-routes.ps1` (the three dock routes and the ten others) and the census itself before and after: the number of walked squares left cut.
