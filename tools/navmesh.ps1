@@ -187,12 +187,15 @@ try {
     }
     # several maps at once, one after the other: 110010000,400010000
     foreach ($id in $maps) {
+        # Which links the map has is read before the mesh is built, not after: building a mesh removes an open-world map's .glide (the writer writes links for
+        # instances only), so asking afterwards found none, and the links of 13 maps were lost to patrol-ground.ps1 on 31 October (the same trap the -OpenWorld branch fell into on 18 October)
+        $hadLinks = @(@('glide', 'glides'), @('flight', 'flights'), @('ride', 'rides')) | Where-Object { Test-Path "data/navmesh/$($id.Trim()).$($_[0])" }
         Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
         & java -Xmx4g @generatorOptions -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim()
         if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
         # links name the mesh's stretches by number, and a new mesh numbers them afresh: a link file left from the old one would join the wrong ground
-        foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'), @('ride', 'rides'))) {
-            if (Test-Path "data/navmesh/$($id.Trim()).$($links[0])") {
+        foreach ($links in $hadLinks) {
+            if ($true) {
                 Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
                 & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim() $links[1]
                 if ($LASTEXITCODE -ne 0) { throw "Writing the $($links[1]) of map $id failed (exit code $LASTEXITCODE)" }
