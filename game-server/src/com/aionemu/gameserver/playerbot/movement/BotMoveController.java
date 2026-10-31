@@ -273,8 +273,7 @@ public class BotMoveController extends PlayerMoveController {
 	 */
 	public boolean moveToPoint(float x, float y, float z) {
 		// taken and cleared first, whatever happens below: it belongs to this call alone, and a leftover would keep the next journey out of ground it has no reason to
-		// the ground of the recent deaths of this map is kept out of by every journey where there is another way, whatever else the call asks to avoid
-		Avoidance avoid = DeathSpots.combined(nextAvoidance, DeathSpots.around(owner.getWorldId()));
+		Avoidance avoid = nextAvoidance;
 		nextAvoidance = Avoidance.NONE;
 		if (isRiding())
 			return true; // on a lift or a boat: on its way, and nothing walks it off
@@ -352,6 +351,9 @@ public class BotMoveController extends PlayerMoveController {
 			}
 			plannedForX = x;
 			plannedForY = y;
+			// the ground of the recent deaths of this map is kept out of by every journey where there is another way, whatever else the call asks to avoid; asked here and not
+			// on every call, since a call that finds the bot on its way plans nothing
+			avoid = DeathSpots.combined(avoid, DeathSpots.around(owner.getWorldId()));
 			journeyAvoidance = avoid;
 			planAskedAt = System.currentTimeMillis();
 			awaitingPlan = true; // before asking, so a plan that resolves synchronously clears it again inside the call below
