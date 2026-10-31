@@ -7,7 +7,7 @@ Status: not started. Analysed on 31 October from the engine's `BrokerService`; n
 AHBot is a module that, on a timer, **lists items for sale in the auction house** so it is never empty, keeps their number near a target, prices them around a
 market value, and optionally **buys** what players list. Its knobs: items wanted per house, share per item category and per quality, price multiplier
 (min/max), stack sizes, level and item blacklist, run interval, buy chance. We keep the same shape: a **seller** that tops the broker up, a **price rule**,
-and no buyer (see decision 6), all driven by a property file and switched off by one property.
+and a **buyer** of what players list (decision 6), all driven by a property file and switched off by one property.
 
 ## What the engine offers (read in `BrokerService`)
 
@@ -40,7 +40,14 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
    Recommendation: the same candidate filters as the stores (tradeable, not quest, not a remnant).
 5. **Prices**: base on the guide's ranges where there is one, otherwise `BotStorePricing`, then a random spread of about ±15% per listing (never a flat price). Recommendation:
    the house sells **at or a little above** the market, never far below, so it does not wreck what players sell; players selling under it win the sale.
-6. **No buyer (decided)**: the only buyers are the players. No bot buys from the broker, which also keeps the house from being a kinah faucet.
+6. **A buyer of the players' listings (decided 31 October; replaces "no buyer")**: a player must be able to list goods and the house buys them when the price is in range. The house
+   sells to players, and buys only from players: it never buys its own stock. Rules, to be confirmed in the census:
+   - **Eligible**: a listing by someone other than a house, of an item the house can price (guide range, manastone range, store pricing). **No price known, no purchase**: it never guesses.
+   - **In range**: price per unit at most the top of the market range (a small tolerance, e.g. +5%); a bargain far under the range is bought too. Above the range, never.
+   - **Not instantly**: a listing waits a random delay (a few minutes to a few hours) so a sale does not feel automatic; a pass buys a bounded number of listings, with a chance per pass.
+   - **Ceilings**: a kinah ceiling a day and per player, so nobody sells the house a hoard for a fortune, and a cap per item kind, since the buyer is a kinah faucet.
+   - **How**: a second small door, `BrokerService.buyForHouse(listing)`: the listing becomes a sold settled entry (the seller collects the kinah as for any sale, with the usual notice),
+     the item is **destroyed** (a sink; relisting it would feed the house with what players put in, a loop to avoid). No inventory or kinah touched on the house side.
 7. **Both races, one rule**: the house of a race sells what the race may use (class and race restrictions already in the templates).
 
 ## Milestones
@@ -52,7 +59,8 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
    some minutes so startup is not slowed. Property `gameserver.playerbot.broker.enable` (false by default) and the targets.
 4. **Settling and relisting**: sold entries deleted, expired ones returned and relisted, an item removed when its template is on the blacklist.
 5. **Watch in game**: the tester opens the broker in both capitals: categories filled, prices believable, a purchase works, kinah and inventory right, `exchange.log` has the line.
-6. **Measure**: heap before and after, tick cost of the pass, listings per category against the targets over a day; compare the broker's average prices with the guide's.
+6. **The buyer**: the rules above, then a watch with the tester listing goods in range, above range, with no known price, and one far under the range.
+7. **Measure**: heap before and after, tick cost of the pass, listings per category against the targets over a day; compare the broker's average prices with the guide's.
 
 ## What can go wrong
 
@@ -61,6 +69,7 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
 - **Players undercut by the house**: the price rule keeps the house at or above the market.
 - **The settled list grows** if settling is missing: a test counts the settled entries of a house after a sale and an expiry.
 - **A deleted house character** deletes its listings (cascade): a guard in the roster refuses to delete them, like the one for the players' own characters.
+- **The buyer as a faucet or a trap**: a hoard sold for a fortune, or a player using the house to move kinah between his own characters. Mitigation: the ceilings above; a listing by a character on the same account as no other is bought without distinction, so also log every purchase (seller, item, price) in the bot log for the measure.
 - **Upstream merges**: the door is the only core change; the rest lives in `playerbot/economy/`.
 
 ## First step proposed
