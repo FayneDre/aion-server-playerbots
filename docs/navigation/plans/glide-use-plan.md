@@ -1,6 +1,6 @@
 # Plan: bots that glide on their own (backlog point 4)
 
-Status: built, unverified: milestone 2 (ambient glides) is written and compiled on 1 November, waiting for a deploy and a watch in game; milestone 0 measured (below); milestone 1 is much smaller than first thought.
+Status: built, unverified: milestone 2 (ambient glides) is written and compiled on 31 October, waiting for a deploy and a watch in game; milestone 0 measured (below); milestone 1 is much smaller than first thought.
 
 The tester's words: *"Les bots doivent mieux employer le vol en planant, d'eux-mêmes je n'ai pas l'impression qu'ils l'utilisent ou trop rarement. En groupe ils suivent le joueur s'il le fait."*
 
@@ -43,7 +43,7 @@ A bot at the top of a cliff, a rampart or a plateau walks a long way round to th
 - **Deaths from falls or landing among monsters**: the glide planner already checks the air and the landing's ground; the take-off and landing must also be outside `DeathSpots`.
 - **Looks wrong at a glance**: a bot gliding down a cliff it could walk is the point, but one that takes off from a flat road is not: the drop minimum and the "ledge" test guard it.
 
-## Milestone 0, measured (1 November)
+## Milestone 0, measured (31 October)
 
 `NavmeshTool <map> glidegain [samples]` (`tool/GlideGain.java`) samples descents of 80 to 400 m between two walkable places of a map, plans each on foot and by glides alone, and compares by time (run 6 m/s, glide 8 m/s). 150 samples on Eltnen, Morheim, Heiron, Beluslan and Inggison:
 
@@ -53,7 +53,7 @@ A bot at the top of a cliff, a rampart or a plateau walks a long way round to th
 
 So a rule that glides to save time would fire on the cliffs of Beluslan and little elsewhere, for a new link file. **Decision taken from the figures: milestone 2 first** (a bot glides off a ledge for the look of it, near a player, onto ground it can see below: no link needed, only the geometry under it and `GlideLinks.MIN_DROP`), then milestone 1 only if the tester asks for time-saving glides, restricted to the big drops with shortcut links on the maps this tool ranks first.
 
-## Milestone 2, built (1 November)
+## Milestone 2, built (31 October)
 
 - `LedgeGlides` (navmesh): from the bot's place, 16 rays of up to 25 m on the same ground; where the ground ends, a floor 8 to 40 m lower at 70 to 95 % of a glide's reach (2.5 m forward per metre of drop) is the landing. `NavmeshTool <map> ledges` samples it offline: **40 to 50 % of random places on Eltnen, Heiron and Beluslan have an edge within 25 m**, 450 to 600 edges per 300 places, average drop 19 to 20 m. Many are steep hillsides rather than cliffs, which the air test below throws out.
 - `NavmeshService.findLedge` vets an edge: the air between is clear (the game's geometry, as for the links), the landing is not siege ground, and the ground below is joined to the bot's by a walk of 600 m at most (no island).

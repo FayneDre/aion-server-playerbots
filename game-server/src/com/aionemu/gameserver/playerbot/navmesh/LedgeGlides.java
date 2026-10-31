@@ -9,7 +9,7 @@ import com.aionemu.gameserver.geoEngine.math.Vector3f;
 /**
  * Finds, on the ground a body stands on, an edge it could glide off for the look of it, and the ground below that the glide lands on.
  * <p>
- * The links of {@link GlideLinks} join stretches of ground that no walk joins, so none of them starts from the ground a walking bot is on: measured on 1 November, none of 750 sampled
+ * The links of {@link GlideLinks} join stretches of ground that no walk joins, so none of them starts from the ground a walking bot is on: measured on 31 October, none of 750 sampled
  * walkable journeys had a glide route. This looks at the cells round the body instead, ray by ray: the ground ends where the surface stops being within a step of the last, and past
  * that edge a floor at least {@code minDrop} metres lower, at a distance a glide covers (2.5 m forward for 1 m of drop, the same as {@code BotMoveController}), is the landing.
  * <p>
