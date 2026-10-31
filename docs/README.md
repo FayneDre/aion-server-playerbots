@@ -124,6 +124,8 @@ History: [flight-plan.md](flight/history/flight-plan.md) (take-off, landing, ter
 
 [how-it-works.md](capitals/how-it-works.md): **how the capitals live today**, the town day, private stores, visitors, speech.
 
+Plans: [plans/bot-store-consumables-plan.md](capitals/plans/bot-store-consumables-plan.md) (food, scrolls, higher stones and more lines in the bots' stores, from the tester's feedback of 29 October; not started).
+
 History, all built: [living-capitals-plan.md](capitals/history/living-capitals-plan.md) (the umbrella plan, milestones 0 to 5),
 [living-capitals-findings.md](capitals/history/living-capitals-findings.md) (Sanctum's bridges and rides, the crowd test, the town routine),
 [bot-stores-plan.md](capitals/history/bot-stores-plan.md) (bots' private stores),
