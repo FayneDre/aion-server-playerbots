@@ -94,6 +94,7 @@ selection, beside `BotDirector`.
 | `model/gameobjects/player/Player.java` | `isOnline()` means "is present"; adds `setBot()`/`isBot()` | Low per line, wide in effect — see the end of this file |
 | `PacketSendUtility`, `World`, `MultiClientingService`, `PunishmentService`, `PvpService`, `ChangeLeaderEvent` | One null check each, on the connection instead of on `isOnline()` | Minimal — and three of them were already missing a guard |
 | `services/findgroup/FindGroupService.java` | `getInstanceGroups()`, a read-only view of the Instance Groups offers | Additive, no existing line touched. The offers were private with no reader, and `BotRecruiter` answers them |
+| `services/PrivateStoreService.java` | The check that refuses an item that is not tradeable (`validateItem`) lets a bot's store hold the event scrolls of `BotStoreGoods.EVENT_SCROLLS` | Minimal: one condition and one import; players' stores are unchanged |
 | `ShutdownHook.java` | One line: `PlayerBotService.onShutdown()` after the leave world tasks | Low — nothing else saves bots (see below) |
 | `GameServer.java` | One line: `PlayerBotService.onStartUp()` beside the shutdown hook registration | Low — the symmetric counterpart, on a line that rarely moves |
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. |

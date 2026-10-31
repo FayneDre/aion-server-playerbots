@@ -19,6 +19,7 @@ import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.TownServices;
 import com.aionemu.gameserver.services.PrivateStoreService;
+import com.aionemu.gameserver.services.item.ItemService;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.world.World;
 
@@ -37,8 +38,10 @@ public final class BotStores {
 	private static final int STORES_PER_MAP = 40;
 	/** The engine's limit on a store's lines. */
 	private static final int MAX_LINES = 10;
-	/** How many lines a store is stocked up to whenever it opens. */
-	private static final int STOCKED_LINES = 8;
+	/** How many lines a store is stocked up to whenever it opens: the whole page the engine allows, the tester's wish of 29 October (it was 8). */
+	private static final int STOCKED_LINES = MAX_LINES;
+	/** The keeper of each map that holds the rare goods, so that a market always has a store with the All-Powerful stone, the evolution stone and the holy serum. */
+	private static final Map<Integer, Integer> rareKeeper = new ConcurrentHashMap<>();
 	/**
 	 * How often a store is renewed during a shift, and how much later a keeper of its own may come round to it: the tester asked for stores renewed
 	 * regularly, and every keeper on the hour would be every store of a market closing in the same second.
@@ -285,6 +288,11 @@ public final class BotStores {
 			}
 			lines = linesOf(keeper, shelf);
 		}
+		if (keepTheRareGoodsOnTheMap(keeper, shelf))
+			lines = linesOf(keeper, shelf);
+		// the rare goods first, so that the page's limit never leaves them out
+		lines = new ArrayList<>(lines);
+		lines.sort((a, b) -> Boolean.compare(BotStoreGoods.isRare(b.getItemTemplate()), BotStoreGoods.isRare(a.getItemTemplate())));
 		if (lines.isEmpty())
 			return false;
 		long now = System.currentTimeMillis();
@@ -305,9 +313,43 @@ public final class BotStores {
 		}
 		PrivateStoreService.openPrivateStore(keeper, BotStoreStock.nameOf(keeper));
 		shelf.renewedAt = now;
-		log.info("Bot {} opens its store \"{}\" with {} line(s) at {}", keeper.getName(), BotStoreStock.nameOf(keeper), goods.length,
-			String.format("%.1f %.1f %.1f", keeper.getX(), keeper.getY(), keeper.getZ()));
+		// the census of the stores (docs/capitals/plans/bot-store-consumables-plan.md): the theme, the keeper's level and the template of each line, which a report reads off the log
+		log.info("Bot {} opens its store \"{}\" with {} line(s) at {} [theme {}, level {}, items {}]", keeper.getName(), BotStoreStock.nameOf(keeper), goods.length,
+			String.format("%.1f %.1f %.1f", keeper.getX(), keeper.getY(), keeper.getZ()), BotStoreStock.themeOf(keeper), keeper.getLevel(),
+			java.util.Arrays.stream(goods).map(good -> String.valueOf(good.getItemId())).collect(java.util.stream.Collectors.joining(",")));
 		return true;
+	}
+
+	/**
+	 * Makes sure a market has a store with the evolution stone, the holy serum and the All-Powerful stone, at every hour (the tester's request of 31 October): when no other store of the map that is
+	 * open holds them, a keeper of level 60 or more takes them on, whatever its theme, and keeps them until it shuts. Drawn at random they were held by under one store in a hundred.
+	 *
+	 * @return true if the keeper took them on and its shelf changed.
+	 */
+	private static boolean keepTheRareGoodsOnTheMap(Player keeper, Shelf shelf) {
+		if (keeper.getLevel() < BotStoreGoods.RARE_FROM_LEVEL)
+			return false;
+		Integer holder = rareKeeper.get(keeper.getWorldId());
+		if (holder != null && holder != keeper.getObjectId()) {
+			Player other = World.getInstance().getPlayer(holder);
+			if (other != null && other.isSpawned() && other.hasStore())
+				return false; // another store of the map holds them
+		}
+		rareKeeper.put(keeper.getWorldId(), keeper.getObjectId());
+		long now = System.currentTimeMillis();
+		boolean added = false;
+		for (int id : BotStoreGoods.rareIds()) {
+			boolean held = keeper.getInventory().getItems().stream().anyMatch(item -> item.getItemId() == id && !item.isEquipped());
+			if (!held && ItemService.addItem(keeper, id, 1) < 1)
+				added = true;
+		}
+		if (added) {
+			for (Item item : keeper.getInventory().getItems()) {
+				if (!item.isEquipped() && BotStoreGoods.isRare(item.getItemTemplate()))
+					shelf.stockedAt.putIfAbsent(item.getObjectId(), now);
+			}
+		}
+		return added;
 	}
 
 	/**
@@ -354,7 +396,7 @@ public final class BotStores {
 		shelf.stockedAt.keySet().removeIf(objectId -> {
 			Item item = keeper.getInventory().getItemByObjId(objectId);
 			// the engine's own test, which refuses the whole store for one piece that fails it
-			if (item == null || item.isEquipped() || item.getPackCount() <= 0 && !item.isTradeable())
+			if (item == null || item.isEquipped() || item.getPackCount() <= 0 && !BotStoreGoods.isSellableByABot(item.getItemTemplate()))
 				return true;
 			lines.add(item);
 			return false;

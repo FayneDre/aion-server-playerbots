@@ -19,6 +19,7 @@ import com.aionemu.gameserver.model.trade.TradePSItem;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_EMOTION;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_PRIVATE_STORE_NAME;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_SYSTEM_MESSAGE;
+import com.aionemu.gameserver.playerbot.economy.BotStoreGoods;
 import com.aionemu.gameserver.services.RecallService.CancelReason;
 import com.aionemu.gameserver.services.item.ItemService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
@@ -97,7 +98,7 @@ public class PrivateStoreService {
 			PacketSendUtility.sendPacket(store.getOwner(), SM_SYSTEM_MESSAGE.STR_PERSONAL_SHOP_FULL_BASKET());
 			return false;
 		}
-		if (item.getPackCount() <= 0 && !item.isTradeable()) {
+		if (item.getPackCount() <= 0 && !item.isTradeable() && !(store.getOwner().isBot() && BotStoreGoods.isSellableByABot(item.getItemTemplate()))) { // playerbots: the event scrolls
 			PacketSendUtility.sendPacket(store.getOwner(), SM_SYSTEM_MESSAGE.STR_PERSONAL_SHOP_CANNOT_BE_EXCHANGED());
 			return false;
 		}

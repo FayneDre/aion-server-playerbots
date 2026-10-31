@@ -1,6 +1,6 @@
 # Bot stores: food, scrolls, higher stones and more lines
 
-Status: not started: analysis and plan written; the user answered on 31 October ("Decisions taken"), and the stones question (2) stands on a default until he answers.
+Status: built, unverified: steps 2 to 4 and the whole page are written and tested (31 October, not deployed); step 1, a census report script over the opening log lines, and the tester's look at the markets are left. The stones answer (2) stands on a default until the user gives one.
 
 Written on 31 October 2026 from the tester's feedback of 29 October (a player's remarks on what live private stores sell, quoted in French in the feedback file):
 

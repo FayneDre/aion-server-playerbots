@@ -40,14 +40,38 @@ public final class BotStoreStock {
 		STONES,
 		/** Coins and medals, a theme of its own by the guide's wish (24 October), stocked by the keeper level each asks for. */
 		COINS,
+		/** Cooked food, the stat boosts a player eats before a hunt: the tester of 29 October held it more important than gear. */
+		FOOD,
+		/** The scrolls of speed (attack, running, flight, casting), the five minute ones, the hour ones and the thirty minute scrolls of the events. */
+		SCROLLS,
 		/** The opportunist: a few lines of each of the others, round its own level. */
 		MIXED
 	}
 
-	/** The themes before coins came, in the order a keeper's id was read against them. */
-	private static final Theme[] FIRST_THEMES = { Theme.GEAR, Theme.ACCESSORIES, Theme.STONES };
-	/** How an opportunist's lines are shared out, out of eight: stones most, then coins and jewels, and one piece of gear. */
-	private static final Map<Theme, Integer> MIXED_WEIGHTS = Map.of(Theme.STONES, 3, Theme.COINS, 2, Theme.ACCESSORIES, 2, Theme.GEAR, 1);
+	/**
+	 * How the keepers are shared out among the themes, in sixtieths (31 October, the tester's wish and his answer on the shares): food a fifth, scrolls, stones and opportunists a sixth each,
+	 * and coins, gear and jewels a tenth each. Read off a hash of the keeper's id, the same every day.
+	 */
+	private static final Theme[] SHARES = shares(Map.of(Theme.FOOD, 12, Theme.SCROLLS, 10, Theme.STONES, 10, Theme.MIXED, 10, Theme.COINS, 6, Theme.GEAR, 6, Theme.ACCESSORIES, 6));
+	/** How an opportunist's lines are shared out, out of twelve: stones, food and scrolls most, then coins and jewels, and one piece of gear. */
+	private static final Map<Theme, Integer> MIXED_WEIGHTS = Map.of(Theme.STONES, 3, Theme.COINS, 2, Theme.ACCESSORIES, 2, Theme.GEAR, 1, Theme.FOOD, 2, Theme.SCROLLS, 2);
+	/** A keeper under this level sells no stones unless it is one of the wide ones: the stones of 60 and 70 are all a store of stones sells, and it cannot stock them. */
+	private static final int STONES_FROM_LEVEL = 50;
+	/** The stones a store of stones sells when it is not a wide one: levels 60 and 70 only. */
+	private static final int HIGH_STONES_FROM = 60;
+	/** One stones store in so many is wide, selling stones of every level from 10 to its keeper's plus ten (the tester asked for one or two a market). */
+	private static final int WIDE_ONE_IN = 4;
+	/** How far under the keeper's level the food a dedicated food store sells goes, and how far over. */
+	private static final int FOOD_UNDER = 25, FOOD_OVER = 5;
+
+	private static Theme[] shares(Map<Theme, Integer> weights) {
+		List<Theme> list = new ArrayList<>();
+		for (Theme theme : List.of(Theme.FOOD, Theme.SCROLLS, Theme.STONES, Theme.MIXED, Theme.COINS, Theme.GEAR, Theme.ACCESSORIES)) {
+			for (int i = 0; i < weights.get(theme); i++)
+				list.add(theme);
+		}
+		return list.toArray(Theme[]::new);
+	}
 
 	/** The classes a gear store is stocked for, with the name a French client shows for each. */
 	private static final Map<PlayerClass, String> CLASS_NAMES = Map.ofEntries(Map.entry(PlayerClass.GLADIATOR, "gladiateur"),
@@ -86,16 +110,27 @@ public final class BotStoreStock {
 	}
 
 	/**
-	 * @return The keeper's theme, the same every day. A third of the keepers are opportunists and a quarter of the rest keep coins, each read off a hash
-	 *         of its own, and the others keep the theme they had before: reading the id against five themes instead of three would have handed nearly
-	 *         every keeper a new one, with a bag of the old one's goods nothing would sell.
+	 * @return The theme a keeper's id draws, the same every day, by the shares of {@link #SHARES}. Shares moved on 31 October with the food and the scrolls, so every keeper may find
+	 *         itself with a new theme and a bag of the old one's goods: what the bag holds that the new theme does not sell is taken off the shelf by a restock, as before.
 	 */
 	public static Theme themeOf(int keeperId) {
-		if (Math.floorMod(keeperId * 0x2F0B3A49, 3) == 0)
-			return Theme.MIXED;
-		if (Math.floorMod(keeperId * 0x1B873593, 4) == 0)
-			return Theme.COINS;
-		return FIRST_THEMES[Math.floorMod(keeperId * 0x45D9F3B, FIRST_THEMES.length)];
+		return SHARES[Math.floorMod(keeperId * 0x2F0B3A49, SHARES.length)];
+	}
+
+	/**
+	 * @return The keeper's theme: its id's, except that a stones keeper under level {@value #STONES_FROM_LEVEL} that is not a wide one sells scrolls or food instead, since the stones of
+	 *         60 and 70 it would be left with are out of its reach.
+	 */
+	public static Theme themeOf(Player keeper) {
+		Theme theme = themeOf(keeper.getObjectId());
+		if (theme == Theme.STONES && keeper.getLevel() < STONES_FROM_LEVEL && !isWide(keeper.getObjectId()))
+			return Math.floorMod(keeper.getObjectId() * 0x1B873593, 2) == 0 ? Theme.FOOD : Theme.SCROLLS;
+		return theme;
+	}
+
+	/** @return true for a stones keeper that sells stones of every level, one in {@value #WIDE_ONE_IN}, the same every day. */
+	static boolean isWide(int keeperId) {
+		return Math.floorMod(keeperId * 0x5BD1E995, WIDE_ONE_IN) == 0;
 	}
 
 	/** @return The class a gear store is stocked for, the same every day. */
@@ -107,11 +142,13 @@ public final class BotStoreStock {
 	public static String nameOf(Player keeper) {
 		int level = keeper.getLevel();
 		String gearLevels = Math.max(1, level - DEDICATED_GEAR_UNDER) + "-" + (level + LEVEL_SPREAD);
-		return switch (themeOf(keeper.getObjectId())) {
+		return switch (themeOf(keeper)) {
 			case GEAR -> "Équipement " + CLASS_NAMES.get(classOf(keeper.getObjectId())) + " " + gearLevels;
 			case ACCESSORIES -> "Bijoux " + gearLevels;
-			case STONES -> "Pierres 10-" + Math.min(TOP_STONE_LEVEL, (level + STONE_SPREAD) / 10 * 10);
+			case STONES -> isWide(keeper.getObjectId()) ? "Pierres 10-" + Math.min(TOP_STONE_LEVEL, (level + STONE_SPREAD) / 10 * 10) : "Pierres 60-70";
 			case COINS -> "Pièces et médailles";
+			case FOOD -> "Cuisine " + Math.max(1, level - FOOD_UNDER) + "-" + (level + FOOD_OVER);
+			case SCROLLS -> "Parchemins de vitesse";
 			case MIXED -> "Bric-à-brac " + Math.max(1, level - LEVEL_SPREAD) + "-" + (level + LEVEL_SPREAD);
 		};
 	}
@@ -123,7 +160,7 @@ public final class BotStoreStock {
 	 * @return The ids of the templates stocked, one per line.
 	 */
 	public static List<Integer> stock(Player keeper, int lines) {
-		Theme theme = themeOf(keeper.getObjectId());
+		Theme theme = themeOf(keeper);
 		boolean dedicated = theme != Theme.MIXED;
 		// the rare goods, by about one store in ten: a stocking that draws none of them leaves them out of every pool
 		Predicate<ItemTemplate> allowed = Rnd.get(0, 9) == 0 ? template -> true
@@ -143,7 +180,7 @@ public final class BotStoreStock {
 			List<ItemTemplate> pool = pools.get(part);
 			ItemTemplate template = switch (part) {
 				case STONES -> drawStone(pool);
-				case COINS -> Rnd.get(pool);
+				case COINS, FOOD, SCROLLS -> Rnd.get(pool);
 				default -> draw(pool);
 			};
 			if (template == null || stocked.contains(template.getTemplateId()))
@@ -162,6 +199,8 @@ public final class BotStoreStock {
 		BotStoreGoods.Good good = BotStoreGoods.of(template);
 		if (good != null)
 			return Rnd.get(good.minCount(), good.maxCount());
+		if (isFood(template))
+			return Rnd.get(10, 50);
 		if (template.getItemGroup() == ItemGroup.SPECIAL_MANASTONE)
 			return Rnd.get(1, 2);
 		if (template.getItemGroup() == ItemGroup.MANASTONE)
@@ -171,7 +210,7 @@ public final class BotStoreStock {
 
 	/** @return true if the piece is something the keeper's store would stock, which is what a shelf forgotten by a restart is rebuilt from. */
 	public static boolean fitsTheme(Player keeper, ItemTemplate template) {
-		Theme theme = themeOf(keeper.getObjectId());
+		Theme theme = themeOf(keeper);
 		if (theme != Theme.MIXED)
 			return candidatesFor(keeper, theme, true).contains(template);
 		return MIXED_WEIGHTS.keySet().stream().anyMatch(part -> candidatesFor(keeper, part, false).contains(template));
@@ -235,9 +274,19 @@ public final class BotStoreStock {
 		Race race = keeper.getRace();
 		int level = keeper.getLevel();
 		PlayerClass forClass = classOf(keeper.getObjectId());
-		String key = theme + "/" + dedicated + "/" + race + "/" + level + "/" + (theme == Theme.GEAR ? forClass : "");
+		boolean wide = isWide(keeper.getObjectId());
+		String key = theme + "/" + dedicated + "/" + race + "/" + level + "/" + (theme == Theme.GEAR ? forClass : "") + (theme == Theme.STONES ? "/" + wide : "");
 		return candidates.computeIfAbsent(key, k -> {
 			Set<ItemTemplate> found = new LinkedHashSet<>();
+			if (theme == Theme.SCROLLS) {
+				// by id, the guide's own: the hour scrolls of the cash shop and the scrolls of the events do not pass the tests below (an expiry, an event in the model's name, no trade)
+				for (BotStoreGoods.Good good : java.util.stream.Stream.concat(BotStoreGoods.SCROLLS.stream(), BotStoreGoods.EVENT_SCROLLS.stream()).toList()) {
+					ItemTemplate template = DataManager.ITEM_DATA.getItemTemplate(good.ids().getFirst());
+					if (template != null && (BotStoreGoods.isScrollFor(template, level) || BotStoreGoods.isEventScrollFor(template, level)))
+						found.add(template);
+				}
+				return List.copyOf(found);
+			}
 			for (ItemTemplate template : DataManager.ITEM_DATA.getItemTemplates()) {
 				if (!template.isTradeable() || !BotGearFit.isObtainable(template) || template.getItemQuality().getQualityId() < ItemQuality.COMMON.getQualityId())
 					continue;
@@ -246,7 +295,7 @@ public final class BotStoreStock {
 				Race faction = BotGearSources.factionOf(template);
 				if (faction.isAsmoOrEly() && faction != race)
 					continue;
-				if (fits(template, theme, dedicated, forClass, race, level))
+				if (fits(template, theme, dedicated, wide, forClass, race, level))
 					found.add(template);
 			}
 			List<ItemTemplate> list = List.copyOf(found);
@@ -254,7 +303,7 @@ public final class BotStoreStock {
 		});
 	}
 
-	private static boolean fits(ItemTemplate template, Theme theme, boolean dedicated, PlayerClass forClass, Race race, int level) {
+	private static boolean fits(ItemTemplate template, Theme theme, boolean dedicated, boolean wide, PlayerClass forClass, Race race, int level) {
 		ItemGroup group = template.getItemGroup();
 		return switch (theme) {
 			case GEAR -> (template.isWeapon() && BotGearFit.weaponsOfTrade(forClass).contains(group)
@@ -262,9 +311,11 @@ public final class BotStoreStock {
 					&& (!BotGearFit.isShield(template) || BotGearFit.carriesAShield(forClass)))
 				&& isGearFor(template, dedicated, level);
 			case ACCESSORIES -> ACCESSORY_GROUPS.contains(group) && isGearFor(template, dedicated, level);
-			case STONES -> BotStoreGoods.isUpgradeFor(template, level) || isStoneFor(template, dedicated, level);
+			case STONES -> BotStoreGoods.isUpgradeFor(template, level) || isStoneFor(template, dedicated, wide, level);
 			case COINS -> BotStoreGoods.isCoinFor(template, level, race)
 				&& (dedicated || BotStoreGoods.of(template).fromLevel() > level - MIXED_COINS_UNDER);
+			case FOOD -> isFood(template) && template.getLevel() <= level + FOOD_OVER && template.getLevel() >= level - (dedicated ? FOOD_UNDER : FOOD_UNDER / 2);
+			case SCROLLS -> false; // by id, see candidatesFor
 			case MIXED -> false; // made of the others, see stock and fitsTheme
 		};
 	}
@@ -279,12 +330,20 @@ public final class BotStoreStock {
 	}
 
 	/** @return true for a manastone of the store's levels: up to ten over the keeper's, ancient ones from level 60 only. */
-	private static boolean isStoneFor(ItemTemplate template, boolean dedicated, int level) {
+	private static boolean isStoneFor(ItemTemplate template, boolean dedicated, boolean wide, int level) {
 		if (!BotManastones.isSold(template) || BotManastones.rangeOf(template) == null)
 			return false;
 		if (template.getItemGroup() == ItemGroup.SPECIAL_MANASTONE)
 			return level >= BotManastones.ANCIENT_FROM_LEVEL;
+		if (dedicated && !wide && template.getLevel() < HIGH_STONES_FROM)
+			return false; // a store of stones that is not a wide one sells the stones of 60 and 70 only
 		return template.getLevel() <= level + STONE_SPREAD && (dedicated || template.getLevel() >= level - STONE_SPREAD);
+	}
+
+	/** @return true for a cooked food, the boosts a player eats: tradeable, of the food families of the data, no raw material and no gatherable. */
+	static boolean isFood(ItemTemplate template) {
+		String model = template.getCName();
+		return model != null && model.startsWith("food_") && !model.startsWith("food_material") && template.getItemGroup() != ItemGroup.GATHERABLE && template.getItemGroup() != ItemGroup.GATHERABLE_BONUS;
 	}
 
 	/**

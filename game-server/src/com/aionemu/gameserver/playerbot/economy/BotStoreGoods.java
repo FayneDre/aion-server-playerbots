@@ -60,7 +60,48 @@ public final class BotStoreGoods {
 		new Good(List.of(186000031), 35, 10_000, 20_000, 10, 50, false), // Silver Medal
 		new Good(List.of(186000030), 45, 40_000, 70_000, 10, 50, false)); // Gold Medal
 
-	private static final Map<Integer, Good> UPGRADE_IDS = byId(UPGRADES), COIN_IDS = byId(COINS);
+	/**
+	 * The scrolls of speed players buy: Courage (attack speed), Running, Raging Wind (flight speed) and Awakening (casting speed), Lesser at keeper level 10, plain at 20, Greater
+	 * at 30, and the movement speed scroll of level 15. These are the five minute ones a player can craft, tradeable in the data. The prices are a first guess, a few thousand
+	 * kinah a scroll and more for the greater, to be read off the tester's prices; a stack of 5 to 30.
+	 */
+	static final List<Good> SCROLLS = List.of(
+		new Good(List.of(164000033), 15, 1_000, 3_000, 5, 30, false), // Movement Speed Scroll
+		new Good(List.of(164000071), 10, 1_500, 4_000, 5, 30, false), // Lesser Courage
+		new Good(List.of(164000072), 20, 4_000, 10_000, 5, 30, false), // Courage
+		new Good(List.of(164000073), 30, 10_000, 25_000, 5, 30, false), // Greater Courage
+		new Good(List.of(164000074), 10, 1_500, 4_000, 5, 30, false), // Lesser Running
+		new Good(List.of(164000075), 20, 4_000, 10_000, 5, 30, false), // Running
+		new Good(List.of(164000076), 30, 10_000, 25_000, 5, 30, false), // Greater Running
+		new Good(List.of(164000077), 10, 1_500, 4_000, 5, 30, false), // Lesser Raging Wind
+		new Good(List.of(164000078), 20, 4_000, 10_000, 5, 30, false), // Raging Wind
+		new Good(List.of(164000079), 30, 10_000, 25_000, 5, 30, false), // Greater Raging Wind
+		new Good(List.of(164000132), 10, 1_500, 4_000, 5, 30, false), // Lesser Awakening
+		new Good(List.of(164000133), 20, 4_000, 10_000, 5, 30, false), // Awakening
+		new Good(List.of(164000134), 30, 10_000, 25_000, 5, 30, false), // Greater Awakening
+		// the hour long ones of the cash shop, which the data lets be traded: twelve times the greater five minute scroll
+		new Good(List.of(164002111), 30, 120_000, 300_000, 3, 10, false), // Greater Running (1 hour)
+		new Good(List.of(164002112), 30, 120_000, 300_000, 3, 10, false), // Greater Courage (1 hour)
+		new Good(List.of(164002113), 30, 120_000, 300_000, 3, 10, false)); // Greater Awakening (1 hour)
+
+	/**
+	 * The thirty minute scrolls of the events, which the data does not let be traded and a store refuses ({@code !isTradeable}): a bot's store holds them all the same, by the
+	 * tester's request of 29 October (the permission is in {@code PrivateStoreService.validateItem}, for a bot owner and for these ids only). Six times the five minute scroll's
+	 * price, stacks of 5 to 20.
+	 */
+	static final List<Good> EVENT_SCROLLS = List.of(
+		new Good(List.of(164002002), 10, 9_000, 24_000, 5, 20, false), // [Event] Lesser Courage
+		new Good(List.of(164002003), 10, 9_000, 24_000, 5, 20, false), // [Event] Lesser Running
+		new Good(List.of(164002004), 10, 9_000, 24_000, 5, 20, false), // [Event] Lesser Raging Wind
+		new Good(List.of(164002058), 20, 24_000, 60_000, 5, 20, false), // [Event] Courage
+		new Good(List.of(164002059), 20, 24_000, 60_000, 5, 20, false), // [Event] Running
+		new Good(List.of(164002056), 20, 24_000, 60_000, 5, 20, false), // [Event] Awakening
+		new Good(List.of(164002010), 30, 60_000, 150_000, 5, 20, false), // [Event] Greater Courage
+		new Good(List.of(164002011), 30, 60_000, 150_000, 5, 20, false), // [Event] Greater Running
+		new Good(List.of(164002012), 30, 60_000, 150_000, 5, 20, false), // [Event] Greater Raging Wind
+		new Good(List.of(164002057), 30, 60_000, 150_000, 5, 20, false)); // [Event] Greater Awakening
+
+	private static final Map<Integer, Good> UPGRADE_IDS = byId(UPGRADES), COIN_IDS = byId(COINS), SCROLL_IDS = byId(SCROLLS), EVENT_SCROLL_IDS = byId(EVENT_SCROLLS);
 
 	private BotStoreGoods() {
 	}
@@ -73,7 +114,45 @@ public final class BotStoreGoods {
 	/** @return The guide's entry for the template, or null for goods the guide did not price. */
 	public static Good of(ItemTemplate template) {
 		Good good = UPGRADE_IDS.get(template.getTemplateId());
-		return good != null ? good : COIN_IDS.get(template.getTemplateId());
+		if (good == null)
+			good = COIN_IDS.get(template.getTemplateId());
+		if (good == null)
+			good = SCROLL_IDS.get(template.getTemplateId());
+		return good != null ? good : EVENT_SCROLL_IDS.get(template.getTemplateId());
+	}
+
+	/** The level from which a keeper stocks the rare goods: the lowest of theirs. */
+	static final int RARE_FROM_LEVEL = 60;
+
+	/** @return The templates of the rare goods, the evolution stone, the holy serum and the All-Powerful stone: the ones a market always has in a store. */
+	static List<Integer> rareIds() {
+		return UPGRADES.stream().filter(Good::rare).map(good -> good.ids().getFirst()).toList();
+	}
+
+	/** @return true for one of the rare goods. */
+	static boolean isRare(ItemTemplate template) {
+		Good good = UPGRADE_IDS.get(template.getTemplateId());
+		return good != null && good.rare();
+	}
+
+	/** @return true for a scroll of speed, a five minute one or an hour one, that a keeper of that level stocks. */
+	static boolean isScrollFor(ItemTemplate template, int level) {
+		Good good = SCROLL_IDS.get(template.getTemplateId());
+		return good != null && good.fromLevel() <= level;
+	}
+
+	/** @return true for an event scroll that a keeper of that level stocks. */
+	static boolean isEventScrollFor(ItemTemplate template, int level) {
+		Good good = EVENT_SCROLL_IDS.get(template.getTemplateId());
+		return good != null && good.fromLevel() <= level;
+	}
+
+	/**
+	 * @return true if a bot's store may hold the piece: it is tradeable, as the engine asks of any store, or it is one of the event scrolls the tester asked bots to sell. Only a
+	 *         bot's store asks this; the engine's own test for a player is unchanged.
+	 */
+	public static boolean isSellableByABot(ItemTemplate template) {
+		return template.isTradeable() || EVENT_SCROLL_IDS.containsKey(template.getTemplateId());
 	}
 
 	/** @return The broker's range for goods the guide priced, a named good or a manastone, or null for gear, which is priced off its template. */

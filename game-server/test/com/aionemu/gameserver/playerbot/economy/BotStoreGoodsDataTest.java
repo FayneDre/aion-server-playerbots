@@ -91,6 +91,18 @@ class BotStoreGoodsDataTest {
 	}
 
 	private static List<BotStoreGoods.Good> allGoods() {
-		return java.util.stream.Stream.concat(BotStoreGoods.UPGRADES.stream(), BotStoreGoods.COINS.stream()).toList();
+		return java.util.stream.Stream.of(BotStoreGoods.UPGRADES, BotStoreGoods.COINS, BotStoreGoods.SCROLLS).flatMap(List::stream).toList();
+	}
+
+	@Test
+	void theScrollsAreScrollsOfSpeedAndTheEventOnesAreNotTradeable() {
+		for (BotStoreGoods.Good good : BotStoreGoods.SCROLLS)
+			assertTrue(templates.get(good.ids().getFirst()).model().contains("scroll_speed"), good.ids() + " is no scroll of speed");
+		for (BotStoreGoods.Good good : BotStoreGoods.EVENT_SCROLLS) {
+			Template template = templates.get(good.ids().getFirst());
+			assertNotNull(template, good.ids() + " is not in the item data");
+			assertTrue(template.model().contains("event_scroll_speed"), template.name() + " is no event scroll of speed");
+			assertEquals(0, template.mask() & ItemMask.TRADEABLE, template.name() + " is tradeable: it needs no permission");
+		}
 	}
 }

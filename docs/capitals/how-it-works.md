@@ -20,9 +20,11 @@ About 40 characters in sight keep 40 fps (the crowd test of 20 October), which s
   going round the town once a day.
 - **Where**: markets of their own, from a tester's notes (four in Pandaemonium, six in Sanctum), as a grid of stalls 6 m apart on ground joined to the
   market's middle; a map with none puts stalls within 15 m of a broker or a warehouse. A merchant with no way to its stall gives its turn for 6 hours.
-- **What**: themed stock generated at the keeper's level, up to 8 lines, renewed every 60 to 90 minutes, what stayed unsold two hours taken away.
-  Six categories ([history/bot-store-goods-plan.md](history/bot-store-goods-plan.md)): coins and medals, upgrade items (enchantment stones, the
-  evolution stone, the serum), standard and ancient manastones, the class's own gear and jewellery, blue at least.
+- **What**: themed stock generated at the keeper's level, **10 lines, a whole page**, renewed every 60 to 90 minutes, what stayed unsold two hours taken away.
+  Eight themes since 31 October ([plans/bot-store-consumables-plan.md](plans/bot-store-consumables-plan.md); the coins, stones and gear in [history/bot-store-goods-plan.md](history/bot-store-goods-plan.md)): cooked food a fifth of the keepers,
+  scrolls of speed (five minute, hour long, and the thirty minute scrolls of the events, which only a bot's store may hold) a sixth, stones a sixth (one store in four sells stones of every level, the others only 60 and 70, and a
+  keeper under 50 sells none unless it is a wide one), opportunists a sixth, coins, gear and jewellery a tenth each. **Every market has at all times a store with the evolution stone, the holy serum and the All-Powerful stone**
+  (`BotStores.keepTheRareGoodsOnTheMap`: a keeper of 60 or more takes them on when none of the map's open stores holds them). The log line of an opening names the theme, the level and the item of each line.
 - **Price** (`BotStorePricing`): from the template, the quality and the keeper's temperament, at broker prices for the goods that have them, cheaper
   the longer a line stays unsold. A sale goes through the engine's own store, so the kinah moves and `exchange.log` has the line.
 - During its shift a keeper does nothing else; it refuses duels and shuts its store to join a group, as a player would.
