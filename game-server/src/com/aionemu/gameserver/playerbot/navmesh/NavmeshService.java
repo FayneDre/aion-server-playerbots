@@ -501,13 +501,13 @@ public class NavmeshService {
 	}
 
 	/**
-	 * @return true if the walk from the first spot to the second is proved shut: the search on foot alone ran through all the ground the first spot stands on and found no way. A route that
-	 *         could glide out is not asked about here; for a bot that cannot be told to be stuck, the glides having given up too (see {@code BotRescue.destinationRefused}).
+	 * @return true if the walk from the first spot to the second is proved shut: both spots have footing in the mesh, and the search on foot alone ran through all the ground the first stands
+	 *         on and found no way. Glides are not looked at: a bot that is shut off on foot and glided onto its ground is lifted home all the same, which is what a rescue does.
 	 */
 	public boolean isShutOffOnFoot(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
 		Navmesh mesh = get(worldId);
-		if (mesh == null)
-			return false;
+		if (mesh == null || !mesh.hasFooting(mesh.cellX(fromX), mesh.cellY(fromY)) || !mesh.hasFooting(mesh.cellX(toX), mesh.cellY(toY)))
+			return false; // a spot the mesh does not cover proves nothing: the search would answer no way for want of a place to start
 		BotPathFinder.Route route = BotPathFinder.within(PROOF_BUDGET_MILLIS, () -> BotPathFinder.walkingOnly(mesh, fromX, fromY, fromZ, toX, toY, toZ));
 		return route.isEmpty() && !route.gaveUp();
 	}

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.Race;
@@ -90,8 +91,7 @@ public final class BrokerHouseStock {
 	}
 
 	/** Words that mark a template nobody plays with: a test, a practice or dummy piece, a sample, a debug item. */
-	private static final java.util.regex.Pattern NOT_FOR_PLAYERS = java.util.regex.Pattern.compile("\\b(test|practice|dummy|sample|debug|temp|temporary|event|gm)\\b",
-		java.util.regex.Pattern.CASE_INSENSITIVE);
+	private static final Pattern NOT_FOR_PLAYERS = Pattern.compile("\\b(test|practice|dummy|sample|debug|temp|temporary|event|gm)\\b", Pattern.CASE_INSENSITIVE);
 	/** The price the data gives a weapon or an armour piece nobody sells or buys: a placeholder, not a price. */
 	private static final int PLACEHOLDER_PRICE = 5;
 
@@ -107,7 +107,7 @@ public final class BrokerHouseStock {
 		String clientName = template.getCName();
 		if (clientName != null && clientName.regionMatches(true, 0, "npc_", 0, 4))
 			return false;
-		return !(template.isWeapon() || template.isArmor()) || template.getPrice() > PLACEHOLDER_PRICE;
+		return !(template.isWeapon() || template.isArmor()) || template.getPrice() > PLACEHOLDER_PRICE || BotStoreGoods.rangeOf(template) != null;
 	}
 
 	/** Reads every item template once for the race. Costs a pass over the item data, so the caller keeps the result. */

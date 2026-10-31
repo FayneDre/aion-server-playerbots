@@ -253,7 +253,7 @@ class BotDay {
 	 *         Seven recruits had their homes rewritten that way in the second they waited for their invitation, and one was then sent home to a point
 	 *         1448 m up in Eltnen's sky every fourteen seconds.
 	 */
-	private boolean isAwayFromHome() {
+	boolean isAwayFromHome() {
 		return ai.getOwner().isInInstance() || BotRecruiter.isRecruit(ai.getOwner()) || BotVisitors.isVisitor(ai.getOwner());
 	}
 

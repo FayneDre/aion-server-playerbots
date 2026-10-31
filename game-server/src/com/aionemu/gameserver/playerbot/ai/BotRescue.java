@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
+import com.aionemu.gameserver.playerbot.BotVisitors;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
@@ -37,6 +38,10 @@ final class BotRescue {
 	 * under Pandaemonium's temple dome, 27 m above the floor, and gave up on every destination it drew for two days without being rescued once.
 	 */
 	private static final int ISOLATED_REFUSALS = 6;
+	/** Refusals in a row from one spot, from ground no walk joins to home, that lift a bot; see {@link #refusedAgainHere}. */
+	private static final int SHUT_OFF_REFUSALS = 2;
+	private int shutOffRefusals;
+	private Vector3f shutOffFrom;
 	/** How far a bot may have moved between two give-ups for both to count as made from the same spot, in metres. */
 	private static final float SAME_SPOT = 3;
 	/** Where the give-ups being counted were made from, null when none is. */
@@ -65,18 +70,14 @@ final class BotRescue {
 	void destinationRefused() {
 		Player bot = ai.getOwner();
 		Vector3f here = new Vector3f(bot.getX(), bot.getY(), bot.getZ());
-		if (isShutOffFromHome(bot, here)) {
-			// A bot on ground that no walk joins to its home, refused twice: inside a wall of a capital, on a ledge. Waiting for six give-ups took ten minutes of five minute spells, and the
-			// player who was looking at it was looking at a body in a wall (Kalelan in Pandaemonium, 31 October). Lifted even in sight: it is the fault itself.
-			if (++shutOffRefusals >= SHUT_OFF_REFUSALS) {
-				shutOffRefusals = 0;
-				log.info("Bot {} stands at {} {} {} on ground no walk joins to its home, so it is the spot that leads nowhere", bot.getName(), Math.round(here.getX()),
-					Math.round(here.getY()), Math.round(here.getZ()));
-				freeItself(true);
-				return;
-			}
-		} else {
-			shutOffRefusals = 0;
+		if (refusedAgainHere(bot, here) && isShutOffFromHome(bot, here)) {
+			// A bot on ground that no walk joins to its home, refused twice from the same spot: inside a wall of a capital, on a ledge. Waiting for six give-ups took ten minutes of five
+			// minute spells, and the player who was looking at it was looking at a body in a wall (Kalelan in Pandaemonium, 31 October). Lifted even in sight: it is the fault itself.
+			// The proof is a search, so it is asked of the second refusal from a spot and no sooner, and once; a bot that passes it is not asked again until two more refusals.
+			log.info("Bot {} stands at {} {} {} on ground no walk joins to its home, so it is the spot that leads nowhere", bot.getName(), Math.round(here.getX()),
+				Math.round(here.getY()), Math.round(here.getZ()));
+			freeItself(true);
+			return;
 		}
 		if (bot.getMoveController() instanceof BotMoveController moveController && moveController.isRefusalUnproven()) {
 			// a far place whose searches gave up says nothing about this one (see BotMoveController.refusalUnproven), but every place doing so does
@@ -99,9 +100,21 @@ final class BotRescue {
 		rescueFrom(here, "gave up on " + ISOLATED_REFUSALS + " destinations in a row", true);
 	}
 
-	/** Refusals in a row, from ground no walk joins to home, that lift a bot. */
-	private static final int SHUT_OFF_REFUSALS = 2;
-	private int shutOffRefusals;
+	/**
+	 * @return true on the second refusal in a row made from the same spot (within {@link #SAME_SPOT}), when the proof of a shut ground is worth its search; the count starts again after.
+	 */
+	private boolean refusedAgainHere(Player bot, Vector3f here) {
+		if (shutOffFrom == null || PositionUtil.getDistance(shutOffFrom.getX(), shutOffFrom.getY(), here.getX(), here.getY()) > SAME_SPOT) {
+			shutOffFrom = here;
+			shutOffRefusals = 1;
+			return false;
+		}
+		if (++shutOffRefusals < SHUT_OFF_REFUSALS)
+			return false;
+		shutOffRefusals = 0;
+		shutOffFrom = null;
+		return true;
+	}
 
 	/** @return true if the bot stands on the ground, not owned, with a home, and the walk from here to the ground by that home is proved shut. */
 	private boolean isShutOffFromHome(Player bot, Vector3f here) {
@@ -135,8 +148,11 @@ final class BotRescue {
 				Vector3f elsewhere = ai.day().leavePocketHome();
 				if (elsewhere != null) {
 					forgetRefusals();
-					TeleportService.teleportTo(bot, bot.getWorldId(), elsewhere.getX(), elsewhere.getY(), elsewhere.getZ());
-					ai.setAnchor(elsewhere.getX(), elsewhere.getY(), elsewhere.getZ());
+					// onto ground the mesh agrees a body stands on, as freeItself does: a home is a spot chosen from the data, not always a floor
+					Vector3f floor = NavmeshService.getInstance().groundNear(bot.getWorldId(), elsewhere.getX(), elsewhere.getY(), elsewhere.getZ());
+					Vector3f at = floor != null ? floor : elsewhere;
+					TeleportService.teleportTo(bot, bot.getWorldId(), at.getX(), at.getY(), at.getZ());
+					ai.setAnchor(at.getX(), at.getY(), at.getZ());
 				}
 			}
 			return;
