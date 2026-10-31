@@ -104,6 +104,7 @@ have no plan yet ([roadmap.md](roadmap.md), "Group play").
 | [plans/openworld-navigation-plan.md](navigation/plans/openworld-navigation-plan.md) | Glide and ride links, journeys given up. In progress: next, the day plans given up. |
 | [plans/mesh-defects-plan.md](navigation/plans/mesh-defects-plan.md) | **What to correct in the meshes** (30 October): the cave ramp of Morheim, islets under monsters, cuts between grounds. In progress: erosion options A and C are on by default since 31 October; Morheim's cave is fixed by hand (`MapOpenings`). |
 | [plans/glide-use-plan.md](navigation/plans/glide-use-plan.md) | Bots gliding on their own (backlog point 4). Not started: analysis, milestone 0 is a measure of the gain. |
+| [plans/step-links-plan.md](navigation/plans/step-links-plan.md) | Walking over steps of 1 to 2 m (the dock, Altgard, the Fire Temple). In progress: the census is built, the links are not. |
 
 History: [navigation-prototype.md](navigation/history/navigation-prototype.md) (the foundations of September),
 [navmesh-plan.md](navigation/history/navmesh-plan.md) (path planning on a generated grid, N0 to N6),

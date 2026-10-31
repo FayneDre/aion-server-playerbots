@@ -116,6 +116,9 @@ public class NavmeshTool {
 			WhyBlocked.run(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]));
 			return;
 		}
+		if (args.length == 2 && args[1].equals("steps")) {
+			System.exit(StepCensus.run(Integer.parseInt(args[0])));
+		}
 		if ((args.length == 2 || args.length == 3) && args[1].equals("ledges")) {
 			System.exit(GlideGain.ledges(Integer.parseInt(args[0]), args.length == 3 ? Integer.parseInt(args[2]) : 300));
 		}
@@ -190,7 +193,8 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool obelisks [mapId]   can a body resurrected at each obelisk of each mesh walk away? exit code 1 when one cannot");
 			System.out.println("       NavmeshTool golden <file> [mapId...]   walk the routes a tester walked, both ways, and fail on one that is shut or a detour (tools/golden-routes.txt)");
 			System.out.println("       NavmeshTool <mapId> glidegain [samples]   on sampled descents, what a glide would save over the walk, by drop (backlog point 4)");
-			System.out.println("       NavmeshTool <mapId> ledges [samples]   of random places, how many have an edge within 25 m to glide off for the look of it (ambient glides)");
+			System.out.println("       NavmeshTool <mapId> steps   where two large grounds meet along a riser of 0.65 to 2.1 m, with walked points (step links)");
+		System.out.println("       NavmeshTool <mapId> ledges [samples]   of random places, how many have an edge within 25 m to glide off for the look of it (ambient glides)");
 			System.out.println("       NavmeshTool replay <file> [every]   plan again the journeys a server gave up (map sx sy sz gx gy gz cause, a line each)");
 			System.out.println("       NavmeshTool <mapId> walkers   do the patrol routes of the data join by a short walk? (steps no walk of three times the distance joins, by place)");
 			System.out.println("       NavmeshTool <mapId> seams <x> <y> <z>   where the ground under that spot nearly joins its neighbours, and by how much it misses");
