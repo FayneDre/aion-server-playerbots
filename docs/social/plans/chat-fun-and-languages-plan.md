@@ -1,6 +1,6 @@
 # Bot chat: fun and troll lines in Region, and a choice of French or English
 
-Status: in progress: the words are out of the code and the language is an option (steps 0 to 2 of the order of work, built and tested, not yet heard in game); the fun and troll lines (steps 3 and 4) are next.
+Status: built, unverified: the words are out of the code, the language is an option, and Region has jokes (22 exchanges and 45 lines to the room in each language); not yet heard in game. Left: the reactions to events (a death, a level up), and the tester's reading of the lines.
 
 Written on 31 October 2026 from the tester's feedback of 25 October ("add fun and troll discussions to the Region channel") and a second request: the
 bots' chat in **French or English, chosen in an options file**, on every channel. What exists is in [../how-it-works.md](../how-it-works.md) and

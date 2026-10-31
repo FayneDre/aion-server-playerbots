@@ -67,8 +67,8 @@ public final class BotChat {
 	private static final long SUBJECT_REPEAT_MILLIS = 10 * 60_000L;
 	/** How long a bot takes to answer a question in Region, in seconds. */
 	private static final int ANSWER_SHORTEST = 4, ANSWER_LONGEST = 15;
-	/** The kinds of Region line, by weight out of a hundred: a greeting, what the speaker hunts, its progress, a question answered; chatter the rest. */
-	private static final int GREETING = 15, HUNTING = 25, PROGRESS = 15, QUESTION = 30;
+	/** The kinds of Region line, by weight out of a hundred: a greeting, what the speaker hunts, its progress, a question answered, a joke alone or between two bots; chatter the rest. */
+	private static final int GREETING = 12, HUNTING = 20, PROGRESS = 10, QUESTION = 23, BANTER = 20;
 	/** How long between two Find Group lines for a faction, in seconds. */
 	private static final int GROUP_SHORTEST = 20, GROUP_LONGEST = 40;
 	/**
@@ -237,6 +237,9 @@ public final class BotChat {
 		} else if (roll < GREETING + HUNTING + PROGRESS + QUESTION) {
 			if (askAndAnswer(bots, key, now))
 				return true;
+		} else if (roll < GREETING + HUNTING + PROGRESS + QUESTION + BANTER) {
+			if (joke(bots, key, map, now))
+				return true;
 		}
 		return speak(bots.get(random.nextInt(bots.size())), BotChatLines.chatter(random, map), now);
 	}
@@ -284,7 +287,35 @@ public final class BotChat {
 		return true;
 	}
 
-	/** Says the line in Region and keeps the speaker quiet for a while. */
+/**
+ * Has one bot tell a joke to the room and, for an exchange, another answer it a few seconds later. A joke is not told twice on a map within the repeat time.
+ *
+ * @return true if a joke was told.
+ */
+private static boolean joke(List<Player> bots, String key, String map, long now) {
+	ThreadLocalRandom random = ThreadLocalRandom.current();
+	BotChatLines.Banter banter = BotChatLines.banter(random, map);
+	if (!fresh(key + "/joke " + banter.first(), now))
+		return false;
+	Player teller = bots.get(random.nextInt(bots.size()));
+	List<Player> answerers = bots.stream().filter(bot -> bot != teller).toList();
+	if (banter.reply() != null && answerers.isEmpty())
+		return false;
+	speak(teller, banter.first(), now);
+	if (banter.reply() != null) {
+		Player answerer = answerers.get(random.nextInt(answerers.size()));
+		spokeAt.put(answerer.getObjectId(), now);
+		ThreadPoolManager.getInstance().schedule(() -> {
+			if (answerer.isSpawned() && !answerer.isDead()) {
+				say(answerer, Channel.REGION, banter.reply());
+				log.info("Bot {} says in region: {}", answerer.getName(), banter.reply());
+			}
+		}, random.nextInt(ANSWER_SHORTEST, ANSWER_LONGEST + 1) * 1000L);
+	}
+	return true;
+}
+
+/** Says the line in Region and keeps the speaker quiet for a while. */
 	private static boolean speak(Player bot, String line, long now) {
 		spokeAt.put(bot.getObjectId(), now);
 		say(bot, Channel.REGION, line);

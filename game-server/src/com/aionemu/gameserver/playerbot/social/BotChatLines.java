@@ -181,7 +181,30 @@ final class BotChatLines {
 		return tenths % 10 == 0 ? tenths / 10 + "M" : tenths / 10 + text.section("kinah.decimal").get(0) + tenths % 10 + "M";
 	}
 
-	static String capitalised(String word) {
+/** What a joke says: {@code reply} is null for a line to the room, and what another bot answers a few seconds later for an exchange. */
+record Banter(String first, String reply) {
+}
+
+/** In a hundred jokes, how many are an exchange between two bots. */
+private static final int EXCHANGE_SHARE = 40;
+/** Between the two halves of an exchange in the file. */
+static final String EXCHANGE_SEPARATOR = " || ";
+
+/** @return A joke for the room, to a bot or between two; true of the game or of playing, and never about a player. */
+static Banter banter(RandomGenerator random, String map) {
+	return banter(text(), random, map);
+}
+
+static Banter banter(ChatText text, RandomGenerator random, String map) {
+	boolean exchange = random.nextInt(100) < EXCHANGE_SHARE;
+	String line = pick(random, text.section(exchange ? "banter.exchange" : "banter.solo")).formatted(map);
+	if (!exchange)
+		return new Banter(line, null);
+	int cut = line.indexOf(EXCHANGE_SEPARATOR);
+	return new Banter(line.substring(0, cut).strip(), line.substring(cut + EXCHANGE_SEPARATOR.length()).strip());
+}
+
+static String capitalised(String word) {
 		return word.isEmpty() ? word : Character.toUpperCase(word.charAt(0)) + word.substring(1);
 	}
 

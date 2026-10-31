@@ -24,7 +24,7 @@ class ChatTextTest {
 		Map.entry("who.answer", PLACE), Map.entry("hunt.question", PLACE), Map.entry("hunt.answer", new Object[] { "wolf" }), Map.entry("group.ask", GROUP),
 		Map.entry("group.form", GROUP), Map.entry("sell.price", new Object[] { "25k" }), Map.entry("sell.price.each", new Object[] { "25k" }),
 		Map.entry("kinah.unit", NONE), Map.entry("kinah.decimal", NONE), Map.entry("test.line", new Object[] { "region", "Bob" }),
-		Map.entry("shout.advert", new Object[] { "Store" }), Map.entry("shout.call", new Object[] { "Cleric", 33 }));
+		Map.entry("banter.solo", PLACE), Map.entry("banter.exchange", PLACE), Map.entry("shout.advert", new Object[] { "Store" }), Map.entry("shout.call", new Object[] { "Cleric", 33 }));
 
 	/** A placeholder the code did not fill in. */
 	private static final Pattern LEFT = Pattern.compile("%(\\d\\$)?[sdn]");

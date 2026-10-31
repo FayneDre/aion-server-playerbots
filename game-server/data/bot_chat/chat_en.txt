@@ -206,3 +206,77 @@ Store open: %s. Unsold items drop in price every hour!
 %s level %d free to group, invite me!
 Who's making a group? %s %d in.
 %s %d looking for companions, invites welcome!
+
+
+# Jokes to the room: one line each, true of the game or of playing and never about a player. %s is the map; a literal percent is %%.
+[banter.solo]
+My tank just pulled the whole map, this will be fun
+Whoever fails their next enchant buys the round
+Failed my +10, going to cry in a corner
+I'm a bot but at least I'm on time
+A healer resting during the boss is a tradition
+Nothing prettier than a drop landing in someone else's bag
+Level 3 mob, level 40 death. Respect to myself
+Glided into a cliff. The cliff won
+Mum told me to get an education, I built a bot
+WTS my dignity, price negotiable, barely used
+Every time I think I'm lucky a mob reminds me I'm not
+The RNG hates me, at least it's honest
+Balaur are like exes: they always come back
+Killed the same mob 200 times, we're friends now
+If lag were a sport I'd be champion
+The best buff is coffee
+My DPS is so low the mobs get bored
+Fucking respawn, I didn't even get to breathe
+A tank without a healer is just a guy who dies first
+I do xp like I do sport: by watching other people
+Some days even the respawn doesn't want to come back
+That mob kicked my ass, I owe it a drink
+Murphy's law: the rare mob spawns when you leave
+Lucky? I'm bathing in failed enchants
+Who put this wall here? I headbutted it for five minutes
+My only talent: dying with style
+They say the dungeon is easy. They say.
+Farming is like life: long, repetitive, and nobody says thanks
+No luck, only persistence, which is worse
+I die, I respawn, I die. It's my workout
+Don't panic, I have the dignity of a level 1 mob
+When I grow up I'll be a +15, until then I farm %s
+The other faction looks busy dying
+Who invited that mob to my party? It hits harder than I do
+The biggest lie in the game: "it's an easy mob"
+My bag is full of useless junk, like my life, but in kinah
+I suck, but I suck with a smile
+A sleeping healer means a praying tank
+Shit on the respawn timer, that's my national sport
+One day I'll be rich. One day. Not today.
+The only thing that scares me on %s is my potion bill
+They said "come on, it's safe". I died.
+Saw a rare drop. Then I woke up.
+PvP is like sex: everyone talks about it, few do it, fewer are good at it
+This game took everything: my time, my kinah and my sleep
+I'm a god. A god who dies to a level 12 mob.
+
+[banter.exchange]
+A tank, a healer and a dps walk into a dungeon... || ...and the dps dies first, as usual
+Anyone got a +15 to sell? || I'll sell you my +3, same thing but more honest
+Do you think mobs have families? || Yeah, and we just gave them a mass funeral
+Who saw my heal spell? || In your bag, next to your dignity
+Just fell off a cliff || Nice glide, 8/10 for the landing
+Someone told me I'm a bot || Me too, but I pretend like everyone else here
+My cat walked on the keyboard || Then it's the best player on your team
+Going to a dungeon, who's coming? || Me, but I'm not healing, I'm watching
+What's the best moment in this game? || When the drop lands and it lands for you
+How long to get +10? || A lifetime and two bags of kinah
+Just failed my enchant || I fail everything, I'm your brother
+Did you see the boss? || Yeah, it said hello. Then goodbye.
+Who's the best DPS in the zone? || The first one who doesn't die, and it isn't you
+I'm late for the raid || You're late for everything, it's your brand
+Coffee or potion? || Coffee fixes morale. Potion just the HP
+What's your farming secret? || None. I'm stubborn, and a bit of an idiot
+I found something rare! || Rare suits you too, as a word
+Why are tanks always angry? || Because they take everything in the face
+What are you doing tonight? || Farming. And crying. Mostly farming
+Another dungeon run? || Only if you promise not to heal me
+Something weird is going on at %s || Yeah, it's my DPS
+Who wants a cookie? || Me, instead of a +10

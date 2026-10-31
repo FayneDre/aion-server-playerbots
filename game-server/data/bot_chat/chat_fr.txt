@@ -206,3 +206,77 @@ Boutique ouverte : %s. Les invendus baissent chaque heure !
 %s niveau %d dispo pour grouper, invitez-moi !
 Qui monte un groupe ? %s %d partant.
 %s %d cherche des compagnons, invitation bienvenue !
+
+
+# Jokes to the room: one line each, true of the game or of playing and never about a player. %s is the map; a literal percent is %%.
+[banter.solo]
+Mon tank a pull toute la map, ça va être drôle
+Le dernier qui rate son enchant offre la tournée
+J'ai fail mon +10, je vais pleurer dans un coin
+Je suis un bot mais au moins je suis à l'heure
+Le healer qui rest pendant le boss, c'est une tradition
+Rien de plus beau qu'un drop qui tombe chez le voisin
+Mob de niveau 3, mort de niveau 40. Respect à moi-même
+J'ai glidé dans une falaise. La falaise a gagné
+Ma mère m'a dit de faire des études, j'ai fait un bot
+WTS ma dignité, prix négociable, très peu servie
+Chaque fois que je me crois chanceux un mob me rappelle que non
+Le RNG me déteste, au moins il est sincère
+Les Balaur c'est comme les ex : ils reviennent toujours
+J'ai tué le même mob 200 fois, on est potes maintenant
+Si le lag était un sport je serais champion
+Le meilleur buff c'est le café
+Mon DPS est tellement bas que les mobs s'ennuient
+Putain de respawn, j'ai même pas eu le temps de souffler
+Un tank sans heal c'est juste un type qui meurt en premier
+Je fais de l'xp comme je fais du sport : en regardant les autres
+Il y a des jours où même le respawn n'a pas envie de revenir
+Ce mob m'a mis une branlée, je lui dois un verre
+La loi de Murphy : le mob rare apparaît quand tu pars
+J'ai le cul bordé de nouilles, bordé d'enchants ratés surtout
+Qui a posé ce mur ici ? Je me suis pris la tête dedans cinq minutes
+Mon seul talent : mourir avec classe
+Il paraît que le donjon est facile. Il paraît.
+Le farm c'est comme la vie : long, répétitif, et personne ne dit merci
+J'ai pas de chance, j'ai de la persévérance, c'est pire
+Je meurs, je ressuscite, je meurs. C'est ma routine sportive
+Pas de panique, j'ai la dignité d'un mob de niveau 1
+Quand je serai grand je serai un +15, en attendant je farm sur %s
+Les gars de l'autre faction ont l'air bien occupés à mourir
+Qui a invité ce mob à ma fête ? Il tape plus fort que moi
+Le plus grand mensonge du jeu : "c'est un mob facile"
+Mon sac est plein de trucs inutiles, comme ma vie, mais en kinah
+Je suis nul mais je suis nul avec le sourire
+Un healer qui dort, c'est un tank qui prie
+Chier sur le respawn, c'est mon sport national
+Un jour je serai riche. Un jour. Pas aujourd'hui.
+Le seul truc qui me fait peur sur %s, c'est la facture de potions
+On m'a dit "viens, c'est safe". Je suis mort.
+J'ai vu un loot rare. Puis je me suis réveillé.
+Le PvP c'est comme le sexe : tout le monde en parle, peu en font, moins encore savent le faire
+Ce jeu m'a tout pris : mon temps, mes kinahs et mon sommeil
+Je suis un dieu. Un dieu qui meurt pour un mob de niveau 12.
+
+[banter.exchange]
+Un tank, un healer et un dps entrent dans un donjon... || ...et le dps meurt en premier, comme d'hab
+Quelqu'un a un +15 à vendre ? || Je te vends mon +3, c'est le même mais en plus honnête
+Vous croyez que les mobs ont une famille ? || Ouais, et on vient de leur faire un deuil de masse
+Qui a vu mon sort de heal ? || Dans ton sac, avec ta dignité
+Je viens de tomber d'une falaise || Vol plané, 8/10 pour l'atterrissage
+On m'a dit que j'étais un bot || Moi aussi, mais je fais semblant comme tout le monde ici
+Mon chat a marché sur le clavier || Alors c'est lui le meilleur de ta team
+Je pars en donjon, qui vient ? || Moi, mais je ne soigne pas, je regarde
+Quel est le meilleur moment dans ce jeu ? || Quand le drop tombe et que ça tombe pour toi
+Combien de temps pour faire +10 ? || Une vie, et deux sacs de kinah
+Je viens de rater mon enchant || Moi je rate tout, je suis ton frère
+Vous avez vu le boss ? || Oui, il a dit bonjour. Au revoir.
+Qui est le meilleur DPS de la zone ? || Le premier qui ne meurt pas, et c'est pas toi
+Je suis en retard pour le raid || Tu es en retard pour tout, c'est ta marque de fabrique
+Le café ou la potion ? || Le café, ça soigne le moral. La potion, juste les PV
+C'est quoi ton secret pour le farm ? || Aucun. Je suis têtu, et un peu con
+J'ai trouvé un truc rare ! || Ah oui ? Le mot "rare" te va bien aussi
+Pourquoi les tanks sont toujours en colère ? || Parce qu'ils prennent tout dans la gueule
+Tu fais quoi ce soir ? || Je farm. Et je pleure. Mais surtout je farm
+On se refait un donjon ? || Seulement si tu promets de ne pas me soigner
+Il y a un truc chelou sur %s || Ouais, c'est mon DPS
+Qui veut un cookie ? || Moi, à la place d'un +10
