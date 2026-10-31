@@ -1,6 +1,6 @@
 # Mesh defects: what to correct for the meshes to be as exact as they can be
 
-Status: in progress: point 2 (islets) corrected in code and measured, not yet deployed or seen in game; point 1 (the ramp) explained in two causes, not corrected.
+Status: in progress: the islets (point 2) and the way into the Morheim cave (point 1) are corrected in code and measured offline; options A and C are written, off by default; none of it is deployed or seen in game.
 
 Written on 30 October 2026 after a tester reported bots that cannot get past the entrance of a cave in Morheim (and said the same happens in a cave of
 Altgard). The planner proved the way shut, in 55 ms, so the fault is in the mesh and not in the search budget. Everything below is measured unless a
@@ -94,6 +94,26 @@ open-world map has one: a pair a bot reaches by gliding was counted as refused. 
 (the first figure was read as "the map with most of the refusals"; it is not). The comparison of the variants under the same condition stands, and the wall
 stretches (counted by the audit during generation, with no glide) are not touched, but the absolute refusal counts are too high where glides matter. The glide links are
 numbered by the regions of the mesh they were made for, so a variant's mesh needs its own (`NavmeshTool <map> glides`) before the pairs are counted: to redo.
+
+**C written (31 October)**, `-Dnavmesh.decor=true`, off by default: the models called `pr_*` (props) or containing `tent` are decor; the ground that only their walls
+took (`Heightfield.blockSpanByDecor`) is no edge for the erosion, so the ground beside a barrel or a tent is not shaved, while the decor's own ground stays shut.
+The rule is by name and may be too wide (a `pr_` that is a fence); the figures below say. Measured with each variant's own glide links, Morheim:
+
+| Morheim | Refused pairs (both ways) | Wall stretches (short / long) | Islets |
+|---|---|---|---|
+| Today | 40 | 0 / 2 | 21 |
+| C | 33 | 0 / 4 | 15 |
+| A | 35 | 0 / 2 | 16 |
+| A + C | 33 | 0 / 3 | 15 |
+
+`tools/navmesh.ps1 -OpenWorld -KeepPassages -Decor` generates the meshes with both (the glide and flight links are written again after each mesh).
+
+**The way into the Morheim cave, found (31 October).** The entrance route does not take the ramp at 776 342: it goes south-west, west, **over a hill** (733 329 at z 531, 733 333 at z 538)
+and down to the cave (790 375). It exists only if the ground is climbed up to about 62 degrees (`-Dnavmesh.slope=62`; 55 gives a walk of 3 330 m for 66 m, 50 and 45 none), which for the whole map
+opens four more stretches through a gate, a prop and two trees far from the cave. So `MapSlopes` has **zones**: a box of a map with its own limit, here Morheim, x 725 to 800, y 295 to 385,
+62 degrees (`ZONES`; the cell tests of the generator and the step the path finder takes use it). Measured on Morheim with its own glide links: entrance route of 10 points, 137 m for 66 m;
+refused pairs 40 to 35; wall stretches 0/2 to 0/1; the four stretches of the whole-map slope are gone. **A mesh made with a zone must be generated again** (`tools/navmesh.ps1 220020000`, then its glides
+and flights; `-OpenWorld` does all): the path finder takes its step from `MapSlopes.tangent`, so the old file and the new code disagree until then.
 
 None of them settles everything alone. The erosion is one of the causes, with the walls step (a rock such as `na_d_icerock_b_04d.cgf` at the Morheim entrance),
 cuts that are real cliffs (`210030000`) and authored no-walk volumes (`walk_obstacle4_08m`), which are meant.

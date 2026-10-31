@@ -202,7 +202,7 @@ public class Heightfield {
 				int column = nextY * width + nextX;
 				boolean footing = false;
 				for (int i = offsets[column]; i < offsets[column + 1] && !footing; i++)
-					footing = before.get(i) && Math.abs(surfaces[i] - z) <= reach;
+					footing = (before.get(i) || decorBlocked != null && decorBlocked.get(i)) && Math.abs(surfaces[i] - z) <= reach; // ground a piece of decor stands on is no edge
 				if (!footing)
 					return true;
 			}
@@ -505,8 +505,30 @@ public class Heightfield {
 	void blockSpan(int column, float low, float high, float steppableRise) {
 		for (int i = offsets[column]; i < offsets[column + 1]; i++) {
 			float z = surfaces[i];
-			if (high > z + steppableRise && low < z + AGENT_HEIGHT)
+			if (high > z + steppableRise && low < z + AGENT_HEIGHT) {
 				walkable.clear(i);
+				if (decorBlocked != null)
+					decorBlocked.clear(i); // a wall as well: the surface is no decor's alone
+			}
 		}
 	}
+
+	/**
+	 * As {@link #blockSpan}, for the walls of a small piece of decor (a barrel, a pot, a fire, a tent): the surface is taken away, and remembered as taken by decor,
+	 * so that {@link #erode} does not shave the ground beside it as it shaves the ground beside a wall.
+	 */
+	void blockSpanByDecor(int column, float low, float high, float steppableRise) {
+		for (int i = offsets[column]; i < offsets[column + 1]; i++) {
+			float z = surfaces[i];
+			if (walkable.get(i) && high > z + steppableRise && low < z + AGENT_HEIGHT) {
+				if (decorBlocked == null)
+					decorBlocked = new BitSet(surfaces.length);
+				walkable.clear(i);
+				decorBlocked.set(i);
+			}
+		}
+	}
+
+	/** The surfaces that only small decor took the ground from, or null when none did: not edges for the erosion. */
+	private BitSet decorBlocked;
 }

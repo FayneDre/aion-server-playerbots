@@ -28,6 +28,13 @@
     and the flight links of the maps that had some, since both are read off the ground the mesh describes. What a server needs after a change to the
     generator, as on 18 October (erosion per surface, so that routes keep a body's width from walls): about 25 minutes, with the game server stopped.
 
+.PARAMETER KeepPassages
+    Generates the open-world meshes with the passages the erosion shut given back (navmesh.keepPassages=4, see Heightfield.keepPassages). Read the plan
+    docs/navigation/plans/mesh-defects-plan.md first: the glide links of a mesh made so must be written for it, which -OpenWorld does.
+
+.PARAMETER Decor
+    Generates the open-world meshes without shaving the ground beside small decor (props and tents; navmesh.decor=true, see HeightfieldBuilder).
+
 .PARAMETER Force
     With -Dungeons: builds again the meshes that already exist. Without it they are left alone, since a dungeon takes minutes to build and one that is already good is not
     made better by building it again. Needed after a change to the generator.
@@ -52,6 +59,8 @@ param(
     [switch]$Glides,
     [switch]$Dungeons,
     [switch]$OpenWorld,
+    [switch]$KeepPassages,
+    [switch]$Decor,
     [switch]$Force
 )
 
@@ -65,6 +74,10 @@ if (-not $ServerRoot) {
 }
 
 $gameServer = Join-Path $ServerRoot 'game-server'
+# options of the generator, for the open-world meshes (the instances are not eroded)
+$generatorOptions = @()
+if ($KeepPassages) { $generatorOptions += '-Dnavmesh.keepPassages=4' }
+if ($Decor) { $generatorOptions += '-Dnavmesh.decor=true' }
 if (-not (Test-Path (Join-Path $gameServer 'data/geo'))) {
     throw "No geo data found under $gameServer"
 }
@@ -94,7 +107,7 @@ try {
                 if (Test-Path "data/navmesh/$id.$($links[0])") { $kinds.Add($links) }
             }
             Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
-            & java -Xmx4g -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id
+            & java -Xmx4g @generatorOptions -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id
             if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
             foreach ($links in $kinds) {
                 Write-Host "  writing its $($links[1]) again" -ForegroundColor DarkGray
@@ -175,7 +188,7 @@ try {
     # several maps at once, one after the other: 110010000,400010000
     foreach ($id in $maps) {
         Write-Host "Generating the mesh of map $id..." -ForegroundColor Cyan
-        & java -Xmx4g -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim()
+        & java -Xmx4g @generatorOptions -cp $jar.FullName com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool $id.Trim()
         if ($LASTEXITCODE -ne 0) { throw "Navmesh tool failed on map $id (exit code $LASTEXITCODE)" }
         # links name the mesh's stretches by number, and a new mesh numbers them afresh: a link file left from the old one would join the wrong ground
         foreach ($links in @(@('glide', 'glides'), @('flight', 'flights'), @('ride', 'rides'))) {

@@ -41,6 +41,13 @@ public class HeightfieldBuilder {
 	private final int agentRadius;
 	/** The cosine of the steepest face a body is taken to walk on, which is the map's own, and of a building's: see {@link MapSlopes}. */
 	private final float slopeCosine, buildingCosine;
+	/** The map being built, for the zones of {@link MapSlopes} where the ground is climbed steeper. */
+	private int mapId;
+
+	/** @return The cosine of the steepest face walked at the spot: the fallback, or the zone's when the spot lies in a zone of the map and that is steeper. */
+	private float cosineAt(float fallback, float x, float y) {
+		return Math.min(fallback, MapSlopes.zoneCosine(mapId, x, y));
+	}
 
 	private HeightfieldBuilder(TerrainData terrain, List<PlacedMesh> solids, List<PlacedMesh> noWalkVolumes, int width, int height, int agentRadius,
 		float slopeCosine, float buildingCosine) {
@@ -58,8 +65,20 @@ public class HeightfieldBuilder {
 	 * One model instance, its triangles already in world coordinates.
 	 *
 	 * @param building Whether the model is a building ({@code bu_} in the data), whose stairs some maps model as ramps steeper than any ground.
+	 * @param decor Whether the model is a small piece of decor, see {@link #isDecor}: the ground beside it is not shaved by the erosion.
 	 */
-	private record PlacedMesh(float[] vertices, int[] indices, boolean building) {
+	private record PlacedMesh(float[] vertices, int[] indices, boolean building, boolean decor) {
+	}
+
+	/**
+	 * With {@code -Dnavmesh.decor=true}, the ground beside a small piece of decor is not shaved by the erosion as the ground beside a wall is. Off by default, for it is being measured.
+	 */
+	private static final boolean DECOR_NOT_EDGE = Boolean.getBoolean("navmesh.decor");
+
+	/** @return true for the props (pr_ in the data: pots, barrels, fires, sacks) and the tents, which a body brushes past and which islands of ground are made round in a camp. */
+	static boolean isDecor(String modelName) {
+		String file = modelName.substring(modelName.lastIndexOf('/') + 1);
+		return file.startsWith("pr_") || file.contains("tent");
 	}
 
 	public static Heightfield build(int mapId) throws IOException {
@@ -120,6 +139,7 @@ public class HeightfieldBuilder {
 		int height = (int) (worldSize.get(1) / Heightfield.CELL_SIZE);
 		HeightfieldBuilder builder = new HeightfieldBuilder(terrain, solids, noWalkVolumes, width, height,
 			instance ? Heightfield.INSTANCE_AGENT_RADIUS_CELLS : Heightfield.AGENT_RADIUS_CELLS, MapSlopes.cosine(mapId), MapSlopes.buildingCosine(mapId));
+		builder.mapId = mapId;
 		if (stages != null)
 			builder.stages = stages;
 		return builder.rasterize();
@@ -158,7 +178,8 @@ public class HeightfieldBuilder {
 			}
 			indices = Arrays.copyOf(kept, count);
 		}
-		return new PlacedMesh(vertices, indices, placement.modelName().substring(placement.modelName().lastIndexOf('/') + 1).startsWith("bu_"));
+		return new PlacedMesh(vertices, indices, placement.modelName().substring(placement.modelName().lastIndexOf('/') + 1).startsWith("bu_"),
+			DECOR_NOT_EDGE && isDecor(placement.modelName()));
 	}
 
 	private Heightfield rasterize() {
@@ -188,7 +209,7 @@ public class HeightfieldBuilder {
 		blockWalls(field);
 		stages.accept("walls", field);
 		// the steeper of the map's two slopes, as the path finder steps with (MapSlopes.tangent): a stair a route climbs is not an edge to shave
-		float slopeTangent = (float) Math.tan(Math.acos(Math.min(slopeCosine, buildingCosine)));
+		float slopeTangent = (float) Math.tan(Math.acos(Math.min(Math.min(slopeCosine, buildingCosine), MapSlopes.steepestZoneCosine(mapId))));
 		BitSet beforeErosion = KEEP_PASSAGES > 0 ? field.copyOfWalkable() : null;
 		field.erode(agentRadius, BotPathFinder.STEP_TOLERANCE, slopeTangent);
 		stages.accept("erosion", field);
@@ -228,10 +249,13 @@ public class HeightfieldBuilder {
 		for (PlacedMesh solid : solids) {
 			forEachTriangle(solid, (ax, ay, az, bx, by, bz, cx, cy, cz) -> {
 				float rise = Math.max(az, Math.max(bz, cz)) - Math.min(az, Math.min(bz, cz));
-				if (rise < STEPPABLE_RISE || !isSteep(ax, ay, az, bx, by, bz, cx, cy, cz, solid.building() ? buildingCosine : slopeCosine))
+				if (rise < STEPPABLE_RISE || !isSteep(ax, ay, az, bx, by, bz, cx, cy, cz, cosineAt(solid.building() ? buildingCosine : slopeCosine, (ax + bx + cx) / 3, (ay + by + cy) / 3)))
 					return; // a step, a floor, a roof: things a body walks on, over or under rather than into
 				float low = Math.min(az, Math.min(bz, cz)), high = Math.max(az, Math.max(bz, cz));
-				rasterize(ax, ay, bx, by, cx, cy, column -> field.blockSpan(column, low, high, STEPPABLE_RISE));
+				if (solid.decor())
+					rasterize(ax, ay, bx, by, cx, cy, column -> field.blockSpanByDecor(column, low, high, STEPPABLE_RISE));
+				else
+					rasterize(ax, ay, bx, by, cx, cy, column -> field.blockSpan(column, low, high, STEPPABLE_RISE));
 			});
 		}
 	}
@@ -324,7 +348,7 @@ public class HeightfieldBuilder {
 				float slopeX = (terrain.heightAt(x + half, y) - terrain.heightAt(x - half, y)) / Heightfield.SLOPE_WINDOW;
 				float slopeY = (terrain.heightAt(x, y + half) - terrain.heightAt(x, y - half)) / Heightfield.SLOPE_WINDOW;
 				float normalZ = 1 / (float) Math.sqrt(slopeX * slopeX + slopeY * slopeY + 1);
-				sink.accept(cellY * width + cellX, z, normalZ >= slopeCosine);
+				sink.accept(cellY * width + cellX, z, normalZ >= cosineAt(slopeCosine, x, y));
 			}
 		}
 		for (PlacedMesh mesh : solids)
@@ -347,7 +371,7 @@ public class HeightfieldBuilder {
 			if (Math.abs(footprint) < 1e-6f)
 				continue; // vertical or degenerate: no footprint to stand on
 
-			boolean walkable = isGentleEnough(ax, ay, az, bx, by, bz, cx, cy, cz, mesh.building() ? buildingCosine : slopeCosine);
+			boolean walkable = isGentleEnough(ax, ay, az, bx, by, bz, cx, cy, cz, cosineAt(mesh.building() ? buildingCosine : slopeCosine, (ax + bx + cx) / 3, (ay + by + cy) / 3));
 			int minX = Math.max(0, cell(Math.min(ax, Math.min(bx, cx))));
 			int maxX = Math.min(width - 1, cell(Math.max(ax, Math.max(bx, cx))));
 			int minY = Math.max(0, cell(Math.min(ay, Math.min(by, cy))));

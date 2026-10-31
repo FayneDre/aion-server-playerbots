@@ -1,5 +1,6 @@
 package com.aionemu.gameserver.playerbot.navmesh;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -22,7 +23,45 @@ public final class MapSlopes {
 	 */
 	private static final Set<Integer> BUILDING_STAIRS_AS_RAMPS = Set.of(400010000);
 
+	/**
+	 * A box of a map where the ground is climbed at a steeper slope than the map's, and only there.
+	 * <p>
+	 * Raising the limit for a whole map was measured on Morheim on 31 October: at 62 degrees the way into the cave of the east opens (137 m for 66 m as the crow flies;
+	 * at 55 it is a walk of 3 330 m), and four stretches of routes through a gate, a prop and two trees open elsewhere on the map. A zone gives the one and not the others.
+	 */
+	private record Zone(int mapId, float minX, float minY, float maxX, float maxY, int degrees) {
+		boolean contains(int map, float x, float y) {
+			return map == mapId && x >= minX && x <= maxX && y >= minY && y <= maxY;
+		}
+	}
+
+	/** Morheim: the hill that the way into the cave of the east climbs, from the south of the entrance (759 307) over the top (733 333) down to the cave (790 375). */
+	private static final List<Zone> ZONES = List.of(new Zone(220020000, 725, 295, 800, 385, STAIRS_DEGREES));
+
 	private MapSlopes() {
+	}
+
+	/** @return The cosine of the steepest slope of the zone the spot lies in, 1 (no relaxation) outside every zone of the map; the property {@code navmesh.slope} switches the zones off. */
+	static float zoneCosine(int mapId, float x, float y) {
+		if (Integer.getInteger("navmesh.slope") != null)
+			return 1f;
+		for (Zone zone : ZONES) {
+			if (zone.contains(mapId, x, y))
+				return (float) Math.cos(Math.toRadians(zone.degrees()));
+		}
+		return 1f;
+	}
+
+	/** @return The cosine of the steepest slope of any zone of the map, 1 when it has none. */
+	static float steepestZoneCosine(int mapId) {
+		float steepest = 1f;
+		if (Integer.getInteger("navmesh.slope") == null) {
+			for (Zone zone : ZONES) {
+				if (zone.mapId() == mapId)
+					steepest = Math.min(steepest, (float) Math.cos(Math.toRadians(zone.degrees())));
+			}
+		}
+		return steepest;
 	}
 
 	/** @return The steepest walkable slope of the map in degrees; the property {@code navmesh.slope} overrides it everywhere, for measuring. */
@@ -48,6 +87,6 @@ public final class MapSlopes {
 
 	/** @return How steep a body climbs between two cells, as the rise over the run: the steeper of the ground's and the buildings' limits. */
 	public static float tangent(int mapId) {
-		return (float) Math.tan(Math.toRadians(Math.max(degrees(mapId), buildingDegrees(mapId))));
+		return (float) Math.tan(Math.acos(Math.min(steepestZoneCosine(mapId), (float) Math.cos(Math.toRadians(Math.max(degrees(mapId), buildingDegrees(mapId)))))));
 	}
 }

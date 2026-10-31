@@ -139,6 +139,49 @@ class HeightfieldErosionTest {
 		assertFalse(joined(field, 1, 7));
 	}
 
+	/** A flat floor with one column, the middle one, taken by something 1.5 m high: a wall's span when {@code decor} is false, a barrel's when it is true. */
+	private static Heightfield floorWithAThingInTheMiddle(boolean decor) {
+		Heightfield field = field(x -> List.of(new Surface(FLOOR, true)));
+		int middle = 4 * SIZE + 4;
+		if (decor)
+			field.blockSpanByDecor(middle, FLOOR, FLOOR + 1.5f, 0.5f);
+		else
+			field.blockSpan(middle, FLOOR, FLOOR + 1.5f, 0.5f);
+		return field;
+	}
+
+	@Test
+	void theFloorBesideARealObstacleIsShaved() {
+		Heightfield field = floorWithAThingInTheMiddle(false);
+
+		field.erode(1, BotPathFinder.STEP_TOLERANCE, 1);
+
+		assertFalse(walkableAt(field, 4, 4, FLOOR), "the obstacle's own ground");
+		assertFalse(walkableAt(field, 3, 4, FLOOR), "and the ground against it, a body's width");
+		assertTrue(walkableAt(field, 2, 4, FLOOR));
+	}
+
+	@Test
+	void theFloorBesideSmallDecorIsLeftAlone() {
+		Heightfield field = floorWithAThingInTheMiddle(true);
+
+		field.erode(1, BotPathFinder.STEP_TOLERANCE, 1);
+
+		assertFalse(walkableAt(field, 4, 4, FLOOR), "a body does not stand in a barrel");
+		assertTrue(walkableAt(field, 3, 4, FLOOR), "but it may stand beside it: the ground there is what a camp's bots walk over");
+		assertTrue(walkableAt(field, 5, 4, FLOOR));
+	}
+
+	@Test
+	void groundBlockedByAWallAsWellAsDecorIsStillAnEdge() {
+		Heightfield field = floorWithAThingInTheMiddle(true);
+		field.blockSpan(4 * SIZE + 4, FLOOR, FLOOR + 1.5f, 0.5f); // a wall behind the barrel takes the same surface
+
+		field.erode(1, BotPathFinder.STEP_TOLERANCE, 1);
+
+		assertFalse(walkableAt(field, 3, 4, FLOOR), "a surface a wall took is no decor's alone");
+	}
+
 	@Test
 	void shavingAFloorLeavesTheRoofAboveIt() {
 		Heightfield field = field(x -> x == WALL_X ? List.of(new Surface(FLOOR, false), new Surface(ROOF, true))
