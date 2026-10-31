@@ -34,12 +34,15 @@ final class BotLedgeGlide {
 	/** The chance, at each look, that the bot goes for an edge: about one look a minute, so about one glide in twenty minutes of leisure near a player. */
 	private static final double CHANCE = 0.05;
 	private static final long LOOK_EVERY_MILLIS = 60_000, REST_MILLIS = 10 * 60_000L, WALK_TO_EDGE_MILLIS = 25_000;
-	private static final float AT_EDGE = 1.5f;
+	/** Near enough to the take-off to glide: the walk ends where its arrival test says, which is not always on the very cell of the edge. */
+	private static final float AT_EDGE = 2.5f;
+	/** A bot hurt more than this does not go for an edge: it is recovering, and a glide ends in a landing among whatever hurt it. */
+	private static final int MIN_HP_PERCENT = 70;
 
 	private final PlayerBotAI ai;
-	private long nextLookAt;
-	private LedgeGlides.Ledge ledge;
-	private long giveUpAt;
+	private volatile long nextLookAt;
+	private volatile LedgeGlides.Ledge ledge;
+	private volatile long giveUpAt;
 
 	BotLedgeGlide(PlayerBotAI ai) {
 		this.ai = ai;
@@ -51,8 +54,14 @@ final class BotLedgeGlide {
 			return false;
 		Player bot = ai.getOwner();
 		long now = System.currentTimeMillis();
+		// asked again on every tick, not only when an edge is chosen: a bot that joins a group, is taken in hand, takes to the air or is hurt on its way to the edge stops going
+		if (bot.isInTeam() || ai.isOwned() || BotFlight.isInTheAir(bot) || bot.getLifeStats().getHpPercentage() < MIN_HP_PERCENT) {
+			if (ledge != null)
+				done(now);
+			return false;
+		}
 		if (ledge == null) {
-			if (now < nextLookAt || bot.isInTeam() || ai.isOwned() || BotFlight.isInTheAir(bot))
+			if (now < nextLookAt)
 				return false;
 			nextLookAt = now + LOOK_EVERY_MILLIS;
 			if (ThreadLocalRandom.current().nextDouble() >= CHANCE || !playerNear(bot))

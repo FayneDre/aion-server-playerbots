@@ -305,10 +305,14 @@ public class NavmeshService {
 		List<LedgeGlides.Ledge> ledges = new ArrayList<>(
 			LedgeGlides.around(mesh, bot.getX(), bot.getY(), bot.getZ(), radius, minDrop, maxDrop, System.nanoTime() ^ bot.getObjectId()));
 		java.util.Collections.shuffle(ledges);
-		for (LedgeGlides.Ledge ledge : ledges) {
+		// a few tried, the cheap tests first: each air test is a ray and each walk a search, on the bot's own tick
+		for (LedgeGlides.Ledge ledge : ledges.subList(0, Math.min(AMBIENT_GLIDE_TRIED, ledges.size()))) {
 			Vector3f off = ledge.takeoff(), down = ledge.landing();
+			if (host().isSiegeGround(bot.getWorldId(), down.getX(), down.getY(), down.getZ()))
+				continue;
+			// no region on either end, a glide and not a crossing or a lift: the link is a pair of points for the air test, nothing the planner reads
 			GlideLink link = new GlideLink(off.getX(), off.getY(), off.getZ(), down.getX(), down.getY(), down.getZ(), -1, -1, false, 0);
-			if (isAirClear(bot, link) && !host().isSiegeGround(bot.getWorldId(), down.getX(), down.getY(), down.getZ())
+			if (isAirClear(bot, link)
 				&& BotPathFinder.isWithinWalk(mesh, down.getX(), down.getY(), down.getZ(), bot.getX(), bot.getY(), bot.getZ(), AMBIENT_GLIDE_WALK_BACK))
 				return ledge;
 		}
@@ -317,6 +321,8 @@ public class NavmeshService {
 
 	/** The longest walk back from the landing of an ambient glide to where the bot stood, in metres: beyond it the ground below is as good as another island. */
 	private static final float AMBIENT_GLIDE_WALK_BACK = 600;
+	/** How many of the edges found are vetted in one look. */
+	private static final int AMBIENT_GLIDE_TRIED = 4;
 
 	/**
 	 * Finds walkable ground near a spot, for putting a bot down on it.

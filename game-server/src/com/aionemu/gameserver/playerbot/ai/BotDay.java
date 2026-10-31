@@ -136,8 +136,8 @@ class BotDay {
 			occupationDestination = null;
 			log.info("Bot {} takes to {}", bot.getName(), occupation);
 		}
-		// leisure only: a bot at its hunting does not leave it to glide off a ledge
-		if (occupation != Occupation.FARMING && ledgeGlide.tick())
+		// idling only: a bot at its hunting, or on its way to another place, does not leave it to glide off a ledge
+		if (occupation == Occupation.LOITERING && ledgeGlide.tick())
 			return true;
 		return switch (occupation) {
 			case FARMING -> farm();

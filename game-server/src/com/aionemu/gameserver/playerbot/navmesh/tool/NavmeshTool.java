@@ -190,8 +190,8 @@ public class NavmeshTool {
 			System.out.println("       NavmeshTool obelisks [mapId]   can a body resurrected at each obelisk of each mesh walk away? exit code 1 when one cannot");
 			System.out.println("       NavmeshTool golden <file> [mapId...]   walk the routes a tester walked, both ways, and fail on one that is shut or a detour (tools/golden-routes.txt)");
 			System.out.println("       NavmeshTool <mapId> glidegain [samples]   on sampled descents, what a glide would save over the walk, by drop (backlog point 4)");
-		System.out.println("       NavmeshTool <mapId> ledges [samples]   of random places, how many have an edge within 25 m to glide off for the look of it (ambient glides)");
-		System.out.println("       NavmeshTool replay <file> [every]   plan again the journeys a server gave up (map sx sy sz gx gy gz cause, a line each)");
+			System.out.println("       NavmeshTool <mapId> ledges [samples]   of random places, how many have an edge within 25 m to glide off for the look of it (ambient glides)");
+			System.out.println("       NavmeshTool replay <file> [every]   plan again the journeys a server gave up (map sx sy sz gx gy gz cause, a line each)");
 			System.out.println("       NavmeshTool <mapId> walkers   do the patrol routes of the data join by a short walk? (steps no walk of three times the distance joins, by place)");
 			System.out.println("       NavmeshTool <mapId> seams <x> <y> <z>   where the ground under that spot nearly joins its neighbours, and by how much it misses");
 			System.out.println("       NavmeshTool <mapId> stuck <file>   where bots reported being unable to move: on footing or inside geometry");
