@@ -8,3 +8,6 @@
 220020000 774.3 339.8 520.4 776.6 347.1 522 20   # Morheim, the corridor to the way out in the north (one cell wide, shut by the erosion)
 220020000 774.3 339.8 520.4 790 375 525 60   # Morheim, the corridor to the ground outside
 220020000 741 311 520 764 370 524 110   # Morheim, the foot of the hill to the north of the cave
+120010000 988.1 1177.1 197.1 1054 1195.3 201.5 120   # Pandaemonium, the foot of the Airship Dock ramp to the dock where the player stood (three bots were left on it, 31 October)
+120010000 1049.4 1188.7 198.8 988.1 1177.1 197.1 100   # Pandaemonium, the dock's lower terrace (Toronil) to the foot of the ramp
+120010000 1055.7 1195.7 201.5 1043.8 1193.3 201.5 20   # Pandaemonium, the plinth on the dock (Wynunric) to the dock's ground
