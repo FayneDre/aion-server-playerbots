@@ -17,7 +17,7 @@ import java.util.Set;
 final class Slice {
 
 	/** The steps drawn: the walls, which take the ground behind solid geometry, and the erosion, which shaves a body's width off every edge. */
-	private static final Set<String> STAGES = Set.of("head room", "walls", "erosion", "passages kept");
+	private static final Set<String> STAGES = Set.of("head room", "walls", "erosion", "passages kept", "walked ground");
 	/** How far above or below the height asked for a surface is still the same floor, in metres. */
 	private static final float SAME_FLOOR = 1.5f;
 

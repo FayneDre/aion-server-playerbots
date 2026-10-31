@@ -111,8 +111,12 @@ try {
                 if ($LASTEXITCODE -ne 0) { throw "Writing the $($links[1]) of map $id failed (exit code $LASTEXITCODE)" }
             }
         }
+        # the routes testers walked, both ways: a fix that opens a passage one way and shuts it the other is how one breaks
+        & java -Xmx1500m -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool golden (Join-Path $PSScriptRoot 'golden-routes.txt') @($ids | ForEach-Object { [int]$_ })
+        $goldenFailed = $LASTEXITCODE -eq 1
+        if ($goldenFailed) { Write-Host 'A route a tester walked is shut or a detour in the meshes just built: see FAIL above before deploying them.' -ForegroundColor Red }
         Write-Host "Done: $($ids.Count) maps. Start the server: .\tools\start-server.ps1 (the first start rebuilds the bots' places, several minutes)" -ForegroundColor Green
-        exit 0
+        exit ([int]$goldenFailed)
     }
     if ($Obelisks) {
         # the audit asks the same service the bots do, which logs through slf4j: the server's libraries are needed, the generator's bare jar is not enough
@@ -195,6 +199,8 @@ try {
             }
         }
     }
+    & java -Xmx1500m -cp "$($jar.FullName);libs/*" com.aionemu.gameserver.playerbot.navmesh.tool.NavmeshTool golden (Join-Path $PSScriptRoot 'golden-routes.txt') @($maps | ForEach-Object { [int]$_ })
+    if ($LASTEXITCODE -eq 1) { Write-Host 'A route a tester walked is shut or a detour in the mesh just built: see FAIL above before deploying it.' -ForegroundColor Red }
     Write-Host 'Done. Restart the game server to load the new meshes: .\tools\stop-server.ps1 then .\tools\start-server.ps1' -ForegroundColor Green
 } finally {
     Pop-Location

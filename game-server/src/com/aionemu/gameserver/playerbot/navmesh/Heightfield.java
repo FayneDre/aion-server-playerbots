@@ -99,6 +99,33 @@ public class Heightfield {
 		}
 	}
 
+	/** Gives back to the walk the surfaces of the columns round a point that walked before {@code before} and lie within {@code tolerance} metres of its height. @return how many were not walkable. */
+	int restoreNear(BitSet before, float x, float y, float z, int cellRadius, float tolerance) {
+		int centreX = (int) (x / CELL_SIZE), centreY = (int) (y / CELL_SIZE), given = 0;
+		for (int cellY = Math.max(0, centreY - cellRadius); cellY <= Math.min(height - 1, centreY + cellRadius); cellY++) {
+			for (int cellX = Math.max(0, centreX - cellRadius); cellX <= Math.min(width - 1, centreX + cellRadius); cellX++) {
+				for (int surface = columnStart(cellX, cellY); surface < columnEnd(cellX, cellY); surface++) {
+					if (before.get(surface) && !walkable.get(surface) && Math.abs(surfaces[surface] - z) <= tolerance) {
+						walkable.set(surface);
+						given++;
+					}
+				}
+			}
+		}
+		return given;
+	}
+
+	/** How many surfaces the walked ground of the map gave back, 0 before it ran. */
+	private int walkedGivenBack;
+
+	public int walkedGivenBack() {
+		return walkedGivenBack;
+	}
+
+	void addWalkedGivenBack(int count) {
+		walkedGivenBack += count;
+	}
+
 	public boolean isWalkable(int index) {
 		return walkable.get(index);
 	}

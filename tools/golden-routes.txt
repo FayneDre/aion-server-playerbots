@@ -1,0 +1,10 @@
+# Routes a tester walked on foot, which the mesh must join, both ways, by a walk no longer than the last number.
+# map x1 y1 z1 x2 y2 z2 longestWalkInMetres   # what it is
+# Checked by tools/check-golden-routes.ps1 and after every mesh navmesh.ps1 builds. A note that is fixed adds its line here.
+#
+# Not listed, for it fails today: the pillar of one cell in Morheim, 1785.8 1484.8 193.1 to 1786 1490 191 (a group landed on it by a glide).
+220020000 741 311 520 771 320 516 70   # Morheim, cave of the east: from the foot of the hill to the player's chamber
+220020000 768.8 318.3 516.2 771 320 516 10   # Morheim, the mouth in the west to the corridor (a rock lip and a hole in the floor were between)
+220020000 774.3 339.8 520.4 776.6 347.1 522 20   # Morheim, the corridor to the way out in the north (one cell wide, shut by the erosion)
+220020000 774.3 339.8 520.4 790 375 525 60   # Morheim, the corridor to the ground outside
+220020000 741 311 520 764 370 524 110   # Morheim, the foot of the hill to the north of the cave

@@ -18,6 +18,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.VisibleObject;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
+import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -63,8 +64,14 @@ public final class BotDiagnostics {
 			caller.getInstanceId(), caller.getX(), caller.getY(), caller.getZ());
 		log.info("{} #{} \"{}\" by {}, positioning {}", NOTE_MARK, number, text == null ? "" : text, where, PlayerBotConfig.POSITIONING);
 		List<Player> described = caller == null ? squadMembers() : botsAround(caller);
-		for (Player bot : described)
+		for (Player bot : described) {
 			log.info("{} #{} | {}", NOTE_MARK, number, describe(bot));
+			if (caller != null && bot.getWorldId() == caller.getWorldId() && bot.getInstanceId() == caller.getInstanceId())
+				log.info("{} #{} | {} to the player: {}", NOTE_MARK, number, bot.getName(),
+					NavmeshService.getInstance().describeWalk(bot.getWorldId(), bot.getX(), bot.getY(), bot.getZ(), caller.getX(), caller.getY(), caller.getZ()));
+		}
+		if (caller != null)
+			log.info("{} #{} | the player's ground: {}", NOTE_MARK, number, NavmeshService.getInstance().isPocket(caller.getWorldId(), caller.getX(), caller.getY(), caller.getZ()) ? "a pocket that leads nowhere on foot" : "leads somewhere");
 		return "Note #" + number + " written to the log with " + described.size() + " bot(s) described.";
 	}
 

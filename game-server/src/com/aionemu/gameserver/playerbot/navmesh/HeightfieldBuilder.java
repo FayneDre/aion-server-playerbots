@@ -44,6 +44,12 @@ public class HeightfieldBuilder {
 	private final float slopeCosine, buildingCosine;
 	/** The map being built, for the zones of {@link MapSlopes} where the ground is climbed steeper. */
 	private int mapId;
+	/** The ground real players walked on this map, see {@link WalkedGround}: a patch of floor under each point, and the surfaces round it given back at the end. */
+	private List<float[]> walked = List.of();
+	/** Half a side of the patch of floor under a walked point, in metres. */
+	private static final float WALKED_HALF = 0.75f;
+	/** How far from the point's height a surface is the one walked on, in metres. */
+	private static final float WALKED_HEIGHT = 1.2f;
 
 	/** @return The cosine of the steepest face walked at the spot: the fallback, or the zone's when the spot lies in a zone of the map and that is steeper. */
 	private float cosineAt(float fallback, float x, float y) {
@@ -160,6 +166,9 @@ public class HeightfieldBuilder {
 			noWalkVolumes.clear();
 		for (MapOpenings.Floor floor : MapOpenings.floors(mapId))
 			solids.add(flatFloor(floor));
+		List<float[]> walked = WalkedGround.read(mapId);
+		for (float[] point : walked)
+			solids.add(flatFloor(new MapOpenings.Floor(mapId, point[0] - WALKED_HALF, point[1] - WALKED_HALF, point[0] + WALKED_HALF, point[1] + WALKED_HALF, point[2], 0)));
 
 		List<Integer> worldSize = terrain != null ? terrain.worldSize() : List.of(mapSize, mapSize);
 		int width = (int) (worldSize.get(0) / Heightfield.CELL_SIZE);
@@ -167,6 +176,7 @@ public class HeightfieldBuilder {
 		HeightfieldBuilder builder = new HeightfieldBuilder(terrain, solids, noWalkVolumes, width, height,
 			instance ? Heightfield.INSTANCE_AGENT_RADIUS_CELLS : Heightfield.AGENT_RADIUS_CELLS, MapSlopes.cosine(mapId), MapSlopes.buildingCosine(mapId));
 		builder.mapId = mapId;
+		builder.walked = walked;
 		if (stages != null)
 			builder.stages = stages;
 		return builder.rasterize();
@@ -235,6 +245,7 @@ public class HeightfieldBuilder {
 
 		Heightfield field = new Heightfield(width, height, offsets, surfaces, walkable);
 		field.sortColumns();
+		BitSet afterSampling = walked.isEmpty() ? null : field.copyOfWalkable();
 		stages.accept("surfaces sampled", field);
 		field.applyHeadroom();
 		stages.accept("head room", field);
@@ -253,6 +264,12 @@ public class HeightfieldBuilder {
 		if (KEEP_PASSAGES > 0) {
 			field.keepPassages(beforeErosion, KEEP_PASSAGES, PASSAGE_REACH_CELLS, BotPathFinder.STEP_TOLERANCE, slopeTangent);
 			stages.accept("passages kept", field);
+		}
+		if (afterSampling != null) {
+			// the one proof there is: a person walked here, so whatever the head room, the walls and the erosion made of it, it is ground
+			for (float[] point : walked)
+				field.addWalkedGivenBack(field.restoreNear(afterSampling, point[0], point[1], point[2], 1, WALKED_HEIGHT));
+			stages.accept("walked ground", field);
 		}
 		return field;
 	}

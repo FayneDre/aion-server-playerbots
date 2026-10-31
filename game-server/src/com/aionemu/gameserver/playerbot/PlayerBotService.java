@@ -22,6 +22,7 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
+import com.aionemu.gameserver.playerbot.navmesh.WalkedTrails;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.world.BotDirector;
 import com.aionemu.gameserver.playerbot.world.BotNavmeshHost;
@@ -72,6 +73,7 @@ public class PlayerBotService {
 		restoreRoster();
 		warmUpPlaces();
 		BotInbox.start();
+		WalkedTrails.start();
 		BotRecruiter.start();
 		// Last, and it used to be first. The director reviews what each region holds against what it should hold, and both of the steps above change
 		// that answer wholesale: populating a fresh installation builds a navmesh and creates thousands of characters across eighteen maps, which

@@ -99,8 +99,9 @@ have no plan yet ([roadmap.md](roadmap.md), "Group play").
 | [backlog.md](navigation/backlog.md) | **What is left, as seen in game** (27 October): sliding, obstacles, long journeys, gliding, parasitic moves, dungeons. |
 | [how-it-works.md](navigation/how-it-works.md) | **How a bot moves today**: the layers, the mesh and its links, planning and its budgets, walking, what happens when it does not get there. |
 | [instance-navmesh-list.md](navigation/instance-navmesh-list.md) | The 110 instance maps by category, and which share a geometry. |
+| [verification-tools.md](navigation/verification-tools.md) | **Checking the meshes against what a tester walked** (31 October): golden routes, the note's route lines, walked ground. |
 | [plans/openworld-navigation-plan.md](navigation/plans/openworld-navigation-plan.md) | Glide and ride links, journeys given up. In progress: next, the day plans given up. |
-| [plans/mesh-defects-plan.md](navigation/plans/mesh-defects-plan.md) | **What to correct in the meshes** (30 October): the cave ramp of Morheim, islets under monsters, cuts between grounds. Audit done, nothing corrected yet. |
+| [plans/mesh-defects-plan.md](navigation/plans/mesh-defects-plan.md) | **What to correct in the meshes** (30 October): the cave ramp of Morheim, islets under monsters, cuts between grounds. In progress: erosion options A and C are on by default since 31 October; Morheim's cave is fixed by hand (`MapOpenings`). |
 
 History: [navigation-prototype.md](navigation/history/navigation-prototype.md) (the foundations of September),
 [navmesh-plan.md](navigation/history/navmesh-plan.md) (path planning on a generated grid, N0 to N6),

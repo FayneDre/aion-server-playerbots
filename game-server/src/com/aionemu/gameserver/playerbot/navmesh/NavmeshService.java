@@ -470,6 +470,32 @@ public class NavmeshService {
 		return !route.isEmpty() || route.gaveUp();
 	}
 
+	/** How long the walk asked for a note may be searched for, in milliseconds. */
+	private static final long DESCRIBE_BUDGET_MILLIS = 1000;
+
+	/**
+	 * Says in a line what the planner makes of the walk between two spots, for a tester's note: the length against the straight line, a search that gave up, a proof of no way.
+	 * A walk several times the straight line between two spots a few metres apart is the signature of a wall in the way, which is what a note about a bot that will not follow is about.
+	 */
+	public String describeWalk(int worldId, float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
+		Navmesh mesh = get(worldId);
+		if (mesh == null)
+			return "no mesh for this map";
+		String ground = isPocket(worldId, fromX, fromY, fromZ) ? "on a pocket of ground that leads nowhere on foot" : "on ground that leads somewhere";
+		BotPathFinder.Route route = BotPathFinder.within(DESCRIBE_BUDGET_MILLIS, () -> BotPathFinder.findPathNear(mesh, fromX, fromY, fromZ, toX, toY, toZ));
+		float straight = (float) Math.hypot(toX - fromX, toY - fromY);
+		if (route.isEmpty())
+			return (route.gaveUp() ? "search gave up" : route.goalCutOff() ? "goal cut off" : "no way proved") + ", " + ground;
+		float walked = 0;
+		for (int i = 1; i < route.waypoints().size(); i++) {
+			var a = route.waypoints().get(i - 1);
+			var b = route.waypoints().get(i);
+			walked += (float) Math.sqrt((b.getX() - a.getX()) * (b.getX() - a.getX()) + (b.getY() - a.getY()) * (b.getY() - a.getY()) + (b.getZ() - a.getZ()) * (b.getZ() - a.getZ()));
+		}
+		return String.format(java.util.Locale.ROOT, "walk of %.0f m for %.0f m in a line (x%.1f), %d waypoint(s)%s, %s", walked, straight, straight < 1 ? walked : walked / straight,
+			route.waypoints().size(), route.glides().isEmpty() && route.flights().isEmpty() && route.rides().isEmpty() ? "" : " with links", ground);
+	}
+
 	/**
 	 * Plans a journey and hands the result back when it is ready.
 	 * <p>
