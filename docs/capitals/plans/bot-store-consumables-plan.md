@@ -1,6 +1,6 @@
 # Bot stores: food, scrolls, higher stones and more lines
 
-Status: not started: analysis and plan written; four decisions at the end are the user's.
+Status: not started: analysis and plan written; the user answered on 31 October ("Decisions taken"), and the stones question (2) stands on a default until he answers.
 
 Written on 31 October 2026 from the tester's feedback of 29 October (a player's remarks on what live private stores sell, quoted in French in the feedback file):
 
@@ -89,7 +89,18 @@ A gear store keeper under level 50 becomes an opportunist (or sells food), and t
 
 About five days of work. The prices of food and of event scrolls are a guess until the tester has priced them against what he sees on live servers.
 
-## Decisions for the user
+## Decisions taken (31 October)
+
+1. **Shares**: as proposed, food a fifth, scrolls a sixth, gear and jewels a tenth each.
+2. **Stones**: not understood by the user, so the default below stands until answered. Out of a map's stones stores, **two keep the wide range** (stones from 10 up to the keeper's level plus 10), chosen by keeper id so
+   that they are the same every day, and **all the others sell only stones of 60 and 70**; a keeper under level 50 cannot stock a 60, so it sells no stones at all (it takes gear, food or scrolls instead, unless it is one of the two wide ones).
+3. **Gear under 50: there must be some.** Step 4 changes: no ban, only a smaller share. Gear stores of keepers under 50 stay, at a tenth of the stores of such keepers and not a sixth.
+4. **Event scrolls**: the user does not know; defaults: six times the price of the 5 minute scroll for 30 minutes and twelve times for 1 hour, in stacks of 5 to 20, two lines of them a store at most, in food and scrolls stores only.
+5. **A complete sale page**: stores open with **10 lines, a full page** (`STOCKED_LINES` 8 to 10), the test above 10 is dropped and the limit stays what the engine says: the core patch of step 5 is not needed.
+   **For the evolution stone, the holy serum and the All-Powerful stone, a store must always be present**: at every hour, in every capital market, at least one stones store of a keeper of level 60 or over holds all three,
+   renewed with its shelf, and not by a draw.
+
+## The decisions that were asked
 
 1. **The shares**: food a fifth, scrolls a sixth, gear and jewels a tenth each, as above, or the other way: how much of a market should be consumables?
 2. **How many stores keep the wide range of stones** per map (one or two): and whether a keeper under 50 may sell stones at all.
