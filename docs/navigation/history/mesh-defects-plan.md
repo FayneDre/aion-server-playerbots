@@ -1,6 +1,6 @@
 # Mesh defects: what to correct for the meshes to be as exact as they can be
 
-Status: in progress: options A and C are on by default and deployed since 31 October (section F); the Morheim cave is fixed by hand and checked by a tester; the long tail of cuts is dispersed and mostly not a mesh fault.
+Status: done (1 November): options A and C are on by default and deployed since 31 October (section F); options B, E and F are closed, not taken; the Morheim cave is fixed by hand and checked by a tester; the long tail of cuts is dispersed and mostly not a mesh fault. Places that wait for a tester's note (Altgard's cave, the Fire Temple, Pandaemonium's dock) are in [step-links-plan.md](../plans/step-links-plan.md).
 
 Written on 30 October 2026 after a tester reported bots that cannot get past the entrance of a cave in Morheim (and said the same happens in a cave of
 Altgard). The planner proved the way shut, in 55 ms, so the fault is in the mesh and not in the search budget. Everything below is measured unless a
@@ -68,11 +68,11 @@ preference is a guess.
 | | Principle | For | Against or unknown |
 |---|---|---|---|
 | **A. Erosion that keeps passages** | Erode everywhere, then give back the cells taken that joined two grounds joined before. | Walls stay kept off; a passage comes back only where one is needed. | To write and measure. A passage given back may run close to a wall. |
-| **B. Erosion as a cost, not a hole** | Eroded cells stay walkable at a high cost, like `Avoidance`: the planner avoids them while another way exists. | No passage is lost. | String pulling may cut a corner along a wall, so it would have to refuse those cells; one more state per cell in the file and in memory. |
+| **B. Erosion as a cost, not a hole** (not taken) | Eroded cells stay walkable at a high cost, like `Avoidance`: the planner avoids them while another way exists. | No passage is lost. | String pulling may cut a corner along a wall, so it would have to refuse those cells; one more state per cell in the file and in memory. |
 | **C. Erode only against what it protects** | Erode next to the walls of buildings and castles, not next to small props (tents, pots, barrels) or ledges. | Goes at the cause of the islets: props isolate patches of ground. | Models must be told apart (a tent is a `bu_` like a house); not known to hold on every map. |
 | **D. Per map or per zone** | A list of maps or boxes where the erosion is 0, as `MapSlopes` and `DroppedFaces` do. | Simple, safe, aimed. Settles the Morheim cave at once. | By hand, for every case; nothing finds the cases. |
-| **E. Finer grid** | Cells of 25 cm instead of 50, so the same one cell is 25 cm. | Fewer passages lost. | Four times the memory, on a machine where the meshes already take 570 MB. Probably out. |
-| **F. Two layers** | The eroded mesh for ordinary routes, the raw ground as a second try when there is none. | No passage lost. | Twice the storage; the second try may cross walls unnoticed. |
+| **E. Finer grid** (not taken) | Cells of 25 cm instead of 50, so the same one cell is 25 cm. | Fewer passages lost. | Four times the memory, on a machine where the meshes already take 570 MB. Probably out. |
+| **F. Two layers** (not taken) | The eroded mesh for ordinary routes, the raw ground as a second try when there is none. | No passage lost. | Twice the storage; the second try may cross walls unnoticed. |
 
 **A measured (31 October)**, `Heightfield.keepPassages`, off by default, `-Dnavmesh.keepPassages=4` (stretches of at least 4 cells; the way back may cross 8 cells, `navmesh.passageReach`).
 Refused pairs both ways and stretches through a wall, as the generator's audit counts them:
@@ -118,6 +118,8 @@ and flights; `-OpenWorld` does all): the path finder takes its step from `MapSlo
 None of them settles everything alone. The erosion is one of the causes, with the walls step (a rock such as `na_d_icerock_b_04d.cgf` at the Morheim entrance),
 cuts that are real cliffs (`210030000`) and authored no-walk volumes (`walk_obstacle4_08m`), which are meant.
 
+
+**Options B, E and F: closed on 1 November, not taken.** B (erosion as a cost) wants one more state per cell in the file and in memory, was never measured, and may cut corners along walls. E (cells of 25 cm) multiplies cells, memory (about 570 MB for 26 maps now, about 2 GB then, on a 2560 MB heap shared with 1000 bots and the auction house), the 1.8 GB of meshes on disk and the search a route costs, and every link file would be written again; it fixes nothing that A does not. F (two layers) doubles the storage, pays a second search for each goal that has no route (most of the given-up plans are such goals) and is the way bots went through walls before the erosion (34 stretches through a model on Poeta without it, 0 with). A (passages given back) and C (decor spared) are on, D (boxes without erosion) holds the Morheim cave, and a ramp by hand answers the rest, each checked in game or by a golden route.
 ## F. What came of it (31 October)
 
 - **Deployed**: A (passages given back, minimum 4 cells) and C (decor spared) by default, `navmesh.ps1 -Plain` for the old meshes; the 26 open-world meshes were built again with their links; the islet fix; slope zones (Morheim's hill).

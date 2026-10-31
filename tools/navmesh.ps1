@@ -30,7 +30,7 @@
 
 .PARAMETER Plain
     Generates the meshes as before 31 October: no passages given back to the erosion, the ground beside decor shaved like any other (navmesh.keepPassages=0,
-    navmesh.decor=false). The default gives the passages back and spares decor, see docs/navigation/plans/mesh-defects-plan.md; the glide links of a mesh
+    navmesh.decor=false). The default gives the passages back and spares decor, see docs/navigation/history/mesh-defects-plan.md; the glide links of a mesh
     made either way must be written for it, which -OpenWorld does.
 
 .PARAMETER Force

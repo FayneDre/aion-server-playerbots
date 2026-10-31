@@ -1,6 +1,6 @@
 # Navigation: what is left, as seen in game
 
-Status: in progress: points 1, 3, 4 and 5 are closed (1 November); point 2 is not started; point 6, which now holds the Draupnir report (the former point 7), is not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [plans/mesh-defects-plan.md](plans/mesh-defects-plan.md).
+Status: in progress: points 1, 3, 4 and 5 are closed (1 November); point 2 is not started; point 6, which now holds the Draupnir report (the former point 7), is not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [history/mesh-defects-plan.md](history/mesh-defects-plan.md).
 
 Written on 27 October 2026 from the user's notes, to be worked once the module structure plan is done
 ([module-structure-plan.md](../architecture/history/module-structure-plan.md)). Navigation is the priority after it. Each point is the user's words, what
