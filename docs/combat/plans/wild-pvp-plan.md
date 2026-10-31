@@ -27,13 +27,29 @@ Status: not started. Analysed on 31 October (roadmap point 8). Nothing of it is 
 from its object id: *fighter* (attacks an enemy in range, about 1 bot in 4), *opportunist* (attacks only a weakened or lower level enemy, 1 in 4),
 *peaceful* (never starts a fight, only defends itself, 1 in 2), as human players differ. Temperament is ignored during an invasion. The shares are a first guess to tune.
 
+## Added on 31 October (all taken)
+
+- **Where PvP really is (to check first).** Which maps are flagged PvP as a whole (Reshanta, the Abyss, where bots fly) was not verified; only the zone
+  polygons were. It decides the hunting grounds and touches the refusal of the other side's islands. Milestone 0.
+- **Combat made for a player, not a monster.** The playbooks are tuned for mobs: no stun or immunity handling, no flight. A PvP behaviour of their own:
+  heal and flee under a life threshold, never pick a player already dying, no mob-only skill on a player. Probably the largest part (milestone 2b).
+- **Fairness against a lone player.** A bot does not attack a lone player in a party of more than two bots, and withdraws when outnumbered.
+- **A player's own bots.** Bots grouped with a player in a PvP zone help the player against an enemy, whatever their temperament; they never attack
+  a player of their own side.
+- **Rewards.** Read what `PvpService` does against repeated kills of one victim; a bot killed by a player gives no abyss points (else a player farms them);
+  a bot's kill of a player follows the engine's rules unchanged.
+- **Tests and traces.** `//bot pvp` (two bots face to face, a forced invasion) listed in `bot-commands.md`; one log line per PvP death or kill for the
+  measure; a short chat reaction after a kill of a player (as the other reactions, in both languages).
+
 ## Milestones
 
+0. **Check the ground.** List the PvP maps and zones from the data (maps flagged, polygons), say which have a mesh, and fix the hunting grounds.
 1. **See a player as a target** (smallest, testable alone). `BotTargetSelector.findPlayerTarget` returns an enemy `Player` in a PvP zone, picked with
    the same line-of-sight, height and level rules and the temperament above; used only when the bot stands in a PvP zone **and** the property is on. Test: two bots of different
    races placed in the Heiron PvP polygon (`//bot squad` + a teleport), they fight; one player of the other race attacked in that polygon is answered.
 2. **Defence.** A bot attacked by a player (any zone where `isEnemy` holds) fights back or flees below 30% life. Check what `BotAttackManager` does
    today with a `Player` attacker before writing anything; the duel path (milestone already built) is the likely seam.
+2b. **PvP combat behaviour** (see above), then the fairness rule and the player's own bots' help.
 3. **Hunting ground in a PvP zone.** `BotPlaces` offers the PvP polygons as a hunting ground to bots of level 30+ only while the property is on and
    the feature has a quota (at most N bots per zone, to keep ticks and deaths down). Needs the navmesh to cover those polygons: check `check-golden-routes` style
    routes into each one first.
@@ -53,4 +69,4 @@ from its object id: *fighter* (attacks an enemy in range, about 1 bot in 4), *op
 
 ## First step proposed
 
-Milestone 1 plus the property, test-only, then a watch in game with the tester standing in the Heiron polygon. Nothing else before that works.
+Milestone 0 (the check of the ground), then milestone 1 plus the property, test-only, then a watch in game with the tester standing in the Heiron polygon. Nothing else before that works.
