@@ -28,9 +28,20 @@ public final class WalkedGround {
 		return Path.of("data/navmesh", mapId + ".walked");
 	}
 
-	/** @return the points of this map, empty when nobody has walked it since the file was started. */
+	/** The points of the data's own patrol routes that the mesh cut, written by {@code NavmeshTool <map> walkers write}: ground a creature was meant to walk, kept apart from what players walked. */
+	public static Path patrolsFileOf(int mapId) {
+		return Path.of("data/navmesh", mapId + ".patrols");
+	}
+
+	/** @return the points of this map, players' and patrols', empty when nobody has walked it and no patrol route was cut. */
 	public static List<float[]> read(int mapId) throws IOException {
-		Path file = fileOf(mapId);
+		List<float[]> points = new ArrayList<>(read(fileOf(mapId)));
+		points.addAll(read(patrolsFileOf(mapId)));
+		return points;
+	}
+
+	/** @return the points of one file. */
+	public static List<float[]> read(Path file) throws IOException {
 		List<float[]> points = new ArrayList<>();
 		if (!Files.exists(file))
 			return points;

@@ -1,6 +1,6 @@
 # Navigation: what is left, as seen in game
 
-Status: not started; the user's six points from the game, worked once the module structure plan is done.
+Status: in progress: point 3 (long journeys) is worked and measured (budgets doubled on 31 October, proofs shared between bots, partial routes); points 1, 2, 4, 5, 6 and 7 are not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [plans/mesh-defects-plan.md](plans/mesh-defects-plan.md).
 
 Written on 27 October 2026 from the user's notes, to be worked once the module structure plan is done
 ([module-structure-plan.md](../architecture/history/module-structure-plan.md)). Navigation is the priority after it. Each point is the user's words, what
@@ -21,6 +21,13 @@ Sixth window, 29 October 21:18 to 21:48, with a long search that runs out of bud
 Two profiles on 29 October, with `NavmeshTool <map> path ...` and `-Dnavmesh.pathDebug=true -Dnavmesh.glideDebug=true`. (1) Quileor, 210020000, 2126 2580 to 2233 2199: the rough guide had 38 points and 36 stretches planned; the last stretch is proved shut (goal at z 337, nearest ground z 323, a plateau the rough grid counts as joined). A bot walked about a kilometre through monsters before being told. `goalIsCutOffFromTheGuide` (`bcd7037c6`) now says so at planning time, from both of the guide's last two points; replayed on 77 journeys, no outcome changed. (2) 210060000, 2172 2561 z 81 to 2003 2257 z 37 (a `long` give-up, 3.3 s): the rough pass finds nothing, the glide planner drops the four near take-offs (z 130, no short walk) and spends its budget on two far ones (z 152, 83 m away): each walk from the start hits the fine search's 150 001 node limit. With 40 s of budget it still gives up: **this goal is out of reach for the bot, and the give-up is the cost of not being able to prove it**. So most of the `long` give-ups that start no stretch are goals on ground the bot cannot get to (a cliff, a plateau, a pit), not journeys short of time: a longer budget would not turn them into trips. Gains left: stop paying 1 to 4 s of a route thread for each (a refusal remembered per map, start ground and goal for some minutes, shared by the bots; 575 s of a 30 minute window), and stop choosing such goals (`BotPlaces`: vet a hunting ground against the bot's ground once, with the fine grid and the take-off walks, before offering it).
 
 Where the `long` give-ups stop (replayed offline at the game's 3 s budget, one in four of the 185 of that window, 30 gave up of 46): 10 hit the fine search's 150 001 node limit (4.3 s each, no stretch started), 10 ran out of budget before any stretch, 8 had a stretch refused at once with a proof (0.2 s: `findLongPath` returns it as a give-up, `gaveUp` true, though the stretch said no way), 1 in the stretch loop. So two thirds never reach the loop the partial route hooks into. Tried and dropped: widening `NEAR_TAKE_OFF` (the capped walk to a glide take-off, 60 m) to 150 m lost walks it should have found (found on foot 10 to 5, gave up 23 to 28). Offline runs on this machine with the server up differ by a quarter from run to run (30 then 23 gave up on the same file), so compare only runs made together, or with the server stopped. Next: the 8 refused stretches (take what was planned before it, like the budget case), then what the 20 searches that never start a stretch spend their 3 to 4 s on.
+
+## Where the points stand (31 October)
+
+1 slide, 2 obstacles, 4 gliding, 5 parasitic moves, 6 dungeons, 7 Draupnir: not started. 3 long journeys: partly done (see its section). Reported by the tester in game on 31 October and
+fixed since: a group's bots landed on a one-cell pillar and never followed (the rescue now counts a refusal in a pocket, `BotRescue`); bots would not come into Morheim's cave, nor out of it
+(a rock lip, a floor the data does not hold, a corridor the erosion shut: `MapOpenings`); a bot's place beside its leader was behind a wall of rock (`walkableFormationSpot`). Reported and
+not looked at: **bots that will not glide when the player does** (point 4).
 
 ## 1. A bot slides for an instant before it runs
 
@@ -47,6 +54,10 @@ téléportent plus loin d'un coup."*
   where it was going, which separates the two kinds of jump. The user's `//bot note` on the spot gives the place.
 
 ## 3. Long journeys given up
+
+**31 October**: of the 33 "long" give-ups sampled from a window and replayed, 8 are found at the old budgets (3 s, levelled pass 1.5 s), 17 at 6 s and 3 s, 21 at 30 s: the levelled pass is the
+budget that matters, and both are doubled (`4318fb938`). A monster the planner proved out of reach is told to the bots near, as a day plan is, and a hunting ground proved out of reach is skipped
+(`BotRefusals`, `BotPlaces.groundToWork`). Measured over four windows, the day plans given up stayed at 317 to 347 and the routes refused at 501 to 659: the variance is larger than these changes.
 
 *"Un bot doit être capable de faire des longs trajets sans les abandonner, actuellement il y a des problèmes."*
 

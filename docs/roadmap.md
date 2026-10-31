@@ -14,8 +14,8 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 1. **Done on 28 October**: the module structure plan ([module-structure-plan.md](architecture/history/module-structure-plan.md), five steps) and the
    merge of 69 upstream commits ([upstream-merge-plan.md](architecture/history/upstream-merge-plan.md)), both measured. Next merge: when `4.8` has moved,
    then `tools/sync-install.ps1` for the install and the SQL; the sooner, the smaller.
-2. **Navigation**, the user's priority: the six points in [navigation-backlog.md](navigation/backlog.md), long journeys first
-   (agreed 25 October), then sliding, obstacles, gliding, parasitic moves, dungeons.
+2. **Navigation**, the user's priority: the points in [navigation-backlog.md](navigation/backlog.md): long journeys (worked 25 to 31 October), then sliding, obstacles, gliding,
+   parasitic moves, dungeons, Draupnir. The meshes are checked against what people walked ([verification-tools.md](navigation/verification-tools.md)); options A and C of the erosion are on.
 3. **A world alive with or without a player**, a lead to explore within the 2560 MB heap: density independent of who is online, sleepers living
    off-world, memory measured first and freed where it can be.
 4. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them.
@@ -30,7 +30,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-27. **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-10-31 for navigation, 2026-10-27 for the rest. **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
 for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
 routine, gear and stigmas, merchants' wings and power shards, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with their glide links,

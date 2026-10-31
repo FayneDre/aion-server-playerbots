@@ -44,7 +44,8 @@ map, death, the points, a stun) ends with its reason in the log.
 The Abyss is flown everywhere (`WorldMap.isFlightAllowed`): above the death level plus 100 m is a fly zone. Its 16 000 islands are joined by
 **flight links** (edges of islands of 2000 surfaces or more, up to 180 m apart and 200 m of height, 19 510 links). The mainland of each side is the
 islands a flight joins both ways, holding 5 places or more (`BotPlaces.mainlandsByAir`); nobody lives in a fortress's zone or on an island only the
-other faction lives on, and no link lands there. A route past about 1.2 km still runs out of the planning budget, so residents work within 250 m.
+other faction lives on, and no link lands there. A route past about 1.2 km still runs out of the planning budget, so residents work within 250 m. The vetting of hunting grounds
+against the mesh (`BotPlaces.groundToWork`) is not applied where flying is the rule or in a fly zone: the mesh does not see a crossing that is flown.
 
 ## Limits
 

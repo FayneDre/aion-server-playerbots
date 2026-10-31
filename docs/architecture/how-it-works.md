@@ -53,7 +53,8 @@ One line per package and its main classes; the class javadoc is the detail. Brou
 com.aionemu.gameserver.playerbot/
   PlayerBotService, BotPopulator, BotCommands    Who is in the world, waking and sleeping, startup and save sweep; filling a map; one method per //bot command
   BotRecruiter, BotVisitors, BotScheduler        Bots answering Find Group offers; capital visitors; the shared thread lanes
-  BotDiagnostics, BotInbox                       Debug on demand; the command inbox read by tools/bot-command.ps1
+  BotDiagnostics, BotInbox                       Debug on demand (a note also says what the planner makes of each bot's walk to the player); the command inbox read by tools/bot-command.ps1
+  WalkedTrails                                   Writes where real players walk to data/navmesh/<map>.walked, which the mesh generator reads (navmesh/WalkedGround)
 
   lifecycle/    Headless creation, loading, entering and leaving the world (PlayerBot*Service, PlayerBotLoader), BotRoster (the pool, a query),
                 BotPacing (levels per region), BotMapChange (a map change with no client), BotAppearance

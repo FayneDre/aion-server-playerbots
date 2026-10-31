@@ -82,6 +82,10 @@ Which category a map is in is still read from the map rather than from a list of
 in packs is a town.** That separates Sanctum (250 against a handful) and Oriel (1624) from Poeta (45 against some hundreds) and Brusthonin (181
 against thousands) on every map measured, and among towns sheer size tells a service from a home.
 
+**A hunting ground is one the bot can reach.** `BotPlaces.groundToWork` skips a ground the mesh proves out of reach from the bot's home (two grounds asked at most a call, the
+proof kept per pair, not on maps or at places where flying is the rule): on 31 October three residents of a platform of Kaldor were sent to grounds on other platforms, 500 to 800 m
+away, and refused the way every time.
+
 Measured after the change, on Poeta: **19 inhabitants — 6 in Akarios, one in each of the three camps, and ten spread over separate hunting grounds.**
 The old rule gave 43, of which roughly 14 in Akarios and the rest scattered as ones over the countryside; the version before this one gave the
 countryside four in total, which left Agher's farm, Cliona lake, Kales farm, the plains and the quarry all empty.

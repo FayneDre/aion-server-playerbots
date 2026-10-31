@@ -114,6 +114,8 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
   (into the server's `log/bot-measures`, plus the day plans given up as journeys), and `NavmeshTool replay <file>` plans those journeys again
   offline. `tools/compare-measures.ps1 -Before a,b -After c` puts reports side by side per half hour and marks what left the band
   of the reports before. A measurement tool written in a scratch folder is lost with the session: write it here.
+- **Check a mesh against what a person walked**: `tools/check-golden-routes.ps1` (routes a tester walked, both ways; `navmesh.ps1` runs it after a build), `tools/check-walker-routes.ps1` (the patrol routes
+  of the data, against a baseline per map) and the route lines of `//bot note` ([docs/navigation/verification-tools.md](docs/navigation/verification-tools.md)). A fix for a tester's note adds its line to `tools/golden-routes.txt`.
 - `tools/apply-sql.ps1` runs the statements of `game-server/sql/update.sql` the database has not had yet, once each (a table `schema_applied_sql` holds
   their hashes), after a `mysqldump` and with the game server stopped; `deploy.ps1` runs it after the build, so nobody runs upstream's SQL by hand.
   A database that has them already is told once with `-MarkApplied -Apply`.

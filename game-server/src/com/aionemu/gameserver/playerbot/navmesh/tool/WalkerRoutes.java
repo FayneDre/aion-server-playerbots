@@ -3,6 +3,7 @@ package com.aionemu.gameserver.playerbot.navmesh.tool;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
 import com.aionemu.gameserver.playerbot.navmesh.Navmesh;
+import com.aionemu.gameserver.playerbot.navmesh.WalkedGround;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -42,6 +43,14 @@ final class WalkerRoutes {
 
 	/** @return 0 when every step is joined, 1 when some are not, 2 when the map has no route to check. */
 	static int run(int mapId) throws IOException {
+		return run(mapId, false);
+	}
+
+	/**
+	 * @param write Append to the map's patrol ground ({@link WalkedGround#patrolsFileOf}) a point every half metre along each step that is cut and has ground at both its ends, so that the next build joins it.
+	 *          A step with no ground at an end is a flier's or a swimmer's and is left out: a floor under it would hang in the air.
+	 */
+	static int run(int mapId, boolean write) throws IOException {
 		Path data = Path.of("data/static_data");
 		Set<String> named = routesNamedBy(data.resolve("spawns"), mapId);
 		if (named.isEmpty()) {
@@ -52,7 +61,8 @@ final class WalkerRoutes {
 		for (String file : List.of("npc_walker.xml", "custom_npc_walker.xml"))
 			readRoutes(data.resolve("npc_walker").resolve(file), named, routes);
 		Navmesh mesh = Navmesh.open(mapId);
-		int steps = 0, noFooting = 0, failed = 0, failedRoutes = 0;
+		int steps = 0, noFooting = 0, failed = 0, failedRoutes = 0, written = 0;
+		StringBuilder walkedPoints = new StringBuilder();
 		Map<String, List<float[][]>> clusters = new TreeMap<>();
 		for (Map.Entry<String, List<float[]>> route : routes.entrySet()) {
 			List<float[]> points = route.getValue();
@@ -71,6 +81,14 @@ final class WalkerRoutes {
 					continue;
 				failed++;
 				routeFailed = true;
+				if (write) { // kept once: the file is read as it is, and a step still cut after a build is asked again
+					int pieces = Math.max(1, (int) (across / 0.5f));
+					for (int piece = 0; piece <= pieces; piece++) {
+						float t = (float) piece / pieces;
+						walkedPoints.append(WalkedGround.line(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t));
+						written++;
+					}
+				}
 				clusters.computeIfAbsent(Math.round(a[0] / CLUSTER) + " " + Math.round(a[1] / CLUSTER), k -> new ArrayList<>()).add(new float[][] { a, b });
 			}
 			if (routeFailed)
@@ -78,6 +96,10 @@ final class WalkerRoutes {
 		}
 		System.out.printf(Locale.ROOT, "Map %d: %d patrol route(s), %d step(s): %d joined by a short walk, %d not (in %d route(s)), %d with no ground at a step%n", mapId, routes.size(), steps,
 			steps - failed - noFooting, failed, failedRoutes, noFooting);
+		if (write && written > 0) {
+			Files.writeString(WalkedGround.patrolsFileOf(mapId), walkedPoints.toString(), java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+			System.out.println("Wrote " + written + " point(s) for the cut steps to " + WalkedGround.patrolsFileOf(mapId));
+		}
 		List<Map.Entry<String, List<float[][]>>> order = new ArrayList<>(clusters.entrySet());
 		order.sort(Comparator.comparingInt((Map.Entry<String, List<float[][]>> e) -> e.getValue().size()).reversed());
 		for (Map.Entry<String, List<float[][]>> entry : order.subList(0, Math.min(SHOWN, order.size()))) {

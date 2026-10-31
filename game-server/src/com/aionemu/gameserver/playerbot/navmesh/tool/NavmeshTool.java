@@ -116,8 +116,8 @@ public class NavmeshTool {
 			WhyBlocked.run(Integer.parseInt(args[0]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]));
 			return;
 		}
-		if (args.length == 2 && args[1].equals("walkers")) {
-			System.exit(WalkerRoutes.run(Integer.parseInt(args[0])));
+		if ((args.length == 2 || args.length == 3 && args[2].equals("write")) && args[1].equals("walkers")) {
+			System.exit(WalkerRoutes.run(Integer.parseInt(args[0]), args.length == 3));
 		}
 		if (args.length == 2 && args[1].equals("fieldbreaks")) {
 			System.exit(FieldBreaks.run(Integer.parseInt(args[0])));
