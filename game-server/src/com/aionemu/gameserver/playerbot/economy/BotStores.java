@@ -322,13 +322,12 @@ public final class BotStores {
 
 	/**
 	 * Makes sure a market has a store with the evolution stone, the holy serum and the All-Powerful stone, at every hour (the tester's request of 31 October): when no other store of the map that is
-	 * open holds them, a keeper of level 60 or more takes them on, whatever its theme, and keeps them until it shuts. Drawn at random they were held by under one store in a hundred.
+	 * store of the map that is open holds them, a keeper takes them on, whatever its theme and its level, and keeps them until it shuts. A first start of 31 October showed why the level is no condition: all the keepers of a market
+	 * were between 20 and 59, so a rule of level 60 would never have held them. Drawn at random they were held by under one store in a hundred.
 	 *
 	 * @return true if the keeper took them on and its shelf changed.
 	 */
 	private static boolean keepTheRareGoodsOnTheMap(Player keeper, Shelf shelf) {
-		if (keeper.getLevel() < BotStoreGoods.RARE_FROM_LEVEL)
-			return false;
 		// by map and side: a store of one side is nothing to the other's market
 		String market = keeper.getWorldId() + "/" + keeper.getRace();
 		Integer holder = rareKeeper.get(market);

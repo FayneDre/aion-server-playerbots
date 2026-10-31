@@ -24,7 +24,7 @@ About 40 characters in sight keep 40 fps (the crowd test of 20 October), which s
   Eight themes since 31 October ([plans/bot-store-consumables-plan.md](plans/bot-store-consumables-plan.md); the coins, stones and gear in [history/bot-store-goods-plan.md](history/bot-store-goods-plan.md)): cooked food a fifth of the keepers,
   scrolls of speed (five minute, hour long, and the thirty minute scrolls of the events, which only a bot's store may hold) a sixth, stones a sixth (one store in four sells stones of every level, the others only 60 and 70, and a
   keeper under 50 sells none unless it is a wide one), opportunists a sixth, coins, gear and jewellery a tenth each. **Every market has at all times a store with the evolution stone, the holy serum and the All-Powerful stone**
-  (`BotStores.keepTheRareGoodsOnTheMap`: a keeper of 60 or more takes them on when none of the map's open stores holds them). The log line of an opening names the theme, the level and the item of each line.
+  (`BotStores.keepTheRareGoodsOnTheMap`: a keeper takes them on, of any level, when none of the map's open stores holds them). The log line of an opening names the theme, the level and the item of each line.
 - **Price** (`BotStorePricing`): from the template, the quality and the keeper's temperament, at broker prices for the goods that have them, cheaper
   the longer a line stays unsold. A sale goes through the engine's own store, so the kinah moves and `exchange.log` has the line.
 - During its shift a keeper does nothing else; it refuses duels and shuts its store to join a group, as a player would.

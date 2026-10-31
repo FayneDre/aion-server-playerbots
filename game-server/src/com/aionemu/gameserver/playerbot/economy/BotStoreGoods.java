@@ -121,8 +121,6 @@ public final class BotStoreGoods {
 		return good != null ? good : EVENT_SCROLL_IDS.get(template.getTemplateId());
 	}
 
-	/** The level from which a keeper stocks the rare goods: the lowest of theirs. */
-	static final int RARE_FROM_LEVEL = 60;
 
 	/** @return The templates of the rare goods, the evolution stone, the holy serum and the All-Powerful stone: the ones a market always has in a store. */
 	static List<Integer> rareIds() {

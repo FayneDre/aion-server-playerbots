@@ -97,7 +97,7 @@ About five days of work. The prices of food and of event scrolls are a guess unt
 3. **Gear under 50: there must be some.** Step 4 changes: no ban, only a smaller share. Gear stores of keepers under 50 stay, at a tenth of the stores of such keepers and not a sixth.
 4. **Event scrolls**: the user does not know; defaults: six times the price of the 5 minute scroll for 30 minutes and twelve times for 1 hour, in stacks of 5 to 20, two lines of them a store at most, in food and scrolls stores only.
 5. **A complete sale page**: stores open with **10 lines, a full page** (`STOCKED_LINES` 8 to 10), the test above 10 is dropped and the limit stays what the engine says: the core patch of step 5 is not needed.
-   **For the evolution stone, the holy serum and the All-Powerful stone, a store must always be present**: at every hour, in every capital market, at least one stones store of a keeper of level 60 or over holds all three,
+   **For the evolution stone, the holy serum and the All-Powerful stone, a store must always be present**: at every hour, in every capital market, a keeper, of any level, holds all three,
    renewed with its shelf, and not by a draw.
 
 ## The decisions that were asked
