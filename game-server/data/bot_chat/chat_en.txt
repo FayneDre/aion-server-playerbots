@@ -280,3 +280,30 @@ What are you doing tonight? || Farming. And crying. Mostly farming
 Another dungeon run? || Only if you promise not to heal me
 Something weird is going on at %s || Yeah, it's my DPS
 Who wants a cookie? || Me, instead of a +10
+
+# What a bot says when something happens near it: a bot dies, a bot reaches a level, and the ones that answer it. %s is a bot's name, %d a level.
+[react.death]
+rip %s
+F
+rip
+gg the death
+ouch, that must have hurt
+He didn't see that mob coming
+Another one tastes the respawn
+%s lost to a mob, it's day one again
+We don't forget %s. Until the respawn
+
+[react.levelup]
+ding
+ding %d!
+FINALLY %d
+Level %d! Who's buying me a drink?
+level %d, thanks to my farming and my stubbornness
+ding, I'm a god (level %d)
+
+[react.congrats]
+gg %s
+gg
+nice one %s
+Congrats %s
+Well done, %s

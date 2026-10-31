@@ -4,12 +4,13 @@
 .DESCRIPTION
     `NavmeshTool <map> walkers` says which steps of a patrol route no short walk joins; `walkers write` writes a point every half metre along each cut step that stands on the ground, and
     the generator reads those points as ground that was walked (see docs/navigation/verification-tools.md). One pass leaves a few steps cut, as the ground it joined shows more, so
-    this writes twice: write, build, write, build with the links. It starts from the installed mesh, which it takes to be current.
+    this writes twice: write, build, write, build with the links. It starts from the installed mesh, which it takes to be current, and keeps the points an earlier run wrote
+    (-Fresh forgets them).
     The game server must be stopped (a build takes 2 to 3 GB). About 3 to 4 minutes a map. The .patrols files are data of the server, not of the repository: run this again on a new install.
 .PARAMETER Maps
     The maps to treat. Default: every map of tools/walker-routes-baseline.txt with a step cut.
 #>
-param([int[]]$Maps = @())
+param([int[]]$Maps = @(), [switch]$Fresh)
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -27,7 +28,8 @@ Push-Location $gameServer
 try {
     foreach ($map in $Maps) {
         Write-Host "Map ${map}: patrol ground" -ForegroundColor Cyan
-        Clear-Content "data/navmesh/$map.patrols" -ErrorAction SilentlyContinue
+        # what an earlier run wrote is kept and built on: a step still cut after it is asked again; -Fresh starts from nothing
+        if ($Fresh) { Clear-Content "data/navmesh/$map.patrols" -ErrorAction SilentlyContinue }
         & java -Xmx2g -cp "$($jar.FullName);libs/*" $tool $map walkers write | Select-String '^(Map|Wrote)' | ForEach-Object { Write-Host "  $($_.Line)" }
         & java -Xmx4g -cp "$($jar.FullName);libs/*" $tool $map | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Building map $map failed (exit code $LASTEXITCODE)" }

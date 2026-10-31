@@ -39,6 +39,8 @@ final class WalkerRoutes {
 	private static final int SHOWN = 40;
 	/** How far a step may be over the ground, in metres, for a floor to be written under it. */
 	private static final float ON_THE_GROUND = 1f;
+	/** How steep a step is for it to be a slope walked up or down and not a flight at one height, in degrees. */
+	private static final double CLIMBING_DEGREES = 25;
 
 	private WalkerRoutes() {
 	}
@@ -83,8 +85,10 @@ final class WalkerRoutes {
 					continue;
 				failed++;
 				routeFailed = true;
-				// a step a body walks is at the height of the ground, as a creature a metre or more over it is not: a floor under its route would be a ceiling over the ground below it
-				if (write && onTheGround(mesh, a) && onTheGround(mesh, b)) {
+				// a step a body walks is at the height of the ground, as a creature a metre or more over it is not: a floor under its route would be a ceiling over the ground below it. On a
+				// slope the mesh calls too steep, the nearest ground it walks is far in height, so a step that climbs by a quarter turn of a right angle or more is taken for a walk
+				boolean climbs = Math.toDegrees(Math.atan2(Math.abs(b[2] - a[2]), across)) >= CLIMBING_DEGREES;
+				if (write && (climbs || onTheGround(mesh, a) && onTheGround(mesh, b))) {
 					int pieces = Math.max(1, (int) (across / 0.5f));
 					for (int piece = 0; piece <= pieces; piece++) {
 						float t = (float) piece / pieces;

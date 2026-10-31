@@ -44,6 +44,7 @@ class BotMemoryTest {
 		// the character's, kept across sleeps on purpose
 		Map.entry("BotDay.unreachableUntil", "a merchant's stall found unreachable stays so for its time"),
 		Map.entry("BotChat.spokeAt", "a character just heard in a channel stays quiet, asleep or not"),
+		Map.entry("BotChat.levelSeen", "a level is remembered per character to tell a level up, asleep or not"),
 		Map.entry("BotSpeech.spokeAt", "a character just heard shouting stays quiet, asleep or not"),
 		Map.entry("BotStores.shelves", "a keeper's stock lasts the day, across its shifts"),
 		// keyed by something that is not a bot

@@ -110,6 +110,16 @@ public final class BotChat {
 	private static final Map<String, Long> nextTrade = new ConcurrentHashMap<>();
 	/** When each bot last spoke in a channel. */
 	private static final Map<Integer, Long> spokeAt = new ConcurrentHashMap<>();
+		/** The level each bot had when last looked at, to tell the one that has just reached the next. */
+		private static final Map<Integer, Integer> levelSeen = new ConcurrentHashMap<>();
+		/** When each map and faction may next hear a reaction to something that happened, by {@link #key}. */
+		private static final Map<String, Long> nextReaction = new ConcurrentHashMap<>();
+		/** How long between two reactions on a map for a faction, in milliseconds; and how many deaths in a hundred, and level ups in a hundred, are reacted to. */
+		private static final long REACTION_GAP_MILLIS = 45_000;
+		private static final int DEATH_REACTION_PERCENT = 30, LEVEL_UP_REACTION_PERCENT = 60, CONGRATULATION_PERCENT = 40;
+		/** How near a bot must be to a death to say something of it, in metres, and how long it waits to, in seconds. */
+		private static final float DEATH_SEEN_WITHIN = 100;
+		private static final int REACTION_SHORTEST = 3, REACTION_LONGEST = 8;
 	/** When each thing was last offered on a map for a faction: an item template, or a store by its keeper, after {@link #key}. */
 	private static final Map<String, Long> offeredAt = new ConcurrentHashMap<>();
 
@@ -156,6 +166,7 @@ public final class BotChat {
 		Map<String, Boolean> read = new HashMap<>();
 		Map<Race, List<Player>> seekers = new HashMap<>();
 		Map<String, List<Player>> locals = new HashMap<>();
+		List<Player> leveled = new ArrayList<>();
 		for (Player player : World.getInstance().getAllPlayers()) {
 			if (!player.isSpawned())
 				continue;
@@ -170,7 +181,14 @@ public final class BotChat {
 			}
 			if (player.isBot() && isLocal(player, now))
 				locals.computeIfAbsent(key, k -> new ArrayList<>()).add(player);
+			if (player.isBot()) {
+				Integer before = levelSeen.put(player.getObjectId(), (int) player.getLevel());
+				if (before != null && player.getLevel() == before + 1 && isLocal(player, now))
+					leveled.add(player);
+			}
 		}
+		for (Player bot : leveled)
+			reactToLevelUp(bot, locals.getOrDefault(key(bot.getWorldId(), bot.getRace()), List.of()), read.containsKey(key(bot.getWorldId(), bot.getRace())), now);
 		for (Map.Entry<String, List<Player>> entry : locals.entrySet()) {
 			String key = entry.getKey();
 			if (read.containsKey(key) && now >= nextRegion.getOrDefault(key, 0L) && regionLine(entry.getValue(), key, now))
@@ -287,35 +305,84 @@ public final class BotChat {
 		return true;
 	}
 
-/**
- * Has one bot tell a joke to the room and, for an exchange, another answer it a few seconds later. A joke is not told twice on a map within the repeat time.
- *
- * @return true if a joke was told.
- */
-private static boolean joke(List<Player> bots, String key, String map, long now) {
-	ThreadLocalRandom random = ThreadLocalRandom.current();
-	BotChatLines.Banter banter = BotChatLines.banter(random, map);
-	if (!fresh(key + "/joke " + banter.first(), now))
-		return false;
-	Player teller = bots.get(random.nextInt(bots.size()));
-	List<Player> answerers = bots.stream().filter(bot -> bot != teller).toList();
-	if (banter.reply() != null && answerers.isEmpty())
-		return false;
-	speak(teller, banter.first(), now);
-	if (banter.reply() != null) {
-		Player answerer = answerers.get(random.nextInt(answerers.size()));
-		spokeAt.put(answerer.getObjectId(), now);
-		ThreadPoolManager.getInstance().schedule(() -> {
-			if (answerer.isSpawned() && !answerer.isDead()) {
-				say(answerer, Channel.REGION, banter.reply());
-				log.info("Bot {} says in region: {}", answerer.getName(), banter.reply());
-			}
-		}, random.nextInt(ANSWER_SHORTEST, ANSWER_LONGEST + 1) * 1000L);
+	/**
+	 * Has one bot tell a joke to the room and, for an exchange, another answer it a few seconds later. A joke is not told twice on a map within the repeat time.
+	 *
+	 * @return true if a joke was told.
+	 */
+	private static boolean joke(List<Player> bots, String key, String map, long now) {
+		ThreadLocalRandom random = ThreadLocalRandom.current();
+		BotChatLines.Banter banter = BotChatLines.banter(random, map);
+		if (!fresh(key + "/joke " + banter.first(), now))
+			return false;
+		Player teller = bots.get(random.nextInt(bots.size()));
+		List<Player> answerers = bots.stream().filter(bot -> bot != teller).toList();
+		if (banter.reply() != null && answerers.isEmpty())
+			return false;
+		speak(teller, banter.first(), now);
+		if (banter.reply() != null) {
+			Player answerer = answerers.get(random.nextInt(answerers.size()));
+			spokeAt.put(answerer.getObjectId(), now);
+			ThreadPoolManager.getInstance().schedule(() -> {
+				if (answerer.isSpawned() && !answerer.isDead()) {
+					say(answerer, Channel.REGION, banter.reply());
+					log.info("Bot {} says in region: {}", answerer.getName(), banter.reply());
+				}
+			}, random.nextInt(ANSWER_SHORTEST, ANSWER_LONGEST + 1) * 1000L);
+		}
+		return true;
 	}
-	return true;
-}
 
-/** Says the line in Region and keeps the speaker quiet for a while. */
+	/**
+	 * Has a bot that has just reached a level say so in Region, and sometimes another of the map's bots congratulate it a few seconds later. At most one reaction
+	 * of any kind for a map and a faction in {@value #REACTION_GAP_MILLIS} ms, and only where a player of the faction reads the channel.
+	 */
+	private static void reactToLevelUp(Player bot, List<Player> locals, boolean read, long now) {
+		String key = key(bot.getWorldId(), bot.getRace());
+		ThreadLocalRandom random = ThreadLocalRandom.current();
+		if (!read || now < nextReaction.getOrDefault(key, 0L) || random.nextInt(100) >= LEVEL_UP_REACTION_PERCENT)
+			return;
+		nextReaction.put(key, now + REACTION_GAP_MILLIS);
+		speak(bot, BotChatLines.levelUp(random, bot.getLevel()), now);
+		List<Player> others = locals.stream().filter(other -> other != bot).toList();
+		if (!others.isEmpty() && random.nextInt(100) < CONGRATULATION_PERCENT)
+			sayLater(others.get(random.nextInt(others.size())), BotChatLines.congratulation(random, bot.getName()), now);
+	}
+
+	/**
+	 * Has a bot near a bot that has just died say something of it in Region a few seconds later: some of the deaths, no more than one reaction in
+	 * {@value #REACTION_GAP_MILLIS} ms for a map and a faction, and only where a player of the faction reads the channel. Called when a bot dies.
+	 */
+	public static void onBotDied(Player dead) {
+		if (!BotSpeech.isEnabled() || dead.isInInstance() || !ChatServer.getInstance().isUp())
+			return;
+		long now = System.currentTimeMillis();
+		String key = key(dead.getWorldId(), dead.getRace());
+		ThreadLocalRandom random = ThreadLocalRandom.current();
+		if (now < nextReaction.getOrDefault(key, 0L) || random.nextInt(100) >= DEATH_REACTION_PERCENT)
+			return;
+		boolean read = World.getInstance().getAllPlayers().stream()
+			.anyMatch(player -> !player.isBot() && player.isSpawned() && player.getWorldId() == dead.getWorldId() && player.getRace() == dead.getRace());
+		List<Player> near = World.getInstance().getAllPlayers().stream().filter(bot -> bot.isBot() && bot != dead && isLocal(bot, now) && bot.getWorldId() == dead.getWorldId()
+			&& bot.getRace() == dead.getRace() && PositionUtil.getDistance(bot, dead) <= DEATH_SEEN_WITHIN).toList();
+		if (!read || near.isEmpty())
+			return;
+		nextReaction.put(key, now + REACTION_GAP_MILLIS);
+		sayLater(near.get(random.nextInt(near.size())), BotChatLines.deathReaction(random, dead.getName()), now);
+	}
+
+	/** Has the bot say the line in Region a few seconds from now, if it is still there and alive to say it. */
+	private static void sayLater(Player bot, String line, long now) {
+		spokeAt.put(bot.getObjectId(), now);
+		ThreadPoolManager.getInstance().schedule(() -> {
+			if (bot.isSpawned() && !bot.isDead()) {
+				say(bot, Channel.REGION, line);
+				log.info("Bot {} says in region: {}", bot.getName(), line);
+			}
+		}, ThreadLocalRandom.current().nextInt(REACTION_SHORTEST, REACTION_LONGEST + 1) * 1000L);
+	}
+
+	/** Says the line in Region and keeps the speaker quiet for a while. */
 	private static boolean speak(Player bot, String line, long now) {
 		spokeAt.put(bot.getObjectId(), now);
 		say(bot, Channel.REGION, line);

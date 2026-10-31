@@ -13,6 +13,7 @@ import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.lifecycle.BotMapChange;
 import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.navmesh.DeathSpots;
+import com.aionemu.gameserver.playerbot.social.BotChat;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.services.player.PlayerReviveService;
 import com.aionemu.gameserver.services.teleport.TeleportService;
@@ -108,6 +109,7 @@ final class BotDeath {
 			moveController.abandonGlide();
 		ai.enterState(AIState.DIED);
 		log.info("Bot {} died at {} {} {} (anchor {})", bot.getName(), bot.getX(), bot.getY(), bot.getZ(), ai.describeAnchor());
+		BotChat.onBotDied(bot);
 		if (!bot.isInInstance())
 			DeathSpots.record(bot.getWorldId(), bot.getX(), bot.getY()); // the routes of every bot of the map keep out of it for a while, see DeathSpots
 		ai.day().recordDeath(); // a home that keeps killing its resident is a home the resident leaves, whatever the reason turns out to be
