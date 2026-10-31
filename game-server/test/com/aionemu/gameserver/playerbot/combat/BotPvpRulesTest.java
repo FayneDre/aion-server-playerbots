@@ -76,4 +76,28 @@ class BotPvpRulesTest {
 		assertFalse(BotPvpRules.mayJoinAttack(true, 2));
 		assertTrue(BotPvpRules.mayJoinAttack(false, 5));
 	}
+
+	@Test
+	void aBotWithdrawsHurtOutnumberedOrInACrowd() {
+		assertFalse(BotPvpRules.shouldWithdraw(10, 0)); // nobody to withdraw from
+		assertTrue(BotPvpRules.shouldWithdraw(29, 1));
+		assertFalse(BotPvpRules.shouldWithdraw(30, 1));
+		assertFalse(BotPvpRules.shouldWithdraw(100, 1));
+		assertTrue(BotPvpRules.shouldWithdraw(49, 2));
+		assertFalse(BotPvpRules.shouldWithdraw(50, 2));
+		assertTrue(BotPvpRules.shouldWithdraw(100, 3));
+	}
+
+	@Test
+	void aDyingPlayerIsNotPicked() {
+		assertTrue(BotPvpRules.isDying(10));
+		assertFalse(BotPvpRules.isDying(11));
+	}
+
+	@Test
+	void aMonsterOnlySkillIsNotTriedOnAPlayer() {
+		assertTrue(BotPvpRules.isWrongSpecies(true, true));
+		assertFalse(BotPvpRules.isWrongSpecies(true, false));
+		assertFalse(BotPvpRules.isWrongSpecies(false, true));
+	}
 }

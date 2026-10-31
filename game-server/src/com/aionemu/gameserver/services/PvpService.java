@@ -32,6 +32,7 @@ import com.aionemu.gameserver.model.templates.bounty.BountyTemplate;
 import com.aionemu.gameserver.model.templates.bounty.BountyType;
 import com.aionemu.gameserver.model.templates.bounty.KillBountyTemplate;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_SYSTEM_MESSAGE;
+import com.aionemu.gameserver.playerbot.combat.BotPvpTraces;
 import com.aionemu.gameserver.questEngine.QuestEngine;
 import com.aionemu.gameserver.questEngine.model.QuestEnv;
 import com.aionemu.gameserver.services.abyss.AbyssPointsService;
@@ -111,7 +112,11 @@ public class PvpService {
 			return;
 		}
 
+		BotPvpTraces.onKill(winner, victim);
 		List<Player> killers = findMembersToCountKillFor(winner, victim);
+		// a bot is no farm: killing one counts as no kill (no kill bounty, no quest or event credit) for a real player. Bots killing bots are left as they were.
+		if (victim.isBot())
+			killers.removeIf(killer -> !killer.isBot());
 		if (!killers.isEmpty()) {
 			for (Player killer : killers) {
 				killer.getAbyssRank().incrementAllKills();
@@ -252,19 +257,22 @@ public class PvpService {
 		Map<Player, Integer> xpRewards = calculateXpRewards(players, isTeam, victim, xpShare);
 
 		for (Player member : players) {
-			int memberApGain = 1;
-			int memberDpGain = 1;
-			if (KillCounter.addKillFor(member.getObjectId(), victim.getObjectId()) < CustomConfig.MAX_DAILY_PVP_KILLS) {
-				if (apRewardPerMember > 0)
-					memberApGain = Rates.AP_PVP.calcResult(member, apRewardPerMember);
-				if (dpRewardPerMember > 0) {
-					memberDpGain = StatFunctions.adjustPvpDpGained(dpRewardPerMember, victim.getLevel(), member.getLevel());
-					memberDpGain = Rates.DP_PVP.calcResult(member, memberDpGain);
-				}
+			// a bot gives a real player no abyss or divine points (the daily limit counts per victim, and there are always more bots to kill)
+			if (!victim.isBot() || member.isBot()) {
+				int memberApGain = 1;
+				int memberDpGain = 1;
+				if (KillCounter.addKillFor(member.getObjectId(), victim.getObjectId()) < CustomConfig.MAX_DAILY_PVP_KILLS) {
+					if (apRewardPerMember > 0)
+						memberApGain = Rates.AP_PVP.calcResult(member, apRewardPerMember);
+					if (dpRewardPerMember > 0) {
+						memberDpGain = StatFunctions.adjustPvpDpGained(dpRewardPerMember, victim.getLevel(), member.getLevel());
+						memberDpGain = Rates.DP_PVP.calcResult(member, memberDpGain);
+					}
 
+				}
+				AbyssPointsService.addAp(member, victim, memberApGain);
+				member.getCommonData().addDp(memberDpGain);
 			}
-			AbyssPointsService.addAp(member, victim, memberApGain);
-			member.getCommonData().addDp(memberDpGain);
 			// PvP XP has its own limits, independent of the kill count above
 			int xpReward = xpRewards.get(member);
 			if (xpReward > 0) {

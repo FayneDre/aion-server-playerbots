@@ -20,6 +20,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
+import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.model.items.storage.Storage;
 import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
@@ -226,6 +227,27 @@ public final class BotCommands {
 		Player sorcerer = team.getMembers().stream().filter(member -> member.isBot() && member.getPlayerClass() == PlayerClass.SORCERER).findFirst()
 			.orElse(null);
 		return sorcerer == null ? "Your group has no sorcerer bot." : BotPlaybooks.openGate(sorcerer);
+	}
+
+	/**
+	 * Sets two spawned bots of different races on each other, whatever their temperaments and the PvP option: a forced engagement to watch a fight
+	 * between players, the defence and the withdrawal. They must stand on the same map within sight of each other and be enemies there, which on a
+	 * map the two races share (Reshanta) they are; nothing is forced beyond that.
+	 */
+	public static String pvp(String firstName, String secondName) {
+		return withBotAi(firstName, (first, firstAi) -> withBotAi(secondName, (second, secondAi) -> {
+			if (first.equals(second))
+				return "Name two different bots";
+			if (first.getWorldId() != second.getWorldId())
+				return firstName + " and " + secondName + " are not on the same map";
+			if (!first.isEnemy(second))
+				return firstName + " and " + secondName + " are not enemies here (same race, or a map the two races do not share): try Reshanta";
+			if (!first.canSee(second) || PositionUtil.getDistance(first, second) > 60)
+				return firstName + " and " + secondName + " are too far apart or out of sight: bring them within 60 m";
+			firstAi.startAttacking(second);
+			secondAi.startAttacking(first);
+			return firstName + " and " + secondName + " are fighting";
+		}));
 	}
 
 	public static String stopAttacking(String characterName) {

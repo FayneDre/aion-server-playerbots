@@ -54,6 +54,7 @@ import com.aionemu.gameserver.skillengine.properties.AreaDirections;
 import com.aionemu.gameserver.skillengine.properties.FirstTargetAttribute;
 import com.aionemu.gameserver.skillengine.properties.Properties;
 import com.aionemu.gameserver.skillengine.properties.TargetRangeAttribute;
+import com.aionemu.gameserver.skillengine.properties.TargetSpeciesAttribute;
 import com.aionemu.gameserver.skillengine.properties.TargetRelationAttribute;
 import com.aionemu.gameserver.utils.PositionUtil;
 
@@ -942,6 +943,9 @@ public class BotSkillManager {
 			return false;
 		for (SkillTemplate template : candidates) {
 			if (sendsItRunning(bot, template) || isWideAreaAmongOthers(bot, template) || wakesABystander(bot, target, template))
+				continue;
+			if (BotPvpRules.isWrongSpecies(template.getProperties() != null && template.getProperties().getTargetSpecies() == TargetSpeciesAttribute.NPC,
+				target instanceof Player))
 				continue;
 			Skill skill = SkillEngine.getInstance().getSkillFor(bot, template, target);
 			if (skill == null)

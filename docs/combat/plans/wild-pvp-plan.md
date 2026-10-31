@@ -1,7 +1,7 @@
 # Plan: wild PvP, rifts and the arenas
 
-Status: in progress: milestones 0 and 1 built, unverified in game (the property `gameserver.playerbot.pvp.enable` is false by default; the pure rules are
-tested, `findPlayerTarget` and its wiring in `PlayerBotAI` only compile, no bot has met a player yet). Milestones 2 onwards not started.
+Status: in progress: milestones 0, 1, 2 and 2b built, unverified in game (the property `gameserver.playerbot.pvp.enable` is false by default; the pure rules are
+tested, everything that needs a world only compiles, no bot has met a player yet). Milestones 3 onwards not started.
 
 ## What the engine already does
 
@@ -64,6 +64,41 @@ Consequences. Off the shared maps a bot of the other race is no enemy, so `findP
 `isInsidePvPZone` guard only excludes the safe polygons. **Hunting grounds (milestone 3) are the shared maps with a mesh: Reshanta, Kaldor, Levinshor**;
 the four Abyss pieces need a mesh first. The refusal of the other side's islands matters for exactly these maps. The test of milestone 1 ("two bots in the
 Heiron polygon") cannot work: Heiron is Elyos only and its polygons are safe. Use Reshanta.
+
+## Milestone 2 and 2b result: what the code did, and what it does now
+
+**Before (read from the code).** A player who hits a bot lands on the bot's own `AggroList` like a monster does (`isAware` is true for an enemy), which fires
+`onAddHate` and so `PlayerBotAI.handleAttack`: that one **did** retaliate (`startAttacking` on any enemy, a `Player` included, when the bot was not
+already fighting and `autonomous`). What was missing: `findAttacker` and `findAttackers` only read `Npc`s, so after the first reaction nothing re-picked a
+player attacker (a fight dropped for any reason was not resumed), `retreatIfLosing` never counted players (a bot died to a player at any health),
+nobody helped a grouped mate hit by an enemy player (`targetToAssist` reads monsters only), and `BotCombatMemory`/the playbooks held no assumption about the
+attacker's kind. `canKeepFighting` already asks `isEnemy` for a `Player` target, so a duel end or a lost enmity stops the fight.
+
+**Now (all independent of `gameserver.playerbot.pvp.enable`: a real player can attack a bot with the option off).**
+- `BotPvpDefence` lists the enemy players on the bot's aggro list (`attackersOf`) and the enemy players on a group mate (`enemyOnAMate`, 40 m, in sight).
+  `findAttacker` falls back on the nearest such player, so the bot answers and re-picks; a grouped bot (healers excepted: they heal) helps a mate
+  against an enemy player whatever its temperament. `isEnemy` is the only gate, so a player of its own side is never attacked.
+- `withdrawFromPlayers` (decision tick, not in a group, like `retreatIfLosing`): `BotPvpRules.shouldWithdraw` is true under 30 % life against any
+  enemy player, under 50 % against two, and at three or more at any health. It tries a defensive ability (or a healing potion under 30 %), then
+  ignores the attackers for 30 s, sheathes and walks home. `handleAttack` no longer answers a player it has just broken off from.
+- Selection (`isPlayerFairGame`) skips a player at 10 % life or less (dying). More than two bots on a lone player was already refused.
+- `BotSkillManager.cast` skips a skill whose `targetSpecies` is NPC when the target is a `Player` (the engine refuses them late; they hid the usable ones).
+  The playbooks only touch `Npc` behind `instanceof` (checked: gladiator, ranger, templar, sorcerer), and `NpcRating`/`NpcRank` are read in
+  `BotTargetSelector` for monsters only, so a `Player` target needs no more guarding.
+- Not done: no PvP rotation (stun/immunity answers, no kiting), and a bot in a group never flees a player (a hole in the party).
+
+**Rewards (read from `PvpService.doReward`).** A player kill gives the killer's group AP and DP from the victim's rank and level
+(`calculatePvpApGained`), XP from a PvP table (capped by `PvpExpLimitService`), a kill count with `PER_X_KILLS` bounty items, quest and event credit; the
+victim loses AP in proportion to the damage that counted. The daily limit (`MAX_DAILY_PVP_KILLS`) is **per victim object id**, so a player could farm
+AP by killing many different bots, and `isOnline()` is true for a bot, so bots count as killers. Decision: **a bot victim gives a real player no AP, no DP,
+no kill count, no bounty and no quest or event credit** (patched in two places of `PvpService`, commented); its PvP XP is left (capped already). A bot
+killed by a bot, and a player killed by a bot or by a player, follow the engine unchanged: a bot killer earns AP and bounty like any player, which the
+lead may want to cap if bots ever climb the abyss ranks.
+
+**Traces.** `BotPvpTraces.onKill` (called from `PvpService.doReward` once the winner is known, so one line per kill that involves a bot) writes
+`PVP KILL killer <name> (bot|player <race> <level>) victim <name> (...) at map <id> <x> <y> <z>` to the game log, and the killer bot may say a
+`react.kill` line in Region (50 %, the pace of the other reactions, both languages). `//bot pvp <a> <b>` forces two bots of different races onto each other.
+`measure.sh` does not count `PVP KILL` yet.
 
 ## Milestones
 

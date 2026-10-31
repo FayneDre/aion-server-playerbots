@@ -44,6 +44,9 @@ a bystander. A class that heals keeps 25 % of its mana for it.
   and stops at weapon range, casters stay put if a skill reaches. Followers out of a fight stand in slots round the leader, in world directions.
 - [history/group-positioning-plan.md](history/group-positioning-plan.md) has the guide's page, the data and the group tests behind it.
 
+- **Against players** ([plans/wild-pvp-plan.md](plans/wild-pvp-plan.md), built, unverified): an enemy player who hits a bot is answered, helped against when it hits a
+  grouped mate, and left (home) under 30 % life, outnumbered or in a crowd; this holds with the PvP option off.
+
 ## After a fight, and death
 
 - Loot (`BotLootManager`), potions (`BotPotionManager`, found by what they do), rest (`BotRestManager`; a bot fallen behind its leader walks instead).

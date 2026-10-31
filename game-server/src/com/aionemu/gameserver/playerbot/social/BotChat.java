@@ -116,7 +116,7 @@ public final class BotChat {
 		private static final Map<String, Long> nextReaction = new ConcurrentHashMap<>();
 		/** How long between two reactions on a map for a faction, in milliseconds; and how many deaths in a hundred, and level ups in a hundred, are reacted to. */
 		private static final long REACTION_GAP_MILLIS = 45_000;
-		private static final int DEATH_REACTION_PERCENT = 30, LEVEL_UP_REACTION_PERCENT = 60, CONGRATULATION_PERCENT = 40;
+		private static final int DEATH_REACTION_PERCENT = 30, LEVEL_UP_REACTION_PERCENT = 60, CONGRATULATION_PERCENT = 40, KILL_REACTION_PERCENT = 50;
 		/** How near a bot must be to a death to say something of it, in metres, and how long it waits to, in seconds. */
 		private static final float DEATH_SEEN_WITHIN = 100;
 		private static final int REACTION_SHORTEST = 3, REACTION_LONGEST = 8;
@@ -371,6 +371,27 @@ public final class BotChat {
 		nextReaction.put(key, now + REACTION_GAP_MILLIS);
 		nextRegion.merge(key, now + REGION_SHORTEST * 1000L, Math::max);
 		sayLater(near.get(random.nextInt(near.size())), BotChatLines.deathReaction(random, dead.getName()), now);
+	}
+
+	/**
+	 * Has a bot that has just killed a player say a short word of it in Region a few seconds later: some of the kills, within the same pace as the other
+	 * reactions for a map and a faction, and only where a player of its faction reads the channel. Called when a bot kills a player.
+	 */
+	public static void onPlayerKilled(Player killer, Player victim) {
+		if (!BotSpeech.isEnabled() || killer.isInInstance() || !ChatServer.getInstance().isUp())
+			return;
+		long now = System.currentTimeMillis();
+		String key = key(killer.getWorldId(), killer.getRace());
+		ThreadLocalRandom random = ThreadLocalRandom.current();
+		if (now < nextReaction.getOrDefault(key, 0L) || random.nextInt(100) >= KILL_REACTION_PERCENT)
+			return;
+		boolean read = World.getInstance().getAllPlayers().stream()
+			.anyMatch(player -> !player.isBot() && player.isSpawned() && player.getWorldId() == killer.getWorldId() && player.getRace() == killer.getRace());
+		if (!read || !isLocal(killer, now))
+			return;
+		nextReaction.put(key, now + REACTION_GAP_MILLIS);
+		nextRegion.merge(key, now + REGION_SHORTEST * 1000L, Math::max);
+		sayLater(killer, BotChatLines.killReaction(random, victim.getName()), now);
 	}
 
 	/** Has the bot say the line in Region a few seconds from now, if it is still there and alive to say it. */

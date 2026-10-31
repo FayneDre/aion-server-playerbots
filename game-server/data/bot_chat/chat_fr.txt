@@ -293,6 +293,14 @@ Encore un qui goûte au respawn
 %s a perdu contre un mob, c'est à nouveau le jour
 On n'oublie pas %s. Jusqu'à son respawn
 
+[react.kill]
+gg
+ez
+Désolé %s, rien de personnel
+%s aurait dû rester chez lui
+Un de moins de mon côté de l'Abysse
+Celui-là l'a bien cherché
+
 [react.levelup]
 ding
 ding %d !

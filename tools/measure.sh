@@ -50,7 +50,8 @@ echo "--- day plans given up, by activity and cause"; grep "BotDay - Bot .* cann
 echo "--- day plans given up, by map"; grep "BotDay - Bot .* cannot get to" $W/window.log | sed -nE 's/.*\(map ([0-9]+) .*/\1/p' | sort | uniq -c | sort -rn | head -10
 echo "--- day plans given up, places refused most (map, destination rounded to 20 m, bots)"; grep "BotDay - Bot .* cannot get to" $W/window.log | sed -nE 's/.*Bot ([A-Za-z]+) cannot.*\(map ([0-9]+) from .* to (-?[0-9]+) (-?[0-9]+) (-?[0-9]+), ([^)]+)\)$/\2 \3 \4 \1 \6/p' | awk '{k=$1" "int($2/20)*20" "int($3/20)*20; c[k]++; b[k][$4]=1; why[k]=$5" "$6" "$7} END{for(k in c){n=0; for(x in b[k]) n++; printf "%4d %3d bots  %s  (%s)\n", c[k], n, k, why[k]}}' | sort -rn | head -12
 echo "--- day plans given up, starts refused most (map, start rounded to 20 m)"; grep "BotDay - Bot .* cannot get to" $W/window.log | sed -nE 's/.*\(map ([0-9]+) from (-?[0-9]+) (-?[0-9]+) .*/\1 \2 \3/p' | awk '{print $1, int($2/20)*20, int($3/20)*20}' | sort | uniq -c | sort -rn | head -8
-echo "--- deaths by bot"; grep " died at " $W/window.log | grep -o "Bot [A-Za-z]*" | sort | uniq -c | sort -rn | head -6
+echo "--- player against player kills (bot involved)"; grep -c "PVP KILL" $W/window.log; grep "PVP KILL" $W/window.log | sed -E 's/.*killer [^ ]+ \((bot|player) .*victim [^ ]+ \((bot|player) .*/\1 killed \2/' | sort | uniq -c
+echo "--- deaths by bot";grep " died at " $W/window.log | grep -o "Bot [A-Za-z]*" | sort | uniq -c | sort -rn | head -6
 } >> "$OUT"
 # the day plans given up, one journey a line for NavmeshTool replay; the cause in one word, as the replay counts them
 grep "BotDay - Bot .* cannot get to" $W/window.log \

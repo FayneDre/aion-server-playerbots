@@ -293,6 +293,14 @@ Another one tastes the respawn
 %s lost to a mob, it's day one again
 We don't forget %s. Until the respawn
 
+[react.kill]
+gg
+ez
+Sorry %s, nothing personal
+%s should have stayed home
+One less on my side of the Abyss
+That one wanted it
+
 [react.levelup]
 ding
 ding %d!

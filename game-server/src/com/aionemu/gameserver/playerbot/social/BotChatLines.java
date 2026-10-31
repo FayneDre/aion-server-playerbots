@@ -186,6 +186,11 @@ final class BotChatLines {
 		return pick(random, text().section("react.death")).formatted(deadName, deadName);
 	}
 
+	/** @return A line for a bot that has just killed a player, naming the victim. */
+	static String killReaction(RandomGenerator random, String victimName) {
+		return pick(random, text().section("react.kill")).formatted(victimName, victimName);
+	}
+
 	/** @return What a bot says on reaching a level. */
 	static String levelUp(RandomGenerator random, int level) {
 		return pick(random, text().section("react.levelup")).formatted(level, level);

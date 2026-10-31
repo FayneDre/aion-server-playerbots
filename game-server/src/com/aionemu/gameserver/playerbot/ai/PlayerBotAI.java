@@ -26,6 +26,8 @@ import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotLootManager;
 import com.aionemu.gameserver.playerbot.combat.BotPotionManager;
+import com.aionemu.gameserver.playerbot.combat.BotPvpDefence;
+import com.aionemu.gameserver.playerbot.combat.BotPvpRules;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetRegistry;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
@@ -564,6 +566,10 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			BotMarks.markWeakestIfNone(getOwner());
 		boolean healer = BotRole.of(getOwner()) == BotRole.HEALER;
 		Creature assisted = healer ? null : BotGroupManager.targetToAssist(getOwner(), this::isIgnored);
+		if (assisted == null && !healer) {
+			// an enemy player on a mate, a real player's included: helped whatever the bot's temperament, and whatever the PvP option says
+			assisted = BotPvpDefence.enemyOnAMate(getOwner(), this::isIgnored);
+		}
 		if (assisted == null) {
 			if (healer && tendTheFight())
 				return;
@@ -744,6 +750,8 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			// Running from a fight it cannot win, which is the one thing a bot never did: it defended itself against anything, at any level, in any
 			// number, until it died -- then resurrected, walked back to the home it still had beside the thing that killed it, and did it again.
 			// Measured at the Tursin Outpost on Verteron, where survival at five minutes was nil.
+		} else if (autonomous && !following && withdrawFromPlayers()) {
+			// the same for enemy players: hurt, outnumbered or in a crowd, the bot leaves instead of dying to a player for the sake of the fight
 		} else if (autonomous && !isAttacking() && getOwner().isSpawned()) {
 			Creature attacker = findAttacker();
 			if (attacker != null && following && healsBeforeDefending()) {
@@ -1706,6 +1714,37 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return true;
 	}
 
+	/**
+	 * Breaks off from enemy players when the rules say so ({@link BotPvpRules#shouldWithdraw}): the players who hit the bot lately and the one it is
+	 * attacking count. A defensive ability or a heal is tried first, as it is the cheaper way out; then the attackers are left alone for a while and the
+	 * bot heads home, as {@link #retreatIfLosing} does for monsters. Not in a group, for the same reason. Works whatever the PvP option says.
+	 *
+	 * @return true if the bot is leaving or has spent the tick on a way out.
+	 */
+	private boolean withdrawFromPlayers() {
+		Player bot = getOwner();
+		if (bot.isDead() || !bot.isSpawned() || isRecoveringFromDeath() || bot.getCurrentTeam() != null)
+			return false;
+		List<Player> opponents = new ArrayList<>(BotPvpDefence.attackersOf(bot, this::isIgnored));
+		if (isAttacking() && bot.getTarget() instanceof Player prey && !prey.isDead() && !opponents.contains(prey) && bot.isEnemy(prey) && !isIgnored(prey))
+			opponents.add(prey);
+		int hp = bot.getLifeStats().getHpPercentage();
+		if (!BotPvpRules.shouldWithdraw(hp, opponents.size()))
+			return false;
+		if (bot.isCasting())
+			return true; // a cast in progress is let finish
+		if (BotSkillManager.tryDefensiveCooldown(bot) || hp < BotPvpRules.FLEE_HP_PERCENT && BotPotionManager.tryHealingPotion(bot, BotPvpRules.FLEE_HP_PERCENT))
+			return true;
+		long until = System.currentTimeMillis() + RETREAT_AVOIDED_MILLIS;
+		for (Player opponent : opponents)
+			ignoredTargets.put(opponent.getObjectId(), until);
+		log.info("Bot {} breaks off from {} enemy player(s) at {}% health and heads home", bot.getName(), opponents.size(), hp);
+		BotPlaybooks.of(bot).onRetreat(bot);
+		stopAttacking();
+		returnToAnchor();
+		return true;
+	}
+
 	/** @return Everything that has decided to kill this bot, which is how both halves of a lost fight are counted. */
 	private List<Creature> findAttackers() {
 		Player bot = getOwner();
@@ -1742,6 +1781,12 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 				&& (!groupHealer || bot.equals(npc.getTarget())))
 				attacker[0] = npc;
 		});
+		if (attacker[0] == null) {
+			// an enemy player who hit the bot lately: it is on the bot's aggro list as a monster would be. A group's healer answers only one aimed at it, as above.
+			Player player = BotPvpDefence.nearestAttacker(bot, this::isIgnored);
+			if (player != null && (!groupHealer || bot.equals(player.getTarget())))
+				attacker[0] = player;
+		}
 		return attacker[0];
 	}
 
@@ -1837,7 +1882,8 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	 */
 	@Override
 	protected void handleAttack(Creature attacker) {
-		if (autonomous && !isAttacking() && !attacker.equals(getOwner()) && getOwner().isEnemy(attacker)) {
+		// a player it has just broken off from is not answered by the next blow, or the retreat would last one hit
+		if (autonomous && !isAttacking() && !attacker.equals(getOwner()) && getOwner().isEnemy(attacker) && !(attacker instanceof Player && isIgnored(attacker))) {
 			log.info("Bot {} retaliates against {}", getOwner().getName(), attacker.getName());
 			startAttacking(attacker);
 		}
