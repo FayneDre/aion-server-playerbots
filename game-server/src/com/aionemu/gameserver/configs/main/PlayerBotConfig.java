@@ -49,7 +49,7 @@ public class PlayerBotConfig {
 	 * Whether bots may attack players of the other race (real players and bots) where the engine makes them enemies, which is a PvP zone. Off, no bot
 	 * ever picks a player as a target and nothing of the PvP behaviour runs.
 	 */
-	@Property(key = "gameserver.playerbot.pvp.enable", defaultValue = "false")
+	@Property(key = "gameserver.playerbot.pvp.enable", defaultValue = "true")
 	public static volatile boolean PVP_ENABLE;
 
 	/** The language of everything bots say in the chat channels and by shout: FR or EN. */
@@ -57,7 +57,7 @@ public class PlayerBotConfig {
 	public static volatile ChatLanguage CHAT_LANGUAGE;
 
 	/** Whether the server stocks the broker (the auction house, docs/capitals/plans/auction-house-plan.md). Read at startup. */
-	@Property(key = "gameserver.playerbot.broker.enable", defaultValue = "false")
+	@Property(key = "gameserver.playerbot.broker.enable", defaultValue = "true")
 	public static boolean BROKER_ENABLE;
 
 	/** Listings the house keeps in each race's broker. */

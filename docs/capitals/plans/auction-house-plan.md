@@ -56,7 +56,7 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
 1. **The door**: `BrokerService.registerForHouse`, house settling (`settleHouse`) and tested on the maps without a database. **Built**, see below.
 2. **The house characters** (built): created at first start on a reserved account, one per race, recorded so a restart finds them.
 3. **The seller** (built): a timer (every 15 minutes, property) that counts the house's listings per mask and tops each up to its share, with the price rule and stack ranges; first fill spread over
-   some minutes so startup is not slowed. Property `gameserver.playerbot.broker.enable` (false by default) and the targets.
+   some minutes so startup is not slowed. Property `gameserver.playerbot.broker.enable` (true by default since 31 October, decided by the tester) and the targets.
 4. **Settling and relisting** (built): sold entries deleted, expired ones returned and relisted, an item removed when its template is on the blacklist.
 5. **Watch in game**: the tester opens the broker in both capitals: categories filled, prices believable, a purchase works, kinah and inventory right, `exchange.log` has the line.
 6. **The buyer** (built, unwatched): the rules above, then a watch with the tester listing goods in range, above range, with no known price, and one far under the range.

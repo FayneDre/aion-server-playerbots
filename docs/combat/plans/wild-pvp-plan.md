@@ -17,7 +17,7 @@ tested, everything that needs a world only compiles, no bot has met a player yet
 
 ## Decisions taken (31 October)
 
-1. **An option**: `gameserver.playerbot.pvp.enable`, false by default; off, nothing below runs.
+1. **An option**: `gameserver.playerbot.pvp.enable`, **true by default since 31 October** (the tester decided); off, nothing below runs.
 2. **Bots attack real players and bots of the other race**, never above their level + 3 and never beneath level - 6.
 3. **No extra death penalty**: the usual convalescence.
 4. **Rifts**: a bot goes through one as a daily-plan item chosen by few bots (low weight: most bots never go, a handful do each hour), for 10 to 20
