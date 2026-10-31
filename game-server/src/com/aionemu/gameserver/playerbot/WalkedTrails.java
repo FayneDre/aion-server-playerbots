@@ -1,4 +1,4 @@
-package com.aionemu.gameserver.playerbot.navmesh;
+package com.aionemu.gameserver.playerbot;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.model.gameobjects.player.Player;
-import com.aionemu.gameserver.playerbot.BotScheduler;
+import com.aionemu.gameserver.playerbot.navmesh.WalkedGround;
 import com.aionemu.gameserver.world.World;
 
 /**

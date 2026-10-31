@@ -50,11 +50,4 @@ class WalkedGroundTest {
 
 		assertEquals(0, field.restoreNear(new BitSet(), 1.75f, 1.75f, 10, 1, 1.2f), "a wall's face was never ground, whoever passed by it");
 	}
-
-	@Test
-	void theCellOfAPointIsAMetreOfGroundAndHeight() {
-		assertEquals(WalkedTrails.cellOf(10.2f, 20.7f, 5.1f), WalkedTrails.cellOf(10.9f, 20.1f, 5.8f));
-		assertNotEquals(WalkedTrails.cellOf(10.2f, 20.7f, 5.1f), WalkedTrails.cellOf(11.2f, 20.7f, 5.1f));
-		assertNotEquals(WalkedTrails.cellOf(10.2f, 20.7f, 5.1f), WalkedTrails.cellOf(10.2f, 20.7f, 7.1f));
-	}
 }

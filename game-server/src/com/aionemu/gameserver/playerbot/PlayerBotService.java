@@ -22,7 +22,6 @@ import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLeaveWorldService;
 import com.aionemu.gameserver.playerbot.lifecycle.PlayerBotLoader;
 import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
-import com.aionemu.gameserver.playerbot.navmesh.WalkedTrails;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.world.BotDirector;
 import com.aionemu.gameserver.playerbot.world.BotNavmeshHost;

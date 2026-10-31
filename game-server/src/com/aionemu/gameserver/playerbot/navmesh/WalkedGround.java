@@ -54,7 +54,7 @@ public final class WalkedGround {
 	}
 
 	/** @return the line of the file for one point. */
-	static String line(float x, float y, float z) {
+	public static String line(float x, float y, float z) {
 		return String.format(Locale.ROOT, "%.1f %.1f %.1f%n", x, y, z);
 	}
 }
