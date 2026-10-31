@@ -41,7 +41,7 @@ public final class MapSlopes {
 	private MapSlopes() {
 	}
 
-	/** Whether {@code navmesh.slope} is set: read once, for the generator asks about a zone once for every terrain sample and every triangle of a map. */
+	/** Whether {@code navmesh.slope} is set: read once, when the class loads, so it is set with {@code -D} on the command line; the generator asks about a zone once for every terrain sample and every triangle of a map. */
 	private static final Integer SLOPE_OVERRIDE = Integer.getInteger("navmesh.slope");
 	private static final boolean SLOPE_OVERRIDDEN = SLOPE_OVERRIDE != null;
 

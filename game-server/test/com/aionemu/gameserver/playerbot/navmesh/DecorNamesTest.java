@@ -34,6 +34,8 @@ class DecorNamesTest {
 		assertTrue(decor("pr_d_outpost_signboard_01a.cgf"), "an outpost's furniture: post is inside outpost");
 		assertTrue(decor("pr_d_outpostsofa_01a.cgf"));
 		assertFalse(decor("bu_l_tentshopcounter_02b.cgf"), "the counter of a stall is not a tent");
+		assertTrue(decor("pr_d_postbox_01a.cgf"), "a post box is no post");
+		assertFalse(decor("pr_d_vritra_guardpost_01a.cgf"), "a guard post is");
 		assertFalse(decor("elim_detention.cgf"), "tent inside detention");
 		assertFalse(decor("bu_d_lf5tiamatentry_01a.cgf"), "and inside entry");
 	}

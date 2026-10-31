@@ -80,7 +80,7 @@ public class HeightfieldBuilder {
 	 * Names of props that are structure: a wall set, a pillar, a fence, a gate stand where a body must not go as much as the wall of a house does. Found on 31 October: with every
 	 * {@code pr_} counted as decor, Beluslan gained a stretch through {@code pr_d_wall_set_01a} and two through {@code pr_d_hoborpillar_01a}.
 	 */
-	private static final List<String> STRUCTURE = List.of("wall", "pillar", "column", "fence", "gate", "door", "bridge", "stair", "rail", "barricade", "cover", "palis", "pole", "prison");
+	private static final List<String> STRUCTURE = List.of("wall", "pillar", "column", "fence", "gate", "door", "bridge", "stair", "rail", "barricade", "cover", "palis", "guardpost", "pole", "prison");
 
 	/** @return true for the props (pr_ in the data: pots, barrels, fires, sacks) that are not structure, and the tents, which a body brushes past and which islands of ground are made round in a camp. */
 	static boolean isDecor(String modelName) {
@@ -91,13 +91,15 @@ public class HeightfieldBuilder {
 		return file.startsWith("pr_") || isTent(file);
 	}
 
+	private static final java.util.regex.Pattern TRAILING_DIGITS = java.util.regex.Pattern.compile("[0-9]+$");
+
 	/** Words that end in tent and are no tent. */
 	private static final Set<String> NOT_TENTS = Set.of("content", "extent", "intent", "potent", "patent");
 
 	/** @return true for a name with a word that ends in tent or tentsnow (lehpartent, lehpartentsnow), and not for the words that merely end so. */
 	private static boolean isTent(String file) {
 		for (String word : file.split("[_.]")) {
-			String letters = word.replaceAll("[0-9]+$", ""); // plazatent02
+			String letters = TRAILING_DIGITS.matcher(word).replaceFirst(""); // plazatent02
 			if ((letters.endsWith("tent") || letters.endsWith("tentsnow")) && !NOT_TENTS.contains(letters))
 				return true;
 		}
@@ -237,7 +239,7 @@ public class HeightfieldBuilder {
 		field.erode(agentRadius, BotPathFinder.STEP_TOLERANCE, slopeTangent);
 		stages.accept("erosion", field);
 		if (beforeErosion != null) {
-			int given = field.keepPassages(beforeErosion, KEEP_PASSAGES, PASSAGE_REACH_CELLS, BotPathFinder.STEP_TOLERANCE, slopeTangent);
+			field.keepPassages(beforeErosion, KEEP_PASSAGES, PASSAGE_REACH_CELLS, BotPathFinder.STEP_TOLERANCE, slopeTangent);
 			stages.accept("passages kept", field);
 		}
 		return field;

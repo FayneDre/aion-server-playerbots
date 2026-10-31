@@ -149,11 +149,8 @@ public class BotPathFinder {
 	static Route findPathNear(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid, GlideRoutes.AirTest air) {
 		// the goal's ground is looked at first: a search for a goal on an islet spends its whole budget on the large ground of the start before it can say there is no way
 		Vector3f offIslet = groundOffIslet(mesh, startX, startY, startZ, goalX, goalY, goalZ);
-		if (offIslet != null) {
-			Route aimedPast = findPath(mesh, startX, startY, startZ, offIslet.getX(), offIslet.getY(), offIslet.getZ(), avoid, air);
-			if (!aimedPast.isEmpty() || aimedPast.gaveUp())
-				return aimedPast;
-		}
+		if (offIslet != null) // and if the ground beside it is out of reach the islet is too, whatever the bot would try: no second search
+			return findPath(mesh, startX, startY, startZ, offIslet.getX(), offIslet.getY(), offIslet.getZ(), avoid, air);
 		return findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air);
 	}
 

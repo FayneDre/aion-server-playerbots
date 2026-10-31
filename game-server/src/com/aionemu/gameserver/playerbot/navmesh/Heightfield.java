@@ -25,7 +25,7 @@ public class Heightfield {
 	public static final float AGENT_HEIGHT = 2f;
 	/** Distance the terrain slope is measured over, about a stride. */
 	public static final float SLOPE_WINDOW = 2f;
-	/** Steepest ground a bot may walk on, matching the 45° the engine's own movement probe allows. */
+	/** Steepest ground a bot may walk on, matching the 45Â° the engine's own movement probe allows. */
 	public static final float MAX_SLOPE_COSINE = (float) Math.cos(Math.toRadians(MapSlopes.WALKABLE_DEGREES));
 	/**
 	 * How many cells of walkable ground to shave off along every edge, so routes keep a body's width from what a body cannot pass.
@@ -214,8 +214,8 @@ public class Heightfield {
 	/**
 	 * Labels every walkable surface with the region of ground it belongs to, joining neighbours the same way the path finder steps between them.
 	 * <p>
-	 * Per surface, not per column, and that distinction is the whole point. A column can hold walkable ground at more than one height — a valley
-	 * floor and the cliff top above it, a camp and the mushroom canopy over it — and labelling the column could only ever describe one of them. It
+	 * Per surface, not per column, and that distinction is the whole point. A column can hold walkable ground at more than one height â€” a valley
+	 * floor and the cliff top above it, a camp and the mushroom canopy over it â€” and labelling the column could only ever describe one of them. It
 	 * described the highest, so a camp sunk at z=100 under a canopy at z=143 belonged to the canopy's region and no route to it existed: the rough
 	 * pass refused every journey there in nought milliseconds, for a place a player walks into.
 	 * <p>
@@ -293,7 +293,7 @@ public class Heightfield {
 	 * Sums the fine grid up into 4 m cells carrying every region present in each one.
 	 * <p>
 	 * A plain "is there ground here" bit was not enough, and this is the whole reason long routes failed. A coarse cell counted as routable on a
-	 * quarter of its ground, so a rough route crossed freely between two regions the fine grid keeps apart — and every attempt to refine that
+	 * quarter of its ground, so a rough route crossed freely between two regions the fine grid keeps apart â€” and every attempt to refine that
 	 * crossing came back empty. Carrying the region turns the rough grid from a hint into a promise: a rough route stays inside one region, and a
 	 * region is by construction something a body can walk across.
 	 * <p>
@@ -491,7 +491,7 @@ public class Heightfield {
 					}
 				}
 			}
-			layerStart = layerEnd;
+			layerStart = depth == 0 ? 0 : layerEnd; // the first layer was the stretch, which is not in the queue: the second is all the queue holds so far
 			layerEnd = queue.size;
 		}
 		for (int i = 0; i < queue.size; i++)

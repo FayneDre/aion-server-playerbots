@@ -128,6 +128,38 @@ class HeightfieldErosionTest {
 	}
 
 	@Test
+	void aLongCorridorIsGivenBackWholeFromRoomsLargerThanTheFirstLayer() {
+		int size = 21;
+		// two rooms of seven columns, joined along y = 10 by a corridor of seven cells, one wide: erosion takes all of it, and the way back is seven layers deep
+		int[] offsets = new int[size * size + 1];
+		float[] heights = new float[size * size];
+		BitSet ground = new BitSet();
+		int count = 0;
+		for (int y = 0; y < size; y++) {
+			for (int x = 0; x < size; x++) {
+				offsets[y * size + x] = count;
+				heights[count] = FLOOR;
+				ground.set(count, x < 7 || x > 13 || y == 10);
+				count++;
+			}
+		}
+		offsets[size * size] = count;
+		Heightfield field = new Heightfield(size, size, offsets, heights, ground);
+		BitSet before = field.copyOfWalkable();
+		field.erode(1, BotPathFinder.STEP_TOLERANCE, 1);
+		assertFalse(field.isWalkable(field.columnStart(10, 10)), "the corridor is all edge");
+
+		int given = field.keepPassages(before, 4, 8, BotPathFinder.STEP_TOLERANCE, 1);
+
+		assertEquals(7, given, "the seven cells of the corridor, and nothing else");
+		for (int x = 7; x <= 13; x++)
+			assertTrue(field.isWalkable(field.columnStart(x, 10)), "corridor cell " + x);
+		int[] region = field.regions(BotPathFinder.STEP_TOLERANCE);
+		assertNotEquals(0, region[field.columnStart(2, 10)]);
+		assertEquals(region[field.columnStart(2, 10)], region[field.columnStart(18, 10)], "the rooms are one ground again");
+	}
+
+	@Test
 	void aPassageIsOnlyKeptForGroundOfEnoughCells() {
 		Heightfield field = twoRoomsAndANarrowCorridor();
 		BitSet before = field.copyOfWalkable();
