@@ -45,8 +45,6 @@ public final class BrokerHouse {
 	private static final long FILL_STEP_MILLIS = 30_000;
 	/** The names a house character is given, tried in order for each race; the name generator's is the fallback. */
 	private static final Map<Race, String> PREFERRED_NAMES = Map.of(Race.ELYOS, "BotSellerElyos", Race.ASMODIANS, "BotSellerAsmo");
-	/** Listings below this many are not worth a memory figure. */
-	private static final int MEASURABLE = 200;
 
 	private static final BrokerHouse INSTANCE = new BrokerHouse();
 
@@ -56,8 +54,7 @@ public final class BrokerHouse {
 	private final BrokerHouseBuyer buyer = new BrokerHouseBuyer(this::categoryOf);
 	private Set<Integer> blacklist = Set.of();
 	private boolean started;
-	private boolean memoryMeasured;
-	private long heapBeforeFill = -1;
+	private boolean fillReported;
 
 	private BrokerHouse() {
 	}
@@ -115,15 +112,13 @@ public final class BrokerHouse {
 	private void sellerPass() {
 		long wait = TimeUnit.MINUTES.toMillis(Math.max(1, PlayerBotConfig.BROKER_INTERVAL_MINUTES));
 		try {
-			if (heapBeforeFill < 0)
-				heapBeforeFill = usedHeap();
 			boolean unfinished = false;
 			for (Race race : List.of(Race.ELYOS, Race.ASMODIANS))
 				unfinished |= passFor(race);
 			if (unfinished)
 				wait = FILL_STEP_MILLIS;
 			else
-				measureMemory();
+				reportFill();
 		} catch (RuntimeException e) {
 			log.error("The broker house's seller failed", e);
 		}
@@ -204,23 +199,17 @@ public final class BrokerHouse {
 		return BrokerService.getInstance().registerForHouse(race, sellerId, item, price, count > 1) != null;
 	}
 
-	/** Logs what one listing costs in memory, once, when the first fill is complete: the heap grew by about the listings' share of it. */
-	private void measureMemory() {
-		if (memoryMeasured)
+	/**
+	 * Logs once, when the first fill is complete, how many listings the house holds. Not a memory figure: the heap read before and after counts the garbage of the moment, and said
+	 * 9 KB a listing on 31 October when a histogram of the live heap (`jcmd <pid> GC.class_histogram`) gave about 300 bytes (12 001 broker items of 72 bytes, their items of 168 and their
+	 * timestamps: some 4 MB for both races).
+	 */
+	private void reportFill() {
+		if (fillReported)
 			return;
-		int listings = BrokerService.getInstance().getListings(Race.ELYOS).size() + BrokerService.getInstance().getListings(Race.ASMODIANS).size();
-		if (listings < MEASURABLE || heapBeforeFill < 0)
-			return;
-		memoryMeasured = true;
-		long after = usedHeap();
-		log.info("Broker house memory: {} listings in both races, heap used {} MB before the first fill and {} MB after (about {} bytes a listing, other growth included)",
-			listings, heapBeforeFill >> 20, after >> 20, Math.max(0, after - heapBeforeFill) / listings);
-	}
-
-	private static long usedHeap() {
-		// no explicit collection: a stop-the-world pause on a server with players, for a figure the log line admits is rough. Read as it stands, twice in the house's life.
-		Runtime runtime = Runtime.getRuntime();
-		return runtime.totalMemory() - runtime.freeMemory();
+		fillReported = true;
+		log.info("Broker house filled: {} listings in both races (memory: ask `jcmd <pid> GC.class_histogram`, about 300 bytes a listing)",
+			BrokerService.getInstance().getListings(Race.ELYOS).size() + BrokerService.getInstance().getListings(Race.ASMODIANS).size());
 	}
 
 	/**

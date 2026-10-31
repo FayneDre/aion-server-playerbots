@@ -114,7 +114,7 @@ All in `playerbot/economy/BrokerHouse*`, started from `PlayerBotService.onStartU
 - **Buyer pass** (every `buyer.interval` seconds, 60; `BrokerHouseBuyer`): a player's listing whose price for one is at most the top of the known range + 5% (guide high, else the most the house itself would ask) is
   due 1 to 5 minutes after it was first seen, then bought through `buyForHouse` (item destroyed), at most 5 a pass, under daily ceilings in kinah (200 M in all, 30 M per seller, 50 M per item kind; `BrokerHouseLedger`). No known price, no purchase; a house's
   listing never. One log line per purchase: seller, item, count, price each, total.
-- **Memory**: when the first fill completes, one line gives the heap before and after (after a `System.gc()`), so bytes a listing is read from the log, other growth included.
+- **Memory (measured 31 October)**: about 300 bytes a listing, read off a live heap histogram (`jcmd <pid> GC.class_histogram`): 12 001 `BrokerItem` of 72 bytes, their `Item` of 168 and their timestamps, some 4 MB for 6000 listings a race. The first estimate of 9 KB came from a heap read without a collection, which counts garbage; the line in the log is now only a count. 12 000 a race would cost under 10 MB.
 - **Not tested**: any database or server behaviour (character creation from the pass thread, the save tasks, the notice to a seller, a real sale), the sizes at 12000, the page time of a search.
 - **To decide**: the ceilings and the material factors are first guesses; the house characters are named BotSellerElyos and BotSellerAsmo (decided).
 
