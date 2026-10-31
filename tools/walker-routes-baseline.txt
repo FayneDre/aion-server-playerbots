@@ -1,0 +1,24 @@
+# Patrol-route steps the installed meshes do not join by a short walk, by map, as of 31 October 2026 (NavmeshTool <map> walkers).
+# tools/check-walker-routes.ps1 fails when a map has more than its number here: a mesh change that cut a route the designers had a creature walk.
+# Lower a number when a fix makes it true. Maps with no route are not listed.
+110010000 1
+120010000 0
+210010000 2
+210020000 16
+210030000 4
+210040000 39
+210050000 4
+210060000 0
+210090000 24
+220010000 0
+220020000 43
+220030000 34
+220040000 36
+220050000 0
+220070000 7
+220100000 24
+400010000 16
+600010000 0
+600100000 0
+700010000 4
+710010000 2

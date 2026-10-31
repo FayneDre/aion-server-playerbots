@@ -1,6 +1,6 @@
 # Checking the meshes against what a tester walked
 
-**Status:** built, unverified: the walked-ground recorder has not run on a live server yet; the golden routes and the note's route lines have.
+**Status:** built, unverified: the walked-ground recorder has not run on a live server yet; the golden routes, the note's route lines and the patrol-route check have.
 
 Written on 31 October 2026, after four notes about Morheim's cave each answered by a box written by hand, one of them shutting what the one before had opened.
 Three tools, each for a way that kept costing a round trip with the tester.
@@ -35,6 +35,20 @@ The generator (`HeightfieldBuilder`) reads the file: a patch of floor 1.5 m acro
 - The file is only read when a mesh is built: walking changes nothing until `tools/navmesh.ps1` runs again (then the glide links are written again as ever).
 - It grows with the places walked, about a line per square metre: keep it, it is data, not a log. A point written by mistake (a lift, a mount) leaves a floor where nobody walks; delete its line.
 - Only what players walk is learned. What a bot should do but no player does (a glide from a cliff) is not.
+
+## 4. Patrol routes: `NavmeshTool <map> walkers`
+
+The data holds routes the designers had creatures walk (`npc_walker`, 5 887 routes, 103 000 steps a few metres apart; a map's are the `walker_id` of its spawn files). Each step is ground
+that was meant to be walked, so two steps no short walk joins (three times the distance plus 8 m) are a cut. Unlike a scan of every pair of close points, which is mostly walls
+of houses, the routes are almost free of false positives: of about 63 000 steps on the 22 open-world maps, **270 are cut (0.4 %)**, 110 places, 76 of them flat (a hole, a rock
+lip, a corridor the erosion shut: the cave of Morheim was this) and 34 steeper than 20 degrees (a slope the mesh climbs only up to 45, 62 in Morheim's zone).
+
+- `tools/check-walker-routes.ps1` runs it on every map of `tools/walker-routes-baseline.txt` and fails when one has more cut steps than its number there. Lower a number when a fix
+  makes it true.
+- Where the cuts are: Heiron 39, Morheim 43, Beluslan 36, Altgard 34 (a descent from 254 to 203 between 1600 and 1720 in x, 1735 and 1820 in y, probably the tester's cave),
+  Eltnen 16 (256 steps with no ground: swimmers and fliers), Reshanta 16. A zone for Altgard's descent opened 7 of its 34 and was not kept: the steps at 44 to 56 degrees still
+  fail, and the box is large enough to open cliffs; it wants a note from the tester at the entrance first.
+- A step with no ground within reach of its height is counted apart (flying and swimming creatures), and is no failure.
 
 ## What is still by hand
 
