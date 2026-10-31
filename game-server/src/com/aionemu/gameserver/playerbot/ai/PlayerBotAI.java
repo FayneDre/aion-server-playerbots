@@ -50,6 +50,7 @@ import com.aionemu.gameserver.playerbot.positioning.BotStations;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.playerbot.world.BotLanding;
+import com.aionemu.gameserver.playerbot.world.BotRefusals;
 import com.aionemu.gameserver.playerbot.world.HarmfulGround;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
@@ -751,7 +752,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 						convalescence.forget(); // the sickness is over, so the claim on the spot is too
 						// the camp's leash as well as what was given up: the nearest monster to a bot walking home from an obelisk is outside its camp, chase()
 						// refuses it in the same millisecond, and one bot went round three of them 1345 times in forty minutes, logged as "cannot reach"
-						Creature target = BotTargetSelector.findTarget(getOwner(), npc -> isIgnored(npc) || chase.isOffLeash(npc));
+						Creature target = BotTargetSelector.findTarget(getOwner(), npc -> isIgnored(npc) || chase.isOffLeash(npc) || isShutOffFromAll(npc));
 						if (target == null)
 							roam();
 						else if (BotTargetRegistry.claim(target, getOwner())) { // another bot may have picked it in the same tick
@@ -982,6 +983,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 				return;
 			}
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
+			rememberShutOff(target);
 			// the same monster given up on again is left alone for longer each time: ten seconds was shorter than a round of three of them
 			if (failedChases.size() > MAX_FAILED_CHASES_KEPT)
 				failedChases.clear();
@@ -1308,7 +1310,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		if (!(getOwner().getMoveController() instanceof BotMoveController moveController) || moveController.isInMove())
 			return; // already on its way somewhere
 
-		Creature target = BotTargetSelector.findTargetWithin(getOwner(), BotTargetSelector.HOME_RADIUS, this::isIgnored);
+		Creature target = BotTargetSelector.findTargetWithin(getOwner(), BotTargetSelector.HOME_RADIUS, npc -> isIgnored(npc) || isShutOffFromAll(npc));
 		if (target == null || PositionUtil.getDistance(anchorX, anchorY, target.getX(), target.getY()) > BotTargetSelector.HOME_RADIUS) {
 			// camp is empty, or the only mobs left belong to someone else's patch
 			if (!returnToAnchor())
@@ -1706,6 +1708,24 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return failures <= 1 ? UNREACHABLE_MILLIS : failures == 2 ? UNREACHABLE_AGAIN_MILLIS : UNREACHABLE_FOR_GOOD_MILLIS;
 	}
 
+
+	/** A monster the planner proved no walk reaches is told to the bots standing round, which would each spend a search and a chase to learn it. */
+	private void rememberShutOff(Creature target) {
+		BotMoveController moves = moves();
+		String why = moves == null ? "" : moves.refusal();
+		// the refusal is kept until the next one, so it counts only if it was earned by this monster's spot: a chase that timed out says nothing
+		if (("no way".equals(why) || "goal cut off".equals(why)) && moves.isRefusedFor(target.getX(), target.getY())) {
+			Player bot = getOwner();
+			BotRefusals.remember(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), new Vector3f(target.getX(), target.getY(), target.getZ()),
+				"goal cut off".equals(why));
+		}
+	}
+
+	/** @return true if a bot standing about here has been proved unable to walk to where this monster stands. Only for picking a target: one that hits the bot is still answered. */
+	private boolean isShutOffFromAll(Creature target) {
+		Player bot = getOwner();
+		return BotRefusals.isRefused(bot.getWorldId(), new Vector3f(bot.getX(), bot.getY(), bot.getZ()), new Vector3f(target.getX(), target.getY(), target.getZ()));
+	}
 
 	private boolean isIgnored(Creature target) {
 		Long until = ignoredTargets.get(target.getObjectId());

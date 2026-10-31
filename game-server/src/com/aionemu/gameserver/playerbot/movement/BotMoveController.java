@@ -395,6 +395,11 @@ public class BotMoveController extends PlayerMoveController {
 		return refusal;
 	}
 
+	/** @return true if the last refusal was about this very spot (within {@value #SAME_JOURNEY_TOLERANCE} m), and not an older one {@link #refusal()} still names. */
+	public boolean isRefusedFor(float x, float y) {
+		return hasNoRoute && PositionUtil.getDistance(noRouteX, noRouteY, x, y) < SAME_JOURNEY_TOLERANCE;
+	}
+
 	/** @return true if the last route was abandoned because the bot could not find a way through. */
 	public boolean isBlocked() {
 		return blocked;
