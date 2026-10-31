@@ -21,6 +21,27 @@ final class MapOpenings {
 	 */
 	private static final List<Opening> OPENINGS = List.of(new Opening(220020000, "na_d_icerock_b_04d.cgf", 755, 305, 790, 335));
 
+	/**
+	 * A floor the data does not hold: a flat plane over {@code minX..maxX} by {@code minY..maxY}, at {@code z} where x is {@code minX} and falling {@code fall} metres to the metre of x.
+	 */
+	record Floor(int mapId, float minX, float minY, float maxX, float maxY, float z, float fall) {
+		float zAt(float x) {
+			return z - (x - minX) * fall;
+		}
+	}
+
+	/**
+	 * Morheim, the cave of the east: the way from the mouth in the west (768,8 318,3) to the corridor that runs north (771,3 320,3) has a floor that the data does not hold. The ground is
+	 * marked steep at 770,2 319,4 at any slope up to 80 degrees and absent at 770,8 319,8, and the tester walks it (31 October, with a group whose bots could only reach the corridor by a
+	 * walk of 166 m round the hill, and the cave is the only way).
+	 */
+	private static final List<Floor> FLOORS = List.of(new Floor(220020000, 768.5f, 317.8f, 772.5f, 321.8f, 516.3f, 0.32f));
+
+	/** @return the floors the data lacks on this map. */
+	static List<Floor> floors(int mapId) {
+		return FLOORS.stream().filter(floor -> floor.mapId() == mapId).toList();
+	}
+
 	private MapOpenings() {
 	}
 

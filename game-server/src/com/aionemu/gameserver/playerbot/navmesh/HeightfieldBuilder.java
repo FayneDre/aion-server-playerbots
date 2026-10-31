@@ -158,6 +158,8 @@ public class HeightfieldBuilder {
 		}
 		if (instance)
 			noWalkVolumes.clear();
+		for (MapOpenings.Floor floor : MapOpenings.floors(mapId))
+			solids.add(flatFloor(floor));
 
 		List<Integer> worldSize = terrain != null ? terrain.worldSize() : List.of(mapSize, mapSize);
 		int width = (int) (worldSize.get(0) / Heightfield.CELL_SIZE);
@@ -205,6 +207,13 @@ public class HeightfieldBuilder {
 		}
 		String file = placement.modelName().substring(placement.modelName().lastIndexOf('/') + 1);
 		return new PlacedMesh(vertices, indices, file.startsWith("bu_"), DECOR_NOT_EDGE && isDecor(placement.modelName()), file);
+	}
+
+	/** A plane of two triangles, facing up, that stands where the data has no floor: see {@link MapOpenings}. */
+	private static PlacedMesh flatFloor(MapOpenings.Floor floor) {
+		float[] vertices = { floor.minX(), floor.minY(), floor.zAt(floor.minX()), floor.maxX(), floor.minY(), floor.zAt(floor.maxX()), floor.maxX(), floor.maxY(), floor.zAt(floor.maxX()),
+			floor.minX(), floor.maxY(), floor.zAt(floor.minX()) };
+		return new PlacedMesh(vertices, new int[] { 0, 1, 2, 0, 2, 3 }, false, false, "floor");
 	}
 
 	private Heightfield rasterize() {
