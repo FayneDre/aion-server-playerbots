@@ -44,10 +44,10 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
    sells to players, and buys only from players: it never buys its own stock. Rules, to be confirmed in the census:
    - **Eligible**: a listing by someone other than a house, of an item the house can price (guide range, manastone range, store pricing). **No price known, no purchase**: it never guesses.
    - **In range**: price per unit at most the top of the market range (a small tolerance, e.g. +5%); a bargain far under the range is bought too. Above the range, never.
-   - **Not instantly**: a listing waits a random delay (a few minutes to a few hours) so a sale does not feel automatic; a pass buys a bounded number of listings, with a chance per pass.
+   - **Not instantly, but quickly**: an in-range listing is bought within a few minutes (a random delay of 1 to 5 minutes, so a sale does not feel automatic), never hours; a pass buys a bounded number of listings. Whether a listing is bought at all is decided on its price alone, not by a chance roll.
    - **Ceilings**: a kinah ceiling a day and per player, so nobody sells the house a hoard for a fortune, and a cap per item kind, since the buyer is a kinah faucet.
    - **How**: a second small door, `BrokerService.buyForHouse(listing)`: the listing becomes a sold settled entry (the seller collects the kinah as for any sale, with the usual notice),
-     the item is **destroyed** (a sink; relisting it would feed the house with what players put in, a loop to avoid). No inventory or kinah touched on the house side.
+     the item is **destroyed** (decided: a sink; relisting it would feed the house with what players put in, a loop to avoid). No inventory or kinah touched on the house side.
 7. **Both races, one rule**: the house of a race sells what the race may use (class and race restrictions already in the templates).
 
 ## Milestones
