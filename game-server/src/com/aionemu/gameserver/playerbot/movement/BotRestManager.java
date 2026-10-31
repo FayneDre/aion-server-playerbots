@@ -14,6 +14,9 @@ import com.aionemu.gameserver.utils.PacketSendUtility;
  */
 public class BotRestManager {
 
+	/** How long the client takes to draw a bot getting to its feet: nothing that moves it is sent before. */
+	public static final long STAND_UP_MILLIS = 1000;
+
 	private BotRestManager() {
 	}
 

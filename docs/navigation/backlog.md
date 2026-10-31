@@ -1,6 +1,6 @@
 # Navigation: what is left, as seen in game
 
-Status: in progress: point 3 (long journeys) is worked and measured (budgets doubled on 31 October, proofs shared between bots, partial routes); points 1, 2, 4, 5, 6 and 7 are not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [plans/mesh-defects-plan.md](plans/mesh-defects-plan.md).
+Status: in progress: point 3 (long journeys) is worked and measured (budgets doubled on 31 October, proofs shared between bots, partial routes); point 1 is built and waits for a watch in game; points 2, 4, 5, 6 and 7 are not started. What 31 October did is in [verification-tools.md](verification-tools.md) and [plans/mesh-defects-plan.md](plans/mesh-defects-plan.md).
 
 Written on 27 October 2026 from the user's notes, to be worked once the module structure plan is done
 ([module-structure-plan.md](../architecture/history/module-structure-plan.md)). Navigation is the priority after it. Each point is the user's words, what
@@ -30,6 +30,8 @@ fixed since: a group's bots landed on a one-cell pillar and never followed (the 
 not looked at: **bots that will not glide when the player does** (point 4).
 
 ## 1. A bot slides for an instant before it runs
+
+**31 October, built, unverified in game**: `moveToPoint` now holds the walk for the stand-up time (`BotRestManager.STAND_UP_MILLIS`, 1 s) when it is the one that stands a seated bot up. Every other transition (weapon, sit, stand-up through the posture) already went through `BotPosture`, checked by search: no other caller sets off right after an emote. To watch: a bot resting that sets off to follow or to chase.
 
 *"Sur certaines animations où le bot se repose puis se lève et devrait enchaîner sa course, il glisse un court instant avant de courir. Plusieurs
 animations ont un problème de glisse."*

@@ -196,6 +196,8 @@ public class BotMoveController extends PlayerMoveController {
 	/** The last destination abandoned for lack of headway, and until when asking for it again is refused rather than tried afresh. */
 	private volatile float noHeadwayX, noHeadwayY;
 	private volatile long noHeadwayUntil;
+	/** Until when the bot is still getting to its feet, when a walk was asked for while it sat: the walk starts after. */
+	private volatile long standingUntil;
 	/**
 	 * Whether the refusal the bot is under says nothing against the spot it stands on: searches that ran out of budget, or a goal proved to stand on
 	 * ground nothing walks onto (the top of a rock). Only a search that finished empty from here, a body walled in or making no headway says something
@@ -299,7 +301,12 @@ public class BotMoveController extends PlayerMoveController {
 			return true;
 		}
 		hasNoRoute = false; // somewhere else is being asked for, so the last refusal says nothing about it
-		BotRestManager.standUp(owner); // a seated bot would slide across the ground
+		// A seated bot would slide across the ground, and one told to set off in the same instant it is told to stand slides on its way up: the walk is held
+		// for the time the client needs to draw the stand-up, as BotPosture does for the callers that go through it. This door was the one that did not.
+		if (BotRestManager.standUp(owner))
+			standingUntil = System.currentTimeMillis() + BotRestManager.STAND_UP_MILLIS;
+		if (System.currentTimeMillis() < standingUntil)
+			return true; // on its feet in a moment, and asked again on the next tick
 		// CM_MOVE does this for a real player: without it the bot stays blinking and untargetable for the full protection minute
 		if (owner.isProtectionActive())
 			owner.getController().stopProtectionActiveTask();

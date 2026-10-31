@@ -21,7 +21,7 @@ import com.aionemu.gameserver.playerbot.movement.BotRestManager;
 class BotPosture {
 
 	/** Getting to its feet. */
-	private static final long STAND_UP_MILLIS = 1000;
+	private static final long STAND_UP_MILLIS = BotRestManager.STAND_UP_MILLIS;
 	/** Drawing or putting away the weapon, which blends worse with what comes next than walking does. */
 	private static final long DRAW_WEAPON_MILLIS = 1200;
 	/** Sitting down. Shorter than standing up: a body dropping to the ground reads as finished sooner than one climbing off it. */
