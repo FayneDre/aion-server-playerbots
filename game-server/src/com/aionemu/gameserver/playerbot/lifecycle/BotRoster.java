@@ -383,6 +383,18 @@ public class BotRoster {
 		return isHouse(playerId);
 	}
 
+	/** @return The names of the house characters that exist, read once for a loop over many names. */
+	public static java.util.Set<String> houseNames() {
+		java.util.Set<String> names = new java.util.HashSet<>();
+		for (Race race : new Race[] { Race.ELYOS, Race.ASMODIANS }) {
+			int id = houseId(race);
+			String name = id == 0 ? null : PlayerDAO.getPlayerNameByObjId(id);
+			if (name != null)
+				names.add(name);
+		}
+		return names;
+	}
+
 	/** Records who a bot belongs to. 0 gives it to the world. */
 	public static void setOwner(String characterName, int ownerId) {
 		int playerId = PlayerDAO.getPlayerIdByName(characterName);

@@ -556,6 +556,11 @@ public class BrokerService {
 					item.setPersistentState(PersistentState.DELETED);
 					saveManager.add(new BrokerOpSaveTask(item));
 					kinahCollect += item.getPrice() * item.getItemCount();
+					// playerbots: a house bought this item, so nobody holds it: it is destroyed now that the sale is collected (see buyForHouse)
+					if (houseBought.remove(item.getItemUniqueId()) && item.getItem() != null) {
+						item.getItem().setPersistentState(PersistentState.DELETED);
+						saveManager.add(new BrokerOpSaveTask(null, item.getItem(), null, item.getSellerId()));
+					}
 				}
 			} else {
 				if (item.getItem() != null) {
@@ -592,7 +597,10 @@ public class BrokerService {
 	}
 
 	// playerbots: the house's doors (docs/capitals/plans/auction-house-plan.md). The house is a seller that is not a player: no fee, no limit of 15 listings,
-	// nothing taken from an inventory or a purse. Everything below is only added; the players' doors above are untouched.
+	// nothing taken from an inventory or a purse. Everything below is only added; the players' doors above are untouched (settleAccount destroys an item a house bought).
+
+	/** Object ids of the items a house bought from a player, sold entries whose item is to be destroyed when the seller collects the sale. Lost at a restart: the item then stays a row of the broker. */
+	private final Set<Integer> houseBought = ConcurrentHashMap.newKeySet();
 
 	/**
 	 * Lists an item for a house seller, without a fee, a listing limit, or any inventory or kinah. The item is owned by the broker from here on.
@@ -624,7 +632,7 @@ public class BrokerService {
 				deleted.addAll(collectHouseSettlement(getRaceBrokerItems(race), getRaceBrokerSettledItems(race), sellerId, System.currentTimeMillis()));
 		}
 		for (BrokerItem entry : deleted)
-			saveManager.add(new BrokerOpSaveTask(entry, entry.getItem(), null, sellerId));
+			saveManager.add(new BrokerOpSaveTask(entry, entry.isSold() ? null : entry.getItem(), null, sellerId));
 		return deleted.size();
 	}
 
@@ -635,17 +643,16 @@ public class BrokerService {
 	 * @return false if the listing is not a live one of that race's broker.
 	 */
 	public boolean buyForHouse(BrokerItem listing) {
+		// (the houseBought set below is read by settleAccount)
 		Race race = listing.getItemBrokerRace() == BrokerRace.ASMODIAN ? Race.ASMODIANS : Race.ELYOS;
-		Item item = listing.getItem();
 		synchronized (this) {
 			if (!isLive(getRaceBrokerItems(race), listing))
 				return false;
 			getRaceBrokerItems(race).remove(listing.getItemUniqueId());
+			// The item is destroyed when the seller collects the sale, not now: the sold entry is keyed by the item's object id, and destroying it releases the id, which a new item could
+			// then take and overwrite the entry the seller has not collected yet.
+			houseBought.add(listing.getItemUniqueId());
 			putToSettled(race, listing, true); // the seller is told and collects as for a sale to a player
-		}
-		if (item != null) {
-			item.setPersistentState(PersistentState.DELETED);
-			saveManager.add(new BrokerOpSaveTask(null, item, null, listing.getSellerId()));
 		}
 		if (LoggingConfig.LOG_BROKER_EXCHANGE)
 			log.info("House bought item {} (count: {}) from player: {} (total price: {})", listing.getItemId(), listing.getItemCount(),
@@ -699,7 +706,8 @@ public class BrokerService {
 			active.values().removeIf(entry -> entry != null && entry.getSellerId() == sellerId && entry.getExpireTime().getTime() <= now && deleted.add(entry));
 		for (BrokerItem entry : deleted) {
 			entry.setPersistentState(PersistentState.DELETED);
-			if (entry.getItem() != null)
+			// a sold entry's item is the buyer's now (it is in their inventory): only the row of the broker goes. An unsold one is the broker's own and goes with it.
+			if (!entry.isSold() && entry.getItem() != null)
 				entry.getItem().setPersistentState(PersistentState.DELETED);
 		}
 		return deleted;

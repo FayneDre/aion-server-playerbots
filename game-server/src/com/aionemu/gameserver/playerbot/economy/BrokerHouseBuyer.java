@@ -77,13 +77,12 @@ public final class BrokerHouseBuyer {
 				long cost = listing.getPrice() * listing.getItemCount();
 				if (!ledger.allows(today, listing.getSellerId(), listing.getItemId(), cost))
 					continue;
-				String seller = PlayerService.getPlayerName(listing.getSellerId());
 				if (BrokerService.getInstance().buyForHouse(listing)) {
 					ledger.record(today, listing.getSellerId(), listing.getItemId(), cost);
 					stillThere.remove(listing.getItemUniqueId());
 					bought++;
 					log.info("Broker house bought {} x{} (item {}) from {} at {} each, {} kinah in all", template.getName(), listing.getItemCount(), listing.getItemId(),
-						seller, listing.getPrice(), cost);
+						PlayerService.getPlayerName(listing.getSellerId()), listing.getPrice(), cost);
 				}
 			}
 		}

@@ -77,7 +77,11 @@ public class BotTargetSelector {
 			if (isPlayerFairGame(bot, player, radius, temperament, invasion) && !isIgnored.test(player))
 				candidates.add(player);
 		});
-		return candidates.stream().min(Comparator.comparingDouble(player -> PositionUtil.getDistance(bot, player))).orElse(null);
+		// the lone-player cap counts the bots already on a candidate, a scan of everyone known: asked of the nearest first and no further than the first that passes
+		return candidates.stream().sorted(Comparator.comparingDouble(player -> PositionUtil.getDistance(bot, player))).filter(player -> {
+			long botsOnIt = bot.getKnownList().streamPlayers().filter(other -> other.isBot() && !other.equals(bot) && other.getTarget() == player).count();
+			return BotPvpRules.mayJoinAttack(!player.isInTeam(), (int) botsOnIt);
+		}).findFirst().orElse(null);
 	}
 
 	private static boolean isPlayerFairGame(Player bot, Player player, float radius, BotTemperament temperament, boolean invasion) {
@@ -93,8 +97,7 @@ public class BotTargetSelector {
 			return false;
 		if (PositionUtil.getDistance(bot, player) > radius || !GeoService.getInstance().canSee(bot, player))
 			return false;
-		long botsOnIt = bot.getKnownList().streamPlayers().filter(other -> other.isBot() && !other.equals(bot) && other.getTarget() == player).count();
-		return BotPvpRules.mayJoinAttack(!player.isInTeam(), (int) botsOnIt);
+		return true;
 	}
 
 	/**

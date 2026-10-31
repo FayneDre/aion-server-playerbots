@@ -177,7 +177,8 @@ public final class BrokerHouse {
 		if (listed > 0 || settled > 0 || withdrawn > 0)
 			log.info("Broker house {}: {} listed, {} settled, {} withdrawn, {} held of {} (still lacking {})", race, listed, settled, withdrawn,
 				own.size() + listed, PlayerBotConfig.BROKER_SIZE, Math.max(0, lack - listed));
-		return lack - listed > 0;
+		// unfinished only while the pass makes headway: a category whose draws always fail (no price, no item) would otherwise keep the pass at the 30 s step for ever
+		return lack - listed > 0 && listed > 0;
 	}
 
 	/** Lists one new item of the category, drawn by the quality shares and the level curve. @return false if nothing could be drawn or listed. */
@@ -215,7 +216,7 @@ public final class BrokerHouse {
 	}
 
 	private static long usedHeap() {
-		System.gc(); // asked twice in the house's life, to read a figure that means something
+		// no explicit collection: a stop-the-world pause on a server with players, for a figure the log line admits is rough. Read as it stands, twice in the house's life.
 		Runtime runtime = Runtime.getRuntime();
 		return runtime.totalMemory() - runtime.freeMemory();
 	}

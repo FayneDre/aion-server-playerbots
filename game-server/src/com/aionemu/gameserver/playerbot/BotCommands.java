@@ -448,8 +448,9 @@ public final class BotCommands {
 		if (onlyHere == null && (requester == null || requester.isStaff()))
 			bots().despawnEverything();
 		int deleted = 0, kept = 0, elsewhere = 0;
+		java.util.Set<String> houses = BotRoster.houseNames(); // read once: a query a name made a population's delete-all a query a bot
 		for (String name : PlayerBotCreationService.botCharacterNames()) {
-			if (BotRoster.isHouseName(name))
+			if (houses.contains(name))
 				continue; // not a bot of the world: neither deleted nor counted
 			if (!mayCommand(name, requester)) {
 				kept++;
