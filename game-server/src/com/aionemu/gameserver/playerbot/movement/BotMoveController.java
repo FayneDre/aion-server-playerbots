@@ -411,6 +411,11 @@ public class BotMoveController extends PlayerMoveController {
 		return hasNoRoute && PositionUtil.getDistance(noRouteX, noRouteY, x, y) < SAME_JOURNEY_TOLERANCE;
 	}
 
+	/** @return true while the bot walks round something in its way: a sidestep, which is a move that is not towards the goal. */
+	public boolean isOnDetour() {
+		return onDetour;
+	}
+
 	/** @return true if the last route was abandoned because the bot could not find a way through. */
 	public boolean isBlocked() {
 		return blocked;

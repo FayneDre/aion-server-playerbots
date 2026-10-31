@@ -34,6 +34,8 @@ final class BotMotionStats {
 	private static final Object window = new Object();
 	private static long movingTicks, reversalsFighting, reversalsIdle;
 	private static final Map<String, Integer> idleByBot = new ConcurrentHashMap<>();
+	/** Moving seconds and reversals out of a fight, by what the bot was at (see PlayerBotAI.motionContext); both guarded by {@code window}. */
+	private static final Map<String, Long> movingBy = new java.util.TreeMap<>(), reversalsBy = new java.util.TreeMap<>();
 
 	private static final class Track {
 		float x, y, headingX, headingY;
@@ -44,7 +46,7 @@ final class BotMotionStats {
 	}
 
 	/** Called on each decision tick of a bot. */
-	static void sample(Player bot, boolean fighting) {
+	static void sample(Player bot, boolean fighting, String context) {
 		Track track = tracks.computeIfAbsent(bot.getObjectId(), id -> new Track());
 		float dx = bot.getX() - track.x, dy = bot.getY() - track.y;
 		track.x = bot.getX();
@@ -53,6 +55,7 @@ final class BotMotionStats {
 		if (length >= MOVED && length < 20) { // a longer one is a teleport or a landing, not a step
 			synchronized (window) {
 				movingTicks++;
+				movingBy.merge(context, 1L, Long::sum);
 				if (track.hasHeading) {
 					double cosine = (dx * track.headingX + dy * track.headingY) / (length * Math.hypot(track.headingX, track.headingY));
 					if (cosine < Math.cos(Math.toRadians(REVERSAL_DEGREES))) {
@@ -60,6 +63,7 @@ final class BotMotionStats {
 							reversalsFighting++;
 						else {
 							reversalsIdle++;
+							reversalsBy.merge(context, 1L, Long::sum);
 							idleByBot.merge(bot.getName(), 1, Integer::sum);
 						}
 					}
@@ -83,20 +87,24 @@ final class BotMotionStats {
 
 	private static void report() {
 		long moving, fighting, idle;
-		String top;
+		String top, causes;
 		synchronized (window) {
 			moving = movingTicks;
 			fighting = reversalsFighting;
 			idle = reversalsIdle;
 			top = idleByBot.entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder())).limit(TOP)
 				.map(entry -> entry.getKey() + " " + entry.getValue()).reduce((a, b) -> a + ", " + b).orElse("-");
+			causes = new java.util.TreeMap<>(reversalsBy).entrySet().stream()
+				.map(entry -> entry.getKey() + " " + entry.getValue() + "/" + movingBy.getOrDefault(entry.getKey(), 0L)).reduce((a, b) -> a + ", " + b).orElse("-");
+			movingBy.clear();
+			reversalsBy.clear();
 			movingTicks = 0;
 			reversalsFighting = 0;
 			reversalsIdle = 0;
 			idleByBot.clear();
 		}
 		if (moving > 0)
-			log.info("Motion: {} moving bot-seconds in the minute, {} reversals in a fight, {} out of one ({} per 100 moving seconds), most out of a fight: {}", moving, fighting, idle,
-				String.format(java.util.Locale.ROOT, "%.1f", 100.0 * idle / moving), top);
+			log.info("Motion: {} moving bot-seconds in the minute, {} reversals in a fight, {} out of one ({} per 100 moving seconds), most out of a fight: {}; by cause, reversals/moving seconds: {}", moving, fighting, idle,
+				String.format(java.util.Locale.ROOT, "%.1f", 100.0 * idle / moving), top, causes);
 	}
 }

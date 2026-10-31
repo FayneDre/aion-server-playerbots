@@ -88,7 +88,7 @@ suivent le joueur s'il le fait."*
 
 - Known sources: steps aside (about 1000 per 30 minutes, nine in ten "planned, something spawned in the way"); a chase re-routed every 600 ms; a
   follower re-aimed every tick; turning on the spot between two plans; standing up and sitting down at a spot that is refused.
-- **31 October: the measure is written** (`BotMotionStats`, one `Motion:` log line a minute; `measure.sh` has a "--- motion" section): reversals of heading over 120 degrees between two seconds, in a fight and out of one. Built, waits for a deploy and a first window. Before: per bot and minute, changes of heading over 90 degrees and legs under a metre, which would rank the sources.
+- **31 October: the measure is written** (`BotMotionStats`, one `Motion:` log line a minute; `measure.sh` has a "--- motion" section): reversals of heading over 120 degrees between two seconds, in a fight and out of one. First window 22:00 to 22:27: 4.6 reversals per 100 moving seconds out of a fight, 0.9 in one. The first look at the bots with most of them (Dalonor, 49 in 20 minutes) shows hunting: between two fights a bot turns back to loot or to the next monster, which is not a fault. Next, 31 October: the reversals are counted by cause (following, sidestep, chasing, farming, wandering, loitering), written in the same line and summed by measure.sh, built and waiting for a deploy and a window. Before: per bot and minute, changes of heading over 90 degrees and legs under a metre, which would rank the sources.
   The user's eye stays the judge: a short list of what looks wrong, with `//bot note`, gives the cases.
 
 ## 6. Dungeons worse than the open world

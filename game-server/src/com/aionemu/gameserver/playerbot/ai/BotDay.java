@@ -146,6 +146,11 @@ class BotDay {
 		};
 	}
 
+	/** @return What the bot does with its day at present, for the motion statistics. */
+	Occupation occupation() {
+		return occupation;
+	}
+
 	/**
 	 * Where this bot lives.
 	 * <p>

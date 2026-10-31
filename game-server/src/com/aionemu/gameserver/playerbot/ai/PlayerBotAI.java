@@ -620,6 +620,17 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return behind > ANCHOR_TOLERANCE && (behind <= CATCH_UP_UNRESTED || !isRecoveringFromDeath());
 	}
 
+	/** What the bot is at, in one word, for the motion statistics: the cause a reversal of heading is counted under. */
+	private String motionContext() {
+		if (BotGroupManager.leaderToFollow(getOwner()) != null)
+			return "following";
+		if (getOwner().getMoveController() instanceof BotMoveController moves && moves.isOnDetour())
+			return "sidestep";
+		if (chase.isChasing())
+			return "chasing";
+		return day.occupation().name().toLowerCase();
+	}
+
 	/** Decision loop, kept separate from the framework's {@code think()} so nothing in the engine can trigger it unexpectedly. */
 	private void botTick() {
 		noteCrowdControl();
@@ -629,7 +640,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			ticking = true;
 		}
 		try {
-			BotMotionStats.sample(getOwner(), isAttacking());
+			BotMotionStats.sample(getOwner(), isAttacking(), motionContext());
 			decide();
 		} catch (RuntimeException e) {
 			// The tick reschedules itself, so an exception thrown anywhere in it used to stop that bot thinking for the rest of its life, silently and

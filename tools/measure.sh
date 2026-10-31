@@ -27,6 +27,9 @@ echo "--- channel lines"; for c in region trade "find group"; do echo "$c $(grep
 echo "--- motion (reversals of heading over 120 degrees between two seconds, in a fight and out of one; from BotMotionStats, one line a minute)"
 grep " Motion: " $W/window.log | sed -E 's/.*Motion: ([0-9]+) moving bot-seconds in the minute, ([0-9]+) reversals in a fight, ([0-9]+) out of one.*/\1 \2 \3/' \
   | awk '{m+=$1; f+=$2; i+=$3} END{if (m > 0) printf "moving bot-seconds %d, reversals in a fight %d (%.1f per 100), out of a fight %d (%.1f per 100)\n", m, f, 100*f/m, i, 100*i/m; else print "no motion line in this window"}'
+echo "--- motion by cause out of a fight (reversals per 100 moving seconds, with the moving seconds, from the 'by cause' part of the lines)"
+grep " Motion: " $W/window.log | sed -E 's/.*by cause, reversals\/moving seconds: //' | tr ',' '\n' | sed -E 's/^ +//' \
+  | awk -F'[ /]' 'NF>=3 && $1 != "-" {r[$1]+=$2; m[$1]+=$3} END{for (c in r) if (m[c] > 0) printf "  %-12s %6d reversals in %8d moving seconds, %.1f per 100\n", c, r[c], m[c], 100*r[c]/m[c]}' | sort -k2 -rn
 echo "--- spots that lead nowhere: lost (searches out of budget) $(grep -c "run out of budget for .* so it is the spot" $W/window.log), refused in a row $(grep -c "destinations in a row from .* so it is the spot" $W/window.log)"
 echo "--- obelisk strandings $(grep -c 'no place to wait out its sickness' $W/window.log)"
 echo "--- in sight loops"; grep "a player has it in sight" $W/window.log | grep -o "Bot [A-Za-z]*" | sort | uniq -c | sort -rn | head -5
