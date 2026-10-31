@@ -1916,6 +1916,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		}
 		convalescence.forget(); // a bot that leaves the world mid sickness must not keep its ground reserved
 		BotMotionStats.forget(getOwner());
+		BotFlight.forgetNotes(getOwner());
 		cancelCombat();
 		setStateIfNot(AIState.DESPAWNED);
 		log.info("Bot {} despawned", getOwner().getName());

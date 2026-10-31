@@ -302,21 +302,49 @@ public class BotFlight {
 	 * @return true if the bot is now flying after them.
 	 */
 	public static boolean tryEscort(Player bot, Player leader) {
-		if (isInTheAir(bot) || !leader.isFlying() || !refuelled(bot))
+		if (isInTheAir(bot) || !leader.isFlying())
 			return false;
+		// every refusal is said, at most every 20 seconds a bot: a player who flies with a group and sees a bot stay on the ground had nothing in the log to say why
+		if (!refuelled(bot)) {
+			noteRefusal(bot, leader, "it has " + bot.getLifeStats().getCurrentFp() + " of " + bot.getLifeStats().getMaxFp() + " flight points, under half of them");
+			return false;
+		}
 		float distance = (float) PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), leader.getX(), leader.getY(), leader.getZ());
-		if (distance > MAX_JOURNEY)
+		if (distance > MAX_JOURNEY) {
+			noteRefusal(bot, leader, "it is " + Math.round(distance) + " m away, further than a flight is begun");
 			return false;
+		}
 		Vector3f spot = beside(leader);
 		List<Vector3f> legs = new ArrayList<>();
 		legs.add(spot);
-		if (bot.getLifeStats().getCurrentFp() < ESCORT_RESERVE + fpFor(bot, legs, false))
+		if (bot.getLifeStats().getCurrentFp() < ESCORT_RESERVE + fpFor(bot, legs, false)) {
+			noteRefusal(bot, leader, "its " + bot.getLifeStats().getCurrentFp() + " flight points do not carry it the " + Math.round(distance) + " m and leave the reserve");
 			return false;
+		}
 		String answer = begin(bot, legs, -1, leader, "after " + leader.getName());
 		boolean flying = isInTheAir(bot);
 		if (!flying)
-			log.debug("Bot {} is not following {} into the air: {}", bot.getName(), leader.getName(), answer);
+			noteRefusal(bot, leader, answer);
 		return flying;
+	}
+
+	/** When each bot last said why it did not follow its leader into the air, to say it again no sooner than {@link #REFUSAL_NOTE_MILLIS}. */
+	private static final Map<Integer, Long> lastRefusalNote = new ConcurrentHashMap<>();
+	private static final long REFUSAL_NOTE_MILLIS = 20_000;
+
+	private static void noteRefusal(Player bot, Player leader, String why) {
+		long now = System.currentTimeMillis();
+		Long last = lastRefusalNote.put(bot.getObjectId(), now);
+		if (last != null && now - last < REFUSAL_NOTE_MILLIS) {
+			lastRefusalNote.put(bot.getObjectId(), last);
+			return;
+		}
+		log.info("Bot {} does not follow {} into the air: {}", bot.getName(), leader.getName(), why);
+	}
+
+	/** Forgets what a bot last said about not following, when it leaves the world. */
+	public static void forgetNotes(Player bot) {
+		lastRefusalNote.remove(bot.getObjectId());
 	}
 
 	/**
