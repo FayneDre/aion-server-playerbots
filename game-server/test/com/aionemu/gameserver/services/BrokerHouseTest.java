@@ -107,13 +107,15 @@ class BrokerHouseTest {
 	@Test
 	void settlingASoldEntryLeavesTheBuyersItemAloneButDeletesAnExpiredListingsOwn() {
 		Map<Integer, BrokerItem> active = new ConcurrentHashMap<>(), settled = new ConcurrentHashMap<>();
-		BrokerItem soldEntry = sold(1, HOUSE), expired = listing(2, HOUSE, -HOUR);
+		BrokerItem soldEntry = listing(1, HOUSE, 24 * HOUR), expired = listing(2, HOUSE, -HOUR);
+		soldEntry.removeItem(); // sold: its item is in the buyer's inventory now
+		PersistentState soldItemBefore = soldEntry.getItem().getPersistentState(), expiredItemBefore = expired.getItem().getPersistentState();
 		settled.put(1, soldEntry);
 		active.put(2, expired);
 		BrokerService.collectHouseSettlement(active, settled, HOUSE, System.currentTimeMillis());
 		assertEquals(PersistentState.DELETED, soldEntry.getPersistentState());
-		assertNotEquals(PersistentState.DELETED, soldEntry.getItem().getPersistentState(), "the item is in the buyer's inventory, it must not be deleted");
-		assertEquals(PersistentState.DELETED, expired.getItem().getPersistentState());
+		assertEquals(soldItemBefore, soldEntry.getItem().getPersistentState(), "the item is in the buyer's inventory, it must not be touched");
+		assertNotEquals(expiredItemBefore, expired.getItem().getPersistentState(), "an expired listing's own item goes with it");
 	}
 
 	@Test
