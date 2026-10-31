@@ -49,6 +49,12 @@ lip, a corridor the erosion shut: the cave of Morheim was this) and 34 steeper t
   Eltnen 16 (256 steps with no ground: swimmers and fliers), Reshanta 16. A zone for Altgard's descent opened 7 of its 34 and was not kept: the steps at 44 to 56 degrees still
   fail, and the box is large enough to open cliffs; it wants a note from the tester at the entrance first.
 - A step with no ground within reach of its height is counted apart (flying and swimming creatures), and is no failure.
+- **Treating the cuts**: `NavmeshTool <map> walkers write` writes, along each cut step that stands on the ground (within 1 m of its height at both ends; a floor under a flier's route would be a ceiling
+  over the ground below it), a point every half metre into `data/navmesh/<map>.patrols`, which the generator reads like the walked ground of players. `tools/patrol-ground.ps1` does it twice per map
+  (a pass shows more ground that needs joining) and builds with the links; the server must be stopped. Tried on 14 maps on 31 October: 270 cut steps became 12, Morheim 43 to 0, Altgard 34 to 1,
+  Heiron 39 to 1, Beluslan 36 to 1; the pairs of neighbouring monsters reached did not move (Inggison 2 309 before and after). **Test meshes need their `.glide` files**, written with `NavmeshTool <map> glides`:
+  without them a map reads 24 pairs worse for nothing that was done to it, which looked like a regression until measured so.
+- The `.patrols` files are data of the server, not of the repository: run the script again on a new install, and after changes to the generator the meshes keep them.
 
 ## What is still by hand
 
