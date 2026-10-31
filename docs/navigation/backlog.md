@@ -80,6 +80,7 @@ suivent le joueur s'il le fait."*
   cliff; links from smaller ground where the file stays small; ambient flights (25 to 300 m, half the time, inside a fly zone) are rare because few
   trips start and end in one.
 - Following a player's glide works (`LeaderGlides`, validated 27 October).
+- Plan: [plans/glide-use-plan.md](plans/glide-use-plan.md) (1 November).
 
 ## 5. Every movement that gives a bot away
 
