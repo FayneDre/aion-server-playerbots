@@ -36,7 +36,7 @@ class BotMemoryTest {
 	private static final Map<String, String> NOT_FORGOTTEN_THERE = Map.ofEntries(
 		// cleared by the AI when it is told DESPAWNED, which leaveWorld does first
 		Map.entry("BotConvalescence.claimed", "released by PlayerBotAI.handleDespawned"),
-		Map.entry("BotTargetRegistry.owners", "released by PlayerBotAI.cancelCombat on despawn"),
+		Map.entry("BotMotionStats.tracks", "released by PlayerBotAI.handleDespawned"),		Map.entry("BotTargetRegistry.owners", "released by PlayerBotAI.cancelCombat on despawn"),
 		Map.entry("BotFlight.inTheAir", "a flight ends when its bot is despawned"),
 		// a life of their own, longer than one stay in the world
 		Map.entry("BotRecruiter.recruits", "a recruit is sent home, and dropped, by the recruiter"),
