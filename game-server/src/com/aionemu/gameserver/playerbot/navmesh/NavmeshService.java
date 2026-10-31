@@ -295,6 +295,30 @@ public class NavmeshService {
 	}
 
 	/**
+	 * @return An edge near the bot to glide off for the look of it and the ground it comes down on, or null: the map has no mesh, the bot has no wings, no edge of the right height is near,
+	 *         the air between is not clear, the landing is on siege ground, or the ground below is not joined to the bot's by a walk (a bot must not be left on an island).
+	 */
+	public LedgeGlides.Ledge findLedge(Player bot, float radius, float minDrop, float maxDrop) {
+		Navmesh mesh = get(bot.getWorldId());
+		if (mesh == null || !bot.getCommonData().isDaeva() || bot.getTransformModel().cantFly())
+			return null;
+		List<LedgeGlides.Ledge> ledges = new ArrayList<>(
+			LedgeGlides.around(mesh, bot.getX(), bot.getY(), bot.getZ(), radius, minDrop, maxDrop, System.nanoTime() ^ bot.getObjectId()));
+		java.util.Collections.shuffle(ledges);
+		for (LedgeGlides.Ledge ledge : ledges) {
+			Vector3f off = ledge.takeoff(), down = ledge.landing();
+			GlideLink link = new GlideLink(off.getX(), off.getY(), off.getZ(), down.getX(), down.getY(), down.getZ(), -1, -1, false, 0);
+			if (isAirClear(bot, link) && !host().isSiegeGround(bot.getWorldId(), down.getX(), down.getY(), down.getZ())
+				&& BotPathFinder.isWithinWalk(mesh, down.getX(), down.getY(), down.getZ(), bot.getX(), bot.getY(), bot.getZ(), AMBIENT_GLIDE_WALK_BACK))
+				return ledge;
+		}
+		return null;
+	}
+
+	/** The longest walk back from the landing of an ambient glide to where the bot stood, in metres: beyond it the ground below is as good as another island. */
+	private static final float AMBIENT_GLIDE_WALK_BACK = 600;
+
+	/**
 	 * Finds walkable ground near a spot, for putting a bot down on it.
 	 *
 	 * @return The nearest ground a body fits on, or null when the map has no mesh or nothing walkable is near enough.

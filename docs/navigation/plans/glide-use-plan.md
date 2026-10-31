@@ -1,6 +1,6 @@
 # Plan: bots that glide on their own (backlog point 4)
 
-Status: in progress: milestone 0 measured on 1 November (result below); milestone 2 is next, milestone 1 is much smaller than first thought.
+Status: built, unverified: milestone 2 (ambient glides) is written and compiled on 1 November, waiting for a deploy and a watch in game; milestone 0 measured (below); milestone 1 is much smaller than first thought.
 
 The tester's words: *"Les bots doivent mieux employer le vol en planant, d'eux-mêmes je n'ai pas l'impression qu'ils l'utilisent ou trop rarement. En groupe ils suivent le joueur s'il le fait."*
 
@@ -52,3 +52,11 @@ A bot at the top of a cliff, a rampart or a plateau walks a long way round to th
 - **The bound for such shortcuts is low.** A glide covers 2.5 m for 1 m of drop, so on journeys of 80 m and more it only fits drops over 30 m: nothing below, and 11 to 35 % of the walkable descents above (Eltnen 11, Morheim 14, Heiron 13, Inggison 19, Beluslan 35). Drops of 8 to 30 m: none worth 30 % of the time on journeys of this length.
 
 So a rule that glides to save time would fire on the cliffs of Beluslan and little elsewhere, for a new link file. **Decision taken from the figures: milestone 2 first** (a bot glides off a ledge for the look of it, near a player, onto ground it can see below: no link needed, only the geometry under it and `GlideLinks.MIN_DROP`), then milestone 1 only if the tester asks for time-saving glides, restricted to the big drops with shortcut links on the maps this tool ranks first.
+
+## Milestone 2, built (1 November)
+
+- `LedgeGlides` (navmesh): from the bot's place, 16 rays of up to 25 m on the same ground; where the ground ends, a floor 8 to 40 m lower at 70 to 95 % of a glide's reach (2.5 m forward per metre of drop) is the landing. `NavmeshTool <map> ledges` samples it offline: **40 to 50 % of random places on Eltnen, Heiron and Beluslan have an edge within 25 m**, 450 to 600 edges per 300 places, average drop 19 to 20 m. Many are steep hillsides rather than cliffs, which the air test below throws out.
+- `NavmeshService.findLedge` vets an edge: the air between is clear (the game's geometry, as for the links), the landing is not siege ground, and the ground below is joined to the bot's by a walk of 600 m at most (no island).
+- `BotLedgeGlide` (ai): while a bot strolls or loiters (never when hunting, in a group, owned, in town or already flying) it looks once a minute; one look in twenty, with a real player within 150 m, it walks to the edge and `glideAlong`s to the landing, then rests 10 minutes. Log lines: "goes to glide off the edge at ... to ...", "glides off the edge", "could not glide off the edge".
+- Option `gameserver.playerbot.ambient.glide` (true by default), in `playerbot.properties`.
+- **To watch in game**: a bot glides off a ledge near you and lands on its feet; none into a wall or a monster camp; the log lines above count them. Not tested: the glide of a line steeper than the glide ratio (landings are kept within 70 to 95 % of reach, so it should be a glide, not a dive).

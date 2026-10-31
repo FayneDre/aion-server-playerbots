@@ -38,6 +38,13 @@ public class PlayerBotConfig {
 	@Property(key = "gameserver.playerbot.ambient.flight", defaultValue = "true")
 	public static volatile boolean AMBIENT_FLIGHT;
 
+	/**
+	 * Whether a bot strolling or loitering near a real player now and then glides off a ledge to the ground below, for the look of it. Off, bots glide only where walking is proved
+	 * impossible and to follow a gliding player.
+	 */
+	@Property(key = "gameserver.playerbot.ambient.glide", defaultValue = "true")
+	public static volatile boolean AMBIENT_GLIDE;
+
 	/** The language of everything bots say in the chat channels and by shout: FR or EN. */
 	@Property(key = "gameserver.playerbot.chat.language", defaultValue = "FR")
 	public static volatile ChatLanguage CHAT_LANGUAGE;

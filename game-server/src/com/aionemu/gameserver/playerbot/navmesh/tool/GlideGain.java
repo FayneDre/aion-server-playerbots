@@ -7,6 +7,7 @@ import java.util.Random;
 
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
+import com.aionemu.gameserver.playerbot.navmesh.LedgeGlides;
 import com.aionemu.gameserver.playerbot.navmesh.Navmesh;
 
 /**
@@ -81,6 +82,35 @@ final class GlideGain {
 				BANDS[band], sampled[band], walkable[band], gliding[band], quicker[band], quicker[band] == 0 ? 0 : savedSeconds[band] / quicker[band], shortcuts[band],
 				walkable[band] == 0 ? 0 : 100.0 * shortcuts[band] / walkable[band]);
 		}
+		return 0;
+	}
+
+	/** Of random places on the ground, how many have an edge to glide off within 25 m, and what they look like: the ledge finder of the ambient glides, offline. */
+	static int ledges(int mapId, int samples) throws IOException {
+		Navmesh mesh = Navmesh.open(mapId);
+		Random random = new Random(mapId);
+		int places = 0, withLedge = 0, ledgesFound = 0;
+		float dropSum = 0;
+		for (int attempts = 0; places < samples && attempts < samples * 60; attempts++) {
+			float[] spot = anyGround(mesh, random);
+			if (spot == null)
+				continue;
+			places++;
+			List<LedgeGlides.Ledge> found = LedgeGlides.around(mesh, spot[0], spot[1], spot[2], 25, 8, 40, random.nextLong());
+			if (found.isEmpty())
+				continue;
+			withLedge++;
+			ledgesFound += found.size();
+			for (LedgeGlides.Ledge ledge : found)
+				dropSum += ledge.takeoff().getZ() - ledge.landing().getZ();
+			if (withLedge <= 5) {
+				Vector3f off = found.get(0).takeoff(), down = found.get(0).landing();
+				System.out.printf(Locale.ROOT, "  e.g. from %.0f %.0f %.0f: take off %.0f %.0f %.0f, land %.0f %.0f %.0f%n", spot[0], spot[1], spot[2], off.getX(), off.getY(),
+					off.getZ(), down.getX(), down.getY(), down.getZ());
+			}
+		}
+		System.out.printf(Locale.ROOT, "Map %d: %d places, %d with an edge to glide off within 25 m (%.0f%%), %d edges, average drop %.0f m%n", mapId, places, withLedge,
+			places == 0 ? 0 : 100.0 * withLedge / places, ledgesFound, ledgesFound == 0 ? 0 : dropSum / ledgesFound);
 		return 0;
 	}
 

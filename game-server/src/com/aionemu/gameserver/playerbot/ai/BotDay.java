@@ -82,6 +82,7 @@ class BotDay {
 	private static final long STALL_UNREACHABLE_MILLIS = 6 * 3600_000L;
 
 	private final PlayerBotAI ai;
+	private final BotLedgeGlide ledgeGlide;
 	/** What the bot is doing with its day, and until when. */
 	private volatile Occupation occupation = Occupation.FARMING;
 	/** A town resident's spell of a few minutes, and when it ends: see {@link TownRoutine}. */
@@ -108,6 +109,7 @@ class BotDay {
 
 	BotDay(PlayerBotAI ai) {
 		this.ai = ai;
+		this.ledgeGlide = new BotLedgeGlide(ai);
 	}
 
 	/**
@@ -134,6 +136,9 @@ class BotDay {
 			occupationDestination = null;
 			log.info("Bot {} takes to {}", bot.getName(), occupation);
 		}
+		// leisure only: a bot at its hunting does not leave it to glide off a ledge
+		if (occupation != Occupation.FARMING && ledgeGlide.tick())
+			return true;
 		return switch (occupation) {
 			case FARMING -> farm();
 			case LOITERING -> loiter();
