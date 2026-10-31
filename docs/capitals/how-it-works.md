@@ -41,7 +41,7 @@ by `SchemaUpdater`) files it under its own map, so no rule rehouses it in town, 
 
 Bots talk in the capitals by **shout** (`BotSpeech`: store adverts every 2 to 4 minutes a capital, calls for a group every 3 to 6, a speaker within
 80 m of a real player and quiet 30 minutes after) and, everywhere, in the **chat channels** ([../social/how-it-works.md](../social/how-it-works.md)).
-`//bot speech off` silences both.
+`//bot speech off` silences both. The words are `data/bot_chat/chat_fr.txt` or `chat_en.txt` by `gameserver.playerbot.chat.language`, for the shouts as for the channels.
 
 ## Limits
 
