@@ -225,11 +225,14 @@ public class PlayerBotCreationService {
 	 */
 	public static boolean hasBotsOn(int worldId) {
 		try (Connection con = DatabaseFactory.getConnection();
-				 PreparedStatement stmt = con.prepareStatement("SELECT 1 FROM `players` WHERE `account_id` >= ? AND `world_id` = ? LIMIT 1")) {
+				 PreparedStatement stmt = con.prepareStatement("SELECT `id` FROM `players` WHERE `account_id` >= ? AND `world_id` = ?")) {
 			stmt.setInt(1, BOT_ACCOUNT_ID_BASE);
 			stmt.setInt(2, worldId);
 			try (ResultSet rs = stmt.executeQuery()) {
-				return rs.next();
+				while (rs.next())
+					if (!BotRoster.isHouse(rs.getInt(1))) // the auction house's sellers stand on no map worth populating
+						return true;
+				return false;
 			}
 		} catch (SQLException e) {
 			LoggerFactory.getLogger(PlayerBotCreationService.class).error("Could not check whether map " + worldId + " already has bots", e);

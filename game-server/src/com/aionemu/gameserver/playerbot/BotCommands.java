@@ -141,6 +141,8 @@ public final class BotCommands {
 			return "No character found with name " + characterName;
 		if (PlayerDAO.getAccountId(objectId) < PlayerBotCreationService.BOT_ACCOUNT_ID_BASE)
 			return characterName + " is not on a bot account, refusing to delete it";
+		if (BotRoster.isHouse(objectId)) // its listings are rows with a cascading key on it: deleting it empties the auction house
+			return characterName + " is the auction house's seller, refusing to delete it";
 		if (!mayCommand(characterName, requester))
 			return characterName + " belongs to somebody else";
 
@@ -425,6 +427,8 @@ public final class BotCommands {
 			bots().despawnEverything();
 		int deleted = 0, kept = 0, elsewhere = 0;
 		for (String name : PlayerBotCreationService.botCharacterNames()) {
+			if (BotRoster.isHouseName(name))
+				continue; // not a bot of the world: neither deleted nor counted
 			if (!mayCommand(name, requester)) {
 				kept++;
 				continue;

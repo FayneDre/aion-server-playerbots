@@ -8,7 +8,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -324,6 +326,8 @@ public class BotRoster {
 	 *         Asked once as the ai is built, so the two halves are one query.
 	 */
 	public static boolean isSomebodysOwn(String characterName) {
+		if (isHouseName(characterName))
+			return true; // the auction house's seller is never the world's to log in, move or delete
 		try (Connection con = DatabaseFactory.getConnection();
 				 PreparedStatement stmt = con.prepareStatement("SELECT p.`account_id`, COALESCE(b.`owner_id`, 0) FROM `players` p "
 					 + "LEFT JOIN `playerbot_characters` b ON b.`player_id` = p.`id` WHERE p.`name` = ?")) {
@@ -339,6 +343,44 @@ public class BotRoster {
 			// where one wrongly taken from it is quietly dropped out of the population and never replaced.
 			return false;
 		}
+	}
+
+	/** The auction house's characters, one per race, as a server variable each: a value of a few digits, which the variable's {@code varchar(30)} holds. */
+	private static final String HOUSE_VARIABLE = "playerbot.house.";
+	private static final Map<Race, Integer> houseIds = new ConcurrentHashMap<>();
+
+	/** @return The object id of the race's house character (the seller of the auction house's listings), or 0 if none has been made. */
+	public static int houseId(Race race) {
+		Integer cached = houseIds.get(race);
+		if (cached != null)
+			return cached;
+		String stored = load(HOUSE_VARIABLE + race.name());
+		int id = 0;
+		try {
+			id = stored == null || stored.isBlank() ? 0 : Integer.parseInt(stored.trim());
+		} catch (NumberFormatException e) {
+			log.warn("The house character of {} is recorded as '{}', which is not an id", race, stored);
+		}
+		if (id != 0)
+			houseIds.put(race, id);
+		return id;
+	}
+
+	/** Records a race's house character, so that the next start finds it again. */
+	public static void rememberHouse(Race race, int playerId) {
+		ServerVariablesDAO.store(HOUSE_VARIABLE + race.name(), String.valueOf(playerId));
+		houseIds.put(race, playerId);
+	}
+
+	/** @return true if the character is the auction house's seller of either race. */
+	public static boolean isHouse(int playerId) {
+		return playerId != 0 && (houseId(Race.ELYOS) == playerId || houseId(Race.ASMODIANS) == playerId);
+	}
+
+	/** @return true if the name is that of a house character. Reads the database only while neither race has one in memory. */
+	public static boolean isHouseName(String characterName) {
+		int playerId = houseId(Race.ELYOS) == 0 && houseId(Race.ASMODIANS) == 0 ? 0 : PlayerDAO.getPlayerIdByName(characterName);
+		return isHouse(playerId);
 	}
 
 	/** Records who a bot belongs to. 0 gives it to the world. */
