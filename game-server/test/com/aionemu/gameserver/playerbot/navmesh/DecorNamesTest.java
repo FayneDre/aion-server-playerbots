@@ -29,6 +29,16 @@ class DecorNamesTest {
 	}
 
 	@Test
+	void realNamesOfTheDataAreTakenForWhatTheyAre() {
+		assertTrue(decor("bu_d_plazatent02_na_01a.cgf"), "a digit stuck to the word");
+		assertTrue(decor("pr_d_outpost_signboard_01a.cgf"), "an outpost's furniture: post is inside outpost");
+		assertTrue(decor("pr_d_outpostsofa_01a.cgf"));
+		assertFalse(decor("bu_l_tentshopcounter_02b.cgf"), "the counter of a stall is not a tent");
+		assertFalse(decor("elim_detention.cgf"), "tent inside detention");
+		assertFalse(decor("bu_d_lf5tiamatentry_01a.cgf"), "and inside entry");
+	}
+
+	@Test
 	void structureWinsOverTheWordTent() {
 		assertFalse(decor("bu_d_tent_wall_01a.cgf"), "a tent wall is a wall");
 		assertFalse(decor("bu_d_tent_pole_01a.cgf"));

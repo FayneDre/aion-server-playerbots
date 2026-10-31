@@ -42,7 +42,8 @@ public final class MapSlopes {
 	}
 
 	/** Whether {@code navmesh.slope} is set: read once, for the generator asks about a zone once for every terrain sample and every triangle of a map. */
-	private static final boolean SLOPE_OVERRIDDEN = Integer.getInteger("navmesh.slope") != null;
+	private static final Integer SLOPE_OVERRIDE = Integer.getInteger("navmesh.slope");
+	private static final boolean SLOPE_OVERRIDDEN = SLOPE_OVERRIDE != null;
 
 	/** @return The cosine of the steepest slope of the zone the spot lies in, 1 (no relaxation) outside every zone of the map; the property {@code navmesh.slope} switches the zones off. */
 	static float zoneCosine(int mapId, float x, float y) {
@@ -69,15 +70,14 @@ public final class MapSlopes {
 
 	/** @return The steepest walkable slope of the map in degrees; the property {@code navmesh.slope} overrides it everywhere, for measuring. */
 	static int degrees(int mapId) {
-		Integer measured = Integer.getInteger("navmesh.slope");
-		if (measured != null)
-			return measured;
+		if (SLOPE_OVERRIDDEN)
+			return SLOPE_OVERRIDE;
 		return STAIRS_AS_RAMPS.contains(mapId) ? STAIRS_DEGREES : WALKABLE_DEGREES;
 	}
 
 	/** @return The steepest walkable face of a building on the map in degrees: its stairs. The map's own everywhere but where buildings model them as ramps. */
 	static int buildingDegrees(int mapId) {
-		return BUILDING_STAIRS_AS_RAMPS.contains(mapId) && Integer.getInteger("navmesh.slope") == null ? STAIRS_DEGREES : degrees(mapId);
+		return BUILDING_STAIRS_AS_RAMPS.contains(mapId) && !SLOPE_OVERRIDDEN ? STAIRS_DEGREES : degrees(mapId);
 	}
 
 	static float cosine(int mapId) {

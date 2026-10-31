@@ -426,7 +426,15 @@ public class Heightfield {
 			restored += joinBack(label, cells[label], after, joined, beforeErosion, cameFrom, reached, reachCells, climbTolerance, slopeTangent);
 			cells[label] = null;
 		}
+		passagesGivenBack = restored;
 		return restored;
+	}
+
+	/** How many surfaces {@link #keepPassages} gave back, 0 before it ran. */
+	private int passagesGivenBack;
+
+	public int passagesGivenBack() {
+		return passagesGivenBack;
 	}
 
 	/** A growing run of surface indices, so that the search for a passage boxes nothing. */
@@ -448,13 +456,11 @@ public class Heightfield {
 	 */
 	private int joinBack(int label, int[] stretch, int[] region, boolean[] joined, BitSet beforeErosion, int[] cameFrom, BitSet reached, int reachCells,
 		float climbTolerance, float slopeTangent) {
-		Run taken = new Run();
-		int[] layer = stretch;
-		int layerSize = stretch.length, given = 0;
-		search: for (int depth = 0; depth < reachCells && layerSize > 0; depth++) {
-			Run next = new Run();
-			for (int n = 0; n < layerSize; n++) {
-				int surface = layer[n];
+		Run queue = new Run(); // every surface the erosion took that the search reached, in the order reached: the layers of the search are ranges of it
+		int layerStart = 0, layerEnd = stretch.length, given = 0;
+		search: for (int depth = 0; depth < reachCells && layerStart < layerEnd; depth++) {
+			for (int n = layerStart; n < layerEnd; n++) {
+				int surface = depth == 0 ? stretch[n] : queue.values[n];
 				int column = columnOf(surface);
 				int x = column % width, y = column / width;
 				float z = surfaces[surface];
@@ -480,17 +486,16 @@ public class Heightfield {
 						} else if (beforeErosion.get(neighbour) && !reached.get(neighbour)) {
 							reached.set(neighbour);
 							cameFrom[neighbour] = surface;
-							next.add(neighbour);
-							taken.add(neighbour);
+							queue.add(neighbour);
 						}
 					}
 				}
 			}
-			layer = next.values;
-			layerSize = next.size;
+			layerStart = layerEnd;
+			layerEnd = queue.size;
 		}
-		for (int i = 0; i < taken.size; i++)
-			reached.clear(taken.values[i]);
+		for (int i = 0; i < queue.size; i++)
+			reached.clear(queue.values[i]);
 		return given;
 	}
 

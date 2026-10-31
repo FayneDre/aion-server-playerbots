@@ -174,6 +174,17 @@ class BotPathFinderTest {
 	}
 
 	@Test
+	void aBotOnTheIsletItselfPlansOnItsOwnGround() throws IOException {
+		Navmesh pocketed = meshOf((x, y) -> (x >= 60 && x < 66 && y >= 60 && y < 66) ? (x > 60 && x < 65 && y > 60 && y < 65 ? OPEN : SOLID) : OPEN);
+
+		BotPathFinder.Route route = BotPathFinder.findPathNear(pocketed, 30.75f, 30.75f, HEIGHT, 31.75f, 31.75f, HEIGHT);
+
+		assertFalse(route.isEmpty());
+		Vector3f last = route.waypoints().getLast();
+		assertTrue(Math.hypot(last.getX() - 31.75f, last.getY() - 31.75f) <= 1.0, "it goes to the goal itself and not out of the islet: " + last);
+	}
+
+	@Test
 	void doesNotAimPastAnIsletWhenTheLargeGroundIsFarOff() throws IOException {
 		// 25 cells of ground in a solid block 24 cells wide: eleven metres to the field, past what a bot is sent to instead
 		Navmesh far = meshOf((x, y) -> (x >= 40 && x < 89 && y >= 40 && y < 89) ? (x >= 62 && x < 67 && y >= 62 && y < 67 ? OPEN : SOLID) : OPEN);

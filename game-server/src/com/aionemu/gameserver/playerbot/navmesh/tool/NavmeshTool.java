@@ -2,7 +2,6 @@ package com.aionemu.gameserver.playerbot.navmesh.tool;
 
 import com.aionemu.gameserver.geoEngine.collision.CollisionIntention;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
-import com.aionemu.gameserver.playerbot.navmesh.MapSlopes;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
 import com.aionemu.gameserver.playerbot.navmesh.FlightLinks;
 import com.aionemu.gameserver.playerbot.navmesh.GeoDataReader;
@@ -11,6 +10,7 @@ import com.aionemu.gameserver.playerbot.navmesh.GeoPlacement;
 import com.aionemu.gameserver.playerbot.navmesh.GlideLinks;
 import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
 import com.aionemu.gameserver.playerbot.navmesh.HeightfieldBuilder;
+import com.aionemu.gameserver.playerbot.navmesh.MapSlopes;
 import com.aionemu.gameserver.playerbot.navmesh.Navmesh;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshWriter;
 import com.aionemu.gameserver.playerbot.navmesh.RideLinks;
@@ -226,8 +226,8 @@ public class NavmeshTool {
 
 		start = System.currentTimeMillis();
 		Heightfield field = HeightfieldBuilder.build(mapId, (stage, built) -> {
-			if (stage.startsWith("passages kept"))
-				System.out.println("Kept the " + stage); // the generation says how much ground the option gave back
+			if (stage.equals("passages kept"))
+				System.out.println("Kept the passages the erosion shut: " + built.passagesGivenBack() + " surfaces given back");
 		});
 		System.out.printf("Rasterized %dx%d columns holding %d surfaces (%d walkable) in %d ms%n", field.width(), field.height(),
 			field.surfaceCount(), field.walkableCount(), System.currentTimeMillis() - start);

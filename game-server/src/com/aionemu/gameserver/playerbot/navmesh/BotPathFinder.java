@@ -147,14 +147,14 @@ public class BotPathFinder {
 	}
 
 	static Route findPathNear(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ, Avoidance avoid, GlideRoutes.AirTest air) {
-		Route answer = findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air);
-		if (!answer.isEmpty() || answer.gaveUp())
-			return answer;
-		Vector3f offIslet = groundOffIslet(mesh, goalX, goalY, goalZ);
-		if (offIslet == null)
-			return answer;
-		Route aimedPast = findPath(mesh, startX, startY, startZ, offIslet.getX(), offIslet.getY(), offIslet.getZ(), avoid, air);
-		return aimedPast.isEmpty() ? answer : aimedPast;
+		// the goal's ground is looked at first: a search for a goal on an islet spends its whole budget on the large ground of the start before it can say there is no way
+		Vector3f offIslet = groundOffIslet(mesh, startX, startY, startZ, goalX, goalY, goalZ);
+		if (offIslet != null) {
+			Route aimedPast = findPath(mesh, startX, startY, startZ, offIslet.getX(), offIslet.getY(), offIslet.getZ(), avoid, air);
+			if (!aimedPast.isEmpty() || aimedPast.gaveUp())
+				return aimedPast;
+		}
+		return findPath(mesh, startX, startY, startZ, goalX, goalY, goalZ, avoid, air);
 	}
 
 	/** A patch of ground of fewer cells than this is an islet: a spot among props that a body stands on and cannot leave, such as the corner of a tent. */
@@ -170,13 +170,16 @@ public class BotPathFinder {
 	 *         stand among the tents, fires and barrels of a camp and 335 of the 818 pairs of neighbouring monsters the planner refused on 30 October ended on one.
 	 *         A bot that goes to the ground beside them is where the reactive layer finishes the last metres, as it does for a creature that stands on a rock.
 	 */
-	private static Vector3f groundOffIslet(Navmesh mesh, float goalX, float goalY, float goalZ) {
+	private static Vector3f groundOffIslet(Navmesh mesh, float startX, float startY, float startZ, float goalX, float goalY, float goalZ) {
 		long goal = nodeAt(mesh, goalX, goalY, goalZ, SNAP_RANGE);
 		if (goal == -1)
 			return null;
 		Set<Long> passed = groundOf(mesh, goal, ISLET_CELLS);
 		if (passed == null)
 			return null;
+		long start = nodeAt(mesh, startX, startY, startZ, SNAP_RANGE);
+		if (start != -1 && passed.contains(start))
+			return null; // the bot stands on the islet itself: the goal is on its own ground, and the plain search finds it
 		int reach = Math.round(ISLET_REACH / mesh.cellSize()), centreX = mesh.cellX(goalX), centreY = mesh.cellY(goalY);
 		for (int attempt = 0; attempt < ISLETS_PASSED; attempt++) {
 			long best = -1;

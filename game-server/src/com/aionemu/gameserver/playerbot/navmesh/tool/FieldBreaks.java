@@ -1,11 +1,11 @@
 package com.aionemu.gameserver.playerbot.navmesh.tool;
 
-import com.aionemu.gameserver.playerbot.navmesh.MapSlopes;
 import com.aionemu.gameserver.playerbot.navmesh.BotPathFinder;
 import com.aionemu.gameserver.playerbot.navmesh.GeoDataReader;
 import com.aionemu.gameserver.playerbot.navmesh.GeoPlacement;
 import com.aionemu.gameserver.playerbot.navmesh.Heightfield;
 import com.aionemu.gameserver.playerbot.navmesh.HeightfieldBuilder;
+import com.aionemu.gameserver.playerbot.navmesh.MapSlopes;
 import com.aionemu.gameserver.playerbot.navmesh.Navmesh;
 
 import java.io.IOException;
