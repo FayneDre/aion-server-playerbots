@@ -69,7 +69,7 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
 - **Players undercut by the house**: the price rule keeps the house at or above the market.
 - **The settled list grows** if settling is missing: a test counts the settled entries of a house after a sale and an expiry.
 - **A deleted house character** deletes its listings (cascade): a guard in the roster refuses to delete them, like the one for the players' own characters.
-- **The buyer as a faucet or a trap**: a hoard sold for a fortune, or a player using the house to move kinah between his own characters. Mitigation: the ceilings above; a listing by a character on the same account as no other is bought without distinction, so also log every purchase (seller, item, price) in the bot log for the measure.
+- **The buyer as a faucet or a trap**: a hoard sold for a fortune, or a player using the house to move kinah between their own characters. Mitigation: the ceilings above, and a log line per purchase (seller, item, price) for the measure.
 - **Upstream merges**: the door is the only core change; the rest lives in `playerbot/economy/`.
 
 ## First step proposed
