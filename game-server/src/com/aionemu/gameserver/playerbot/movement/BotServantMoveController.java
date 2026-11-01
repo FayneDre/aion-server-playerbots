@@ -34,7 +34,11 @@ public class BotServantMoveController extends SummonMoveController {
 	 */
 	private static final long GEO_Z_UPDATE_INTERVAL = 200;
 
+	/** How far the target may move from the one the client was last told before the client is told again. */
+	private static final float REANNOUNCE_DISTANCE = 2f;
+
 	private long nextGeoZUpdate;
+	private float announcedX, announcedY;
 
 	public BotServantMoveController(Summon owner) {
 		super(owner);
@@ -43,6 +47,13 @@ public class BotServantMoveController extends SummonMoveController {
 	/** Sets the servant walking to a spot. Replaces a route in progress, since the only destination it ever has is wherever its master is now. */
 	public void headFor(float x, float y, float z) {
 		setNewDirection(x, y, z, PositionUtil.getHeadingTowards(owner.getX(), owner.getY(), x, y));
+		// A start-move packet is only sent when the servant was standing, so a target that moved afterwards was never announced: the client walked
+		// the servant to the old spot and it then jumped to the server's position. Announced again once the target has moved far enough.
+		if (started.get() && PositionUtil.getDistance(announcedX, announcedY, x, y) > REANNOUNCE_DISTANCE) {
+			announcedX = x;
+			announcedY = y;
+			setAndSendStartMove(owner);
+		}
 		startMovingToDestination();
 	}
 
@@ -56,6 +67,8 @@ public class BotServantMoveController extends SummonMoveController {
 		updateLastMove();
 		if (!owner.canPerformMove() || !started.compareAndSet(false, true))
 			return;
+		announcedX = getTargetX2();
+		announcedY = getTargetY2();
 		setAndSendStartMove(owner);
 		// Registration goes through the controller rather than straight to the task manager, because its onStartMove also updates the zone the
 		// servant is in. PlayerMoveTaskManager and not MoveTaskManager: the latter asks the creature's ai whether it has arrived and fires move

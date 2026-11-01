@@ -51,6 +51,8 @@ public class BotServantAI implements Runnable {
 	private static final float LEASH_DISTANCE = 50f;
 	/** Beyond this from its master, a fight is not the servant's business however much it would like it to be. */
 	private static final float ENGAGE_DISTANCE = 25f;
+	/** How far from its master a servant may chase an enemy that is within {@link #ENGAGE_DISTANCE} of it, well inside the leash. */
+	private static final float CHASE_DISTANCE = 35f;
 	/** Slack on the swing timer. {@code SummonController.attackTarget} audits anything faster than the weapon allows, as a speed hack. */
 	private static final long SWING_MARGIN_MILLIS = 100;
 	/** How long the servant waits between two attempts at a skill, so a spell on cooldown is not asked for twice a second. */
@@ -90,17 +92,30 @@ public class BotServantAI implements Runnable {
 		try {
 			if (isGone())
 				return;
-			if (hasFallenBehind())
+			if (isBeyondLeash())
 				return;
 			Creature enemy = defend();
 			if (enemy == null)
 				enemy = assist();
-			if (enemy == null)
+			// A fight outranks following, within ENGAGE_DISTANCE of the master. The other way round, the servant stepped towards its enemy, drifted
+			// past FOLLOW_DISTANCE, turned back for its master and stepped out again: it never swung, and it jittered.
+			// Measured from the enemy to the master, which holds still while the servant chases: measured from the servant, the chase itself carried
+			// it across the line, and it turned back and stepped out again every few ticks. The servant's own distance is only a bound, below the leash.
+			if (!isWorthEngaging(enemy))
+				enemy = assist();
+			if (isWorthEngaging(enemy)) {
+				engage(enemy);
 				return;
-			engage(enemy);
+			}
+			follow();
 		} catch (Exception e) {
 			log.error("Servant of " + master.getName() + " failed its tick", e);
 		}
+	}
+
+	/** @return true if the enemy is close enough to the master, and the servant not too far from it, for the servant to go and fight. */
+	private boolean isWorthEngaging(Creature enemy) {
+		return enemy != null && PositionUtil.getDistance(enemy, master) <= ENGAGE_DISTANCE && PositionUtil.getDistance(servant, master) <= CHASE_DISTANCE;
 	}
 
 	/** @return true if there is nothing left to drive, in which case the tick takes itself off. */
@@ -111,27 +126,23 @@ public class BotServantAI implements Runnable {
 		return true;
 	}
 
-	/**
-	 * Walks the servant back to its master, and releases it where that is hopeless.
-	 *
-	 * @return true if the servant is on its way, in which case it does nothing else this tick. Following outranks fighting on purpose: a servant that
-	 *         stops for whatever it passes is one that gets left behind and released, which is the failure the leash exists to catch.
-	 */
-	private boolean hasFallenBehind() {
-		double distance = PositionUtil.getDistance(servant, master);
-		if (distance > LEASH_DISTANCE) {
-			SummonsService.release(servant, UnsummonType.DISTANCE);
-			return true;
-		}
-		if (!(servant.getMoveController() instanceof BotServantMoveController moveController))
+	/** @return true if the servant was released for being too far from its master to be walked back. */
+	private boolean isBeyondLeash() {
+		if (PositionUtil.getDistance(servant, master) <= LEASH_DISTANCE)
 			return false;
-		if (distance > FOLLOW_DISTANCE) {
+		SummonsService.release(servant, UnsummonType.DISTANCE);
+		return true;
+	}
+
+	/** Walks the servant back to its master once it has drifted, and stops it when it is close. */
+	private void follow() {
+		if (!(servant.getMoveController() instanceof BotServantMoveController moveController))
+			return;
+		double distance = PositionUtil.getDistance(servant, master);
+		if (distance > FOLLOW_DISTANCE)
 			moveController.headFor(master.getX(), master.getY(), master.getZ());
-			return true;
-		}
-		if (distance <= ARRIVED_DISTANCE)
+		else if (distance <= ARRIVED_DISTANCE)
 			moveController.stop();
-		return false;
 	}
 
 	/**
