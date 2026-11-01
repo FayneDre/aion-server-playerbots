@@ -6,6 +6,48 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
+## patch-2026-11-01 — 01/11/2026
+
+Révision `3a6a44d`, celle que `//bot version` affiche. Les retours du 01/11 : l'esprit du spiritualiste, un bot de niveau 28 chez les monstres de niveau 34,
+les bots coincés contre un comptoir ou une barrière, un bot au repos avec les ailes dehors, et le retour d'un testeur sur l'hôtel des ventes. **Aucun SQL,
+aucun maillage à régénérer, aucun réglage qui change.** Un redémarrage suffit (`.\tools\deploy.ps1 -Restart`).
+
+**Ce qui change pour les joueurs et les testeurs**
+- **L'hôtel des ventes, nettoyé et repris sur les prix.** Les annonces déjà en place qui ne respectent pas les règles ci-dessous sont retirées à la première
+  passe (environ 220 par race), puis remplacées au bon prix.
+  - **Ne sont plus vendus** : les objets de test (`ExtractionControlTest`, `Pvp_..._Test_A`, `Test-T-Shirt`, le mot « test » est maintenant lu aussi collé en
+    majuscules ou entre tirets et soulignés), les « Random Drop », les « Supremo's Special », les objets de la boutique cash, tout objet au prix de remplissage
+    de 5 kinah ou moins, les coffres et paquets qui s'ouvrent en d'autres objets, les objets de quête de collection, tous les livres de compétence (le 4.8 les
+    apprend seul), les pierres d'enchantement, ce que les PNJ vendent sans limite (schémas de base, consommables de craft, suppléments de sertissage) et les
+    parchemins qu'aucune recette ne fabrique. Les versions 30 min et 1 h des parchemins ne sont pas revenues : le courtier ne liste rien qui expire.
+  - **Prix** : équipement au-dessus du niveau 60 **dix fois** plus cher ; **armes mythiques de 500 M à 1 Md**, autres pièces mythiques de 200 à 400 M ;
+    stigmas **cent fois** plus chers ; matériaux de récolte et de butin **jamais sous 1 000 kinah ni sur 100 000** pièce ; potions **au moins deux fois les
+    points qu'elles rendent** (vie et mana) quand aucun PNJ ne les vend ; nourriture à 50 000 dès le niveau 60 et 100 000 dès le niveau 70.
+- **L'esprit du spiritualiste combat.** Il restait collé à son maître au lieu de frapper (il s'éloignait de 5 m, faisait demi-tour, recommençait) ; le combat
+  passe maintenant avant le suivi, et sa marche ne saccade plus quand son maître court.
+- **Les bots ne se coincent plus contre un comptoir ou une barrière puis disparaissent.** Un bot qui n'avance plus depuis 2 secondes saute par-dessus (3,5 m
+  devant lui, deux fois au plus) avant d'abandonner comme avant.
+- **Un bot de niveau 28 n'ira plus vendre à travers un pays de niveau 34.** Une boutique dont la ligne droite traverse un terrain de chasse de plus de quatre
+  niveaux au-dessus du bot n'est plus visitée.
+- **Un bot qui s'assoit avec les ailes dehors les replie** (une ligne de journal « sits with its wings out » dit dans quel état il était).
+
+**Ce qui n'est pas réglé** (à ne pas signaler : c'est connu)
+- **L'esprit qui semble vider la vie de son maître au repos** : pas expliqué, il faut relever les compétences qu'il lance.
+- **Les ailes dehors** : la cause n'est pas démontrée, le correctif ne joue qu'à l'assise ; un bot debout, ailes dehors, n'est pas couvert.
+- **Le saut** vise l'arrivée du trajet et non le prochain point : un bot qui contourne un obstacle peut être posé du mauvais côté d'un muret bas.
+- **L'hôtel** : le prix des matériaux ne lit pas le niveau de compétence de la récolte, seulement la rareté ; les parchemins de 30 min et 1 h manquent.
+- **La jetée de Pandaemonium** : les trois échecs de `check-golden-routes.ps1` sont attendus (la rampe à la main reste à poser).
+
+**À tester**
+- **L'hôtel** : reparcourir le courtier (armes mythiques, stigmas, potions, nourriture, onglets Craft) : plus d'objets de test ni de cash shop, des prix dans
+  les fourchettes ci-dessus.
+- **Un spiritualiste** : l'esprit attaque avec son animation et suit sans saccade.
+- **Alsig** : le comptoir du vendeur et la barrière où deux notes ont été prises (2479 1799 et 2481 1781) ; chercher « hops over what holds it » dans le journal.
+- **Morheim** : plus de bot de niveau 28 mort sur la route de la boutique de 2672 2501.
+- Tout ce qui cloche : `//bot note <texte>` près du bot.
+
+---
+
 ## patch-2026-10-31 — 31/10/2026
 
 Révision `d840fec`, celle que `//bot version` affiche. **Un gros lot : 104 commits depuis le 28/10 (l'hôtel des ventes rempli par le serveur, le PvP des bots,
@@ -88,97 +130,6 @@ sont activées par défaut : le PvP des bots et l'hôtel des ventes** (voir « �
 
 ---
 
-## patch-2026-10-28 — 28/10/2026
-
-Révision `ed3400a`, celle que `//bot version` affiche. **Une mise à jour à ne pas faire à la légère : elle fusionne 69 corrections du dépôt d'origine
-(beyond-aion), qui change les bibliothèques, les serveurs de connexion et de discussion, des fichiers de données et de configuration, et la base.**
-Le comportement des bots ne change pas : leur code a été réorganisé en cinq étapes, mesurées une à une, et les chiffres de navigation restent dans la
-fourchette d'avant. **Aucun maillage à régénérer, mais une procédure à suivre dans l'ordre (voir « À faire »).**
-
-**Ce qui change pour les joueurs et les testeurs** (le dépôt d'origine)
-- **Les serveurs de connexion et de discussion passent à une autre bibliothèque réseau (Netty 4.2)** et s'accordent mieux au client 4.8. Un client
-  qui n'envoie rien ou ne s'authentifie pas en 60 s est déconnecté ; la limite de paquets en attente par client est réglable (`network.properties`).
-- **Deux personnages au plus par ordinateur** (`gameserver.security.multi_client.max_clients_per_computer = 2`). Les bots n'ont pas de connexion :
-  ils ne comptent pas.
-- **Chutes alignées sur le jeu officiel** : dégâts de chute, hauteurs mortelles, mort en plein vol ; une chute mortelle ramène tout de suite au point
-  de résurrection. Les niveaux de mort propres à chaque carte n'existent plus (les bots gardent les leurs, pour leur vol).
-- **Niveaux de compétence** : les compétences apprises ont toutes le niveau 1 en base (le rang n'est plus pris pour un niveau). Quelques coûts changent
-  (Miroir divin : 166 PM au lieu de 178). La base est migrée par le script, pour les joueurs comme pour les bots.
-- Des dizaines de failles corrigées (familiers, maisons, courants d'air, emblèmes de légion, butin, courrier, courtier, boutiques, échanges,
-  enchantement), des quêtes réparées, la déconnexion et l'invisibilité alignées sur le jeu officiel.
-- **Les journaux tournent par taille** : 100 Mo par fichier, 5 fichiers (`logging.properties`). `server_console.log` repart de zéro quand il est plein ;
-  les mesures de `tools/measure.sh` se font sur une fenêtre qui tient dans le fichier courant.
-
-**Ce qui change pour les bots**
-- Rien de visible. Le module est découpé (oublier un bot qui part du monde, les rôles de classe qui décident sur ce qu'on leur donne, la navigation
-  comme couche du bas, `PlayerBotAI` en cinq morceaux). Mesuré après chaque étape et après la fusion, avec un joueur en jeu : 13 compteurs sur 17
-  dans la fourchette, les autres sans lien avec le code touché.
-- Une ligne de journal en plus : un plan de journée abandonné dit sa carte, son départ, son arrivée et pourquoi le trajet a été refusé.
-
-**À tester**
-- Se connecter (le serveur de connexion a changé), créer ou charger un personnage.
-- Voler, atterrir ; suivre un bot en vol ; descendre d'une falaise sans mourir de la chute.
-- Acheter et vendre chez un marchand ; ouvrir le courrier et le courtier.
-- Un groupe avec un bot et quelques lignes de discussion dans les canaux (région, commerce, recherche de groupe).
-- Les bots sont environ 950 au démarrage ; rien d'anormal dans `server_errors.log`.
-
-**À faire sur chaque serveur de test, dans cet ordre** (une seule fois, de bout en bout ; compter une demi-heure la première fois)
-
-Tout se lance dans PowerShell, depuis le dossier du dépôt (celui qui contient `tools`). `<tag>` est le tag du dernier patch que vous avez déployé
-(par exemple `patch-2026-10-25-2`) : c'est lui qui dit au script quels fichiers de l'installation sont encore ceux du dépôt.
-
-0. **Avant de commencer** : `mysql.exe` et `mysqldump.exe` doivent être trouvables (dans le PATH, ou sous `C:\Program Files\MySQL`) et le serveur
-   MySQL doit tourner. Il faut Java 25, Maven et un accès Internet : les nouvelles bibliothèques se téléchargent la première fois.
-1. **Arrêter le serveur de jeu** : `.\tools\stop-server.ps1` (il sauvegarde les joueurs ; ne jamais fermer la fenêtre à la main). Puis `git pull`.
-   Le dépôt doit contenir le correctif du 29/10 : sans lui, `sync-install.ps1` s'arrête sur « Could not list the libraries of game-server » (il ne
-   trouvait pas `commons` dans un dépôt jamais construit).
-2. **Regarder ce qui va changer, sans rien toucher** : `.\tools\sync-install.ps1 -From <tag>`. La sortie se lit ainsi :
-   - `REPLACE` / `REMOVE` / `ADD` : fichiers de données ou de configuration que vous n'aviez pas modifiés ; ils seront mis à jour.
-   - `LEFT` : fichiers que **vous** avez modifiés et que le dépôt d'origine a changés aussi. Le script n'y touche pas : à fusionner à la main après
-     (`git diff <tag> HEAD -- <fichier>`). Les réglages réseau, `admin.properties` et `logback.xml` y figurent le plus souvent.
-   - `Libraries of ...: N to add, N to remove` : bibliothèques à ajouter (Netty 4.2, jakarta, logback, MySQL, Hikari) et anciennes à retirer.
-   - `SQL: N statement(s)` : instructions de base de données à passer.
-   - La dernière ligne, « Nothing changed: -Apply does it. », confirme que rien n'a été modifié. Si une ligne rouge s'affiche à la place, s'arrêter
-     et envoyer la sortie complète (elle contient les dernières lignes de Maven, préfixées `mvn:`).
-3. **Appliquer** : la même commande avec `-Apply` (`.\tools\sync-install.ps1 -From <tag> -Apply`). Elle remplace les fichiers, met les bibliothèques
-   à jour, sauvegarde la base dans `<serveur>\backups\aion_gs-<date>.sql`, puis passe chaque instruction SQL une seule fois (un registre
-   `schema_applied_sql` est créé). Si une instruction échoue, elle s'arrête avec l'erreur : corriger, puis relancer la même commande.
-4. **Reporter à la main ce qui a changé dans les fichiers `LEFT`** (si l'étape 2 n'en a listé aucun, passer à la 5). Ce sont des fichiers que vous
-   avez modifiés : le script les a laissés tels quels, donc les nouveautés du dépôt n'y sont pas. **Aucun n'empêche le serveur de démarrer** :
-   sans ces lignes il utilise les valeurs par défaut. À faire une fois, avec un éditeur de texte, sur le fichier de l'installation
-   (`<serveur>\<chemin affiché par le script>`). Pour voir exactement ce que le dépôt a changé dans l'un d'eux :
-   `git diff <tag> HEAD -- <chemin>` (les lignes qui commencent par `+` sont les ajouts). Ne rien retirer de vos propres réglages.
-   Pour les fichiers du patch du 28/10, voici quoi faire :
-   - `game-server/config/network/network.properties` : ajouter ces quatre lignes, **telles quelles, une par ligne, sans virgule ni point à la fin**
-     (une virgule après `60` empêche le serveur de démarrer : « Error parsing "60," as int ») :
-
-     ```
-     gameserver.network.packet.processor.max_pending_per_connection = 500
-     gameserver.network.client.max_pending_server_packets = 20000
-     gameserver.network.client.max_send_stall_seconds = 60
-     gameserver.network.client.auth_timeout_seconds = 60
-     ```
-
-     La ligne `gameserver.network.flood.connections` vaut `true` dans le dépôt (c'était `false`) : si la vôtre est à `false`, la passer à `true`,
-     sauf choix de votre part.
-   - `chat-server/config/network/network.properties` : ajouter la ligne `chatserver.network.client.auth_timeout_seconds = 60` (sans rien après le 60).
-   - `game-server/config/logback.xml`, `login-server/config/logback.xml`, `chat-server/config/logback.xml` : fichiers techniques que personne ne règle.
-     Le plus simple est de les remplacer par ceux du dépôt, depuis le dossier du dépôt :
-     `Copy-Item game-server\config\logback.xml <serveur>\game-server\config\logback.xml -Force` (et pareil pour `login-server` et `chat-server`).
-     Sans cela le serveur démarre, mais les journaux ne tournent pas (le fichier grossit sans limite).
-   - `game-server/config/administration/admin.properties` : rien à faire. Le dépôt a supprimé le réglage `enchant_info` ; une ligne en trop est ignorée.
-5. **Construire et relancer** : `.\tools\deploy.ps1 -Restart`. Il construit les trois serveurs, passe les tests, copie les jars (dont ceux de la
-   connexion et de la discussion) et redémarre connexion, discussion puis jeu. La première fois, la construction est plus longue (bibliothèques).
-6. **Vérifier** : dans `<serveur>\game-server\log\server_console.log`, attendre « Connected to login server » (le jeu ne l'écrit qu'à la fin, deux à
-   cinq minutes après le démarrage, une fois les bots prêts : ne pas se connecter avant). `//bot version` en jeu doit afficher la révision de votre
-   dépôt (`git rev-parse --short HEAD`).
-
-**En cas de problème** : revenir en arrière demande le code, les bibliothèques et la base ensemble. La base d'avant est dans `<serveur>\backups`
-(à restaurer avec `mysql`, serveur arrêté) ; le code, avec `git checkout <tag>` puis `.\tools\sync-install.ps1 -LibsOnly -Apply`. Dans le doute, ne pas
-relancer le SQL à la main : le registre sait ce qui est passé. Une base dont le SQL a déjà été passé à la main se déclare une fois avec
-`.\tools\apply-sql.ps1 -MarkApplied -Apply`.
-
----
 
 
 Older entries: [patch-notes-2026-10.md](2026-10.md).
