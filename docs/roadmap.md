@@ -10,9 +10,9 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 ## Next, by priority
 
 0. **Feedback as it comes**: the user reports from the game while playing; each plan's Status line says what has been seen. On 27 October
-   everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion. **Worked on 31 October, built and not yet seen in game**: the bots' chat
-   (French or English, jokes and reactions in Region: [chat-fun-and-languages-plan.md](social/plans/chat-fun-and-languages-plan.md), feedback of 25 October) and the bots' stores (food, scrolls, stones of
-   60 and 70, a whole page, the rare goods always in a market: [bot-store-consumables-plan.md](capitals/plans/bot-store-consumables-plan.md), feedback of 29 October).
+   everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion. **Validated in game on 1 November**: the bots' chat
+   (French or English, jokes and reactions in Region: [chat-fun-and-languages-plan.md](social/history/chat-fun-and-languages-plan.md), feedback of 25 October) and the bots' stores (food, scrolls, stones of
+   60 and 70, a whole page, the rare goods always in a market: [bot-store-consumables-plan.md](capitals/history/bot-store-consumables-plan.md), feedback of 29 October).
 1. **Done on 28 October**: the module structure plan ([module-structure-plan.md](architecture/history/module-structure-plan.md), five steps) and the
    merge of 69 upstream commits ([upstream-merge-plan.md](architecture/history/upstream-merge-plan.md)), both measured. Next merge: when `4.8` has moved,
    then `tools/sync-install.ps1` for the install and the SQL; the sooner, the smaller.
@@ -33,7 +33,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
 
 ## Where things stand
 
-Last reviewed 2026-10-31 for navigation, chat and stores, 2026-10-27 for the rest. **Built and running**: the population (pool, director, civic and field presence, each side woken
+Last reviewed 2026-11-01 for navigation, chat and stores, 2026-10-27 for the rest. **Built and running**: the population (pool, director, civic and field presence, each side woken
 for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
 for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
 routine, gear and stigmas, merchants' wings and power shards, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with their glide links,

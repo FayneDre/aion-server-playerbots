@@ -42,7 +42,7 @@ companion** (`economy/BotTrades`, `//bot give`); the last three are built and no
   another bot answers 4 to 15 s later, and since 31 October **jokes** (a fifth of the Region lines: crude, about the game and about playing, never about a real player; a line to the room, or an
   exchange where another bot answers 4 to 15 s later; `banter.solo` and `banter.exchange` in the chat files), and **reactions**: a word for a bot that dies near the speaker, a "ding" for a bot that reaches a level and sometimes a "gg" from another
   (`BotChat.onBotDied`, the level seen at each review; one reaction in 45 s for a map and a faction). **French or English** (`gameserver.playerbot.chat.language`, `//bot speech lang`), built from opening, content and closing lists, with the abbreviations
-  players use; the words are `game-server/data/bot_chat/chat_fr.txt` and `chat_en.txt`, packaged in the jar and read by `ChatText` ([plans/chat-fun-and-languages-plan.md](plans/chat-fun-and-languages-plan.md)).
+  players use; the words are `game-server/data/bot_chat/chat_fr.txt` and `chat_en.txt`, packaged in the jar and read by `ChatText` ([history/chat-fun-and-languages-plan.md](history/chat-fun-and-languages-plan.md)).
 - **Pace**: a line every 20 to 40 s per map and faction in each channel (Region only on a map a real player of the faction is on); never the same
   bot twice in 20 minutes, nor the same content in 30. `//bot speech off` silences everything.
 - Needs `gameserver.chatserver.enable = true` and its password in `mygs.properties` (upstream ships it off).

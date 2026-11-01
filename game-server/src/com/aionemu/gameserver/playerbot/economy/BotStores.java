@@ -313,7 +313,7 @@ public final class BotStores {
 		}
 		PrivateStoreService.openPrivateStore(keeper, BotStoreStock.nameOf(keeper));
 		shelf.renewedAt = now;
-		// the census of the stores (docs/capitals/plans/bot-store-consumables-plan.md): the theme, the keeper's level and the template of each line, which a report reads off the log
+		// the census of the stores (docs/capitals/history/bot-store-consumables-plan.md): the theme, the keeper's level and the template of each line, which a report reads off the log
 		log.info("Bot {} opens its store \"{}\" with {} line(s) at {} [theme {}, level {}, items {}]", keeper.getName(), BotStoreStock.nameOf(keeper), goods.length,
 			String.format("%.1f %.1f %.1f", keeper.getX(), keeper.getY(), keeper.getZ()), BotStoreStock.themeOf(keeper), keeper.getLevel(),
 			java.util.Arrays.stream(goods).map(good -> String.valueOf(good.getItemId())).collect(java.util.stream.Collectors.joining(",")));

@@ -127,9 +127,9 @@ History: [flight-plan.md](flight/history/flight-plan.md) (take-off, landing, ter
 
 [how-it-works.md](capitals/how-it-works.md): **how the capitals live today**, the town day, private stores, visitors, speech.
 
-Plans: [plans/bot-store-consumables-plan.md](capitals/plans/bot-store-consumables-plan.md) (food, scrolls, higher stones and more lines in the bots' stores, from the tester's feedback of 29 October; not started). [plans/auction-house-plan.md](capitals/plans/auction-house-plan.md) (an auction house stocked by the server on the AHBot model; seller, settling and buyer built, unverified).
+Plans: [plans/auction-house-plan.md](capitals/plans/auction-house-plan.md) (an auction house stocked by the server on the AHBot model; seller, settling and buyer built, unverified).
 
-History, all built: [living-capitals-plan.md](capitals/history/living-capitals-plan.md) (the umbrella plan, milestones 0 to 5),
+History, all built: [bot-store-consumables-plan.md](capitals/history/bot-store-consumables-plan.md) (food, scrolls, higher stones and more lines in the bots' stores, validated 1 November), [living-capitals-plan.md](capitals/history/living-capitals-plan.md) (the umbrella plan, milestones 0 to 5),
 [living-capitals-findings.md](capitals/history/living-capitals-findings.md) (Sanctum's bridges and rides, the crowd test, the town routine),
 [bot-stores-plan.md](capitals/history/bot-stores-plan.md) (bots' private stores),
 [bot-store-goods-plan.md](capitals/history/bot-store-goods-plan.md) (stones, manastones, coins and medals at broker prices),
@@ -143,9 +143,8 @@ History, all built: [living-capitals-plan.md](capitals/history/living-capitals-p
 | [groups.md](social/groups.md) | Why groups work the way they do: following as the anchor, no initiative, assisting, slots, leaders. |
 | [plans/player-interactions-plan.md](social/plans/player-interactions-plan.md) | Trades with a companion, friends, duels. Built, unverified in game. |
 | [plans/cohort-plan.md](social/plans/cohort-plan.md) | Bots in an alliance. Not started. |
-| [plans/chat-fun-and-languages-plan.md](social/plans/chat-fun-and-languages-plan.md) | **Fun and troll lines in Region, and the bots' chat in French or English** (31 October). Not started: five decisions are the user's. |
 
-History: [chat-channels-plan.md](social/history/chat-channels-plan.md) (bots in the Region, Trade and Find Group channels).
+History: [chat-fun-and-languages-plan.md](social/history/chat-fun-and-languages-plan.md) (fun lines in Region, French or English, validated 1 November), [chat-channels-plan.md](social/history/chat-channels-plan.md) (bots in the Region, Trade and Find Group channels).
 
 ## Tester reports — [feedback/](feedback/)
 
