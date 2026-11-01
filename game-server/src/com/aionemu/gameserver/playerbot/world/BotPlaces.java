@@ -432,6 +432,15 @@ public class BotPlaces {
 	 *         region's middle is the answer, as above — open country between camps is not more dangerous than the region it is in.
 	 */
 	public static int levelAround(int worldId, float x, float y) {
+		int level = groundLevelAt(worldId, x, y);
+		return level == 0 ? (bottomLevelOf(worldId) + topLevelOf(worldId)) / 2 : level;
+	}
+
+	/**
+	 * @return What the hunting ground a spot lies in is worth fighting at, or 0 when no ground claims it. Unlike {@link #levelAround} it does not
+	 *         fall back on the region's middle, for a caller that must only act on ground it knows.
+	 */
+	public static int groundLevelAt(int worldId, float x, float y) {
 		Settlement nearest = null;
 		double best = Double.MAX_VALUE;
 		for (Settlement ground : huntingGrounds(worldId)) {
@@ -441,7 +450,7 @@ public class BotPlaces {
 				nearest = ground;
 			}
 		}
-		return nearest == null ? (bottomLevelOf(worldId) + topLevelOf(worldId)) / 2 : nearest.level();
+		return nearest == null ? 0 : nearest.level();
 	}
 
 	/**

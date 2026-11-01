@@ -37,6 +37,7 @@ import com.aionemu.gameserver.model.trade.TradeList;
 import com.aionemu.gameserver.services.TradeService;
 import com.aionemu.gameserver.playerbot.navmesh.DeathSpots;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
+import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
@@ -69,6 +70,12 @@ public class BotVendorManager {
 	/** The deaths within this distance of a shop that make its approach too dangerous to walk to, and how many. */
 	private static final float DANGEROUS_SHOP_RADIUS = 150f;
 	private static final int DANGEROUS_SHOP_DEATHS = 3;
+	/** How many levels above the bot a ground may be and still be crossed on the way to a shop. */
+	private static final int SHOP_ROUTE_LEVEL_MARGIN = 4;
+	/** The spacing of the spots tested along the line to a shop, in metres. A hunting ground is a disc of tens of metres, so none is stepped over. */
+	private static final float SHOP_ROUTE_STEP = 40f;
+	/** How much of the line at each end is not tested, in metres: the bot's own ground and the shop's. */
+	private static final float SHOP_ROUTE_ENDS = 80f;
 
 	/**
 	 * Shops whose trips gave up for several bots, by map and the spot a trip goes to, with the bots that gave up and when. A search that gives up is no
@@ -172,8 +179,14 @@ public class BotVendorManager {
 		vendors.sort(Comparator.comparingDouble(spot -> PositionUtil.getDistance(bot.getX(), bot.getY(), bot.getZ(), spot.x, spot.y, spot.z)));
 		int probed = 0;
 		for (Vector3f spot : vendors) {
-			if (probed++ == VENDORS_PROBED)
+			if (probed == VENDORS_PROBED)
 				break;
+			// nor one whose way runs over ground far above the bot: a level 28 bot sent 700 m to a shop crossed the level 34 country between, and died
+			// on that road three times in forty minutes, none of them near the shop, which is where the deaths above are counted. Asked here, of the
+			// nearest few, and not of every shop on the map before the sort; costs no search, so it is not one of the few this look may make.
+			if (crossesDangerousGround(bot, spot))
+				continue;
+			probed++;
 			// The floor in front of the keeper, not its feet. A keeper stands behind its counter, on the strip the mesh keeps a body's width from it,
 			// where no route ends: a search for its feet could neither find one nor prove there was none, and ran out of its budget instead. 726 of the
 			// 1017 searches over a second in 45 minutes on 18 October were that, on the bots' own threads, every shop trip. The nearest floor was not
@@ -197,6 +210,24 @@ public class BotVendorManager {
 			whenUnreachable.accept(spot);
 		}
 		return null;
+	}
+
+	/**
+	 * @return true if the straight line from the bot to a shop passes over a hunting ground worth more than the bot's level plus
+	 *         {@link #SHOP_ROUTE_LEVEL_MARGIN}. The line, not the walked route, which is only known after a search: a cheap guess at where the
+	 *         walk goes, and one that only ever acts on ground the plan names, so a stretch of open country never refuses a shop. The ends are left
+	 *         out ({@link #SHOP_ROUTE_ENDS}): where the bot lives and where the shop stands are the places it is meant to be, whatever they are worth.
+	 */
+	private static boolean crossesDangerousGround(Player bot, Vector3f shop) {
+		double distance = PositionUtil.getDistance(bot.getX(), bot.getY(), shop.x, shop.y);
+		int ceiling = bot.getLevel() - BotPlaces.levelBonusOf(bot.getWorldId()) + SHOP_ROUTE_LEVEL_MARGIN;
+		for (double along = SHOP_ROUTE_ENDS; along <= distance - SHOP_ROUTE_ENDS; along += SHOP_ROUTE_STEP) {
+			float t = (float) (along / distance);
+			int level = BotPlaces.groundLevelAt(bot.getWorldId(), bot.getX() + (shop.x - bot.getX()) * t, bot.getY() + (shop.y - bot.getY()) * t);
+			if (level > ceiling)
+				return true;
+		}
+		return false;
 	}
 
 	/** Where round a keeper to look for its front, nearest first and all inside trading reach. */
