@@ -138,7 +138,8 @@ public final class BrokerHouse {
 			if (listing.getSellerId() != sellerId)
 				continue;
 			// withdrawn: what the blacklist names, and what a player never meets on the market (the monsters' gear, event and cash shop goods, test pieces) that an earlier pass listed
-			boolean unwanted = blacklist.contains(listing.getItemId()) || listing.getItem() != null && !BrokerHouseStock.isPlayerGoods(listing.getItem().getItemTemplate());
+			boolean unwanted = blacklist.contains(listing.getItemId()) || listing.getItem() != null && !BrokerHouseStock.isPlayerGoods(listing.getItem().getItemTemplate())
+				|| isMispriced(listing);
 			if (unwanted && broker.withdrawForHouse(listing))
 				withdrawn++;
 			else
@@ -176,6 +177,19 @@ public final class BrokerHouse {
 				own.size() + listed, PlayerBotConfig.BROKER_SIZE, Math.max(0, lack - listed));
 		// unfinished only while the pass makes headway: a category whose draws always fail (no price, no item) would otherwise keep the pass at the 30 s step for ever
 		return lack - listed > 0 && listed > 0;
+	}
+
+	/**
+	 * @return true if the unit price of an earlier listing is outside what the rules ask today (under the floor, over the ceiling): the price rules were tightened on 1 November, and a listing
+	 *         asked under the new floor would sell for less than the tester allows. It is withdrawn and the category lists a new one at the new price.
+	 */
+	private static boolean isMispriced(BrokerItem listing) {
+		if (listing.getItem() == null || listing.getItemCount() <= 0)
+			return false;
+		ItemTemplate template = listing.getItem().getItemTemplate();
+		long unit = listing.getPrice() / listing.getItemCount();
+		long ceiling = BrokerHousePricing.ceiling(template);
+		return unit < BrokerHousePricing.floor(template) || ceiling > 0 && unit > Math.max(ceiling, BrokerHousePricing.floor(template));
 	}
 
 	/** Lists one new item of the category, drawn by the quality shares and the level curve. @return false if nothing could be drawn or listed. */

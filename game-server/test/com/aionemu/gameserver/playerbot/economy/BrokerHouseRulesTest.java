@@ -56,7 +56,20 @@ class BrokerHouseRulesTest {
 		assertFalse(BrokerHouseStock.isPlayerGoods(named(14, "[Stamp] Cat", null, 100)));
 		assertFalse(BrokerHouseStock.isPlayerGoods(named(15, "Test Stone", null, 100)));
 		assertTrue(BrokerHouseStock.isPlayerGoods(named(16, "Manku's Sword", "sword_n_r2_22a", 60850)));
-		assertTrue(BrokerHouseStock.isPlayerGoods(named(17, "Ore", null, 5)), "a cheap material is a material, only gear priced at the placeholder is not a price");
+		assertTrue(BrokerHouseStock.isPlayerGoods(named(17, "Ore", null, 50)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(18, "Ore", null, 5)), "a price of 5 is the data's placeholder whatever the item is");
+	}
+
+	@Test
+	void theTestersListOfWhatShouldNotBeThereIsOutOfTheHouse() throws Exception {
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(20, "ExtractionControlTest", "sword_test_01", 9000)), "a test word glued to others in camel case");
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(21, "Pvp_Active Defence_Test_A", null, 9000)), "a test word between underscores");
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(22, "Test-T-Shirt 02", null, 9000)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(23, "Level 55 Asmodian Random Drop U1 Dagger", null, 9000)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(24, "Bundle of Ceranium", null, 9000)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(25, "Supremo's Special Greater Weapon Flux", null, 240000)));
+		assertFalse(BrokerHouseStock.isPlayerGoods(named(26, "Birthday Celebration", "item_add_social_cash_cong", 9000)), "the cash shop's client name");
+		assertTrue(BrokerHouseStock.isPlayerGoods(named(27, "Latest Fashion Cloak", null, 9000)), "a word that only contains test is not a test");
 	}
 
 	// shares

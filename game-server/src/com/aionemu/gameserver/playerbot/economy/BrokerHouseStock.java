@@ -90,26 +90,45 @@ public final class BrokerHouseStock {
 		return BotStoreGoods.rangeOf(template) != null || template.getPrice() > 0;
 	}
 
-	/** Words that mark a template nobody plays with: a test, a practice or dummy piece, a sample, a debug item. */
-	private static final Pattern NOT_FOR_PLAYERS = Pattern.compile("\\b(test|practice|dummy|sample|debug|temp|temporary|event|gm)\\b", Pattern.CASE_INSENSITIVE);
-	/** The price the data gives a weapon or an armour piece nobody sells or buys: a placeholder, not a price. */
+	/**
+	 * Words that mark a template nobody plays with: a test, a practice or dummy piece, a sample, a debug item, the random drops and the bundles of the data, the special flux of the
+	 * supremo crafts and the extraction items. Read on the name with its separators opened ({@code ExtractionControlTest}, {@code Pvp_Active Defence_Test_A}, {@code Test-T-Shirt 02}), because
+	 * the word boundary of a pattern does not break at an underscore.
+	 */
+	private static final Pattern NOT_FOR_PLAYERS = Pattern.compile(
+		"\\b(test|testing|practice|dummy|sample|debug|temp|temporary|event|gm|bundle|random drop|extraction item|supremo's special)\\b", Pattern.CASE_INSENSITIVE);
+	private static final Pattern WORD_BREAKS = Pattern.compile("[_\\-]|(?<=[a-z])(?=[A-Z])");
+	/** The price the data gives an item nobody sells or buys: a placeholder, not a price. */
 	private static final int PLACEHOLDER_PRICE = 5;
 
 	/**
 	 * @return false for what the item data holds and a player never meets on the market: the monsters' own gear (named {@code NPC ...}, its client name {@code npc_...}), the cards, tickets, titles
-	 *         and event goods of the cash shop and the events (a name that opens with a bracket, {@code [Event]}, {@code [Stamp]}), test and practice pieces, and gear priced at the data's
-	 *         placeholder. Seen on 31 October in the broker: three NPC swords and a practice sword among the first of 63.
+	 *         and event goods of the cash shop and the events (a name that opens with a bracket, {@code [Event]}, {@code [Stamp]}, a client name with {@code cash}), test and practice pieces,
+	 *         anything priced at the data's placeholder, the boxes and bundles that open into other items, the quest collection items, the skill books (4.8 teaches the skills by itself), the
+	 *         enchantment stones, what an npc sells without limit (the designs of the base crafts, the craft consumables, the socketing supplements) and the scrolls no craft makes. Seen
+	 *         on 31 October in the broker: three NPC swords and a practice sword among the first of 63, and on 1 November the tester's list of what else should not be there.
 	 */
 	static boolean isPlayerGoods(ItemTemplate template) {
 		String name = template.getName();
-		if (name == null || name.isBlank() || name.startsWith("[") || name.startsWith("NPC ") || NOT_FOR_PLAYERS.matcher(name).find())
+		if (name == null || name.isBlank() || name.startsWith("[") || name.startsWith("NPC ")
+			|| NOT_FOR_PLAYERS.matcher(WORD_BREAKS.matcher(name).replaceAll(" ")).find())
 			return false;
 		String clientName = template.getCName();
-		if (clientName != null && clientName.regionMatches(true, 0, "npc_", 0, 4))
+		if (clientName != null && (clientName.regionMatches(true, 0, "npc_", 0, 4) || clientName.toLowerCase().contains("cash")
+			|| clientName.toLowerCase().contains("test")))
 			return false;
-		return !(template.isWeapon() || template.isArmor()) || template.getPrice() > PLACEHOLDER_PRICE || BotStoreGoods.rangeOf(template) != null;
+		if (BrokerHouseCatalog.isBundle(template) || BrokerHouseCatalog.isSkillBook(template) || template.isEnchantmentStone()
+			|| template.getExtraInventoryId() > 0)
+			return false;
+		boolean ranged = BotStoreGoods.rangeOf(template) != null;
+		if (template.isWeapon() || template.isArmor() || template.isStigma())
+			return template.getPrice() > PLACEHOLDER_PRICE || ranged;
+		if (ranged)
+			return true;
+		if (template.getPrice() <= PLACEHOLDER_PRICE || DataManager.TRADE_LIST_DATA != null && BotGearSources.isSoldForKinah(template))
+			return false;
+		return !BrokerHouseCatalog.isShownIn(template, BrokerItemMask.CONSUMABLES_SCROLL) || BrokerHouseCatalog.isCrafted(template);
 	}
-
 	/** Reads every item template once for the race. Costs a pass over the item data, so the caller keeps the result. */
 	public static Pool poolFor(Race race, Set<Integer> blacklist) {
 		Map<BrokerItemMask, Map<ItemQuality, List<ItemTemplate>>> found = new EnumMap<>(BrokerItemMask.class);
