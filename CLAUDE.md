@@ -131,6 +131,13 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
 - Prefer the editor tool for a single change; reserve scripted multi-line replacements for bulk work, and check the result: backslashes, `\n` and line
   endings are easy to get wrong through a shell.
 
+## Advisor
+
+Consult the advisor, in addition to its default triggers:
+
+- before changing the navmesh format, the bot lifecycle (`lifecycle/`) or anything shared between bot threads;
+- before an upstream merge or a change touching engine classes outside `playerbots/` (merge-conflict risk).
+
 ## Java code conventions
 
 - Follow standard Java best practices (encapsulation, naming, exception handling, thread-safety where relevant).
