@@ -1,6 +1,6 @@
 # Plan: an auction house stocked by the server (AHBot model)
 
-Status: in progress: milestones 0 to 4 and the buyer (milestone 6, decision 6) built, unverified: nothing has run against a database or a server, only the pure rules are tested. Next: milestone 5, a watch in game with the property on. Analysed on 31 October from the engine's `BrokerService`. Asked by the tester: a broker with items for sale, on the model of AzerothCore's AHBot.
+Status: in progress (goods and price rules reworked on 1 November from the tester's list, see [feedback-2026-11-01-broker.md](../../feedback/feedback-2026-11-01-broker.md)): milestones 0 to 4 and the buyer (milestone 6, decision 6) built, unverified: nothing has run against a database or a server, only the pure rules are tested. Next: milestone 5, a watch in game with the property on. Analysed on 31 October from the engine's `BrokerService`. Asked by the tester: a broker with items for sale, on the model of AzerothCore's AHBot.
 
 ## What AHBot does, and what we keep
 

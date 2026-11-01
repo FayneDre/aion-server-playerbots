@@ -156,3 +156,5 @@ One file per report: each point, what the log showed, the cause and the change. 
 | [feedback-2026-10-21.md](feedback/feedback-2026-10-21.md) | 21 October, the capitals. Validated in game on 27 October; point 3 became the capital visitors. |
 | [feedback-2026-10-25.md](feedback/feedback-2026-10-25.md) | 25 October, cleric thresholds, invitations, shards, wings, lava. Shipped in patch-2026-10-25-2. |
 | [feedback-2026-10-28.md](feedback/feedback-2026-10-28.md) | 28 October, resurrection not taken, gladiator postures, Draupnir hovering, trades with a companion. Trades: bag past its limit, fixed and validated. |
+| [feedback-2026-11-01.md](feedback/feedback-2026-11-01.md) | 1 November, the spirit master's spirit (fights, jerky walk, drain), a level 28 bot among level 34 monsters, obstacles. Spirit changed, to check in game. |
+| [feedback-2026-11-01-broker.md](feedback/feedback-2026-11-01-broker.md) | 1 November, the broker: what a player should not meet there (tests, cash shop, bundles, skill books, what npcs sell) and the price floors. Changed, to check in game. |

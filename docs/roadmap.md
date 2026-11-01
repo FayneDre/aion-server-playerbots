@@ -18,7 +18,7 @@ legions, RvR), then value per unit of effort inside each. The list just below is
    then `tools/sync-install.ps1` for the install and the SQL; the sooner, the smaller.
 2. **Navigation**, mostly closed on 1 November: long journeys, sliding, gliding and parasitic moves are done and measured ([navigation-backlog.md](navigation/backlog.md)). Open: obstacles and slopes (point 2,
    reopened by a note) and dungeons with the Draupnir report (point 6). The meshes are checked against what people walked ([verification-tools.md](navigation/verification-tools.md)), erosion options A and C are on, Morheim's
-   cave is mended. Waiting for a tester's note: the Airship Dock of Pandaemonium, Altgard's cave, the Fire Temple of Morheim ([step-links-plan.md](navigation/plans/step-links-plan.md)).
+   cave is mended. Waiting for a tester's note: the Airship Dock of Pandaemonium, Altgard's cave, the Fire Temple of Morheim, and Pandaemonium's broker and warehouse district (1306 1523 z 210: proved shut from the town centre, its floor made of patches of 21 to 144 cells with risers of 0.7 to 1.1 m, under the step census's 400 cells; about 205 of the 627 town errands refused in the 31 October run, every broker of the map among them) ([step-links-plan.md](navigation/plans/step-links-plan.md)).
 3. **A world alive with or without a player**, a lead to explore within the 2560 MB heap: density independent of who is online, sleepers living
    off-world, memory measured first and freed where it can be.
 4. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them.
