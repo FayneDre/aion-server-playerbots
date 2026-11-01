@@ -66,6 +66,18 @@ public class BotMoveController extends PlayerMoveController {
 	private static final float PROGRESS_STEP = 1.0f;
 	/** Without that progress, the route is abandoned rather than letting the bot grind against an obstacle forever. */
 	private static final long PROGRESS_TIMEOUT = 5000;
+	/** How long without progress before the bot hops over what holds it, shorter than the give up so the hop comes first. */
+	private static final long HOP_AFTER = 2000;
+	/** How long a hop is given to show it worked before the next is tried, or before the give up. */
+	private static final long HOP_PATIENCE = 1500;
+	/** How many hops one stall is given. */
+	private static final int MAX_HOPS = 2;
+	/** How much closer to the goal than where it last hopped a bot must get before it is given hops again, in metres. */
+	private static final float HOP_RESET_GAIN = 6f;
+	/** How far ahead a hop may land, in metres: a counter's depth, a fence and the strip beyond it. */
+	private static final float[] HOP_REACHES = { 1.5f, 2.5f, 3.5f };
+	/** How far above or below where it leaves a hop may land, in metres: over an obstacle, not up a wall or off a ledge. */
+	private static final float HOP_HEIGHT = 1.2f;
 	/**
 	 * How long a destination abandoned for lack of headway is refused. Long enough that the caller's refusals accumulate towards its rescue rather
 	 * than being reset by a fresh attempt every few seconds, short enough that ground blocked by a passing creature is tried again soon.
@@ -248,6 +260,9 @@ public class BotMoveController extends PlayerMoveController {
 	private int detourSide;
 	private double closestToGoal;
 	private long lastProgressTime;
+	private int hopsThisStall;
+	/** How far from the goal the bot was when it last hopped. */
+	private double hopBaseline;
 	private volatile boolean blocked;
 	/** Ground the next journey keeps out of where it can. One shot: {@link #moveToPoint} takes it and puts {@link Avoidance#NONE} back. */
 	private volatile Avoidance nextAvoidance = Avoidance.NONE;
@@ -389,6 +404,7 @@ public class BotMoveController extends PlayerMoveController {
 			detourSide = 0;
 			onDetour = false;
 			closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
+			hopsThisStall = 0;
 			lastProgressTime = System.currentTimeMillis();
 		}
 		return startNextLeg();
@@ -581,6 +597,7 @@ public class BotMoveController extends PlayerMoveController {
 		}
 		if (hasGoal && reachedWaypoint() && aimAtNextWaypoint()) {
 			closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
+			hopsThisStall = 0;
 			lastProgressTime = System.currentTimeMillis();
 		}
 		if (hasGoal && startNextLeg())
@@ -765,6 +782,7 @@ public class BotMoveController extends PlayerMoveController {
 			// Not on a detour, where bouncing between two sidesteps is exactly what the measure exists to catch.
 			if (!onDetour) {
 				closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
+				hopsThisStall = 0;
 				lastProgressTime = System.currentTimeMillis();
 			}
 			return true;
@@ -1200,6 +1218,7 @@ public class BotMoveController extends PlayerMoveController {
 		glideTurns.clear();
 		// the time spent in the air is not time spent making no headway on the ground
 		closestToGoal = PositionUtil.getDistance(owner.getX(), owner.getY(), goalX, goalY);
+		hopsThisStall = 0;
 		lastProgressTime = System.currentTimeMillis();
 		owner.getFlyController().onStopGliding();
 		World.getInstance().updatePosition(owner, owner.getX(), owner.getY(), groundZ(owner.getX(), owner.getY(), owner.getZ()), heading, true);
@@ -1423,6 +1442,12 @@ public class BotMoveController extends PlayerMoveController {
 		if (distanceToGoal < closestToGoal - PROGRESS_STEP) {
 			closestToGoal = distanceToGoal;
 			lastProgressTime = now;
+			if (distanceToGoal < hopBaseline - HOP_RESET_GAIN)
+				hopsThisStall = 0; // a metre of shuffling beside the obstacle is not the way being clear: it has to get properly closer than where it hopped from
+		} else if (now - lastProgressTime > HOP_AFTER && hopsThisStall < MAX_HOPS && hopOver(distanceToGoal)) {
+			hopsThisStall++;
+			hopBaseline = distanceToGoal;
+			lastProgressTime = now - HOP_AFTER + HOP_PATIENCE; // the hop gets its moment to show it worked before the next is tried
 		} else if (now - lastProgressTime > PROGRESS_TIMEOUT) {
 			log.info("Bot {} makes no headway from {} towards {} and gives up moving", owner.getName(),
 				describe(owner.getX(), owner.getY(), owner.getZ()), describe(goalX, goalY, goalZ));
@@ -1434,6 +1459,43 @@ public class BotMoveController extends PlayerMoveController {
 			noHeadwayUntil = now + NO_HEADWAY_MEMORY;
 			stop();
 		}
+	}
+
+	/**
+	 * Hops a bot that has stopped getting anywhere over what holds it, in the open and with the jump animation, rather than leaving it pressed against a
+	 * counter or a fence until the rescue lifts it away. A tester saw bots wedged against a vendor's counter and then a fence, and vanish: a hop of two
+	 * metres is a lesser sight than that, and the bot goes on walking its route.
+	 * <p>
+	 * It lands only on floor the mesh knows, at about the height it leaves, so it never hops onto a roof or into a wall.
+	 *
+	 * @return true if the bot hopped, false where there is no such floor ahead, which leaves it to the give up that follows.
+	 */
+	private boolean hopOver(double distanceToGoal) {
+		// not a body that cannot move at all: a root, a stun or a sleep is no wedge, and a hop would undo it
+		if (flying || gliding || owner.isCasting() || !owner.canPerformMove() || distanceToGoal < HOP_REACHES[0])
+			return false;
+		float x = owner.getX(), y = owner.getY(), z = owner.getZ();
+		double dx = (goalX - x) / distanceToGoal, dy = (goalY - y) / distanceToGoal;
+		for (int i = HOP_REACHES.length - 1; i >= 0; i--) { // the longest hop first: the point is to clear the obstacle
+			float reach = HOP_REACHES[i];
+			if (reach > distanceToGoal)
+				continue;
+			float landX = (float) (x + dx * reach), landY = (float) (y + dy * reach);
+			for (Vector3f floor : NavmeshService.getInstance().floorsAt(owner.getWorldId(), landX, landY, z)) {
+				if (Math.abs(floor.getZ() - z) > HOP_HEIGHT)
+					break; // nearest in height first: the rest are further off still
+				// A hop clears what is low, not a wall, a door or a gate: the same chest-high ray as isAirClear, which a counter or a fence passes under
+				if (!isAirClear(new Vector3f(x, y, z), List.of(floor)))
+					continue;
+				PacketSendUtility.broadcastToSightedPlayers(owner, new SM_EMOTION(owner, EmotionType.JUMP), true);
+				World.getInstance().updatePosition(owner, floor.getX(), floor.getY(), floor.getZ(), heading, true);
+				updateLastMove();
+				PacketSendUtility.broadcastToSightedPlayers(owner, new SM_MOVE(owner));
+				log.info("Bot {} hops over what holds it at {} to {}", owner.getName(), describe(x, y, z), describe(floor.getX(), floor.getY(), floor.getZ()));
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
