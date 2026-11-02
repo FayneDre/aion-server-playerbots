@@ -158,4 +158,4 @@ One file per report: each point, what the log showed, the cause and the change. 
 | [feedback-2026-10-28.md](feedback/feedback-2026-10-28.md) | 28 October, resurrection not taken, gladiator postures, Draupnir hovering, trades with a companion. Trades: bag past its limit, fixed and validated. |
 | [feedback-2026-11-01.md](feedback/feedback-2026-11-01.md) | 1 November, the spirit master's spirit (fights, jerky walk, drain), a level 28 bot among level 34 monsters, obstacles. Spirit changed, to check in game. |
 | [feedback-2026-11-01-broker.md](feedback/feedback-2026-11-01-broker.md) | 1 November, the broker: what a player should not meet there (tests, cash shop, bundles, skill books, what npcs sell) and the price floors. Changed, to check in game. |
-| [feedback-2026-11-02.md](feedback/feedback-2026-11-02.md) | 2 November, fall damage on the Sanctum lift (upstream fix `9b171d2` applied). Changed, to check in game. |
+| [feedback-2026-11-02.md](feedback/feedback-2026-11-02.md) | 2 November, fall damage on the Sanctum lift (upstream fix `9b171d2` applied). Done. |
