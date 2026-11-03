@@ -187,7 +187,7 @@ public final class BrokerHouse {
 		if (listing.getItem() == null || listing.getItemCount() <= 0)
 			return false;
 		ItemTemplate template = listing.getItem().getItemTemplate();
-		long unit = listing.getPrice() / listing.getItemCount();
+		long unit = listing.getPrice(); // a broker item's price is already the price of one (the buyer pays it times the count)
 		long ceiling = BrokerHousePricing.ceiling(template);
 		return unit < BrokerHousePricing.floor(template) || ceiling > 0 && unit > Math.max(ceiling, BrokerHousePricing.floor(template))
 			|| BrokerHousePricing.isOverTop(template, unit);

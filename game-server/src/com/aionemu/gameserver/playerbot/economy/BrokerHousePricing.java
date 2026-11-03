@@ -20,7 +20,7 @@ public final class BrokerHousePricing {
 	/** The house asks a little over the market, never far under it. */
 	static final double PREMIUM = 1.05;
 
-	/** What the tester asked of the prices on 1 November: gear over level 60 ten times dearer, stigmas a hundred times, the mythic pieces never under 200 million. */
+	/** What the tester asked of the prices on 1 November: gear over level 60 ten times dearer, stigmas a hundred times, the mythic pieces never under 200 million; the stigmas were lowered to twenty times on 3 November. */
 	private static final int HIGH_LEVEL = 60;
 	private static final int HIGH_LEVEL_FACTOR = 10;
 	private static final int STIGMA_FACTOR = 20;
@@ -48,12 +48,12 @@ public final class BrokerHousePricing {
 		return template.isWeapon() || template.isArmor();
 	}
 
-	/** @return true for a material between players, not the design of a craft, whose price is not capped. */
+	/** @return true for a material between players, not the design of a craft (a design asks its npc value, not the material's level and quality). */
 	private static boolean isLooseMaterial(ItemTemplate template, boolean material) {
 		return material && !BrokerHouseCatalog.isDesign(template);
 	}
 
-	/** @return How many times the data's price is scaled up for the piece: ten over level 60, a hundred for a stigma, else one. */
+	/** @return How many times the data's price is scaled up for the piece: ten over level 60, twenty for a stigma, else one. */
 	private static long scaleOf(ItemTemplate template) {
 		if (template.isStigma())
 			return STIGMA_FACTOR;
@@ -84,7 +84,7 @@ public final class BrokerHousePricing {
 
 	/** @return true for what is gathered (ore, herbs, essence), whose price follows its level; looted materials follow their npc value. */
 	static boolean isGathered(ItemTemplate template) {
-		return template.getItemGroup() == ItemGroup.GATHERABLE;
+		return template.getItemGroup() == ItemGroup.GATHERABLE || template.getItemGroup() == ItemGroup.GATHERABLE_BONUS;
 	}
 
 	/** @return What one gathered material of that level and quality is worth between players: white on the line from level 10 to 50, three times more for each quality above. */
@@ -173,7 +173,7 @@ public final class BrokerHousePricing {
 	/** @return true if a listing's unit price is over what the house would ask today (the top of its spread): the prices it asked before a rule was lowered are withdrawn. */
 	public static boolean isOverTop(ItemTemplate template, long unitPrice) {
 		long top = top(template, isMaterial(template));
-		return top > 0 && unitPrice > top;
+		return top > 0 && unitPrice > Math.max(top, floor(template)); // a floor over the top is what the house asks, so it is not over
 	}
 
 	/** @return The top of the known range of one: the guide's high, else the most the house itself would ask. 0 if no price is known. */
