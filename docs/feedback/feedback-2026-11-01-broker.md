@@ -25,12 +25,12 @@ Listings the house already holds are withdrawn on its next pass by the same rule
 ## Prices
 
 - Gear over level 60: ten times the price it had (`scaleOf`). A mythic weapon asks 500 million to 1 billion, any other mythic piece 200 to 400 million (`mythicRange`), as the tester wrote.
-- Stigmas: a hundred times, which also answers the inert stigmas an npc sells for a few times their price.
-- Crafting materials, gathered or looted: never under 1000 kinah a piece, never over 100 000, the quality and the npc value placing them between. Designs are
-  not capped.
+- Stigmas: a hundred times (twenty since 3 November, see [feedback-2026-11-03-broker.md](feedback-2026-11-03-broker.md)), which also answered the inert stigmas an npc sells for a few times their price.
+- Crafting materials, gathered or looted: never under 1000 kinah a piece, the quality and the npc value placing them between. The ceiling of 100 000 was lifted on 3
+  November, and gathered ones are priced by level (see the later file).
 - Potions that no npc sells: at least twice the health and mana points they restore, read from the item's skill (`BrokerHouseCatalog.potionPoints`).
 - Food from level 60: 50 000 a piece, from level 70: 100 000.
 
 ## Not done
 
-- The material's price does not read the skill level the gathering asks, only the quality: the template does not hold it.
+- Done on 3 November: the material's price reads its level (which follows the gathering tier).

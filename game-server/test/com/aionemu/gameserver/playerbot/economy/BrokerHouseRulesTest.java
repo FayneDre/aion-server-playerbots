@@ -183,6 +183,16 @@ class BrokerHouseRulesTest {
 	}
 
 	@Test
+	void aGatheredMaterialFollowsItsLevelAndTriplesWithEachQuality() {
+		assertEquals(10_000, BrokerHousePricing.gatheredMarket(50, ItemQuality.COMMON));
+		assertEquals(1_500, BrokerHousePricing.gatheredMarket(10, ItemQuality.COMMON));
+		assertEquals(30_000, BrokerHousePricing.gatheredMarket(50, ItemQuality.RARE));
+		assertEquals(270_000, BrokerHousePricing.gatheredMarket(50, ItemQuality.UNIQUE), "a gold level 50 one, as the tester wrote");
+		assertEquals(1_000, BrokerHousePricing.gatheredMarket(1, ItemQuality.COMMON), "never under the minimum");
+		assertTrue(BrokerHousePricing.gatheredMarket(65, ItemQuality.COMMON) > 10_000, "the line goes on over level 50");
+	}
+
+	@Test
 	void noKnownPriceMeansNoRange() {
 		assertFalse(BrokerHousePricing.inRange(1, 0, 5));
 		assertTrue(BrokerHousePricing.inRange(100, 100, 5));

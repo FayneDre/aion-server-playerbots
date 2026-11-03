@@ -3,6 +3,7 @@ package com.aionemu.gameserver.playerbot.economy;
 import com.aionemu.gameserver.model.broker.BrokerItemMask;
 import com.aionemu.gameserver.model.templates.item.ItemQuality;
 import com.aionemu.gameserver.model.templates.item.ItemTemplate;
+import com.aionemu.gameserver.model.templates.item.enums.ItemGroup;
 
 /**
  * What the auction house asks, and what the buyer counts as in range (docs/capitals/plans/auction-house-plan.md, decisions 5 and 6).
@@ -22,13 +23,18 @@ public final class BrokerHousePricing {
 	/** What the tester asked of the prices on 1 November: gear over level 60 ten times dearer, stigmas a hundred times, the mythic pieces never under 200 million. */
 	private static final int HIGH_LEVEL = 60;
 	private static final int HIGH_LEVEL_FACTOR = 10;
-	private static final int STIGMA_FACTOR = 100;
+	private static final int STIGMA_FACTOR = 20;
 	/** A mythic weapon asks 500 million to 1 billion, any other mythic piece (armour, accessories) 200 to 400 million, as the tester wrote. */
 	private static final long MYTHIC_WEAPON_LOW = 500_000_000L, MYTHIC_WEAPON_HIGH = 1_000_000_000L;
 	private static final long MYTHIC_GEAR_LOW = 200_000_000L, MYTHIC_GEAR_HIGH = 400_000_000L;
-	/** A material between players: never under 1000 kinah a piece, never over 100 000, the quality and the npc value placing it between. */
+	/** A material between players: never under 1000 kinah a piece. A looted one has no ceiling (some are worth millions), the quality and the npc value placing it. */
 	private static final long MATERIAL_MINIMUM = 1_000;
-	private static final long MATERIAL_MAXIMUM = 100_000;
+	/**
+	 * A gathered material is priced by its level, which is the gathering tier it asks (level 50 is the 400 to 500 extractions): a white one is worth 1500 at level 10 and 10 000 at
+	 * level 50 (the line through both), and each quality above is three times the one under it, as the tester wrote (a gold level 50 one is 270 000).
+	 */
+	private static final long GATHERED_BASE_AT_10 = 1_500, GATHERED_BASE_AT_50 = 10_000;
+	private static final int GATHERED_QUALITY_FACTOR = 3;
 	/** Food of a high level asks what making it is worth: about 50 000 a piece from level 60, 100 000 from level 70. */
 	private static final long FOOD_FROM_60 = 50_000;
 	private static final long FOOD_FROM_70 = 100_000;
@@ -76,6 +82,25 @@ public final class BrokerHousePricing {
 		return template.isWeapon() ? new long[] { MYTHIC_WEAPON_LOW, MYTHIC_WEAPON_HIGH } : new long[] { MYTHIC_GEAR_LOW, MYTHIC_GEAR_HIGH };
 	}
 
+	/** @return true for what is gathered (ore, herbs, essence), whose price follows its level; looted materials follow their npc value. */
+	static boolean isGathered(ItemTemplate template) {
+		return template.getItemGroup() == ItemGroup.GATHERABLE;
+	}
+
+	/** @return What one gathered material of that level and quality is worth between players: white on the line from level 10 to 50, three times more for each quality above. */
+	static long gatheredMarket(int level, ItemQuality quality) {
+		double base = GATHERED_BASE_AT_10 + (level - 10) * (GATHERED_BASE_AT_50 - GATHERED_BASE_AT_10) / 40.0;
+		int step = switch (quality) {
+			case RARE -> 1;
+			case LEGEND -> 2;
+			case UNIQUE -> 3;
+			case EPIC -> 4;
+			case MYTHIC -> 5;
+			default -> 0;
+		};
+		return Math.max(MATERIAL_MINIMUM, Math.round(base * Math.pow(GATHERED_QUALITY_FACTOR, step)));
+	}
+
 	private static boolean isMaterial(ItemTemplate template) {
 		return BrokerHouseStock.categoryOf(template) == BrokerItemMask.CRAFT;
 	}
@@ -112,10 +137,12 @@ public final class BrokerHousePricing {
 		long market = material ? materialMarket(BotStorePricing.npcBuysAt(template.getPrice()), template.getItemQuality())
 			: BotStorePricing.fairPrice(template.getPrice(), template.getItemQuality());
 		market = Math.max(market * scaleOf(template), minimumOf(template, material));
+		if (isLooseMaterial(template, material) && isGathered(template))
+			market = gatheredMarket(template.getLevel(), template.getItemQuality());
 		long[] mythic = mythicRange(template);
 		if (mythic != null)
 			market = (mythic[0] + mythic[1]) / 2;
-		return isLooseMaterial(template, material) ? Math.min(market, MATERIAL_MAXIMUM) : market;
+		return market;
 	}
 
 	/** @return The lowest the house asks: the bottom of the guide's range, else the stores' floor over what an npc pays. 0 if no price is known. */
@@ -127,7 +154,9 @@ public final class BrokerHousePricing {
 			return 0;
 		boolean material = isMaterial(template);
 		long floor = Math.max(BotStorePricing.floor(template.getPrice()) * scaleOf(template), minimumOf(template, material));
-		return isLooseMaterial(template, material) ? Math.min(floor, MATERIAL_MAXIMUM) : floor;
+		if (isLooseMaterial(template, material) && isGathered(template))
+			floor = Math.max(floor, Math.round(gatheredMarket(template.getLevel(), template.getItemQuality()) * (1 - SPREAD)));
+		return floor;
 	}
 
 	/** @return The top of the guide's range for a template that has one, else 0 (no ceiling on the ask). */
@@ -138,7 +167,13 @@ public final class BrokerHousePricing {
 		long[] mythic = mythicRange(template);
 		if (mythic != null)
 			return mythic[1];
-		return isLooseMaterial(template, isMaterial(template)) ? MATERIAL_MAXIMUM : 0;
+		return 0;
+	}
+
+	/** @return true if a listing's unit price is over what the house would ask today (the top of its spread): the prices it asked before a rule was lowered are withdrawn. */
+	public static boolean isOverTop(ItemTemplate template, long unitPrice) {
+		long top = top(template, isMaterial(template));
+		return top > 0 && unitPrice > top;
 	}
 
 	/** @return The top of the known range of one: the guide's high, else the most the house itself would ask. 0 if no price is known. */

@@ -189,7 +189,8 @@ public final class BrokerHouse {
 		ItemTemplate template = listing.getItem().getItemTemplate();
 		long unit = listing.getPrice() / listing.getItemCount();
 		long ceiling = BrokerHousePricing.ceiling(template);
-		return unit < BrokerHousePricing.floor(template) || ceiling > 0 && unit > Math.max(ceiling, BrokerHousePricing.floor(template));
+		return unit < BrokerHousePricing.floor(template) || ceiling > 0 && unit > Math.max(ceiling, BrokerHousePricing.floor(template))
+			|| BrokerHousePricing.isOverTop(template, unit);
 	}
 
 	/** Lists one new item of the category, drawn by the quality shares and the level curve. @return false if nothing could be drawn or listed. */
