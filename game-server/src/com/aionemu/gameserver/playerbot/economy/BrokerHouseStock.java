@@ -80,7 +80,7 @@ public final class BrokerHouseStock {
 	 *         the race, and priced (a guide range or a template price).
 	 */
 	static boolean isCandidate(ItemTemplate template, Race race, Set<Integer> blacklist) {
-		if (!template.isTradeable() || template.isKinah() || template.getItemGroup() == ItemGroup.QUEST || template.getExpireTime() > 0 || !isPlayerGoods(template))
+		if (!(template.isTradeable() || isMythicGear(template)) || template.isKinah() || template.getItemGroup() == ItemGroup.QUEST || template.getExpireTime() > 0 || !isPlayerGoods(template))
 			return false;
 		if (blacklist.contains(template.getTemplateId()) || BotStoreGoods.isRemnantStone(template))
 			return false;
@@ -88,6 +88,15 @@ public final class BrokerHouseStock {
 		if (usable != null && usable != Race.PC_ALL && usable != race)
 			return false;
 		return BotStoreGoods.rangeOf(template) != null || template.getPrice() > 0;
+	}
+
+	/**
+	 * @return true for a mythic weapon, armour piece or accessory. The data binds almost all of them (their mask has no tradeable bit), which left the broker two or three to choose from;
+	 *         the house lists them all the same, as a player of the live game finds them there, and a buyer takes them as any other piece.
+	 */
+	static boolean isMythicGear(ItemTemplate template) {
+		return template.getItemQuality() == ItemQuality.MYTHIC
+			&& (template.isWeapon() || template.isArmor() || categoryOf(template) == BrokerItemMask.ACCESSORY);
 	}
 
 	/**
@@ -103,18 +112,19 @@ public final class BrokerHouseStock {
 
 	/**
 	 * @return false for what the item data holds and a player never meets on the market: the monsters' own gear (named {@code NPC ...}, its client name {@code npc_...}), the cards, tickets, titles
-	 *         and event goods of the cash shop and the events (a name that opens with a bracket, {@code [Event]}, {@code [Stamp]}, a client name with {@code cash}), test and practice pieces,
+	 *         and event goods of the cash shop and the events (a name that opens with a bracket, {@code [Event]}, {@code [Stamp]}, a client name with {@code cash}, the event gear whose client name opens with
+	 *         {@code event_} and whose name with {@code Bootleg}, which the client marks "Event Equipment"), test and practice pieces,
 	 *         anything priced at the data's placeholder, the boxes and bundles that open into other items, the quest collection items, the skill books (4.8 teaches the skills by itself), the
 	 *         enchantment stones, what an npc sells without limit (the designs of the base crafts, the craft consumables, the socketing supplements) and the scrolls no craft makes. Seen
 	 *         on 31 October in the broker: three NPC swords and a practice sword among the first of 63, and on 1 November the tester's list of what else should not be there.
 	 */
 	static boolean isPlayerGoods(ItemTemplate template) {
 		String name = template.getName();
-		if (name == null || name.isBlank() || name.startsWith("[") || name.startsWith("NPC ")
+		if (name == null || name.isBlank() || name.startsWith("[") || name.startsWith("NPC ") || name.startsWith("Bootleg ")
 			|| NOT_FOR_PLAYERS.matcher(WORD_BREAKS.matcher(name).replaceAll(" ")).find())
 			return false;
 		String clientName = template.getCName();
-		if (clientName != null && (clientName.regionMatches(true, 0, "npc_", 0, 4) || clientName.toLowerCase().contains("cash")
+		if (clientName != null && (clientName.regionMatches(true, 0, "npc_", 0, 4) || clientName.regionMatches(true, 0, "event_", 0, 6) || clientName.toLowerCase().contains("cash")
 			|| clientName.toLowerCase().contains("test")))
 			return false;
 		if (BrokerHouseCatalog.isBundle(template) || BrokerHouseCatalog.isSkillBook(template) || template.isEnchantmentStone()
