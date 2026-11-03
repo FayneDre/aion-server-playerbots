@@ -6,7 +6,38 @@ Written in French, for the testers who read them; the rest of the docs stay in E
 
 ---
 
-## patch-2026-11-01 — 01/11/2026
+## patch-2026-11-03 — 03/11/2026
+
+Révision `c512832`, celle que `//bot version` affiche. Le retour du 03/11 sur l'hôtel des ventes. **Ce patch reprend aussi l'entrée du 01/11 ci-dessous, qui n'a jamais eu son
+étiquette** : tout ce qui y est écrit est dans ce patch. **Aucun SQL, aucun maillage à régénérer, aucun réglage qui change.** Un redémarrage suffit
+(`.\tools\deploy.ps1 -Restart`).
+
+**Ce qui change pour les joueurs et les testeurs**
+- **Matériaux de récolte : prix selon le niveau et la qualité.** Un blanc vaut 1 500 au niveau 10 et 10 000 au niveau 50 (la droite entre les deux, prolongée
+  au-dessus), et chaque qualité vaut trois fois la précédente : vert 30 000, bleu 90 000, **doré de niveau 50 : 270 000**. Les matériaux « bonus » suivent la même règle.
+- **Matériaux de butin : plus de plafond à 100 000** (certains valent plusieurs millions). Le minimum de 1 000 kinah reste.
+- **Stigmas : 20 fois le prix des données** (c'était 100).
+- **L'équipement d'événement n'est plus vendu** : le client le marque « Équipement d'événement » (nom client en `event_`, nom serveur en `Bootleg`, par exemple
+  *Bootleg Custodian's Divine Breeches*). C'étaient les « deux pièces d'armure mythiques » du retour, vendues 330 à 880 millions.
+- **Tout le mythique est en vente** : armes, armures et accessoires, environ 2 300 modèles, liés ou non (les données lient presque tout le mythique, et l'hôtel
+  ne vendait que l'échangeable, d'où les deux pièces). Les prix du 01/11 restent : armes de 500 M à 1 Md, autres pièces de 200 à 400 M.
+- **Les lots n'étaient pas retenus** : une annonce de plusieurs matériaux ou consommables était jugée trop bon marché (son prix, déjà unitaire, était divisé par la quantité)
+  et retirée à chaque passe, puis remise. C'est corrigé ; les annonces au-dessus du prix actuel (les stigmas à 100 fois par exemple) sont retirées à la
+  première passe et remplacées.
+
+**Ce qui n'est pas réglé** (à ne pas signaler : c'est connu)
+- **Un mythique lié acheté** : l'achat ne vérifie pas qu'il est échangeable ; à regarder en jeu qu'il arrive bien dans l'inventaire et qu'on peut l'équiper.
+- **Les prix des mythiques liés** sont ceux du 01/11, non vérifiés en jeu.
+- Les points « Ce qui n'est pas réglé » du 01/11 restent vrais, sauf le prix des matériaux de récolte, réglé ici.
+
+**À tester**
+- **L'hôtel** : plus aucune pièce « Bootleg » ; des armes, armures et accessoires mythiques en nombre ; un doré de niveau 50 autour de 270 000 ; les stigmas à
+  20 fois ; des lots de matériaux qui restent en vente d'une passe à l'autre (une passe toutes les 15 minutes).
+- Tout ce qui cloche : `//bot note <texte>` près du bot.
+
+---
+
+## patch-2026-11-01 — 01/11/2026 (jamais étiqueté, repris par patch-2026-11-03)
 
 Révision `3a6a44d`, celle que `//bot version` affiche. Les retours du 01/11 : l'esprit du spiritualiste, un bot de niveau 28 chez les monstres de niveau 34,
 les bots coincés contre un comptoir ou une barrière, un bot au repos avec les ailes dehors, et le retour d'un testeur sur l'hôtel des ventes. **Aucun SQL,
