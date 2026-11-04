@@ -1,5 +1,6 @@
 package com.aionemu.gameserver.dataholders;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,10 @@ public class TeleLocationData {
 
 	public int size() {
 		return loctlistData.size();
+	}
+
+	public Collection<TelelocationTemplate> getAll() {
+		return loctlistData.values();
 	}
 
 	public TelelocationTemplate getTelelocationTemplate(int id) {

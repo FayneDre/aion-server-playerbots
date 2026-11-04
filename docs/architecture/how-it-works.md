@@ -100,6 +100,7 @@ selection, beside `BotDirector`.
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. |
 
 | `ShutdownRequestWatcher.java` (new) | A `shutdown.request` file beside the server stops it through the normal hook | None — a new file. `stop-server.ps1` uses it: a console CTRL+C lost the save one time in two |
+| `AdminChannel.java` (new) | A local `admin/` folder of request files the launcher writes and the server answers: `reload-config`, `destinations`, `teleport <character id> <map> <x> <y> <z>` | `GameServer` starts it after `ShutdownRequestWatcher`; `TeleLocationData.getAll()`. No port and no key: writing there already allows replacing the jar |
 | `dao/SchemaUpdater.java` (new) | Adds the bot module's tables and columns on start | None — a new file |
 | `configs/main/PlayerBotConfig.java` (new) | The `gameserver.playerbot.*` properties | None — a new file |
 | `model/gameobjects/player/ResponseRequester.java`, `RequestResponseHandler.java` | `requesterOf(messageId)`, `getRequester()` | Additive — a bot reads who asked instead of a question window |
