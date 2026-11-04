@@ -18,6 +18,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.teleport.TelelocationTemplate;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.world.World;
+import com.aionemu.gameserver.world.WorldMap;
 
 /**
  * Lets a program on the same machine, the launcher, ask the running server for a few things, and read the answer.
@@ -141,16 +142,22 @@ public final class AdminChannel {
 		Player player = World.getInstance().getPlayer(objectId);
 		if (player == null || player.isBot() || !player.isOnline())
 			return "error not in game";
-		if (World.getInstance().getWorldMap(mapId) == null)
-			return "error unknown map " + mapId;
+		if (!isOpenWorld(mapId))
+			return "error not an open-world map " + mapId;
 		TeleportService.teleportTo(player, mapId, x, y, z);
 		log.info("Admin channel: {} teleported to map {} {} {} {}", player.getName(), mapId, x, y, z);
 		return "ok";
 	}
 
+	/** An instance map has no spawns of its own until an instance is made for the player, which a plain teleport does not do. */
+	private static boolean isOpenWorld(int mapId) {
+		WorldMap map = World.getInstance().getWorldMap(mapId);
+		return map != null && !map.isInstanceType();
+	}
+
 	/** One line a destination: location id, map id, x, y, z, name, separated by tabs. */
 	private static String destinations() {
-		List<String> lines = DataManager.TELELOCATION_DATA.getAll().stream().sorted((a, b) -> Integer.compare(a.getLocId(), b.getLocId()))
+		List<String> lines = DataManager.TELELOCATION_DATA.getAll().stream().filter(loc -> isOpenWorld(loc.getMapId())).sorted((a, b) -> Integer.compare(a.getLocId(), b.getLocId()))
 			.map(AdminChannel::describe).toList();
 		return "ok\n" + String.join("\n", lines);
 	}
