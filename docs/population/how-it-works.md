@@ -25,8 +25,11 @@ oldest are deleted and their names freed.
 A bot levels. It is not a resident or an adventurer; it is a character with a career. Three things hold that career together, and the third is
 temporary.
 
-**Its pace.** `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` stat, so `BotPacing` sets it per character with no core patch — the same
-door `EnchantEffect` uses. Set to **1%**, which is what a measurement gave and not what two guesses did.
+**Its pace.** `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` stat, so `BotPacing` sets it per character — the same door
+`EnchantEffect` uses. Set to **1%**, which is what a measurement gave and not what two guesses did. That 1% was measured at the official rate, so a
+paced bot reads the official rate (`BotPacing.OFFICIAL_XP_RATE`) instead of the players' `gameserver.rates.xp.*` in `Rates.calcXpRate`, one
+`playerbots:` line: a server that raises its players' experience (the launcher offers it) leaves the world's bots at the measured pace. A companion
+is not paced and earns at the player's rate.
 
 **Its level at birth** is its home's, within the region's band (the quarter mark and the ninth tenth of its monsters). A home under the floor keeps
 its own level when a tenth of the region fights within five levels of it (`BotPlaces.isLivedAt`): Theobomos and Brusthonin are two regions in one,

@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.configs.main.RatesConfig;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
+import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 
 /**
  * @author antness, Neon
@@ -173,7 +174,8 @@ public enum Rates {
 	}
 
 	private static float calcXpRate(Player player, float[] membershipRates, StatEnum boostRate) {
-		float endRate = get(player, membershipRates);
+		// playerbots: a world bot advances at its own pace whatever the players' rates are set to, or raising them would empty the low regions
+		float endRate = BotPacing.isPaced(player) ? BotPacing.OFFICIAL_XP_RATE : get(player, membershipRates);
 		endRate *= player.getGameStats().getStat(boostRate, 100).getCurrent() / 100f;
 		if (player.isLegionMember() && player.getLegion().hasBonus())
 			endRate *= 1.1f;

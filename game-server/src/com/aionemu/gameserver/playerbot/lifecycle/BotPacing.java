@@ -51,6 +51,16 @@ public class BotPacing implements StatOwner {
 	 */
 	private static final int HUNTING_XP_PERCENT = 1;
 
+	/**
+	 * The experience rate a paced bot's percentage applies to, in place of the one configured for players.
+	 * <p>
+	 * The percentage above was measured at the official rate, and a server raising its players' rates (the launcher offers it) would otherwise raise
+	 * the bots' with them: at three times the experience a bot crosses its region three times faster and the low regions empty. The percentage cannot
+	 * compensate by itself, since one is its floor. So {@code Rates} reads this instead of the configured rate for a paced bot, and a world bot
+	 * advances at the measured pace whatever players earn. A companion is not paced: it keeps up with its player at the player's rate.
+	 */
+	public static final float OFFICIAL_XP_RATE = 1;
+
 	/** How often each bot reports what it earned. A minute, so the figure reads directly as experience per minute. */
 	private static final long EXP_REPORT_MILLIS = 60000;
 
@@ -180,7 +190,15 @@ public class BotPacing implements StatOwner {
 	 *         Relies on {@link #HUNTING_XP_PERCENT} differing from the 100 that means the ordinary rate, which is the whole point of it.
 	 */
 	private boolean isPaced() {
-		return Math.round(bot.getGameStats().getStat(PACED_RATES[0], 100).getCurrent()) == HUNTING_XP_PERCENT;
+		return isPaced(bot);
+	}
+
+	/**
+	 * @return Whether this character is a bot whose experience is braked to the bot pace, read from its stat like {@link #isPaced()}. A player is never
+	 *         paced, whatever stats an item or a buff gives them, since only a bot is asked.
+	 */
+	public static boolean isPaced(Player player) {
+		return player.isBot() && Math.round(player.getGameStats().getStat(PACED_RATES[0], 100).getCurrent()) == HUNTING_XP_PERCENT;
 	}
 
 	/**
