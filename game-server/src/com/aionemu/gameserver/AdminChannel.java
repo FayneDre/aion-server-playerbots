@@ -156,7 +156,8 @@ public final class AdminChannel {
 	}
 
 	private static String describe(TelelocationTemplate loc) {
-		String name = loc.getL10n();
+		// the name in the data file: the client's string id (getL10n) is only a code that the client itself turns into text
+		String name = loc.getName();
 		return loc.getLocId() + "\t" + loc.getMapId() + "\t" + loc.getX() + "\t" + loc.getY() + "\t" + loc.getZ() + "\t"
 			+ (name == null ? "" : name.replace('\t', ' ').replace('\n', ' '));
 	}

@@ -26,6 +26,10 @@ public class TelelocationTemplate implements L10n {
 	@XmlAttribute(name = "name_id", required = true)
 	private int nameId;
 
+	/** The English name written in the data file, readable anywhere, unlike {@link #getL10n()}, which only the client can display. */
+	@XmlAttribute(name = "name")
+	private String name;
+
 	@XmlAttribute(name = "posX")
 	private float x = 0;
 
@@ -40,6 +44,10 @@ public class TelelocationTemplate implements L10n {
 
 	public int getLocId() {
 		return locId;
+	}
+
+	public String getName() {
+		return name;
 	}
 
 	public int getMapId() {
