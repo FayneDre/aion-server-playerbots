@@ -174,6 +174,10 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
   at heights of 100 to 300 on the open world maps. Older than the Abyss work; not looked into.
 - **397 tests on the game server**, run on every deploy. The combat half of `PlayerBotAI` is still untested and unsplit, so a mistake there is
   silent. Decisions written as pure functions of a situation record are what made the suites possible; keep writing them that way.
+- **What is left of resident and adventurer.** The distinction is gone from the design, but about 270 lines of the bot module still mention
+  "resident" (`BotRoster`, `BotPacing`, `BotCommands`, `BotInbox`, `BotPopulator`, the AI classes), `//bot kind` and its documentation in
+  [bot-commands.md](bot-commands.md) still describe it, and `playerbot_characters.resident` holds 1 for 2004 of 2017 bots. Nothing is removed yet:
+  first list what each use still decides (pacing, spawn, speech) and what the column feeds, then delete in one patch with its SQL.
 
 ## Known limits, in order of how much they will bite
 
