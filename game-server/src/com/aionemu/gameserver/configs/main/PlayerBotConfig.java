@@ -52,6 +52,37 @@ public class PlayerBotConfig {
 	@Property(key = "gameserver.playerbot.pvp.enable", defaultValue = "true")
 	public static volatile boolean PVP_ENABLE;
 
+	/** How willing a bot is to start a fight with a player of the other race, as shares of the bots (relative: 25, 25 and 50 are a quarter, a quarter and a half). */
+	@Property(key = "gameserver.playerbot.pvp.share.fighter", defaultValue = "25")
+	public static volatile int PVP_SHARE_FIGHTER = 25;
+	@Property(key = "gameserver.playerbot.pvp.share.opportunist", defaultValue = "25")
+	public static volatile int PVP_SHARE_OPPORTUNIST = 25;
+	@Property(key = "gameserver.playerbot.pvp.share.peaceful", defaultValue = "50")
+	public static volatile int PVP_SHARE_PEACEFUL = 50;
+
+	/** How far above its own level a bot picks a fight with a player. */
+	@Property(key = "gameserver.playerbot.pvp.level_above", defaultValue = "3")
+	public static volatile int PVP_LEVEL_ABOVE = 3;
+
+	/** How far beneath its own level a bot still picks a fight with a player. */
+	@Property(key = "gameserver.playerbot.pvp.level_below", defaultValue = "6")
+	public static volatile int PVP_LEVEL_BELOW = 6;
+
+	/**
+	 * What a world bot earns from monsters, alone and in a group, and from player kills, as a percent of the official experience rate (a player's rates do
+	 * not apply to it). The first two are never less than 1: zero is no experience at all, not a slow one. A bot in a player's group follows the player's rate.
+	 */
+	@Property(key = "gameserver.playerbot.xp.solo", defaultValue = "1")
+	public static volatile int XP_SOLO = 1;
+	@Property(key = "gameserver.playerbot.xp.group", defaultValue = "1")
+	public static volatile int XP_GROUP = 1;
+	@Property(key = "gameserver.playerbot.xp.pvp", defaultValue = "100")
+	public static volatile int XP_PVP = 100;
+
+	/** Whether bots speak in the chat channels and by shout; `//bot speech off` silences them further, until the next start. */
+	@Property(key = "gameserver.playerbot.chat.enable", defaultValue = "true")
+	public static volatile boolean CHAT_ENABLE = true;
+
 	/** The language of everything bots say in the chat channels and by shout: FR or EN. */
 	@Property(key = "gameserver.playerbot.chat.language", defaultValue = "FR")
 	public static volatile ChatLanguage CHAT_LANGUAGE;

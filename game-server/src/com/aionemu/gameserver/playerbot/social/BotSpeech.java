@@ -55,7 +55,7 @@ public final class BotSpeech {
 
 	/** Says the next line of each capital that is due one and has a player to hear it. Runs every {@link #REVIEW_MILLIS}. */
 	public static void review() {
-		if (!enabled)
+		if (!isEnabled())
 			return;
 		long now = System.currentTimeMillis();
 		for (int worldId : CAPITALS) {
@@ -113,7 +113,7 @@ public final class BotSpeech {
 
 	/** @return Whether bots speak at all, by shout or in the channels ({@link BotChat}). */
 	static boolean isEnabled() {
-		return enabled;
+		return enabled && PlayerBotConfig.CHAT_ENABLE;
 	}
 
 	/** @return What {@code //bot speech} answers, having switched speech on or off when asked to. */
@@ -135,6 +135,6 @@ public final class BotSpeech {
 				}
 			}
 		}
-		return enabled ? "Bots speak: shouts in the capitals, and lines in the chat channels." : "Bots are silent, by shout and in the channels.";
+		return isEnabled() ? "Bots speak: shouts in the capitals, and lines in the chat channels." : "Bots are silent, by shout and in the channels.";
 	}
 }

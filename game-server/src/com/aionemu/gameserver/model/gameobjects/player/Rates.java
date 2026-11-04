@@ -52,7 +52,8 @@ public enum Rates {
 
 		@Override
 		public long calcResult(Player player, long xp) {
-			return (long) (xp * get(player, RatesConfig.XP_PVP_RATES));
+			// playerbots: a world bot earns from player kills at the official rate times its own percent, whatever the players' rates are
+			return (long) (xp * (BotPacing.isPaced(player) ? BotPacing.pvpRate() : get(player, RatesConfig.XP_PVP_RATES)));
 		}
 	},
 	SKILL_XP_GATHERING {

@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.stats.calc.StatOwner;
 import com.aionemu.gameserver.model.stats.calc.functions.StatSetFunction;
@@ -50,6 +51,24 @@ public class BotPacing implements StatOwner {
 	 * thirteen hours a region has to come from somewhere else — the director retiring a bot out of its region rather than the bot earning less.
 	 */
 	private static final int HUNTING_XP_PERCENT = 1;
+
+	/**
+	 * The percent a paced bot earns on a channel. The two a bot really earns on, monsters alone and in a group, are options
+	 * ({@code gameserver.playerbot.xp.*}, never below {@link #HUNTING_XP_PERCENT}); the others stay at it, which is also what tells a paced bot
+	 * from a player (the quest channel is never anything else than that for a bot, and a player's is 100 unless a buff says otherwise).
+	 */
+	private static int percentOf(StatEnum rate) {
+		return switch (rate) {
+			case BOOST_HUNTING_XP_RATE -> Math.max(HUNTING_XP_PERCENT, PlayerBotConfig.XP_SOLO);
+			case BOOST_GROUP_HUNTING_XP_RATE -> Math.max(HUNTING_XP_PERCENT, PlayerBotConfig.XP_GROUP);
+			default -> HUNTING_XP_PERCENT;
+		};
+	}
+
+	/** @return The multiplier a world bot's experience from player kills takes, in place of the players' rate: the official rate times its percent. */
+	public static float pvpRate() {
+		return OFFICIAL_XP_RATE * Math.max(0, PlayerBotConfig.XP_PVP) / 100f;
+	}
 
 	/**
 	 * The experience rate a paced bot's percentage applies to, in place of the one configured for players.
@@ -167,12 +186,14 @@ public class BotPacing implements StatOwner {
 
 	/** Takes the character's experience rate down to the bot rate, or gives it back, doing nothing when it is already where it should be. */
 	private void pace(boolean wanted) {
-		if (wanted == isPaced())
+		boolean paced = isPaced();
+		// a pace changed in the options is taken at once: the effect is put again with the percents of the moment
+		if (wanted == paced && (!wanted || paceIsCurrent()))
 			return;
-		if (wanted)
-			bot.getGameStats().addEffect(this, Stream.of(PACED_RATES).map(rate -> new StatSetFunction(rate, HUNTING_XP_PERCENT)).toList());
-		else
+		if (paced)
 			bot.getGameStats().endEffect(this);
+		if (wanted)
+			bot.getGameStats().addEffect(this, Stream.of(PACED_RATES).map(rate -> new StatSetFunction(rate, percentOf(rate))).toList());
 		log.info("Bot {} is now {} and its xp rates read {}%", bot.getName(), wanted ? "paced" : "at a player's pace", effectiveRate());
 	}
 
@@ -198,7 +219,12 @@ public class BotPacing implements StatOwner {
 	 *         paced, whatever stats an item or a buff gives them, since only a bot is asked.
 	 */
 	public static boolean isPaced(Player player) {
-		return player.isBot() && Math.round(player.getGameStats().getStat(PACED_RATES[0], 100).getCurrent()) == HUNTING_XP_PERCENT;
+		return player.isBot() && Math.round(player.getGameStats().getStat(StatEnum.BOOST_QUEST_XP_RATE, 100).getCurrent()) == HUNTING_XP_PERCENT;
+	}
+
+	/** @return Whether the percents set on this bot are the ones the options give now. */
+	private boolean paceIsCurrent() {
+		return Stream.of(PACED_RATES).allMatch(rate -> Math.round(bot.getGameStats().getStat(rate, 100).getCurrent()) == percentOf(rate));
 	}
 
 	/**

@@ -91,7 +91,7 @@ public class BotTargetSelector {
 			return false;
 		if (BotPvpRules.isDying(player.getLifeStats().getHpPercentage()))
 			return false;
-		if (!BotPvpRules.isInLevelBand(bot.getLevel(), player.getLevel(), MAX_LEVEL_GAP, MIN_LEVEL_GAP))
+		if (!BotPvpRules.isInLevelBand(bot.getLevel(), player.getLevel(), PlayerBotConfig.PVP_LEVEL_ABOVE, PlayerBotConfig.PVP_LEVEL_BELOW))
 			return false;
 		if (!temperament.mayStartAgainst(invasion, bot.getLevel(), player.getLevel(), player.getLifeStats().getHpPercentage()))
 			return false;
