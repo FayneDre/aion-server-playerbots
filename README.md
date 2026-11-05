@@ -1,105 +1,70 @@
-![Aion 4.8 Banner](https://github.com/beyond-aion/aion-server/assets/1169307/494205be-399a-4e2e-8435-1f0774d92262)
-<div align="center">
+# Aion Server Playerbots
 
-  ![](https://img.shields.io/badge/dynamic/xml?url=https%3A%2F%2Fgithub.com%2Fbeyond-aion%2Faion-server%2Fraw%2F4.8%2Fpom.xml&query=%2F%2A%5Blocal-name%28%29%3D%22project%22%5D%2F%2A%5Blocal-name%28%29%3D%22properties%22%5D%2F%2A%5Blocal-name%28%29%3D%22maven.compiler.release%22%5D%2Ftext%28%29&label=Java%20version)
-  [![](https://img.shields.io/github/contributors-anon/beyond-aion/aion-server)](https://gisthost.github.io/?ce9729bcacaac31f78771b8521512d0a&repo=beyond-aion%2Faion-server&title=Beyond%20Aion%20Server%20Contributors)
-  ![](https://img.shields.io/github/repo-size/beyond-aion/aion-server)
+An Aion 4.8 server emulator whose world is populated by AI-driven **player bots**: real player characters, with no client behind them, that live,
+level, travel, fight with their class's skills, group with players, keep stores and talk in the channels.
 
-</div>
+> Unofficial fan project, not affiliated with or endorsed by NCSoft. Aion is a trademark of NCSoft Corporation.
 
-# Aion 4.8 Server Emulator
+It is a fork of [beyond-aion/aion-server](https://github.com/beyond-aion/aion-server), the Beyond Aion team's emulator, and stays close to it: the
+bots live in a module of their own, so that the emulator's improvements keep coming in.
 
-This is the server for the MMORPG *Aion: The Tower of Eternity* that we host for our players.  
-Our server emulator is intended to be faithful to the original experience of the official servers of the time, but a few custom features have also been implemented to meet the needs of our community.  
-You can read more about it here:
-<details>
-<summary><b>Motivation and features of this server emulator (click to show)</b></summary>
+## What the bots do
 
-### Motivation
-In the early years of the game, from 2009 onwards, there were larger and more organized development teams. When we started, in 2015, those days were long gone.  
-The few people with extensive knowledge about the different Aion-Emu[^1] forks know this already. Aion server emulators are barely functional: Many systems have been left unfinished, some have design problems, and incomplete or incorrect template data is the rule, not the exception. What seems to work at first breaks down when you introduce trivial variables such as players playing the game or running the server for more than a few
-hours.  
+- **A world that lives**: about a thousand bots on 26 open-world maps, created asleep in a pool and woken by a director that keeps each region at
+  its population. Villages and capitals stay full; the countryside follows the players or holds a fixed density.
+- **Careers**: bots gain levels, move on to the region their level calls for, dress from what they loot and buy, and sell what they do not need.
+- **Combat**: real class skills, with playbooks written from class guides for the templar, gladiator, chanter, cleric, ranger and sorcerer, and the
+  data's own order for the others; group roles, positioning against bosses, retreat from a fight they cannot win.
+- **Groups**: invite a bot like anyone; it follows, fights what the group fights, goes into instances with you. The Find Group window fills a party
+  with a tank, a healer and a support at your level.
+- **Movement**: planning on navigation meshes generated for every open-world map and 45 dungeons, with glides, rides and flight, Reshanta's islands
+  crossed by air.
+- **Capitals and economy**: a town day, private stores at broker prices, an auction house the server keeps stocked and that buys what players list.
+- **Social**: speech in the Region, Trade and Find Group channels and shouts in the capitals, in French or English; duels, friends and trades.
 
-We wanted to change this and create an emulator this wonderful game deserves.  
-The base for our project was Aion-Lightning's server for Aion version 4.7.5, which was considered the best emulator at the time. Unfortunately, while it was less buggy than emulators from other groups, it turned out to be in a similarly terrible state.  
-Once we opened the server to our community, many more core issues came to light, all of which led to our decision to prioritize bug fixes and optimizations over features or version updates. So we just updated once, to version 4.8 (again with the help of Aion-Lightning's work), and stuck to our plan.  
+What is built and what is left: [docs/built.md](docs/built.md) and [docs/roadmap.md](docs/roadmap.md). Every document: [docs/README.md](docs/README.md).
 
-### Highlights
-The following is a very incomplete list of some notable things we have worked on:
+## Playing
 
-#### Custom features
-- PvPvE map with increased AP rates and boss spawns
-- Solo instance "Eternal Challenge" with a boss using the same skills and tactics like you, based on a deep learning AI
-- Customizations to drop lists, QoL improvements, player commands and various PvP and PvE rewards you can read more about [here](https://beyond-aion.com/page/features)
+The easiest way is the launcher, [Echoes of Atreia](https://github.com/FayneDre/echoes-of-atreia-launcher): it finds the server, the client,
+Java and MySQL, starts the servers in order, sets the rates and the bots' options, and launches the game.
 
-#### Fixes and enhancements
-- Fixed geo[^2] related issues like wrong or missing obstacles, incorrect bound calculations, terrain checks, doors, shields, environmental effects, etc.
-- Fixed map kicks and other unintended positioning from various skills, some even client-induced (now worked around by the server)
-- Implemented missing instances and reworked some
-- Fixed hundreds of quests
-- Added thousands of missing drops and spawns
-- Fixed drop rate calculations and improved the global drop system (removed npc_drop.dat support)
-- Fixed duplicate or unintentionally invisible spawns, temporary spawns and added support for temporary spawns in instances and events
-- Fixed the event engine and added new features like automatic buffs or config overrides
-- Removed, merged or reworked many chat commands, implemented descriptions, common error handling and a permission aware `.help` command
-- Implemented true invisibility against anti hide hacks
-- Fixed motion validation to combat no-animation hacks
-- Fixed many stat and skill related issues with players and NPCs
-- Implemented more AI handler events and controls like queueing of skills
-- Fixed countless core bugs of various severities, like wrong chance calculations, login problems or even client crashes
-- Fixed memory leaks, concurrency related issues and more, so the server no longer needs to be restarted every few hours (runs nicely for months now)
-- Development related:
-  - Simplified configuration and added support for more data types, including lists and maps
-  - Logging improvements: Added support for Discord webhooks and revised all error logging (no missing stack traces anymore or meaningless messages)
-  - Optimized startup time and implemented class file caching for even faster startup if handlers haven't been modified since the last start
-  - Continuous optimizations for a more light-weight and more efficient server (removal of unnecessary code or dependencies, refactoring, etc.)
-  - Regular Java and dependency updates for the latest improvements and new language features
+The game client is not part of this project. The Aion 4.8 NA client is available from the
+[Internet Archive](https://archive.org/download/aion-4.8-na/Aion%204.8%20NA.7z); it needs Beyond Aion's
+[version.dll](https://github.com/beyond-aion/aion-version-dll/releases/latest) in its `bin32` and `bin64` folders to connect to an unofficial
+server and to run on Windows 10 or later.
 
-### Outlook
+## Branches
 
-Fast-forward to today and there are still many unfinished tasks, bugs and ideas for improvements. Too many to even try listing them. A project of this size will never be finished by a few people developing it in their spare time.  
-Which is fine, because we enjoy working on it.
+| Branch | What it is |
+|---|---|
+| `main` | The stable branch: releases are made from it and tagged `vX.Y.Z`. |
+| `develop` | Day-to-day work. Test patches for the testers are tagged on it as `patch-YYYY-MM-DD`. |
+| `beyond-aion` | A mirror of Beyond Aion's `4.8`, through which its updates come in. |
 
-</details>
+Updates flow one way: Beyond Aion into `beyond-aion`, merged into `develop`, and `develop` into `main` when a version has been validated in game.
 
-**TL;DR**: A lot of work has been put into improving this emulator. Not only for our players, but also for a better experience when developing.
+## Building and running
 
-> [!TIP]  
-> If you have questions about [contributing](https://github.com/beyond-aion/aion-server/blob/HEAD/.github/CONTRIBUTING.md) or if you are interested in technical discussions about Aion and its server development, you can join our **development-focused Discord**: [![Discord Join Link](https://img.shields.io/badge/Discord-5865f2?logo=discord&logoColor=white)](https://beyond-aion.com/dev-talk)  
-> 
-> **Please note that we do not provide any support related to hosting your own server, but you can ask the community for help in [Discussions > Q&A](https://github.com/beyond-aion/aion-server/discussions/categories/q-a)**
+Java 25 and [Maven](https://maven.apache.org/) are required; `mvn package` from the root builds the game, login and chat servers, each as a zip in
+its `target` folder, to run with a JDK and a MySQL (or MariaDB) server. Tests are skipped by default: `-Dmaven.test.skip=false` runs them.
 
-## Building
-This project uses [Maven](https://maven.apache.org/what-is-maven.html) to manage dependencies. The game server, login server and chat server can be
-built using `mvn package` from the root directory.  
-The resulting zip files in each server's target folder can be deployed on any system with a suitable JDK and access to a MySQL (or MariaDB) server.  
+Initialise the databases with the `*.sql` file in each server's `sql` folder (default names and users in `config/network/database.properties`).
+Local settings go in `config/mygs.properties`, `config/myls.properties` and `config/mycs.properties`, which take precedence over the defaults and are
+never touched by an update. The bots' options are in `game-server/config/main/playerbot.properties`.
 
-## Configuration
-### Server setup
-The servers can be run with the default config after initializing the databases with the *.sql file in each server's sql folder (default DB names
-and users can be found in `config/network/database.properties`).  
-To whitelist the game server connection to the login server, enter its ID, IP mask and password in the `gameserver` table of the login server
-database.  
-If you want to change some configs, it's recommended to create the files `config/mycs.properties` (chat server), `config/mygs.properties` (game 
-server) and `config/myls.properties` (login server) and put all your custom properties in there. These take precedence over the standard 
-*.properties files and will not be modified when updating the server.  
+The navigation meshes are generated, not stored: `tools/navmesh.ps1` builds them. On Windows, `tools/deploy.ps1` builds and installs into a server
+folder (`AION_SERVER_HOME`), `tools/start-server.ps1` starts the three servers in order and `tools/stop-server.ps1` stops them without losing data.
 
-### Game client setup
-You can download the game client for this version from [here](https://archive.org/download/aion-4.8-na/Aion%204.8%20NA.7z), or via [torrent](https://archive.org/download/aion-4.8-na/aion-4.8-na_archive.torrent).  
-As the game blocks connections to unofficial servers and does not run properly on Windows 10 or later, it needs to be patched. This can be done by copying
-this [version.dll](https://github.com/beyond-aion/aion-version-dll/releases/latest) into the bin32 and bin64 folders of the game client.  
-To run the game, create a file called `start.bat` in the game's root directory with the following content:
-```batch
-start "" "bin64\aion.bin" -ip:127.0.0.1 -port:2106 -loginex
-```
+## Contributing
 
-## Developing
-Import the root directory as a Maven project. If your IDE does not support [EditorConfig](https://editorconfig.org/#pre-installed) natively, install a
-plugin for it to ensure a consistent coding style.  
-To start a server, create a run/debug configuration with the `*Server` class as the main class. The chat server for example starts from
-`ChatServer.java`. The working directory needs to be set to the module directory (`$MODULE_WORKING_DIR$` in IntelliJ).   
-If your IDE compiles very slowly, the compiler likely needs more memory. The option is called "Build process heap size" in IntelliJ.
+Bot work goes in `game-server/src/com/aionemu/gameserver/playerbot/`, away from the emulator's own code, so that merges from Beyond Aion stay small.
+Commits are in English and short. Run `tools/install-hooks.ps1` once per clone. How the module is built: [docs/architecture/how-it-works.md](docs/architecture/how-it-works.md).
 
+## Credits and licence
 
-[^1]: [Aion-Emu](https://web.archive.org/web/20100128222712/http://aion-emu.com/) was the first server development project for the game and laid the foundation for all the popular server emulators known today.  
-[^2]: Geo or geo data is the common term for collision data parsed from the game client. Collision data for this server is created with our [GeoBuilder](https://github.com/beyond-aion/aion-geobuilder).  
+The emulator is the work of the [Beyond Aion](https://github.com/beyond-aion/aion-server) team, built on Aion-Lightning's and on
+[Aion-Emu](https://web.archive.org/web/20100128222712/http://aion-emu.com/), the first server project for the game. Collision data comes from
+Beyond Aion's [GeoBuilder](https://github.com/beyond-aion/aion-geobuilder).
+
+[GNU General Public License v3.0](LICENSE), as the emulator it is built on.
