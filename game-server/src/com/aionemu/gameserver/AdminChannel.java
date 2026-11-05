@@ -3,6 +3,7 @@ package com.aionemu.gameserver;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
@@ -87,6 +88,9 @@ public final class AdminChannel {
 		String response;
 		try {
 			response = run(Files.readString(request, StandardCharsets.UTF_8).strip());
+		} catch (NoSuchFileException e) {
+			// taken back by a requester that stopped waiting: an answer now would stay in the folder until the next start
+			return;
 		} catch (IOException | RuntimeException e) {
 			log.warn("Admin request {} failed", name, e);
 			response = "error " + e.getMessage();
