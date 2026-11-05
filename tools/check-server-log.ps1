@@ -79,7 +79,13 @@ if ($silent.TotalSeconds -gt $SilentSeconds) {
 # The route queue: its last report says how long a search waited for a thread and how many bots were waiting. On 5 November it fell behind at full
 # density, 25 000 searches and ten minutes, and was seen only by reading the log by chance.
 $queue = $lines | Where-Object { $_ -match 'Route search waited (\d+) ms for a route thread, (\d+) (bot\(s\) still waiting|more queued)' } | Select-Object -Last 1
-if ($queue -and $queue -match 'waited (\d+) ms for a route thread, (\d+) ') {
+# A report is written only while searches wait over a second, so the last one can be hours old and describe a queue long since caught up: only a
+# recent one counts.
+$queueAge = $null
+if ($queue -and $queue -match '^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)') {
+    $queueAge = (Get-Date) - [datetime]::ParseExact($Matches[1], 'yyyy-MM-ddTHH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
+}
+if ($queue -and $queueAge -and $queueAge.TotalSeconds -le 120 -and $queue -match 'waited (\d+) ms for a route thread, (\d+) ') {
     $waitedSeconds = [int]$Matches[1] / 1000
     $waiting = [int]$Matches[2]
     if ($waitedSeconds -ge $RouteWaitSeconds) {
@@ -88,6 +94,8 @@ if ($queue -and $queue -match 'waited (\d+) ms for a route thread, (\d+) ') {
     } else {
         Write-Host ("Route queue: last report {0:N0} s of wait, {1} waiting." -f $waitedSeconds, $waiting) -ForegroundColor Green
     }
+} elseif ($queue) {
+    Write-Host 'Route queue: no search has waited over a second in the last two minutes.' -ForegroundColor Green
 }
 
 $bots = ($lines | Where-Object { $_ -match 'PlayerBotAI - Bot \S+ spawned' }).Count
