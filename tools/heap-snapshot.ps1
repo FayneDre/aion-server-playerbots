@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
-  Writes the game server's memory against the bots awake: heap before and after a full GC, the top of the class histogram, and the last review of the
-  director. The full GC pauses the server one to two seconds, so not inside a window being measured for something else.
+  Writes the game server's memory and CPU against the bots awake: cores busy over a minute, heap before and after a full GC, the top of the class
+  histogram, and the last review of the director. The full GCs pause the server one to two seconds each, so not inside a window being measured for
+  something else.
 .EXAMPLE
   .\tools\heap-snapshot.ps1 -Label fixed-25
 #>
@@ -32,17 +33,26 @@ $out = Join-Path $ServerRoot 'game-server\log\bot-measures'
 New-Item -ItemType Directory -Force $out | Out-Null
 $file = Join-Path $out ("heap-{0}-{1}.txt" -f $Label, (Get-Date -Format 'yyyy-MM-dd-HHmm'))
 
+# Cores in use over a minute, before anything here pauses the server.
+$cpuBefore = (Get-Process -Id $gamePid).CPU
+Start-Sleep -Seconds 60
+$cores = [math]::Round(((Get-Process -Id $gamePid).CPU - $cpuBefore) / 60, 2)
+
 $before = & jcmd $gamePid GC.heap_info | Out-String
-$histogram = & jcmd $gamePid GC.class_histogram   # forces a full GC
+$histogram = & jcmd $gamePid GC.class_histogram
+# The histogram's own collection is followed by allocations while it prints; collect again and read at once, then leave the young regions out.
+& jcmd $gamePid GC.run | Out-Null
 $after = & jcmd $gamePid GC.heap_info | Out-String
-$cpu = [math]::Round((Get-Process -Id $gamePid).CPU)
 $workingSet = [math]::Round((Get-Process -Id $gamePid).WorkingSet64 / 1MB)
 
-$live = if ($after -match 'garbage-first heap\s+total reserved \d+K, committed (\d+)K, used (\d+)K') { [math]::Round([long]$Matches[2] / 1024) } else { '?' }
+$live = '?'
+if ($after -match 'used (\d+)K[^\r\n]*\r?\n\s*region size (\d+)K, (\d+) young') {
+	$live = [math]::Round(([long]$Matches[1] - [long]$Matches[2] * [long]$Matches[3]) / 1024)
+}
 $report = @(
 	"$Label at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), pid $gamePid"
 	"bots awake $awake, wanted $wanted, over $($maps.Count) map(s)"
-	"live set after a full GC: $live MB; process working set $workingSet MB; CPU seconds so far $cpu"
+	"live set after a full GC, young regions left out: $live MB; process working set $workingSet MB; cores busy over a minute: $cores of $([Environment]::ProcessorCount)"
 	"last review: $lastSummary"
 	''
 	'--- heap before the full GC'
