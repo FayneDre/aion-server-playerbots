@@ -141,6 +141,15 @@ density, the guard), and later the in-game shop the roadmap lists. First step: p
 command bar for the group's bots (follow, stay, attack, gather) that sends the `//bot` commands the server already has. First step: an addon that
 shows one button and sends one command, installed and removed cleanly by the launcher.
 
+**H3. GM tools in the game.** The server's GM commands (`data/handlers/admincommands`) as forms on a page of H1, applied to the character played:
+by family, *character* (level and experience, heal, resurrect, cooldowns, speed, invisibility, invulnerability, skills, titles, transformation,
+race, name, dyes), *items* (found by name in the templates, with a quantity; a set; cube slots; a mail with attachments), *quests* (start, finish,
+reset), *world* (spawn an npc, weather, time, a rift, a siege, an announcement), *players* (online, details, kick, ban, access levels). The
+quickest ones (heal, resurrect, invisibility, invulnerability, speed) are also buttons of the H2 bar. **Who may**: an account of staff level, or
+the client playing on the server's own machine, whoever runs the server being its GM; any other client never sees the page. A destructive command
+(ban, delete, rename) asks for confirmation. The command runs as if the character had typed it, its answer in the game's chat and on the page.
+Until H1 is proved, nothing of it is built; if the client cannot open our pages, the same forms go to the launcher instead.
+
 ## Proposed order
 
 1. A1, then A3, after the density measurement of 5 November; A2 after that measurement's histogram. 2. B1. 3. D1 to D3 (priority two). 4. E1, E2.
