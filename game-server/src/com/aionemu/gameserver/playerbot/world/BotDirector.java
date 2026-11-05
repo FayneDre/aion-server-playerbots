@@ -538,37 +538,25 @@ public class BotDirector {
 		return busy ? ATTENTION_BUSY : anybodyOnline ? ATTENTION_QUIET : ATTENTION_UNWATCHED;
 	}
 
-	/**
-	 * @return The countryside a region should have awake now: a fixed share of its busy plan when the options name one, otherwise the share the
-	 *         players' attention gives it.
-	 */
+	/** @return The countryside a region should have awake now, under the density options as they stand. */
 	private static List<Settlement> fieldPlan(int worldId, boolean busy, boolean anybodyOnline) {
-		Float fixed = fixedDensity(PlayerBotConfig.DENSITY);
-		if (fixed != null)
-			return BotPresence.share(BotPresence.field(worldId, true), fixed);
-		return BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline));
+		return fieldPlan(BotPresence.field(worldId, false), BotPresence.field(worldId, true), PlayerBotConfig.DENSITY_MODE,
+			PlayerBotConfig.DENSITY_PERCENT, busy, anybodyOnline);
 	}
 
-	/** The option's value last found unreadable, so a typo is said once and not at every review. */
-	private static volatile String unreadDensity;
-
 	/**
-	 * @return The share of the busy countryside {@code gameserver.playerbot.density} holds every map at, between 0 and 1, or null for {@code auto} (and
-	 *         for a value that is not a whole percent, which is said once in the log).
+	 * @return The countryside to keep awake: the share the players' attention gives ({@link DensityMode#AUTO}), the percent of the busy plan whoever
+	 *         is online ({@link DensityMode#FIXED}), or whichever of the two is larger ({@link DensityMode#FLOOR}).
 	 */
-	static Float fixedDensity(String option) {
-		String text = option == null ? "" : option.strip();
-		if (text.isEmpty() || text.equalsIgnoreCase("auto"))
-			return null;
-		try {
-			return Math.clamp(Integer.parseInt(text), 0, 100) / 100f;
-		} catch (NumberFormatException e) {
-			if (!text.equals(unreadDensity)) {
-				unreadDensity = text;
-				log.warn("gameserver.playerbot.density = {} is neither auto nor a percent: the countryside follows the players", text);
-			}
-			return null;
-		}
+	static List<Settlement> fieldPlan(List<Settlement> quietField, List<Settlement> busyField, DensityMode mode, int percent, boolean busy,
+		boolean anybodyOnline) {
+		List<Settlement> followed = BotPresence.share(busy ? busyField : quietField, attention(busy, anybodyOnline));
+		if (mode == null || mode == DensityMode.AUTO)
+			return followed;
+		List<Settlement> held = BotPresence.share(busyField, Math.clamp(percent, 0, 100) / 100f);
+		if (mode == DensityMode.FIXED)
+			return held;
+		return held.size() > followed.size() ? held : followed;
 	}
 
 	/**
@@ -678,11 +666,9 @@ public class BotDirector {
 		int villagers = BotPresence.civic(worldId).size();
 		boolean busy = isBusy(worldId, playersByMap.getOrDefault(worldId, List.of()), System.currentTimeMillis());
 		int now = villagers + fieldPlan(worldId, busy, !playersByMap.isEmpty()).size();
-		// At a fixed density the region holds the same whoever plays: its band is that one figure.
-		if (fixedDensity(PlayerBotConfig.DENSITY) != null)
-			return new Band(now, now, now);
-		int quiet = villagers + BotPresence.share(BotPresence.field(worldId, false), ATTENTION_UNWATCHED).size();
-		int crowded = villagers + BotPresence.share(BotPresence.field(worldId, true), ATTENTION_BUSY).size();
+		// Under a fixed density the three are one figure, under a floor the quietest is the floor.
+		int quiet = villagers + fieldPlan(worldId, false, false).size();
+		int crowded = villagers + fieldPlan(worldId, true, true).size();
 		return new Band(now, quiet, crowded);
 	}
 

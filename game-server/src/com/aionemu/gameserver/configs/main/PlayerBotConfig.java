@@ -3,6 +3,7 @@ package com.aionemu.gameserver.configs.main;
 import com.aionemu.commons.configuration.Property;
 import com.aionemu.gameserver.playerbot.positioning.PositioningMode;
 import com.aionemu.gameserver.playerbot.social.ChatLanguage;
+import com.aionemu.gameserver.playerbot.world.DensityMode;
 
 /**
  * Settings for the playerbot system.
@@ -46,12 +47,15 @@ public class PlayerBotConfig {
 	public static volatile boolean AMBIENT_GLIDE;
 
 	/**
-	 * How much of each region's countryside is awake. {@code auto} follows the players: all of it at the busy density on a map somebody plays on, a fifth
-	 * elsewhere, a twentieth with nobody online. A percent from 0 to 100 holds every map at that share of its busy density whoever is online, so the world
-	 * is the same seen or unseen. Villages are always full either way. Read at every review of the director (30 s).
+	 * How much of each region's countryside is awake: following the players, held at {@link #DENSITY_PERCENT} whoever is online, or following the
+	 * players but never below it. Villages are always full whichever it is. Read at every review of the director (30 s).
 	 */
-	@Property(key = "gameserver.playerbot.density", defaultValue = "auto")
-	public static volatile String DENSITY = "auto";
+	@Property(key = "gameserver.playerbot.density.mode", defaultValue = "AUTO")
+	public static volatile DensityMode DENSITY_MODE = DensityMode.AUTO;
+
+	/** The percent of its busy countryside a map holds under {@link DensityMode#FIXED}, or at least under {@link DensityMode#FLOOR} (0 to 100). */
+	@Property(key = "gameserver.playerbot.density.percent", defaultValue = "30")
+	public static volatile int DENSITY_PERCENT = 30;
 
 	/**
 	 * Whether bots may attack players of the other race (real players and bots) where the engine makes them enemies, which is a PvP zone. Off, no bot

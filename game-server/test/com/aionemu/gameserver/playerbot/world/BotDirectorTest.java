@@ -208,20 +208,41 @@ class BotDirectorTest {
 		assertTrue(difference.toSleep().isEmpty(), "so the post is held, not emptied");
 	}
 
-	/** The density option: auto follows the players, a percent holds every map at that share of its busy countryside, and a typo is not a density. */
+	/**
+	 * The three density modes, on a countryside of 100 posts busy and 60 quiet: auto follows the players, fixed holds the percent whoever is online,
+	 * floor follows the players but never falls below the percent.
+	 */
 	@Test
-	void aFixedDensityIsAPercentAndAnythingElseFollowsThePlayers() {
-		assertNull(BotDirector.fixedDensity("auto"));
-		assertNull(BotDirector.fixedDensity(" AUTO "));
-		assertNull(BotDirector.fixedDensity(""));
-		assertNull(BotDirector.fixedDensity(null));
-		assertNull(BotDirector.fixedDensity("half"));
-		assertNull(BotDirector.fixedDensity("12.5"));
-		assertEquals(0.25f, BotDirector.fixedDensity("25"));
-		assertEquals(1f, BotDirector.fixedDensity("100"));
-		assertEquals(0f, BotDirector.fixedDensity("0"));
-		assertEquals(1f, BotDirector.fixedDensity("250"), "beyond the busy density there is nobody left to wake");
-		assertEquals(0f, BotDirector.fixedDensity("-5"));
+	void theDensityFollowsThePlayersHoldsAPercentOrNeverFallsBelowIt() {
+		List<Settlement> quiet = posts(60), busy = posts(100);
+
+		assertEquals(100, plan(quiet, busy, DensityMode.AUTO, 30, true, true));
+		assertEquals(12, plan(quiet, busy, DensityMode.AUTO, 30, false, true), "a fifth of the quiet plan");
+		assertEquals(3, plan(quiet, busy, DensityMode.AUTO, 30, false, false), "a twentieth of the quiet plan");
+		assertEquals(12, plan(quiet, busy, null, 30, false, true), "no mode is auto");
+
+		assertEquals(30, plan(quiet, busy, DensityMode.FIXED, 30, true, true), "a player arriving does not fill it");
+		assertEquals(30, plan(quiet, busy, DensityMode.FIXED, 30, false, true));
+		assertEquals(30, plan(quiet, busy, DensityMode.FIXED, 30, false, false));
+		assertEquals(100, plan(quiet, busy, DensityMode.FIXED, 250, false, false), "beyond the busy density there is nobody left to wake");
+		assertEquals(1, plan(quiet, busy, DensityMode.FIXED, -5, false, false), "zero keeps one hunter a region");
+
+		assertEquals(100, plan(quiet, busy, DensityMode.FLOOR, 30, true, true), "a player arriving fills it");
+		assertEquals(30, plan(quiet, busy, DensityMode.FLOOR, 30, false, true));
+		assertEquals(30, plan(quiet, busy, DensityMode.FLOOR, 30, false, false));
+		assertEquals(12, plan(quiet, busy, DensityMode.FLOOR, 5, false, true), "a floor beneath what the players give changes nothing");
+		assertEquals(5, plan(quiet, busy, DensityMode.FLOOR, 5, false, false));
+	}
+
+	private static int plan(List<Settlement> quiet, List<Settlement> busy, DensityMode mode, int percent, boolean isBusy, boolean anybodyOnline) {
+		return BotDirector.fieldPlan(quiet, busy, mode, percent, isBusy, anybodyOnline).size();
+	}
+
+	private static List<Settlement> posts(int posts) {
+		List<Settlement> plan = new ArrayList<>();
+		for (int i = 0; i < posts; i++)
+			plan.add(new Settlement(new Vector3f(1000 + i * 50, 1000, 100), 20f, 4, 20, Race.ELYOS));
+		return plan;
 	}
 
 	private static Difference sort(IntPredicate isAwake, List<BotRoster.Resident> residents, Map<Vector3f, Integer> villages,

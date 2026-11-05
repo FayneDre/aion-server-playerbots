@@ -24,11 +24,13 @@ empties.
 | a quiet map, somebody playing elsewhere | a fifth |
 | nobody online anywhere | a twentieth |
 
-**Or a fixed density, whoever is online** (`gameserver.playerbot.density`, a percent; `auto`, the default, is the table above). Every map then holds
-that share of its *busy* countryside, watched or not: no wave of arrivals when a player comes, no emptying when they leave, a world the same seen or
-unseen. It is the first step of a world alive without a player, and the setting the launcher's density slider is meant to write. Memory is its limit:
-the pool held 2004 bots on 5 November, 912 awake under `auto` (873 of them villagers), and 958 awake held 1.74 GB of the 2.56 GB heap on 27 October,
-so a high percent is to be measured before it is chosen. The director reads it at every review, so `//reload config` applies it within 30 s.
+**That table is one of three modes** (`gameserver.playerbot.density.mode`, with `density.percent`). `AUTO`, the default, is the table. `FIXED` holds
+every map at the percent of its *busy* countryside, watched or not: no wave of arrivals when a player comes, no emptying when they leave, a world the
+same seen or unseen. `FLOOR` is the table with the percent as its least: full where somebody plays, never below the percent elsewhere — so a floor
+under a fifth only shows with nobody online. They are the first step of a world alive without a player, and what the launcher's density setting is
+meant to write. Memory is their limit: the pool held 2004 bots on 5 November, 912 awake under `AUTO` (873 of them villagers), and the 1.74 GB live
+set of 27 October was not bots alone (some 570 MB of it navmesh tiles), so a high percent is to be measured before it is chosen. The director reads
+both at every review, so `//reload config` applies them within 30 s.
 
 That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
 a world asleep overnight comes back to the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
