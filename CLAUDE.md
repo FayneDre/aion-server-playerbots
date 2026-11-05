@@ -76,10 +76,13 @@ the day it is done. A new document goes in the folder of its topic and gets a li
 - **Git**: installed via winget. Remotes:
   - `origin` → personal fork (`https://github.com/FayneDre/aion-server-playerbots.git`)
   - `upstream` → `https://github.com/beyond-aion/aion-server.git`
-  - Branch `4.8`: tracks `origin/4.8` (= upstream), stable base to merge periodically.
-  - Branch `feature/playerbots`: bot development branch, created from `4.8`.
+  - Branch `beyond-aion`: a mirror of `upstream/4.8`, the emulator's updates come in through it (was `4.8` until 5 November 2026).
+  - Branch `develop`: day-to-day bot development, test patches tagged on it as `patch-YYYY-MM-DD` (was `feature/playerbots`).
+  - Branch `main`: stable, the default on GitHub; releases are made from it and tagged `vX.Y.Z`. It moves only by merging `develop` once a
+    version has been validated in game.
 
-To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8` into `4.8`, then merge `4.8` into `feature/playerbots`.
+To pull upstream updates: `git fetch upstream`, then fast-forward `beyond-aion` to `upstream/4.8` and push it, then merge `beyond-aion` into
+`develop`. Never commit on `beyond-aion` itself.
 
 ## Repo modules (reminder)
 
