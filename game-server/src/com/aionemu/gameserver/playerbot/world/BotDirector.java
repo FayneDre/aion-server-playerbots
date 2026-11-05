@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
@@ -190,7 +191,7 @@ public class BotDirector {
 			// rescued out of it over and over: the moves land in the roster, and this review still sorts them where they were, the next one where they are.
 			evictFromNowhere(worldId, residents);
 			Map<Vector3f, Integer> villages = countByPlace(BotPresence.civic(worldId));
-			List<Settlement> fieldPlan = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline));
+			List<Settlement> fieldPlan = fieldPlan(worldId, busy, anybodyOnline);
 			int hunters = fieldPlan.size();
 
 			Difference difference = sort(id -> bots.spawnedBot(id) != null, home -> BotPlaces.settlementAt(worldId, home),
@@ -538,6 +539,39 @@ public class BotDirector {
 	}
 
 	/**
+	 * @return The countryside a region should have awake now: a fixed share of its busy plan when the options name one, otherwise the share the
+	 *         players' attention gives it.
+	 */
+	private static List<Settlement> fieldPlan(int worldId, boolean busy, boolean anybodyOnline) {
+		Float fixed = fixedDensity(PlayerBotConfig.DENSITY);
+		if (fixed != null)
+			return BotPresence.share(BotPresence.field(worldId, true), fixed);
+		return BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline));
+	}
+
+	/** The option's value last found unreadable, so a typo is said once and not at every review. */
+	private static volatile String unreadDensity;
+
+	/**
+	 * @return The share of the busy countryside {@code gameserver.playerbot.density} holds every map at, between 0 and 1, or null for {@code auto} (and
+	 *         for a value that is not a whole percent, which is said once in the log).
+	 */
+	static Float fixedDensity(String option) {
+		String text = option == null ? "" : option.strip();
+		if (text.isEmpty() || text.equalsIgnoreCase("auto"))
+			return null;
+		try {
+			return Math.clamp(Integer.parseInt(text), 0, 100) / 100f;
+		} catch (NumberFormatException e) {
+			if (!text.equals(unreadDensity)) {
+				unreadDensity = text;
+				log.warn("gameserver.playerbot.density = {} is neither auto nor a percent: the countryside follows the players", text);
+			}
+			return null;
+		}
+	}
+
+	/**
 	 * @return true while the map counts as played on, which outlasts the player being on it. See {@link #LINGER_MILLIS}.
 	 */
 	private boolean isBusy(int worldId, Collection<Player> watchers, long now) {
@@ -643,7 +677,10 @@ public class BotDirector {
 		Map<Integer, List<Player>> playersByMap = realPlayersByMap();
 		int villagers = BotPresence.civic(worldId).size();
 		boolean busy = isBusy(worldId, playersByMap.getOrDefault(worldId, List.of()), System.currentTimeMillis());
-		int now = villagers + BotPresence.share(BotPresence.field(worldId, busy), attention(busy, !playersByMap.isEmpty())).size();
+		int now = villagers + fieldPlan(worldId, busy, !playersByMap.isEmpty()).size();
+		// At a fixed density the region holds the same whoever plays: its band is that one figure.
+		if (fixedDensity(PlayerBotConfig.DENSITY) != null)
+			return new Band(now, now, now);
 		int quiet = villagers + BotPresence.share(BotPresence.field(worldId, false), ATTENTION_UNWATCHED).size();
 		int crowded = villagers + BotPresence.share(BotPresence.field(worldId, true), ATTENTION_BUSY).size();
 		return new Band(now, quiet, crowded);

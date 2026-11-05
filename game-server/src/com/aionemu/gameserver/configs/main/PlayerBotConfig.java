@@ -46,6 +46,14 @@ public class PlayerBotConfig {
 	public static volatile boolean AMBIENT_GLIDE;
 
 	/**
+	 * How much of each region's countryside is awake. {@code auto} follows the players: all of it at the busy density on a map somebody plays on, a fifth
+	 * elsewhere, a twentieth with nobody online. A percent from 0 to 100 holds every map at that share of its busy density whoever is online, so the world
+	 * is the same seen or unseen. Villages are always full either way. Read at every review of the director (30 s).
+	 */
+	@Property(key = "gameserver.playerbot.density", defaultValue = "auto")
+	public static volatile String DENSITY = "auto";
+
+	/**
 	 * Whether bots may attack players of the other race (real players and bots) where the engine makes them enemies, which is a PvP zone. Off, no bot
 	 * ever picks a player as a target and nothing of the PvP behaviour runs.
 	 */

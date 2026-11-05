@@ -208,6 +208,22 @@ class BotDirectorTest {
 		assertTrue(difference.toSleep().isEmpty(), "so the post is held, not emptied");
 	}
 
+	/** The density option: auto follows the players, a percent holds every map at that share of its busy countryside, and a typo is not a density. */
+	@Test
+	void aFixedDensityIsAPercentAndAnythingElseFollowsThePlayers() {
+		assertNull(BotDirector.fixedDensity("auto"));
+		assertNull(BotDirector.fixedDensity(" AUTO "));
+		assertNull(BotDirector.fixedDensity(""));
+		assertNull(BotDirector.fixedDensity(null));
+		assertNull(BotDirector.fixedDensity("half"));
+		assertNull(BotDirector.fixedDensity("12.5"));
+		assertEquals(0.25f, BotDirector.fixedDensity("25"));
+		assertEquals(1f, BotDirector.fixedDensity("100"));
+		assertEquals(0f, BotDirector.fixedDensity("0"));
+		assertEquals(1f, BotDirector.fixedDensity("250"), "beyond the busy density there is nobody left to wake");
+		assertEquals(0f, BotDirector.fixedDensity("-5"));
+	}
+
 	private static Difference sort(IntPredicate isAwake, List<BotRoster.Resident> residents, Map<Vector3f, Integer> villages,
 		List<Settlement> fieldPlan) {
 		return BotDirector.sort(isAwake, SETTLEMENTS, post -> null, residents, villages, fieldPlan);
