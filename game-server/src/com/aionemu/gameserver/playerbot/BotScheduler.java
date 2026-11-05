@@ -11,6 +11,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,8 @@ public class BotScheduler {
 	private static final float PROCESSOR_SHARE = 0.5f;
 	/** A route search that waited longer than this for a thread is logged. */
 	private static final long SLOW_QUEUE_MILLIS = 1000;
+	/** At most one line about the route queue in this many milliseconds. */
+	private static final long QUEUE_REPORT_MILLIS = 10_000;
 
 	private static final BotScheduler INSTANCE = new BotScheduler();
 
@@ -55,6 +58,10 @@ public class BotScheduler {
 	private final ExecutorService lifecyclePool;
 	/** The one search each bot has waiting for a route thread; see {@link #planRoute}. */
 	private final LatestPerKey waitingRoutes = new LatestPerKey();
+	/** When the route queue was last reported, read and written by route threads; a race only costs a line more or less. */
+	private volatile long lastQueueReport;
+	/** The longest a search waited for a route thread since the last report. */
+	private final AtomicLong longestWait = new AtomicLong();
 
 	private BotScheduler() {
 		int threads = Math.max(2, (int) (Runtime.getRuntime().availableProcessors() * PROCESSOR_SHARE));
@@ -155,10 +162,16 @@ public class BotScheduler {
 					return;
 				// how long a search waited for a thread, which the search's own timing cannot see: logged to tell a queue that falls behind from searches
 				// that are slow by themselves
-				long waited = System.currentTimeMillis() - queued;
-				if (waited >= SLOW_QUEUE_MILLIS)
-					log.info("Route search waited {} ms for a route thread, {} bot(s) still waiting, {} search(es) replaced by a newer one so far", waited,
+				long now = System.currentTimeMillis();
+				long longest = longestWait.accumulateAndGet(now - queued, Math::max);
+				// one line every so often, with the longest wait since the last, rather than one per slow search: at full density that was 12 000
+				// lines in ten minutes
+				if (longest >= SLOW_QUEUE_MILLIS && now - lastQueueReport >= QUEUE_REPORT_MILLIS) {
+					lastQueueReport = now;
+					longestWait.set(0);
+					log.info("Route search waited {} ms for a route thread, {} bot(s) still waiting, {} search(es) replaced by a newer one so far", longest,
 						waitingRoutes.waiting(), waitingRoutes.replaced());
+				}
 				latest.run();
 			}));
 		} catch (RejectedExecutionException e) {
