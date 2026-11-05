@@ -145,6 +145,7 @@ History, all built: [bot-store-consumables-plan.md](capitals/history/bot-store-c
 | [groups.md](social/groups.md) | Why groups work the way they do: following as the anchor, no initiative, assisting, slots, leaders. |
 | [plans/player-interactions-plan.md](social/plans/player-interactions-plan.md) | Trades with a companion, friends, duels. Built, unverified in game. |
 | [plans/cohort-plan.md](social/plans/cohort-plan.md) | Bots in an alliance. Not started. |
+| [plans/group-options-plan.md](social/plans/group-options-plan.md) | Playing with one's bots: the starting level, bots rolling the dice, stay, guard, passive and two marks. Not started. |
 
 History: [chat-fun-and-languages-plan.md](social/history/chat-fun-and-languages-plan.md) (fun lines in Region, French or English, validated 1 November), [chat-channels-plan.md](social/history/chat-channels-plan.md) (bots in the Region, Trade and Find Group channels).
 
