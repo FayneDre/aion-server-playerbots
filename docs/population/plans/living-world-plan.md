@@ -1,4 +1,4 @@
-# A living world: memory, learned ground, road careers, PvP, groups and the director
+# A living world: memory, learned ground, road careers, PvP, groups, the director, rumours and prizes
 
 Status: not started (the density modes, lot A's first step, are built: `gameserver.playerbot.density.mode`, 5 November).
 
@@ -97,6 +97,36 @@ by a sleeper. It refreshes the faces a player meets without anyone appearing in 
 **G1. Bot legions born of who played together**: a legion formed from bots that grouped often (lot E2), with a name, a chat and a home region, and
 an answer to a player's invitation (the roadmap's first legion step).
 
+## Lot I: a world that talks about itself and fights over its prizes
+
+**I1. True rumours.** Bots say in the region's chat what the server knows and a player would want to: a named monster that has just appeared
+("<name> est de retour près de <place>", the names read from the data), the other faction seen in numbers somewhere, a prize just taken (lot I3). Only true things,
+said once, by a bot of the region, a few minutes late so it reads as hearsay rather than a radar; a rumour that would send a player to a fight far
+above their level is not told to them. Built on the chat lines we have (`BotChat`, FR and EN).
+
+**I2. Personalities.** Each bot is drawn once a temperament, kept for life: *chatty*, *quiet*, *brawler*, *loner*, *sociable*. It sets together
+what is drawn separately today or not at all: how often it speaks and what about, its PvP temperament (the shares of `pvp.share.*`), whether it
+groups in the field (lot E2) and answers invitations quickly, whether it camps a prize (lot I3). One draw, so a bot is consistent: the brawler who
+shouts in Region is the one who attacks on sight. The shares of each temperament are options; the PvP shares become what the temperaments add up to.
+
+**I3. Contested named monsters.** The open world's named monsters (HERO and LEGENDARY ratings, long respawns, a drop worth the trip) are prizes, and
+bots want them too, as on a real server.
+
+- *The catalogue*, from the data: every open-world npc of those ratings with its spawn point, level, respawn time and what it drops. To count
+  first: how many per map, and which are quest targets rather than prizes.
+- *Who goes*: a group of bots of the right level forms (lot E2) when the prize is due back, the director waking them if the region has none. A
+  share of prizes is contested (an option, 0 to 100); the rest are left to players.
+- *Knowing the timing*: bots learn when a prize was killed and come back for its respawn window, as campers do; a player who knows the window
+  meets them there.
+- *Fair play, both ways*: whoever hits first owns the fight, the engine's own rule. A bot never attacks a prize a player's group is already
+  fighting, and gives up a camp a player was at before it. In a PvP zone, the other faction's bots may fight a player's group for it: the prize
+  becomes a battle.
+- *What it feeds*: the drop goes into a bot's bag, so it reaches a travelling merchant (C1) or the broker, and bots' gear finally keeps up with their
+  level; the kill is a rumour (I1), the group's name with it.
+
+Measured: prizes killed per day by bots and by players, and the time a prize stays up after its respawn; a player who comes on time gets it most
+of the time, one who comes late finds it taken.
+
 ## Lot H: a window on the bots, inside the game
 
 Two doors the stock client leaves open, neither of which patches an executable. The server side belongs here; packaging the client side and putting
@@ -114,5 +144,5 @@ shows one button and sends one command, installed and removed cleanly by the lau
 ## Proposed order
 
 1. A1, then A3, after the density measurement of 5 November; A2 after that measurement's histogram. 2. B1. 3. D1 to D3 (priority two). 4. E1, E2.
-5. C1, C2, C3. 6. F1 to F3. 7. B2 and B3, unless dungeons are brought forward. 8. G1, D4, A4 when the rest stands. H1 and H2 can run beside any of
-them, since they touch neither the director nor the bots' behaviour.
+5. C1, C2, C3. 6. I2, then I1 and I3 (I3 needs E2). 7. F1 to F3. 8. B2 and B3, unless dungeons are brought forward. 9. G1, D4, A4 when the
+rest stands. H1 and H2 can run beside any of them, since they touch neither the director nor the bots' behaviour.

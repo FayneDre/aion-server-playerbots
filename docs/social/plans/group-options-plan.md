@@ -1,4 +1,4 @@
-# Playing with one's bots: starting level, dice and orders
+# Playing with one's bots: starting level, dice, orders and one's own characters
 
 Status: not started.
 
@@ -36,3 +36,30 @@ And two marks the leader sets on a monster, read by the playbooks beside the cli
 **keep asleep**, which nobody damages while a bot that can sleep, stun or fear it keeps it so. As `//bot` commands first, then as the buttons of the
 in-game bar ([living-world-plan.md](../../population/plans/living-world-plan.md), lot H). Measured: a dungeon pull with one mob kept asleep through
 the fight, and a group left on stay that did not move when a patrol passed.
+
+## 4. Playing with one's own characters
+
+A player invites into their group another character of **their own account**, which comes in as a bot: its own gear, skills, stigmas and level,
+and whatever it earns is its own when the player logs it in later. For a player alone it is the strongest reason to keep several characters: the
+cleric levelled last month heals the templar played today.
+
+What exists: `//bot spawn` loads any character, and `BotRoster.isSomebodysOwn` already treats a character of a real account as a person's, never the
+director's to move, level or retire; a player's own bot never sells, dresses from or binds what is in its bag (`gear/`), and a bot in a player's
+group follows the player's experience rate, not the world's pace.
+
+What is to build:
+
+- **The command** `//bot alt <name>` (and `//bot alt dismiss <name>`), open to players and not only to staff: the character must be on the caller's
+  account, of the same race, offline, neither deleted nor being deleted, and within a level gap (an option, 10 by default) so a level 65 does not
+  carry a level 20 through content. It is spawned beside the player and invited.
+- **One body at a time**: while the alt is in the world as a bot, logging it in from the character screen is refused with a message, or dismisses
+  the bot first (to choose by measuring what the engine allows: an account normally has one character in the world). A dismissed alt is saved, then
+  taken out.
+- **Tied to its owner**: it leaves when the player logs out, leaves the group or is away too long; it follows the player through instances and
+  teleports like any grouped bot; it is saved every 5 minutes and when dismissed, and a crash loses at most those 5 minutes, as for every bot.
+- **Its bag is the player's business**: nothing in it is ever sold, worn, identified or bound by the bot; trades with its owner use the companion
+  trades already built (`//bot give`).
+- **The launcher** lists the account's characters already: a button there to bring one into the group.
+
+Measured: an alt brought in, fighting a dungeon with its owner, dismissed, then logged in by hand with its experience, loot and position as they
+were; an attempt to log it in while it is in the world, refused or handled cleanly.
