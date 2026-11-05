@@ -182,6 +182,7 @@ public class BotDirector {
 		PlayerBotService bots = PlayerBotService.getInstance();
 		int budget = anybodyOnline ? CHANGES_PER_REVIEW : Integer.MAX_VALUE;
 		int woken = 0, slept = 0;
+		int awakeInAll = 0, wantedInAll = 0, asleepInAll = 0, shortAndEmpty = 0;
 		List<String> report = new ArrayList<>();
 		for (int worldId : maps) {
 			List<Player> watchers = playersByMap.getOrDefault(worldId, List.of());
@@ -197,6 +198,12 @@ public class BotDirector {
 			Difference difference = sort(id -> bots.spawnedBot(id) != null, home -> BotPlaces.settlementAt(worldId, home),
 				post -> BotPlaces.raceOfPlace(worldId, post), residents, villages, fieldPlan);
 			int wanted = villages.values().stream().mapToInt(count -> count).sum() + hunters;
+			int asleep = residents.size() - difference.awake();
+			awakeInAll += difference.awake();
+			wantedInAll += wanted;
+			asleepInAll += asleep;
+			if (difference.awake() < wanted && asleep == 0)
+				shortAndEmpty++;
 			report.add(String.format("map %d: %d awake of %d, wants %d%s — villages %d/%d awake, %d asleep; field %d/%d awake, %d asleep", worldId,
 				difference.awake(), residents.size(), villages.values().stream().mapToInt(count -> count).sum() + hunters,
 				busy ? " (" + watchers.size() + " player(s))" : "", difference.villagersAwake(),
@@ -244,6 +251,12 @@ public class BotDirector {
 		departures.clear();
 
 		lastReview = List.copyOf(report);
+		// One line at every review, whether or not it changes anything: a review with nothing to do used to write nothing, so a world settled and a
+		// director that had stopped read the same, and on 5 November a watch waited forty minutes for a line that was never coming. It also says what
+		// the per map lines only imply, a pool run dry: maps short of their target with nobody left asleep to wake.
+		log.info("Population: {} awake, {} wanted, {} asleep, {} map(s) short with nobody asleep; density {} {}%; asks for {} arrival(s) and {} departure(s); {}",
+			awakeInAll, wantedInAll, asleepInAll, shortAndEmpty, PlayerBotConfig.DENSITY_MODE, PlayerBotConfig.DENSITY_PERCENT, woken, slept,
+			BotScheduler.getInstance().routeQueue());
 		if (woken > 0 || slept > 0) {
 			log.info("Population review asks for {} arrival(s) and {} departure(s) across {} map(s)", woken, slept, maps.size());
 			// The per map lines, which until now only an operator running //bot pool ever saw. A total cannot say which region is asking for what,

@@ -65,7 +65,8 @@ holding more than it wants wakes nobody**, whatever any one place inside it is s
 
 **What made that visible, and what hid it.** The summary line — *"25 arrival(s) and 25 departure(s)"* — reads as orderly at every single review, and a
 population in perfect equilibrium while cycling 2200 times through the world looks identical to one holding still. Two things settle it: the per-map
-report is now written to the log on every review rather than only when somebody runs `//bot pool`, and counting *distinct* bots against total spawns
+report is now written to the log on every review that changes something rather than only when somebody runs `//bot pool` (and since 5 November
+one line at *every* review gives the totals, the maps short with nobody asleep, the density and the route queue), and counting *distinct* bots against total spawns
 separates a world filling up from a world on a treadmill. 2438 spawns over 222 bots is a treadmill; 79 spawns over 79 bots is a world filling up.
 
 **And underneath all of it was one bit of a float.** `home_z` is a `float` column and a coordinate does not come back from it bit for bit, so
