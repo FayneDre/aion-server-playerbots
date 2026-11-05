@@ -55,6 +55,7 @@ Where to look first when a bot does nothing and says nothing about why.
 | [population-director.md](population/population-director.md) | The pool and the director: how a region keeps the people it should. |
 | [bot-careers.md](population/bot-careers.md) | How a bot gains levels, where it lives as it grows, what keeps it out of trouble. |
 | [resident-leftovers.md](population/resident-leftovers.md) | What is left of the dropped resident/adventurer system, to check before any removal. |
+| [plans/living-world-plan.md](population/plans/living-world-plan.md) | A world that lives with or without a player: memory, learned ground, road careers, PvP, groups, the director, a window in the game. Not started. |
 
 History: [the-pool.md](population/history/the-pool.md) (what the pool cost to build, and the residents it replaced),
 [population-churn-followup.md](population/history/population-churn-followup.md) (the churn of 4 October, the equality audit, the watchdog).
