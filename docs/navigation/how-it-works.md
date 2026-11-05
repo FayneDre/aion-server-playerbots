@@ -41,7 +41,10 @@ planned waypoint walks the plan, since that is what being wedged inside geometry
 - **Under 150 m** (`LONG_DISTANCE`), on a map without air links, a route is planned inline in tens of milliseconds. Longer, or on a map with glides or
   flights, it goes to the **route threads** (half the tick threads: four of eight here, `BotScheduler`) while the bot walks straight at its goal,
   and is picked up at the end of the current leg. A
-  search waiting in the queue is never asked again for the same journey; one lost for a minute (`PLAN_LOST`) is.
+  search waiting in the queue is never asked again for the same journey; one lost for a minute (`PLAN_LOST`) is. **A bot holds one place in the
+  queue** (`LatestPerKey`, 5 November): a newer search for it takes the place of the one waiting and keeps its turn, the older never answers. Before,
+  each re-asking joined the queue behind the old search, which still ran: at full density (1894 bots awake) the queue fed itself to 25 000 searches
+  and ten minutes of waiting; with one place per bot it held under 400 bots waiting and about 10 s.
 - **A\* over the fine grid** (`MAX_NODES` 150 000, `PLAN_BUDGET_MILLIS` 6 s), then string pulling to a handful of waypoints. A long route, or a short
   one the fine search gives up on, is planned in **two passes** ([history/long-walk-planner.md](history/long-walk-planner.md)): a rough route over 4 m
   cells and the stretches of ground in each (3 s, `navmesh.levelledBudget`), then fine searches between guide points about 40 m apart. Glide links
