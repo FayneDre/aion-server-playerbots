@@ -28,9 +28,12 @@ empties.
 every map at the percent of its *busy* countryside, watched or not: no wave of arrivals when a player comes, no emptying when they leave, a world the
 same seen or unseen. `FLOOR` is the table with the percent as its least: full where somebody plays, never below the percent elsewhere — so a floor
 under a fifth only shows with nobody online. They are the first step of a world alive without a player, and what the launcher's density setting is
-meant to write. Memory is their limit: the pool held 2004 bots on 5 November, 912 awake under `AUTO` (873 of them villagers), and the 1.74 GB live
-set of 27 October was not bots alone (some 570 MB of it navmesh tiles), so a high percent is to be measured before it is chosen. The director reads
-both at every review, so `//reload config` applies them within 30 s.
+meant to write. **Measured on 5 November** (`tools/heap-snapshot.ps1`, nobody online, 24 maps, pool of 2004): `FIXED` 25 % held 1158 awake in a
+live set of about 1743 MB, 50 % 1429 in 1785 MB on 6 to 7 cores of 16, 100 % 1894 (the pool ran out of sleepers on several maps) in 1849 MB on 9.3
+cores. A bot costs about 0.15 MB of live set; navmesh tiles stay near 605 MB whatever the percent. **The limit is route planning, not memory**: at
+50 % a route search waited 5 s at most, at 100 % its queue grew without end (25 000 searches queued and a wait of 10 minutes after 35 minutes), so
+bots stood still waiting for a path. Until the planner keeps up, a percent above about 50 is not to be offered. The director reads both options at
+every review, so `//reload config` applies them within 30 s.
 
 That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
 a world asleep overnight comes back to the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
