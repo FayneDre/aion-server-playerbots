@@ -60,8 +60,11 @@ public class NavmeshService {
 		/** @return true if the bot could fly from one end to the other. */
 		boolean canCross(Player bot, Vector3f from, Vector3f to);
 
-		/** Runs a long search on the thread meant for it. */
-		void planRoute(Runnable search);
+		/**
+		 * Runs a long search on the thread meant for it. A search still waiting for a thread is replaced by a newer one for the same bot, which never
+		 * answers: the newer is the one the bot waits on.
+		 */
+		void planRoute(int botId, Runnable search);
 	}
 
 	private static volatile Host host;
@@ -562,7 +565,7 @@ public class NavmeshService {
 		}
 		// answered even when the search found nothing: "no way through" is an answer the caller waits for, and swallowing it left bots standing
 		// still for ever waiting for a plan that was never coming
-		host().planRoute(() -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid)));
+		host().planRoute(bot.getObjectId(), () -> whenReady.accept(findRoute(bot, goalX, goalY, goalZ, avoid)));
 	}
 
 	/** @return true if the map has a generated mesh that opens, which is what says whether anything planned on it can be trusted. */
