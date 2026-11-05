@@ -49,8 +49,20 @@ if (-not $ServerRoot) {
     throw "No server path. Set the AION_SERVER_HOME environment variable or pass -ServerRoot."
 }
 
+# Asks the system's table first, then connects. On 5 November Get-NetTCPConnection returned nothing at all on this machine while every port was
+# open: the script took the running chat server for stopped, started a second one, and stopped there when that one failed on the busy port.
 function Test-PortListening([int]$Port) {
-    return [bool](Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+    if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
+        return $true
+    }
+    $client = New-Object Net.Sockets.TcpClient
+    try {
+        return $client.ConnectAsync('127.0.0.1', $Port).Wait(1000) -and $client.Connected
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
 }
 
 <#
