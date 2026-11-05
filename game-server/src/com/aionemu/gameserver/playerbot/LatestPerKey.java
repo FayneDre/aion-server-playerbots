@@ -5,33 +5,33 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Which of the jobs queued for one key is the one still wanted: the latest. A job takes a ticket when it is queued and claims it when its turn
- * comes; a newer ticket for the same key makes the older one's claim fail, so the older job is skipped. Used by the route lane, where a bot has
- * at most one search worth running ({@link BotScheduler#planRoute}).
+ * One place in a queue per key, holding the latest job offered for it. The first job offered for a key takes a place; a newer one offered before
+ * that place comes up replaces the job in it rather than taking a place of its own, so the key keeps its turn and the newest job is the one that
+ * runs. Used by the route lane, where a bot has at most one search worth running ({@link BotScheduler#planRoute}).
+ * <p>
+ * Keeping the turn is the point. A newer job sent to the back of the queue instead would never run for a key that keeps asking more often than the
+ * queue takes to come round, which is exactly a bot that asks again after a few seconds of waiting.
  */
 final class LatestPerKey {
 
-	private final Map<Integer, Object> latest = new ConcurrentHashMap<>();
-	private final AtomicLong skipped = new AtomicLong();
+	private final Map<Integer, Runnable> latest = new ConcurrentHashMap<>();
+	private final AtomicLong replaced = new AtomicLong();
 
-	/** @return The ticket of a job just queued for this key, which replaces the ticket of any job still waiting for it. */
-	Object issue(int key) {
-		Object ticket = new Object();
-		latest.put(key, ticket);
-		return ticket;
-	}
-
-	/** @return true if this job is still the latest for its key and is to run now; false, and counted, if a newer one replaced it. */
-	boolean claim(int key, Object ticket) {
-		if (latest.remove(key, ticket))
+	/**
+	 * Offers a job for this key.
+	 *
+	 * @return true if the key had no job waiting, so the caller queues one {@link #take} for it; false if the job took the place of one waiting.
+	 */
+	boolean offer(int key, Runnable job) {
+		if (latest.put(key, job) == null)
 			return true;
-		skipped.incrementAndGet();
+		replaced.incrementAndGet();
 		return false;
 	}
 
-	/** Withdraws a ticket whose job will never run, leaving a newer one in place. */
-	void withdraw(int key, Object ticket) {
-		latest.remove(key, ticket);
+	/** @return The latest job offered for this key, which is no longer waiting, or null if there is none. */
+	Runnable take(int key) {
+		return latest.remove(key);
 	}
 
 	/** @return How many keys have a job waiting. */
@@ -39,8 +39,8 @@ final class LatestPerKey {
 		return latest.size();
 	}
 
-	/** @return How many jobs were skipped since the start for a newer one. */
-	long skipped() {
-		return skipped.get();
+	/** @return How many jobs were replaced by a newer one before their turn, since the start. */
+	long replaced() {
+		return replaced.get();
 	}
 }

@@ -139,34 +139,37 @@ public class BotScheduler {
 	 * <b>One search waits per bot.</b> A bot whose search has waited a minute takes it for lost and asks again, and one whose destination moved asks
 	 * for the new one; both used to join the queue behind the old search, which still ran, for an answer nobody wanted. Once the queue was slower than
 	 * that minute it fed itself: on 5 November, with 1894 bots awake, it grew to 25 000 searches and a wait of ten minutes, and the bots stood still
-	 * waiting for paths. So a newer search for the same bot takes the place of one still waiting: the older is skipped when its turn comes and never
-	 * answers, which costs nothing, since the bot is waiting on the newer. A search already running is left to finish. The queue then holds at most one
-	 * search per bot, whatever the load.
+	 * waiting for paths. So a newer search for the same bot takes the place of one still waiting, <b>keeping its turn</b>: when that turn comes the
+	 * newest is run, and the older never answers, which costs nothing, since the bot is waiting on the newer. Sent to the back instead, it would never
+	 * run for a bot that asks again every few seconds while the queue takes longer than that. A search already running is left to finish. The queue
+	 * then holds at most one search per bot, whatever the load.
 	 */
 	public void planRoute(int botId, Runnable search) {
-		Object ticket = waitingRoutes.issue(botId);
+		if (!waitingRoutes.offer(botId, search))
+			return; // this bot already has a place in the queue, which will run this search
+		long queued = System.currentTimeMillis();
 		try {
-			long queued = System.currentTimeMillis();
 			routePool.execute(reporting(() -> {
-				if (!waitingRoutes.claim(botId, ticket))
-					return; // a newer search for this bot is in the queue
+				Runnable latest = waitingRoutes.take(botId);
+				if (latest == null)
+					return;
 				// how long a search waited for a thread, which the search's own timing cannot see: logged to tell a queue that falls behind from searches
 				// that are slow by themselves
 				long waited = System.currentTimeMillis() - queued;
 				if (waited >= SLOW_QUEUE_MILLIS)
 					log.info("Route search waited {} ms for a route thread, {} bot(s) still waiting, {} search(es) replaced by a newer one so far", waited,
-						waitingRoutes.waiting(), waitingRoutes.skipped());
-				search.run();
+						waitingRoutes.waiting(), waitingRoutes.replaced());
+				latest.run();
 			}));
 		} catch (RejectedExecutionException e) {
 			// shutting down; the caller is a bot that will not be walking anywhere
-			waitingRoutes.withdraw(botId, ticket);
+			waitingRoutes.take(botId);
 		}
 	}
 
 	/** @return How many bots have a route search waiting for a thread, how many run, and how many were replaced by a newer one since the start. */
 	public String routeQueue() {
-		return waitingRoutes.waiting() + " bot(s) waiting for a route, " + routePool.getActiveCount() + " search(es) running, " + waitingRoutes.skipped()
+		return waitingRoutes.waiting() + " bot(s) waiting for a route, " + routePool.getActiveCount() + " search(es) running, " + waitingRoutes.replaced()
 			+ " replaced by a newer one";
 	}
 
