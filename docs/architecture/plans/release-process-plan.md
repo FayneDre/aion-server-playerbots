@@ -1,8 +1,9 @@
 # One release process for the server and the launcher, with notes in French and English
 
 Status: in progress: milestones 1 to 3 built and used on 6 November (server pre-release v0.1.0-beta.1 and launcher pre-release v0.3.0-beta.1
-published, `Latest` stays launcher v0.2.0); milestone 4 built the same evening and checked on the real server (manifest.json, `version`, `//bot
-version`), unverified with a tester. Next, milestone 5. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
+published, `Latest` stays launcher v0.2.0); milestone 4 built and checked on the real server the same evening; milestone 5 built, checked
+against a local feed only: unverified, an installed beta launcher updating itself from GitHub (needs two published betas, the first by
+hand). Next, milestone 6. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
 
 ## Why
 
