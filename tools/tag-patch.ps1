@@ -10,6 +10,7 @@
 
     Refuses, each time saying why:
     - a version that is not X.Y.Z or X.Y.Z-beta.N, that is tagged already, or that is not above the highest version tagged;
+    - a beta made from another branch than develop, a release from another branch than main;
     - a dirty tree: a build from uncommitted code has a revision ending in -DIRTY, which matches nothing anyone can look at afterwards;
     - docs/patch-notes/current.md (French) or current.en.md (English) with no entry for the tag: a patch nobody wrote up is one a tester cannot
       tell apart from the last, and the launcher shows the notes in the player's language;
@@ -100,6 +101,10 @@ try {
     if ($LASTEXITCODE -eq 0) { throw "$tag is tagged already." }
     $highest = @(git tag --list 'v*' | Where-Object { Get-VersionKey $_ } | Sort-Object { Get-VersionKey $_ }) | Select-Object -Last 1
     if ($highest -and (Get-VersionKey $highest) -ge $key) { throw "$tag is not above $highest, the highest version tagged." }
+
+    $branch = git rev-parse --abbrev-ref HEAD
+    $wanted = if ($preRelease) { 'develop' } else { 'main' }
+    if ($branch -ne $wanted) { throw "$tag is made from $wanted, and this is $branch." }
 
     $dirty = git status --porcelain
     if ($dirty) { throw "The working tree has uncommitted changes. Commit them, then deploy and tag from a clean tree." }
