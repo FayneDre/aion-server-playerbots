@@ -112,6 +112,9 @@ try {
         throw "Could not read the statements already applied: $($answer.Output)"
     }
     $pending = @($statements | Where-Object { -not $seen[$_.Hash] })
+    # Read by the launcher before it updates a server from a release bundle: a database that has never been through this script is asked
+    # about, rather than having the whole of update.sql run on it.
+    Write-Output "Ledger: $(if ($answer.Code -eq 0) { 'present' } else { 'absent' })"
     Write-Output "SQL: $($statements.Count) statement(s) in $(Split-Path -Leaf $SqlFile), $($pending.Count) not applied yet to $schema."
     foreach ($s in $pending) { Write-Output ("  " + ([regex]::Replace($s.Text, '\s+', ' ')).Substring(0, [Math]::Min(100, ([regex]::Replace($s.Text, '\s+', ' ')).Length))) }
     if ($pending.Count -eq 0) { $global:LASTEXITCODE = 0; return }
