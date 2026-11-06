@@ -19,7 +19,8 @@
     - an entry, in either language, that does not name that revision, which is the one //bot version will show the testers.
 
     Once tagged, writes into release/<tag>/ (ignored by git, out of reach of mvn clean) the release body (the English entry, then the French one folded in a <details> block)
-    and the two entries as notes.en.md and notes.fr.md, the files the launcher reads, then prints the gh command that publishes them.
+    and the two entries as notes.en.md and notes.fr.md, the files the launcher reads; builds from the tagged commit the bundle a beta launcher installs
+    (package-release.ps1: the zip, its manifest.json, the navmesh maps rebuilt since the previous bundle); then prints the gh command that publishes them all.
 
 .PARAMETER Version
     The version to tag, with or without its leading v: 0.1.0-beta.1, 0.1.0.
@@ -160,6 +161,9 @@ try {
     [IO.File]::WriteAllText((Join-Path $out 'notes.fr.md'), "$bodyFr`n", $utf8)
     [IO.File]::WriteAllText((Join-Path $out 'body.md'), "$bodyEn`n`n<details>`n<summary>Fran$([char]0xE7)ais</summary>`n`n$bodyFr`n`n</details>`n", $utf8)
 
+    # The bundle a beta launcher installs, built from the tagged commit (docs/architecture/plans/release-process-plan.md, milestone 6)
+    & (Join-Path $PSScriptRoot 'package-release.ps1') -Version $tag -ServerRoot $ServerRoot
+
     if ($Push) {
         git push origin $tag
         if ($LASTEXITCODE -ne 0) { throw "git push of $tag failed; the tag exists locally" }
@@ -169,7 +173,10 @@ try {
     }
     $flag = if ($preRelease) { ' --prerelease' } else { '' }
     Write-Host "Release notes written to $out. Once the tag is pushed, to publish the release:"
-    Write-Host "  gh release create $tag$flag --verify-tag --title $tag --notes-file `"$out\body.md`" `"$out\notes.en.md`" `"$out\notes.fr.md`""
+    $assets = @('notes.en.md', 'notes.fr.md', 'manifest.json', "aion-server-$tag.zip") | ForEach-Object { Join-Path $out $_ }
+    $assets += @(Get-ChildItem $out -Filter 'navmesh-*.gz' | ForEach-Object { $_.FullName })
+    $quoted = ($assets | ForEach-Object { "`"$_`"" }) -join ' '
+    Write-Host "  gh release create $tag$flag --repo FayneDre/aion-server-playerbots --verify-tag --title $tag --notes-file `"$out\body.md`" $quoted"
     if (-not $preRelease) {
         Write-Host 'A stable release carries the English in full and a short French summary: shorten the French part of body.md first unless both are short.' -ForegroundColor Yellow
     }
