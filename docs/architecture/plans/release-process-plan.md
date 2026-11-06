@@ -5,7 +5,8 @@ published, `Latest` stays launcher v0.2.0); milestone 4 built and checked on the
 against a local feed only, and launcher v0.3.0-beta.2 published, the first to install by hand: unverified, an installed beta launcher
 updating itself from GitHub (the move to beta.3); milestone 6 built the same night (a trial bundle of 149 MB and 1.8 GB of maps made, read
 and checked by the launcher's code, planned against the real install without writing to it; the launcher's end-to-end tests): unverified, a
-tester's install going to a published pre-release and back. Next, milestone 7. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
+tester's install going to a published pre-release and back (server v0.1.0-beta.2, the first bundle, and launcher v0.3.0-beta.3, which
+verifies 5 too, published the same night). Next, milestone 7. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
 
 ## Why
 
