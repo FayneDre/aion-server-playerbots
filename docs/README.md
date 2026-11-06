@@ -33,7 +33,7 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 |---|---|
 | [how-it-works.md](architecture/how-it-works.md) | Why bots are real `Player` objects, the core patches (`setAi`, `setMoveController`), the package layout, the reuse map. |
 | [moving-a-body.md](architecture/moving-a-body.md) | Driving a body from the server: what a movement packet carries, how often, and the task manager that drops a body that arrived. |
-| [release-process-plan.md](architecture/plans/release-process-plan.md) | Plan: one release process for the server and the launcher (`develop` and pre-releases on both sides, a compatibility level the launcher checks, a beta launcher installing the server pre-releases, notes in French and English). In progress: milestones 1-3 built. |
+| [release-process-plan.md](architecture/plans/release-process-plan.md) | Plan: one release process for the server and the launcher (`develop` and pre-releases on both sides, a compatibility level the launcher checks, a beta launcher installing the server pre-releases, notes in French and English). In progress: milestones 1-3 built and the first pre-releases out. |
 
 History: [upstream-merge-plan.md](architecture/history/upstream-merge-plan.md) (69 upstream commits merged on 28 October: the trial, the install, the measure),
 [module-structure-plan.md](architecture/history/module-structure-plan.md) (the module untangled before navigation went further, five steps, each measured),

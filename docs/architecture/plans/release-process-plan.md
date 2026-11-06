@@ -1,7 +1,7 @@
 # One release process for the server and the launcher, with notes in French and English
 
 Status: in progress: milestones 1 to 3 built and used on 6 November: server pre-release v0.1.0-beta.1 and launcher pre-release v0.3.0-beta.1
-published (`Latest` stays launcher v0.2.0); unverified: a tester installing them. Next, milestone 4. Written the same day, after a tester ran
+published (`Latest` stays launcher v0.2.0); unverified: a tester installing them. Next, milestones 4 and 5. Written the same day, after a tester ran
 launcher v0.2.0 against a server older than it needs.
 
 ## Why
@@ -43,8 +43,9 @@ number but the minimum the launcher declares (below).
 pre-release, whose notes name the server version it needs. A launcher change that needs no server change is a launcher pre-release alone. A
 server pre-release with no launcher change keeps the last launcher pre-release, whose minimum still holds.
 
-**No channel setting.** Testers install a pre-release by hand, both for the server and the launcher; the launcher gets no stable/test choice. To
-be reconsidered only if automatic updates (launcher phase 6) make the hand install a burden.
+**No channel setting.** The launcher gets no stable/test choice: a beta launcher follows the pre-releases, a stable one the releases
+(below). Testers install one beta launcher by hand, the first that updates itself (milestone 5); after that the launcher brings both its
+own updates and the server's.
 
 **The launcher checks its server.** The admin channel answers a new command, `version`: the server version (`v0.1.0-beta.1`), the revision (as
 `//bot version` shows it) and an integer, the **launcher API level**, a constant of `AdminChannel` raised whenever a command or a setting the
@@ -137,18 +138,28 @@ check makes sure they never drift.
 4. **The compatibility check.** The version written into the jar, `version` on the admin channel with `API_LEVEL`, the launcher's minimum,
    read from the channel or, server stopped, from the manifest, and its message on the Account, Bots and Settings pages. Measured by: an
    end-to-end test with a fake server at level 0 shows the message; a real server at the current level, running or stopped, shows nothing.
-5. **The server bundle, installed by a beta launcher.** `package-release.ps1` and its manifest (navmesh maps with the release carrying each),
+5. **The launcher updates itself.** `electron-updater` with the GitHub provider: `build.publish` in `package.json` (this repository), so
+   the installer carries its `app-update.yml`, and `npm run dist` with `--publish never`, so a build never publishes by itself. `release.ps1`
+   attaches the build's `latest.yml` and the installer's `.blockmap`, and refuses a build without them. A launcher whose own version carries
+   `-beta` sets `allowPrerelease`, a stable one does not: the same rule as for the server's bundles, no setting. At start, then every few
+   hours, it checks; a newer version downloads in the background, is shown with its `notes.<language>.md`, and installs on the person's
+   click, never while the launcher is starting or stopping a server. Only the installer updates itself: the portable build says a newer
+   version exists and links to it. Unsigned, Windows may warn at an update as at an install. Independent of 4 and 6, and best done before 6,
+   so the testers install by hand once more and then receive the rest. Measured by: an end-to-end test against a local update server (a
+   beta finds the next beta, a stable one ignores it); then a tester's beta launcher installed by hand goes to the next beta on its own.
+6. **The server bundle, installed by a beta launcher.** `package-release.ps1` and its manifest (navmesh maps with the release carrying each),
    the bundle attached to the server pre-release, the manifest `deploy.ps1` writes, the launcher's JDK check, update (the six steps above)
    and return to the previous version. Needs 2 and 4. Measured by: a tester's install built from git, its manifest deleted once, goes to the
    next pre-release from the launcher alone, then back, and the game server starts and the bots log in after both; a lib and a handler
    removed between two test bundles are gone after the update; a hand-edited default file is kept beside the new one; the user's install,
    deployed after this milestone, is offered nothing.
-6. **The first stable pair.** `develop` merged into `main` in both repositories once a pair is validated in game, each tagged with its own
+7. **The first stable pair.** `develop` merged into `main` in both repositories once a pair is validated in game, each tagged with its own
    `vX.Y.Z`, the launcher's notes naming the server release. This is also where the server release plan starts, a separate plan: the
    install on an empty machine (the geo, the whole navmesh, embedded Java and MariaDB), diff updates, a signed launcher. This plan stops at
    testers who already have a server built from git.
 
-Milestones 1 and 2 are independent and small; 4 is the one that would have prevented the report of 6 November; 5 is the one that spares the testers a build.
+Milestones 1 and 2 are independent and small; 4 is the one that would have prevented the report of 6 November; 5 and 6 are the ones that
+let a tester take every update from the launcher, compiling nothing.
 
 ## The steps of a test patch, once built
 
@@ -157,4 +168,5 @@ Milestones 1 and 2 are independent and small; 4 is the one that would have preve
    `tag-patch.ps1`, which builds the bundle with `package-release.ps1`; the push and the pre-release are the user's.
 3. Launcher, if it changed: commits on `develop`, `npm test`, version raised to its own next `-beta.N`, one entry in each language naming the
    minimum server version, then `tools/release.ps1`; publishing is the user's.
-4. Testers update the launcher by hand; a beta launcher then offers the server pre-release itself, and one that is too new for their server says which server version to take.
+4. A tester's beta launcher offers its own update and the server pre-release itself; one that is too new for their server says which server
+   version to take.
