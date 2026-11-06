@@ -76,6 +76,10 @@ a launcher that is itself a pre-release installs it: the tester compiles nothing
   whose `update.sql` cannot be undone says so in its notes.
 - **The first install** of a tester who built from git is the same update: the launcher finds a server with no `manifest.json`, says which
   version it is about to install, and goes on the same way.
+- **A development install is never updated.** `deploy.ps1` writes a `manifest.json` too, with `"source": "deploy"`, the revision and the
+  API level. On such an install the launcher offers no server update, so a beta launcher never overwrites a server built from `develop` with
+  a bundle that is often older; it shows "development server, revision X" instead. The compatibility check still applies. Only a server with
+  no manifest at all is taken for a first install, and a development install that wants the bundles again deletes its manifest.
 
 ## Notes in French and English
 
@@ -112,8 +116,9 @@ check makes sure they never drift.
    Settings pages. Measured by: an end-to-end test with a fake server at level 0 shows the message; a real server at the current level shows
    nothing.
 5. **The server bundle, installed by a beta launcher.** `package-release.ps1` and its manifest, the bundle attached to the server
-   pre-release, the launcher's update and return to the previous version. Needs 2 and 4. Measured by: a tester's install built from git
-   goes to the next pre-release from the launcher alone, then back; the game server starts and the bots log in after both.
+   pre-release, the manifest `deploy.ps1` writes, the launcher's update and return to the previous version. Needs 2 and 4. Measured by: a
+   tester's install built from git, its manifest deleted once, goes to the next pre-release from the launcher alone, then back, and the game
+   server starts and the bots log in after both; the user's install, deployed after this milestone, is offered nothing.
 6. **The first stable pair.** `develop` merged into `main` in both repositories once a pair is validated in game, each tagged with its own
    `vX.Y.Z`, the launcher's notes naming the server release. This is also where the server release plan (manifest, navmesh assets, embedded
    Java and MariaDB) starts; it is a separate plan.
