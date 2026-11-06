@@ -50,8 +50,12 @@ be reconsidered only if automatic updates (launcher phase 6) make the hand insta
 launcher relies on is added or changed. Each launcher release declares the lowest level it works with, and its notes name the first server
 version that has it. Against an older server, the launcher says so in one line ("this server is older than this launcher: install server
 v0.1.0-beta.1 or later") instead of empty lists, on the pages that depend on it. A server without `version` is level 0, which is the tester's
-case of 6 November. While the game server is stopped, the launcher reads the settings files as today; a setting missing from them is already
-handled.
+case of 6 November. While the game server is stopped, the admin channel answers nothing: the launcher then reads the version and the API level
+from the installed `manifest.json` (below), and the settings files as today; a setting missing from them is already handled.
+
+**The server knows its version.** The revision is already in the jar (`git-commit-id-maven-plugin`, read by `VersionInfo`), the version is
+not. `package-release.ps1` passes it to Maven, which writes it into the jar's manifest next to the revision; a build by `deploy.ps1` has none
+and says `dev`. `version` on the admin channel and `//bot version` show both.
 
 ## A beta launcher installs the server's pre-releases
 
@@ -62,18 +66,34 @@ a launcher that is itself a pre-release installs it: the tester compiles nothing
   `data/handlers`, `data/static_data`, the default `config` files, `sql/update.sql` and `apply-sql.ps1`, and a `manifest.json` (version,
   revision, API level, the SHA-256 of every file). It is the whole server but the navmesh and the geo, about 220 MB unpacked and much less
   zipped, so every pre-release is a full bundle and no diff is needed yet. `tools/package-release.ps1` builds it from the same list of files
-  as `deploy.ps1`, read from one place, so what a tester installs is what the user deploys.
-- **The navmesh.** 2.4 GB, rebuilt rarely. The manifest lists the hash of every map's file; a pre-release attaches only the maps rebuilt since
-  the previous one (each far under GitHub's 2 GB asset limit), and the launcher fetches the ones whose hash differs from its own.
+  as `deploy.ps1`, read from one place, so what a tester installs is what the user deploys. It refuses a dirty tree (the revision would carry
+  `-dirty`) and a commit that is not the version's tag.
+- **The navmesh.** 2.4 GB, rebuilt rarely. The manifest lists every map's file with its hash and the release that carries it; a pre-release
+  attaches only the maps rebuilt since the previous one (each far under GitHub's 2 GB asset limit), and the launcher fetches each map whose
+  hash differs from its own from the release the manifest names, so a tester who skips versions still gets the maps of the ones skipped.
+- **A JDK is still needed.** The game server compiles `data/handlers/*.java` at every start (`commons/scripting/impl/javacompiler`), so a JRE
+  is not enough: the launcher checks for a JDK of the version the bundle names before installing, and says where to get one. Maven is no
+  longer needed. Embedding Java belongs to the server release plan.
 - **Beta mode without a setting.** A launcher whose own version carries `-beta` looks at the server's pre-releases too; a stable launcher sees
   only stable releases. Installing a beta launcher is the choice, which keeps the decision of no channel setting.
-- **The update, in the launcher.** "Server vX.Y.Z-beta.N available", with its notes in the player's language. Then, on a click: stop the
-  game server the way `stop-server.ps1` does (never killed: the shutdown hook saves the players), back the database up (the character backup
-  it already has), check every file of the zip against the manifest, keep the files it replaces in `backup/<previous version>`, copy, run
-  `apply-sql.ps1` from the bundle (one implementation of the SQL rules, not two), start the servers again. `mygs.properties` and the other
-  local files are never touched, as by `deploy.ps1`; local settings belong there, not in the default files the bundle replaces.
-- **Going back.** "Return to the previous version" puts `backup/<previous version>` back; the SQL already applied stays, so a pre-release
-  whose `update.sql` cannot be undone says so in its notes.
+- **The update, in the launcher.** "Server vX.Y.Z-beta.N available", with its notes in the player's language. Then, on a click:
+  1. download the zip and check it against the SHA-256 GitHub gives for every release asset, before opening it (the hashes of the manifest
+     are inside the zip, so they only check what is unpacked);
+  2. stop the three servers, the game server the way `stop-server.ps1` does (never killed: the shutdown hook saves the players);
+  3. check every unpacked file against the manifest, and keep every file it replaces or removes in `backup/<previous version>`;
+  4. copy; in `libs`, `data/handlers` and `data/static_data`, remove every file the manifest does not list, as `sync-install.ps1` does for
+     the libraries (a stale jar stays on the classpath, a removed handler is still compiled);
+  5. run `apply-sql.ps1` from the bundle: one implementation of the SQL rules, and its `mysqldump` is the only database backup taken. A
+     database with no `schema_applied_sql` table has never been through it: the launcher asks before running it with `-MarkApplied`, rather
+     than playing the whole of `update.sql` again;
+  6. start the servers again.
+
+  `mygs.properties` and the other local files are never touched, as by `deploy.ps1`; local settings belong there (the launcher's settings
+  already go there). A default `config` file that differs from the previous version's, edited by hand, is listed before the update and kept
+  next to the new one as `<name>.before-<version>`, as `sync-install.ps1` keeps one.
+- **Going back.** "Return to the previous version" puts `backup/<previous version>` back. The SQL applied stays unless the tester also chooses
+  to restore the dump `apply-sql.ps1` took, which is said to lose everything played since the update; a pre-release whose `update.sql` the
+  previous version cannot run with says so in its notes.
 - **The first install** of a tester who built from git is the same update: the launcher finds a server with no `manifest.json`, says which
   version it is about to install, and goes on the same way.
 - **A development install is never updated.** `deploy.ps1` writes a `manifest.json` too, with `"source": "deploy"`, the revision and the
@@ -107,21 +127,25 @@ check makes sure they never drift.
    launcher build goes out as `v0.3.0-beta.1`, a pre-release. Measured by: the tester installs a pre-release while `Latest` still points at v0.2.0.
 2. **Server pre-releases, notes in both languages.** `tag-patch.ps1` takes a version (`-Version 0.1.0-beta.1`), tags it, and builds the
    pre-release (body and the two attached notes) for the user to publish with `gh release create --prerelease`; `current.en.md`, the check,
-   `CLAUDE.md`, `docs/README.md` and the patch-notes heading format updated from dates to versions. Measured by: `tag-patch.ps1 -Check` refuses
-   a French entry with no English one and a version not above the last, and accepts the pair.
+   `CLAUDE.md`, `docs/README.md` and the patch-notes heading format updated from dates to versions; `check-docs.ps1` finds the last test patch
+   by both tag forms (it looks for `patch-*` only today, so it would keep comparing with 3 November). Measured by: `tag-patch.ps1 -Check`
+   refuses a French entry with no English one and a version not above the last, and accepts the pair; `check-docs.ps1` names the new tag.
 3. **The launcher's release script and notes.** `tools/release.ps1`, `docs/release-notes/`, the release body built from the two entries the
    same way as the server's. Measured by: the script refuses each case above on a throwaway tag, then publishes `v0.3.0-beta.1` (the user's
    call, as every push).
-4. **The compatibility check.** `version` on the admin channel with `API_LEVEL`, the launcher's minimum, its message on the Account, Bots and
-   Settings pages. Measured by: an end-to-end test with a fake server at level 0 shows the message; a real server at the current level shows
-   nothing.
-5. **The server bundle, installed by a beta launcher.** `package-release.ps1` and its manifest, the bundle attached to the server
-   pre-release, the manifest `deploy.ps1` writes, the launcher's update and return to the previous version. Needs 2 and 4. Measured by: a
-   tester's install built from git, its manifest deleted once, goes to the next pre-release from the launcher alone, then back, and the game
-   server starts and the bots log in after both; the user's install, deployed after this milestone, is offered nothing.
+4. **The compatibility check.** The version written into the jar, `version` on the admin channel with `API_LEVEL`, the launcher's minimum,
+   read from the channel or, server stopped, from the manifest, and its message on the Account, Bots and Settings pages. Measured by: an
+   end-to-end test with a fake server at level 0 shows the message; a real server at the current level, running or stopped, shows nothing.
+5. **The server bundle, installed by a beta launcher.** `package-release.ps1` and its manifest (navmesh maps with the release carrying each),
+   the bundle attached to the server pre-release, the manifest `deploy.ps1` writes, the launcher's JDK check, update (the six steps above)
+   and return to the previous version. Needs 2 and 4. Measured by: a tester's install built from git, its manifest deleted once, goes to the
+   next pre-release from the launcher alone, then back, and the game server starts and the bots log in after both; a lib and a handler
+   removed between two test bundles are gone after the update; a hand-edited default file is kept beside the new one; the user's install,
+   deployed after this milestone, is offered nothing.
 6. **The first stable pair.** `develop` merged into `main` in both repositories once a pair is validated in game, each tagged with its own
-   `vX.Y.Z`, the launcher's notes naming the server release. This is also where the server release plan (manifest, navmesh assets, embedded
-   Java and MariaDB) starts; it is a separate plan.
+   `vX.Y.Z`, the launcher's notes naming the server release. This is also where the server release plan starts, a separate plan: the
+   install on an empty machine (the geo, the whole navmesh, embedded Java and MariaDB), diff updates, a signed launcher. This plan stops at
+   testers who already have a server built from git.
 
 Milestones 1 and 2 are independent and small; 4 is the one that would have prevented the report of 6 November; 5 is the one that spares the testers a build.
 
