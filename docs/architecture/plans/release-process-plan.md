@@ -3,7 +3,9 @@
 Status: in progress: milestones 1 to 3 built and used on 6 November (server pre-release v0.1.0-beta.1 and launcher pre-release v0.3.0-beta.1
 published, `Latest` stays launcher v0.2.0); milestone 4 built and checked on the real server the same evening; milestone 5 built, checked
 against a local feed only, and launcher v0.3.0-beta.2 published, the first to install by hand: unverified, an installed beta launcher
-updating itself from GitHub (the move to beta.3). Next, milestone 6. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
+updating itself from GitHub (the move to beta.3); milestone 6 built the same night (a trial bundle of 149 MB and 1.8 GB of maps made, read
+and checked by the launcher's code, planned against the real install without writing to it; the launcher's end-to-end tests): unverified, a
+tester's install going to a published pre-release and back. Next, milestone 7. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
 
 ## Why
 
@@ -67,13 +69,16 @@ a launcher that is itself a pre-release installs it: the tester compiles nothing
 
 - **The bundle.** Each server pre-release attaches `aion-server-vX.Y.Z-beta.N.zip`: the jars of the three servers and commons, the libraries,
   `data/handlers`, `data/static_data`, the default `config` files, `sql/update.sql` and `apply-sql.ps1`, and a `manifest.json` (version,
-  revision, API level, the SHA-256 of every file). It is the whole server but the navmesh and the geo, about 220 MB unpacked and much less
-  zipped, so every pre-release is a full bundle and no diff is needed yet. `tools/package-release.ps1` builds it from the same list of files
-  as `deploy.ps1`, read from one place, so what a tester installs is what the user deploys. It refuses a dirty tree (the revision would carry
-  `-dirty`) and a commit that is not the version's tag.
+  revision, API level, the SHA-256 of every file). It is the whole server but the navmesh, 149 MB zipped, so every pre-release is a full
+  bundle and no diff is needed yet. `tools/package-release.ps1` builds it from Maven's assembly (`game-server/assembly.xml`, the three
+  servers' zips, which carry the geo too since it is in git), the one list of what a server is. It refuses a dirty tree (the revision would carry
+  `-dirty`), a commit that is not the version's tag, and a config or data file git does not track (the assembly reads the working tree). The
+  manifest is also attached on its own, naming the bundle's hash, so the launcher reads it without downloading the zip.
 - **The navmesh.** 2.4 GB, rebuilt rarely. The manifest lists every map's file with its hash and the release that carries it; a pre-release
   attaches only the maps rebuilt since the previous one (each far under GitHub's 2 GB asset limit), and the launcher fetches each map whose
-  hash differs from its own from the release the manifest names, so a tester who skips versions still gets the maps of the ones skipped.
+  hash differs from its own from the release the manifest names, so a tester who skips versions still gets the maps of the ones skipped. The
+  maps the server reads (`.nav`, `.glide`, `.ride`, `.flight`) are attached gzipped, one asset each (`navmesh-<file>.gz`, 1.8 GB for the 140 of
+  November); the images and the `.walked` files a tester's own server writes stay out of it.
 - **A JDK is still needed.** The game server compiles `data/handlers/*.java` at every start (`commons/scripting/impl/javacompiler`), so a JRE
   is not enough: the launcher checks for a JDK of the version the bundle names before installing, and says where to get one. Maven is no
   longer needed. Embedding Java belongs to the server release plan.
@@ -83,18 +88,21 @@ a launcher that is itself a pre-release installs it: the tester compiles nothing
   1. download the zip and check it against the SHA-256 GitHub gives for every release asset, before opening it (the hashes of the manifest
      are inside the zip, so they only check what is unpacked);
   2. stop the three servers, the game server the way `stop-server.ps1` does (never killed: the shutdown hook saves the players);
-  3. check every unpacked file against the manifest, and keep every file it replaces or removes in `backup/<previous version>`;
+  3. check every unpacked file against the manifest, and keep every file it replaces or removes in `update-backups/<previous>-to-<new>/`, with a record of every path written before anything moves;
   4. copy; in `libs`, `data/handlers` and `data/static_data`, remove every file the manifest does not list, as `sync-install.ps1` does for
      the libraries (a stale jar stays on the classpath, a removed handler is still compiled);
   5. run `apply-sql.ps1` from the bundle: one implementation of the SQL rules, and its `mysqldump` is the only database backup taken. A
-     database with no `schema_applied_sql` table has never been through it: the launcher asks before running it with `-MarkApplied`, rather
-     than playing the whole of `update.sql` again;
+     database with no `schema_applied_sql` table has never been through it (the script says `Ledger: absent`): the launcher says so before
+     running it with `-MarkApplied`, rather than playing the whole of `update.sql` again;
   6. start the servers again.
 
   `mygs.properties` and the other local files are never touched, as by `deploy.ps1`; local settings belong there (the launcher's settings
-  already go there). A default `config` file that differs from the previous version's, edited by hand, is listed before the update and kept
-  next to the new one as `<name>.before-<version>`, as `sync-install.ps1` keeps one.
-- **Going back.** "Return to the previous version" puts `backup/<previous version>` back. The SQL applied stays unless the tester also chooses
+  already go there). A default `config` file or start script that differs from the previous version's (any difference, for a first
+  install), edited by hand, is listed before the update and **left as it is**, the release's own put beside it as `<name>.new-<version>`,
+  as `sync-install.ps1` leaves one for a hand merge. Changed from "replaced, the old one kept as `.before-`" while building it: replacing a
+  hand-edited `login-server/config/network/database.properties` would lose its password and the login server would not start. A
+  difference of line endings alone is no edit.
+- **Going back.** "Return to the previous version" puts the last update's backup back. The SQL applied stays unless the tester also chooses
   to restore the dump `apply-sql.ps1` took, which is said to lose everything played since the update; a pre-release whose `update.sql` the
   previous version cannot run with says so in its notes.
 - **The first install** of a tester who built from git is the same update: the launcher finds a server with no `manifest.json`, says which

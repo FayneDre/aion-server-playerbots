@@ -80,6 +80,8 @@ the day it is done. A new document goes in the folder of its topic and gets a li
   - Branch `beyond-aion`: a mirror of `upstream/4.8`, the emulator's updates come in through it (was `4.8` until 5 November 2026).
   - Branch `develop`: day-to-day bot development, test patches tagged on it as `vX.Y.Z-beta.N` by `tools/tag-patch.ps1` and published as GitHub
     pre-releases (`patch-YYYY-MM-DD` until November 2026; was `feature/playerbots`). The launcher has the same branches and its own version numbers.
+    `tag-patch.ps1` also builds the bundle a beta launcher installs (`tools/package-release.ps1`: the zip, its manifest, the navmesh maps rebuilt
+    since the previous bundle), which the printed `gh` command attaches.
   - Branch `main`: stable, the default on GitHub; releases are made from it and tagged `vX.Y.Z`. It moves only by merging `develop` once a
     version has been validated in game.
 
