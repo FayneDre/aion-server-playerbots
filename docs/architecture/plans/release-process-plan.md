@@ -1,7 +1,8 @@
 # One release process for the server and the launcher, with notes in French and English
 
-Status: not started (written on 6 November, after a tester ran launcher v0.2.0 against a server older than it needs; decisions of the same day
-folded in: pre-releases on both sides, no channel setting, independent version numbers, a beta launcher installs the server pre-releases).
+Status: in progress: milestones 1 and 2 built on 6 November (the launcher's `develop`, not pushed; `tag-patch.ps1 -Version`, `current.en.md`,
+`check-docs.ps1`), no version tagged yet; next, milestone 3. Written the same day, after a tester ran launcher v0.2.0 against a server older
+than it needs.
 
 ## Why
 
