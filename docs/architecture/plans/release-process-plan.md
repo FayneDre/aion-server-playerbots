@@ -1,7 +1,7 @@
 # One release process for the server and the launcher, with notes in French and English
 
 Status: not started (written on 6 November, after a tester ran launcher v0.2.0 against a server older than it needs; decisions of the same day
-folded in: pre-releases on both sides, no channel setting, independent version numbers).
+folded in: pre-releases on both sides, no channel setting, independent version numbers, a beta launcher installs the server pre-releases).
 
 ## Why
 
@@ -53,6 +53,30 @@ v0.1.0-beta.1 or later") instead of empty lists, on the pages that depend on it.
 case of 6 November. While the game server is stopped, the launcher reads the settings files as today; a setting missing from them is already
 handled.
 
+## A beta launcher installs the server's pre-releases
+
+Testers build the server from `develop` today, with Maven and Java on their machine. A server pre-release carries the server already built, and
+a launcher that is itself a pre-release installs it: the tester compiles nothing.
+
+- **The bundle.** Each server pre-release attaches `aion-server-vX.Y.Z-beta.N.zip`: the jars of the three servers and commons, the libraries,
+  `data/handlers`, `data/static_data`, the default `config` files, `sql/update.sql` and `apply-sql.ps1`, and a `manifest.json` (version,
+  revision, API level, the SHA-256 of every file). It is the whole server but the navmesh and the geo, about 220 MB unpacked and much less
+  zipped, so every pre-release is a full bundle and no diff is needed yet. `tools/package-release.ps1` builds it from the same list of files
+  as `deploy.ps1`, read from one place, so what a tester installs is what the user deploys.
+- **The navmesh.** 2.4 GB, rebuilt rarely. The manifest lists the hash of every map's file; a pre-release attaches only the maps rebuilt since
+  the previous one (each far under GitHub's 2 GB asset limit), and the launcher fetches the ones whose hash differs from its own.
+- **Beta mode without a setting.** A launcher whose own version carries `-beta` looks at the server's pre-releases too; a stable launcher sees
+  only stable releases. Installing a beta launcher is the choice, which keeps the decision of no channel setting.
+- **The update, in the launcher.** "Server vX.Y.Z-beta.N available", with its notes in the player's language. Then, on a click: stop the
+  game server the way `stop-server.ps1` does (never killed: the shutdown hook saves the players), back the database up (the character backup
+  it already has), check every file of the zip against the manifest, keep the files it replaces in `backup/<previous version>`, copy, run
+  `apply-sql.ps1` from the bundle (one implementation of the SQL rules, not two), start the servers again. `mygs.properties` and the other
+  local files are never touched, as by `deploy.ps1`; local settings belong there, not in the default files the bundle replaces.
+- **Going back.** "Return to the previous version" puts `backup/<previous version>` back; the SQL already applied stays, so a pre-release
+  whose `update.sql` cannot be undone says so in its notes.
+- **The first install** of a tester who built from git is the same update: the launcher finds a server with no `manifest.json`, says which
+  version it is about to install, and goes on the same way.
+
 ## Notes in French and English
 
 The decision of 5 November ("test patches stay in French") is changed: testers read French, but the notes now also serve the launcher's
@@ -87,17 +111,20 @@ check makes sure they never drift.
 4. **The compatibility check.** `version` on the admin channel with `API_LEVEL`, the launcher's minimum, its message on the Account, Bots and
    Settings pages. Measured by: an end-to-end test with a fake server at level 0 shows the message; a real server at the current level shows
    nothing.
-5. **The first stable pair.** `develop` merged into `main` in both repositories once a pair is validated in game, each tagged with its own
+5. **The server bundle, installed by a beta launcher.** `package-release.ps1` and its manifest, the bundle attached to the server
+   pre-release, the launcher's update and return to the previous version. Needs 2 and 4. Measured by: a tester's install built from git
+   goes to the next pre-release from the launcher alone, then back; the game server starts and the bots log in after both.
+6. **The first stable pair.** `develop` merged into `main` in both repositories once a pair is validated in game, each tagged with its own
    `vX.Y.Z`, the launcher's notes naming the server release. This is also where the server release plan (manifest, navmesh assets, embedded
    Java and MariaDB) starts; it is a separate plan.
 
-Milestones 1 and 2 are independent and small; 4 is the one that would have prevented the report of 6 November.
+Milestones 1 and 2 are independent and small; 4 is the one that would have prevented the report of 6 November; 5 is the one that spares the testers a build.
 
 ## The steps of a test patch, once built
 
 1. Server: commits on `develop`, `deploy.ps1`, checked in game.
 2. When the user asks for a patch: the next `-beta.N` (or a new minor), one entry in each language for everything since the last version, then
-   `tag-patch.ps1`; the push and the pre-release are the user's.
+   `tag-patch.ps1`, which builds the bundle with `package-release.ps1`; the push and the pre-release are the user's.
 3. Launcher, if it changed: commits on `develop`, `npm test`, version raised to its own next `-beta.N`, one entry in each language naming the
    minimum server version, then `tools/release.ps1`; publishing is the user's.
-4. Testers update both by hand; a launcher that is too new for their server says which server version to take.
+4. Testers update the launcher by hand; a beta launcher then offers the server pre-release itself, and one that is too new for their server says which server version to take.
