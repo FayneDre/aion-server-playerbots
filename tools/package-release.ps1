@@ -145,7 +145,7 @@ try {
         $navmesh = [ordered]@{}
         $attached = 0
         $navDir = Join-Path $ServerRoot 'game-server\data\navmesh'
-        if (-not (Test-Path $navDir)) { throw "No navmesh in $navDir: the bundle names the maps of the install it is made from." }
+        if (-not (Test-Path $navDir)) { throw "No navmesh in ${navDir}: the bundle names the maps of the install it is made from." }
         foreach ($file in Get-ChildItem $navDir -File | Where-Object { $_.Extension -in '.nav', '.glide', '.ride', '.flight' } | Sort-Object Name) {
             $path = "game-server/data/navmesh/$($file.Name)"
             $hash = Get-Sha256 $file.FullName
