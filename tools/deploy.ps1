@@ -165,14 +165,19 @@ try {
 }
 $revision = if ($jarManifest -match '(?m)^Revision: (\S+)') { $Matches[1] } else { 'unknown' }
 $release = if ($jarManifest -match '(?m)^Implementation-Version: (\S+)') { $Matches[1] } else { 'dev' }
-# the line AdminChannelTest checks, so a rewording fails a test rather than this
-$apiSource = Get-Content -Raw (Join-Path $repoRoot 'game-server\src\com\aionemu\gameserver\AdminChannel.java')
-if ($apiSource -notmatch 'public static final int API_LEVEL = (\d+);') { throw 'AdminChannel.java has no API_LEVEL line to read.' }
+# The level of the code the jar was built from, not of the working tree: a -SkipBuild after a checkout deploys an older jar. A -DIRTY build is the
+# working tree's. The line is the one AdminChannelTest checks, so a rewording fails a test rather than this.
+$apiPath = 'game-server/src/com/aionemu/gameserver/AdminChannel.java'
+$apiSource = $null
+if ($revision -match '^[0-9a-f]{7,40}$') { $apiSource = (git -C $repoRoot show "${revision}:$apiPath" 2>$null) -join "`n" }
+if (-not $apiSource) { $apiSource = Get-Content -Raw (Join-Path $repoRoot $apiPath) }
+$apiMatch = [regex]::Match($apiSource, 'public static final int API_LEVEL = (\d+);')
+if (-not $apiMatch.Success) { throw "AdminChannel.java at revision $revision has no API_LEVEL line to read." }
 $installManifest = [ordered]@{
     source     = 'deploy'
     version    = $release
     revision   = $revision
-    apiLevel   = [int]$Matches[1]
+    apiLevel   = [int]$apiMatch.Groups[1].Value
     deployedAt = (Get-Date).ToString('o')
 }
 [IO.File]::WriteAllText((Join-Path $ServerRoot 'manifest.json'), ($installManifest | ConvertTo-Json) + "`n", (New-Object Text.UTF8Encoding($false)))
