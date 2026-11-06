@@ -35,6 +35,17 @@ import com.aionemu.gameserver.world.WorldMap;
  */
 public final class AdminChannel {
 
+	/**
+	 * What the launcher can rely on, raised by one whenever a command of this channel or a setting the launcher writes is added or changed, so a launcher
+	 * can tell a server too old for it instead of showing empty lists. A server that does not know {@code version} is level 0. {@code deploy.ps1} reads
+	 * this line into the install's {@code manifest.json}, for a launcher to read while the server is stopped.
+	 * <ul>
+	 * <li>1 (6 November 2026): {@code version}, {@code reload-config}, {@code teleport}, {@code destinations}, and the bot settings of
+	 * {@code playerbot.properties} (experience, PvP shares and level band, chat).</li>
+	 * </ul>
+	 */
+	public static final int API_LEVEL = 1;
+
 	private static final Logger log = LoggerFactory.getLogger(AdminChannel.class);
 	/** Relative to the working directory, which is the game-server folder. */
 	private static final Path DIR = Path.of("admin");
@@ -117,11 +128,17 @@ public final class AdminChannel {
 		String[] words = line.split("\\s+");
 		return switch (words[0]) {
 			case "ping" -> "ok";
+			case "version" -> version(ServerRelease.version(), GameServer.versionInfo.getRevision());
 			case "reload-config" -> reloadConfig();
 			case "teleport" -> words.length == 6 ? teleport(words) : "error usage: teleport <character id> <map id> <x> <y> <z>";
 			case "destinations" -> destinations();
 			default -> "error unknown command " + words[0];
 		};
+	}
+
+	/** One {@code key value} line each: {@code version} (a release, or {@code dev}), {@code revision} (as {@code //bot version} shows it), {@code api}. */
+	static String version(String release, String revision) {
+		return "ok\nversion " + release + "\nrevision " + (revision == null ? "unknown" : revision) + "\napi " + API_LEVEL;
 	}
 
 	/** The same as {@code //reload config}: settings read at each use, the rates among them, apply at once. */

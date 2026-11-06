@@ -149,6 +149,35 @@ Write-Host '  data/handlers'
 
 Write-Host "Deployed to $targetGameServer" -ForegroundColor Green
 
+# What the launcher reads while the game server is stopped (the admin channel answers only while it runs): which build this is and the launcher API
+# level it has. "source": "deploy" also tells a beta launcher that this is a development install, never to be overwritten by a release bundle
+# (docs/architecture/plans/release-process-plan.md).
+$deployedJar = Get-ChildItem (Join-Path $libs 'game-server-*.jar') | Where-Object { $_.Name -notmatch '-(sources|javadoc)\.jar$' } |
+    Sort-Object LastWriteTime | Select-Object -Last 1
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [IO.Compression.ZipFile]::OpenRead($deployedJar.FullName)
+try {
+    $reader = New-Object IO.StreamReader($zip.GetEntry('META-INF/MANIFEST.MF').Open())
+    $jarManifest = $reader.ReadToEnd()
+    $reader.Dispose()
+} finally {
+    $zip.Dispose()
+}
+$revision = if ($jarManifest -match '(?m)^Revision: (\S+)') { $Matches[1] } else { 'unknown' }
+$release = if ($jarManifest -match '(?m)^Implementation-Version: (\S+)') { $Matches[1] } else { 'dev' }
+# the line AdminChannelTest checks, so a rewording fails a test rather than this
+$apiSource = Get-Content -Raw (Join-Path $repoRoot 'game-server\src\com\aionemu\gameserver\AdminChannel.java')
+if ($apiSource -notmatch 'public static final int API_LEVEL = (\d+);') { throw 'AdminChannel.java has no API_LEVEL line to read.' }
+$installManifest = [ordered]@{
+    source     = 'deploy'
+    version    = $release
+    revision   = $revision
+    apiLevel   = [int]$Matches[1]
+    deployedAt = (Get-Date).ToString('o')
+}
+[IO.File]::WriteAllText((Join-Path $ServerRoot 'manifest.json'), ($installManifest | ConvertTo-Json) + "`n", (New-Object Text.UTF8Encoding($false)))
+Write-Host "  manifest.json: $release, revision $revision, launcher API level $($installManifest.apiLevel)"
+
 # The chat server carries the bots' channel lines (CM_BOT_MESSAGE) since 24 October, so it is built and deployed too, but only when its jar changed:
 # most deploys touch the game server alone. It holds nothing to save, so stopping it is safe, and a running game server reconnects to it by itself.
 $chatJar = Get-ChildItem (Join-Path $repoRoot 'chat-server\target\chat-server-*.jar') -ErrorAction SilentlyContinue |
