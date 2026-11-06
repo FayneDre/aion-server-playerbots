@@ -7,6 +7,35 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ---
 
+## v0.1.0-beta.2 — 2026-11-06
+
+Revision `c979e97` for the code (the one of the server deployed here); a server installed by the launcher shows in `//bot version` the tag's
+commit, which only adds these notes and the release scripts. **The first patch shipped built**: it goes with launcher v0.3.0-beta.3, which
+installs it by itself, without Maven or a build. **No SQL, no navmesh to rebuild**, no default settings file changes.
+
+**What changes for testers**
+- **The server installs from the launcher**: the pre-release carries the built server (`aion-server-v0.1.0-beta.2.zip`, 149 MB), its
+  manifest and the navmesh maps (1.8 GB the first time; after that, only the maps rebuilt). The launcher downloads and checks everything while
+  the servers run, shows you what it will do, then stops them, installs, updates the database and starts them again. "Return to..." puts the
+  previous version back.
+- **Your files stay yours**: a default settings file you edited is not replaced, the new version is put beside it
+  (`<file>.new-v0.1.0-beta.2`); `mygs.properties`, the logs and what your server wrote into the navmesh are never touched.
+- **The server's version**: `//bot version` shows the version, the revision and the launcher API level, and the launcher asks the server for
+  it to say when it is too old.
+- **A JDK 25 is needed** (the server compiles its handlers at every start); Maven and Git no longer are.
+
+**Not fixed yet** (known, no need to report it)
+- **Installing through the launcher** was checked in tests and on a trial bundle only, not on your install yet.
+- **A database that never went through `apply-sql.ps1`**: its SQL statements are recorded as already done, not run again. If you never applied
+  `game-server/sql/update.sql` to your database, say so before installing.
+
+**To test**
+- **With launcher v0.3.0-beta.3**: "Update the server", install, play, then "Return to the server built from its sources", and check that the
+  server starts and the bots log in after both.
+- Anything wrong: `//bot note <text>` next to the bot, or a screenshot of the "Server version" panel.
+
+---
+
 ## v0.1.0-beta.1 — 2026-11-06
 
 Revision `eb82601`, the one `//bot version` shows. **The first patch made as a version**: test patches are now named `vX.Y.Z-beta.N`,

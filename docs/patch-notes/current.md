@@ -7,6 +7,35 @@ otherwise. When this file nears 200 lines, the oldest entries move to `<year>-<m
 
 ---
 
+## v0.1.0-beta.2 — 06/11/2026
+
+Révision `c979e97` pour le code (celle du serveur déployé ici) ; le serveur installé par le launcher affiche dans `//bot version` le commit du
+tag, qui n'ajoute que ces notes et les scripts de publication. **Premier patch livré tout compilé** : il va avec le launcher v0.3.0-beta.3, qui
+l'installe lui-même, sans Maven ni compilation. **Pas de SQL, pas de navmesh à reconstruire**, aucun fichier de réglages par défaut ne change.
+
+**Ce qui change pour les testeurs**
+- **Le serveur s'installe depuis le launcher** : la pre-release porte le serveur compilé (`aion-server-v0.1.0-beta.2.zip`, 149 Mo), son
+  manifeste et les cartes du navmesh (1,8 Go la première fois ; ensuite, seules les cartes reconstruites). Le launcher télécharge et vérifie
+  tout pendant que les serveurs tournent, te montre ce qu'il va faire, puis les arrête, installe, met à jour la base et les relance. «
+  Revenir à… » remet la version précédente.
+- **Tes fichiers restent à toi** : un fichier de réglages par défaut que tu as modifié n'est pas remplacé, la nouvelle version est posée à côté
+  (`<fichier>.new-v0.1.0-beta.2`) ; `mygs.properties`, les journaux et ce que ton serveur a écrit dans le navmesh ne sont jamais touchés.
+- **La version du serveur** : `//bot version` affiche la version, la révision et le niveau d'API du launcher, et le launcher la demande au
+  serveur pour dire s'il est trop ancien.
+- **Un JDK 25 est nécessaire** (le serveur compile ses handlers à chaque démarrage) ; Maven et Git ne le sont plus.
+
+**Ce qui n'est pas réglé** (connu, inutile de le signaler)
+- **L'installation par le launcher** n'a été vérifiée qu'en tests et sur un bundle d'essai, pas encore sur ton installation.
+- **Une base jamais passée par `apply-sql.ps1`** : ses instructions SQL sont notées comme déjà faites, pas rejouées. Si tu n'as jamais
+  appliqué `game-server/sql/update.sql` à ta base, dis-le avant d'installer.
+
+**À tester**
+- **Avec le launcher v0.3.0-beta.3** : « Mettre à jour le serveur », installer, jouer, puis « Revenir au serveur compilé depuis ses sources »,
+  et vérifier que le serveur démarre et que les bots se connectent après les deux.
+- Quelque chose ne va pas : `//bot note <texte>` près du bot, ou une capture du panneau « Version du serveur ».
+
+---
+
 ## v0.1.0-beta.1 — 06/11/2026
 
 Révision `eb82601`, celle que `//bot version` affiche. **Premier patch sous forme de version** : les patchs de test s'appellent maintenant
