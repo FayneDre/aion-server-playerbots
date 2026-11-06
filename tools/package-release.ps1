@@ -203,6 +203,8 @@ try {
     Write-Host ("Bundle {0}: {1} files, {2:N0} MB zipped." -f $zipItem.Name, $files.Count, ($zipItem.Length / 1MB)) -ForegroundColor Green
     $previousText = if ($Previous) { "unchanged since $Previous" } else { 'no previous bundle' }
     Write-Host "Navmesh: $($navmesh.Count) map files, $attached attached ($previousText for the others)."
+    # a gh that found no manifest on an older release would otherwise be the script's exit code
+    $global:LASTEXITCODE = 0
 } finally {
     Pop-Location
 }
