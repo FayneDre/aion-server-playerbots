@@ -1,8 +1,8 @@
 # One release process for the server and the launcher, with notes in French and English
 
-Status: in progress: milestones 1 to 3 built and used on 6 November: server pre-release v0.1.0-beta.1 and launcher pre-release v0.3.0-beta.1
-published (`Latest` stays launcher v0.2.0); unverified: a tester installing them. Next, milestones 4 and 5. Written the same day, after a tester ran
-launcher v0.2.0 against a server older than it needs.
+Status: in progress: milestones 1 to 3 built and used on 6 November (server pre-release v0.1.0-beta.1 and launcher pre-release v0.3.0-beta.1
+published, `Latest` stays launcher v0.2.0); milestone 4 built the same evening, unverified on the real server (not deployed yet) and with a
+tester. Next, milestone 5. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
 
 ## Why
 
@@ -136,7 +136,8 @@ check makes sure they never drift.
    same way as the server's. Measured by: the script refuses each case above on a throwaway tag, then publishes `v0.3.0-beta.1` (the user's
    call, as every push).
 4. **The compatibility check.** The version written into the jar, `version` on the admin channel with `API_LEVEL`, the launcher's minimum,
-   read from the channel or, server stopped, from the manifest, and its message on the Account, Bots and Settings pages. Measured by: an
+   read from the channel or, server stopped, from the manifest (`deploy.ps1` writes it from this milestone on, not 6), and its message on the
+   Account, Bots and Settings pages. Measured by: an
    end-to-end test with a fake server at level 0 shows the message; a real server at the current level, running or stopped, shows nothing.
 5. **The launcher updates itself.** `electron-updater` with the GitHub provider: `build.publish` in `package.json` (this repository), so
    the installer carries its `app-update.yml`, and `npm run dist` with `--publish never`, so a build never publishes by itself. `release.ps1`
