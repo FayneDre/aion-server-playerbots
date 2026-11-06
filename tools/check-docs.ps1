@@ -86,7 +86,7 @@ foreach ($file in $files | Where-Object { $_.DirectoryName.StartsWith($docs) -an
 # plans whose classes changed since the last patch, while the plan did not
 Push-Location $root
 try {
-    $lastTag = if ($Since) { $Since } else { git describe --tags --match 'patch-*' --match 'v*' --abbrev=0 2>$null }
+    $lastTag = if ($Since) { $Since } else { git describe --tags --match 'patch-*' --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>$null }
     if ($lastTag) {
         $changed = @(git diff --name-only "$lastTag" HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot') + @(git diff --name-only HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot')
         $classes = @($changed | Where-Object { $_ -like '*.java' } | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) } | Sort-Object -Unique)

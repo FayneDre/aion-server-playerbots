@@ -17,7 +17,7 @@
       twice a deploy from a clean tree kept the previous -DIRTY jar, because Maven repackages nothing when no source changed;
     - an entry, in either language, that does not name that revision, which is the one //bot version will show the testers.
 
-    Once tagged, writes into game-server/target/release/<tag>/ the release body (the English entry, then the French one folded in a <details> block)
+    Once tagged, writes into release/<tag>/ (ignored by git, out of reach of mvn clean) the release body (the English entry, then the French one folded in a <details> block)
     and the two entries as notes.en.md and notes.fr.md, the files the launcher reads, then prints the gh command that publishes them.
 
 .PARAMETER Version
@@ -148,7 +148,7 @@ try {
     # The entries without their heading: GitHub shows the tag as the release's title.
     $bodyEn = ($entries.en -replace '^## [^\n]*\n', '').Trim()
     $bodyFr = ($entries.fr -replace '^## [^\n]*\n', '').Trim()
-    $out = Join-Path $repoRoot "game-server\target\release\$tag"
+    $out = Join-Path $repoRoot "release\$tag" # not under a target folder: a deploy from a clean tree runs mvn clean
     New-Item -ItemType Directory -Force $out | Out-Null
     $utf8 = New-Object Text.UTF8Encoding($false)
     [IO.File]::WriteAllText((Join-Path $out 'notes.en.md'), "$bodyEn`n", $utf8)
