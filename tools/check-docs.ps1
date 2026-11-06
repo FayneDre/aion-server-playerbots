@@ -49,7 +49,7 @@ foreach ($file in $files) {
     if ($file.DirectoryName.StartsWith($docs)) {
         $lines = ([regex]::Matches($text, "`n")).Count + [int](-not $text.EndsWith("`n"))
         $relative = Get-Relative $file.FullName
-        if ($lines -gt 200 -and $relative -notmatch '^docs/patch-notes/\d{4}-\d{2}\.md$') {
+        if ($lines -gt 200 -and $relative -notmatch '^docs/patch-notes/\d{4}-\d{2}(\.en)?\.md$') {
             $warnings += "${relative}: $lines lines, over the 200 the conventions allow; split it by topic"
         }
         # a plan lives in plans/ while it is open and in history/ once done; either way its first lines say which, in the fixed words
@@ -86,7 +86,7 @@ foreach ($file in $files | Where-Object { $_.DirectoryName.StartsWith($docs) -an
 # plans whose classes changed since the last patch, while the plan did not
 Push-Location $root
 try {
-    $lastTag = if ($Since) { $Since } else { git describe --tags --match 'patch-*' --abbrev=0 2>$null }
+    $lastTag = if ($Since) { $Since } else { git describe --tags --match 'patch-*' --match 'v*' --abbrev=0 2>$null }
     if ($lastTag) {
         $changed = @(git diff --name-only "$lastTag" HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot') + @(git diff --name-only HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot')
         $classes = @($changed | Where-Object { $_ -like '*.java' } | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) } | Sort-Object -Unique)

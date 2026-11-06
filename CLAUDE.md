@@ -59,7 +59,8 @@ whatever needs the socket tests the socket. See [docs/architecture/how-it-works.
 - [docs/roadmap.md](docs/roadmap.md) — **start here**: what is left, by priority, with what blocks each one.
 - [docs/built.md](docs/built.md) — what already works, one paragraph a topic, each pointing to its `how-it-works.md`.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command.
-- [docs/patch-notes/current.md](docs/patch-notes/current.md) — every test patch, in French for the testers, by git tag; `tag-patch.ps1` refuses a patch without its entry.
+- [docs/patch-notes/current.md](docs/patch-notes/current.md) — every test patch, in French for the testers, by version tag, with its English twin in
+  `current.en.md`; `tag-patch.ps1` refuses a patch without both entries.
 - [docs/traps/](docs/traps/) — what the engine, the world data and the skill engine do to a bot that no documentation warns about.
 
 Folders: `architecture/`, `traps/`, `population/`, `combat/`, `classes/` (with `glossary/`, the French skill names `skill-lookup.ps1 -Name`
@@ -77,7 +78,8 @@ the day it is done. A new document goes in the folder of its topic and gets a li
   - `origin` → personal fork (`https://github.com/FayneDre/aion-server-playerbots.git`)
   - `upstream` → `https://github.com/beyond-aion/aion-server.git`
   - Branch `beyond-aion`: a mirror of `upstream/4.8`, the emulator's updates come in through it (was `4.8` until 5 November 2026).
-  - Branch `develop`: day-to-day bot development, test patches tagged on it as `patch-YYYY-MM-DD` (was `feature/playerbots`).
+  - Branch `develop`: day-to-day bot development, test patches tagged on it as `vX.Y.Z-beta.N` by `tools/tag-patch.ps1` and published as GitHub
+    pre-releases (`patch-YYYY-MM-DD` until November 2026; was `feature/playerbots`). The launcher has the same branches and its own version numbers.
   - Branch `main`: stable, the default on GitHub; releases are made from it and tagged `vX.Y.Z`. It moves only by merging `develop` once a
     version has been validated in game.
 

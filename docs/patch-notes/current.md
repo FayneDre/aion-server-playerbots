@@ -1,8 +1,9 @@
 # Patch notes
 
-Written in French, for the testers who read them; the rest of the docs stay in English. Newest first. Each entry names its git tag
-(`tools/tag-patch.ps1`), which is what `//bot version` on the server should match. When this file nears 200 lines, the oldest entries move to
-`patch-notes-<year>-<month>.md`.
+Written in French, for the testers who read them; [current.en.md](current.en.md) holds the same entries in English, for the launcher's "What's
+new" and the public releases. Newest first. Each entry is headed by its version tag, `## vX.Y.Z-beta.N` for a test patch (the `patch-YYYY-MM-DD`
+tags below are the ones made before), names the revision `//bot version` shows, and has its English twin: `tools/tag-patch.ps1` refuses a tag
+otherwise. When this file nears 200 lines, the oldest entries move to `<year>-<month>.md`, and their English ones to `<year>-<month>.en.md`.
 
 ---
 
