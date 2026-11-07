@@ -122,8 +122,9 @@ the bots' chat in French or English with jokes and reactions, and the stores' co
    or the old packets if the client still reads them ([social/backlog.md](social/backlog.md)).
 2. **A world that talks about itself, lot I**: personalities (I2), then true rumours (I1) and contested named monsters (I3, which needs E2)
    ([living-world-plan.md](population/plans/living-world-plan.md)).
-3. **A window on the bots inside the game, lot H**: pages served to the client's browser (H1), an interface addon (H2), GM tools in game (H3), and
-   what else is used while playing (H4: teleport, one's characters, the world map, orders, a tester's note). H1 and H2 can run beside anything.
+3. **A window on the bots inside the game, lot H**: pages served to the client's browser (H1) and an interface addon (H2) are built for the
+   combat meter ([addon-pages.md](architecture/addon-pages.md)); left: GM tools in game (H3), and what else is used while playing (H4: teleport,
+   one's characters, the world map, orders, a tester's note).
 
 ## 7. Gear
 

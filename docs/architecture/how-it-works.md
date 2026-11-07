@@ -75,6 +75,8 @@ com.aionemu.gameserver.playerbot/
                 selling (BotVendorManager), stores (BotStores, BotStoreStock, BotStoreGoods, BotStorePricing, BotManastones), BotTrades
   social/       Groups and instances (BotGroupManager, BotInstances, BotRole, BotMarks, BotSquads, RecruitPlan, LeaderGlides, BotTransports),
                 requests (BotRequests), speech and chat (BotSpeech, BotChat, BotChatLines)
+  addon/        The pages the interface addons show (AddonWebServer, port 7790) and the combat meter's count and page (CombatMeter,
+                CombatMeterPage); see addon-pages.md
 ```
 
 The admin command lives **outside** core sources, at `game-server/data/handlers/admincommands/Bot.java` (runtime-compiled scripts): zero core diff.
@@ -111,6 +113,8 @@ selection, beside `BotDirector`.
 | `services/StigmaService.java` | The two socket counts made public | Minimal |
 | `dataholders/PetSkillData.java` | No longer throws for a pet that is not a toy pet | Minimal, a null check |
 | `services/DebugService.java` | Bots left out of the half-hourly "player without connection" warning | Minimal |
+| `model/stats/container/CreatureLifeStats.java` | One line in `reduceHp` and one in `increaseHp`: `CombatMeter.onDamage` / `onHeal` | Low — two calls after the health changed, nothing read back |
+| `GameServer.java` | One line: `AddonWebServer.start()` after `AdminChannel.start()` | Low — beside the other local services |
 | `network/chatserver/ChatServer.java`, `SM_CS_BOT_MESSAGE.java` (new) | A bot's line sent to the chat server | Additive; the chat server has its counterpart `CM_BOT_MESSAGE` ([chat-channels-plan.md](../social/history/chat-channels-plan.md)) |
 Nothing else in the game server (checked against the merge base on 27 October 2026). `MultiClientingService` skips connectionless players, as in the row above. The chat server has its own small patch for bot lines.
 

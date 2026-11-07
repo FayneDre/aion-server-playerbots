@@ -56,11 +56,18 @@ public final class AddonWebServer {
 	private static void combatMeter(HttpExchange exchange) throws IOException {
 		try (exchange) {
 			Optional<Player> viewer = viewerOf(exchange);
-			if (viewer.isEmpty())
+			String path = exchange.getRequestURI().getPath();
+			if (viewer.isEmpty()) {
 				log.info("Addon pages: no player matches {} from {}", exchange.getRequestURI(), remoteAddress(exchange));
-			String body = viewer.map(player -> page("Combat Meter", "<p>Hello " + escape(player.getName()) + ", the server knows who you are.</p>"))
-				.orElseGet(() -> page("Combat Meter", "<p>The server does not recognise this character.</p>"));
-			send(exchange, viewer.isPresent() ? 200 : 403, body);
+				send(exchange, 403, "text/html", page("Combat Meter", "<p>The server does not recognise this character.</p>"));
+			} else if (path.equals(COMBAT_METER + "/data")) {
+				send(exchange, 200, "application/json", CombatMeter.json(viewer.get()));
+			} else if (path.equals(COMBAT_METER + "/reset")) {
+				CombatMeter.reset(viewer.get());
+				send(exchange, 200, "application/json", CombatMeter.json(viewer.get()));
+			} else {
+				send(exchange, 200, "text/html", CombatMeterPage.html());
+			}
 		}
 	}
 
@@ -123,9 +130,9 @@ public final class AddonWebServer {
 		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
 	}
 
-	private static void send(HttpExchange exchange, int status, String body) throws IOException {
+	private static void send(HttpExchange exchange, int status, String type, String body) throws IOException {
 		byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-		exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+		exchange.getResponseHeaders().set("Content-Type", type + "; charset=utf-8");
 		exchange.getResponseHeaders().set("Cache-Control", "no-store");
 		exchange.sendResponseHeaders(status, bytes.length);
 		try (OutputStream out = exchange.getResponseBody()) {

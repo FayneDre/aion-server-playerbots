@@ -34,6 +34,7 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 | File | What it holds |
 |---|---|
 | [how-it-works.md](architecture/how-it-works.md) | Why bots are real `Player` objects, the core patches (`setAi`, `setMoveController`), the package layout, the reuse map. |
+| [addon-pages.md](architecture/addon-pages.md) | The pages the interface addons show: the web server, who a page belongs to, the combat meter's count. |
 | [moving-a-body.md](architecture/moving-a-body.md) | Driving a body from the server: what a movement packet carries, how often, and the task manager that drops a body that arrived. |
 | [release-process-plan.md](architecture/plans/release-process-plan.md) | Plan: one release process for the server and the launcher (`develop` and pre-releases on both sides, a compatibility level the launcher checks, a beta launcher installing the server pre-releases, notes in French and English). In progress: milestones 1-6 built, the first pre-releases out; 5 and 6 to verify with a tester. |
 

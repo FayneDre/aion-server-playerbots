@@ -7,6 +7,7 @@ import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_ATTACK_STATUS;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_ATTACK_STATUS.LOG;
 import com.aionemu.gameserver.network.aion.serverpackets.SM_ATTACK_STATUS.TYPE;
+import com.aionemu.gameserver.playerbot.addon.CombatMeter;
 import com.aionemu.gameserver.services.LifeStatsRestoreService;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.skillengine.model.Effect;
@@ -110,8 +111,10 @@ public abstract class CreatureLifeStats<T extends Creature> {
 
 		if (newHp != previousHp || skillId != 0)
 			sendAttackStatusPacketUpdate(type, previousHp - newHp, skillId, log, criticalHit);
-		if (newHp != previousHp)
+		if (newHp != previousHp) {
 			onHpChanged(type, previousHp, newHp, attacker);
+			CombatMeter.onDamage(owner, attacker, skillId, previousHp - newHp, type); // playerbots: the combat meter addon's count
+		}
 		return newHp;
 	}
 
@@ -188,6 +191,7 @@ public abstract class CreatureLifeStats<T extends Creature> {
 			if (killingBlow != 0 && newHp > killingBlow)
 				unsetIsAboutToDie();
 		}
+		CombatMeter.onHeal(owner, effector, skillId, newHp - previousHp, value); // playerbots: the combat meter addon's count
 
 		if (newHp != previousHp || skillId != 0)
 			sendAttackStatusPacketUpdate(type, newHp - previousHp, skillId, log);
