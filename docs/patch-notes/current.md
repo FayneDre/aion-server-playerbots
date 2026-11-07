@@ -7,6 +7,25 @@ otherwise. When this file nears 200 lines, the oldest entries move to `<year>-<m
 
 ---
 
+## v0.1.0-beta.3 — 07/11/2026
+
+Révision `9164482`, celle que `//bot version` affiche. Il va avec le launcher v0.3.0-beta.5, qui règle les taux premium. **Pas de SQL, pas de
+navmesh à reconstruire.** **Un fichier de réglages par défaut change**, `login-server/config/network/network.properties` (la nouvelle option
+ci-dessous) ; le launcher le remplace s'il n'a pas été modifié, sinon il pose la nouvelle version à côté.
+
+**Ce qui change pour les joueurs et les testeurs**
+- **Tous les comptes des joueurs sont premium** (`loginserver.accounts.minimum_membership = 1`) : les nouveaux comptes sont créés premium,
+  les anciens passent premium au démarrage du login server. Les taux premium sont donc ceux des joueurs, et les taux normaux ceux des bots,
+  qui n'ont pas de compte.
+- **Un bot dans le groupe d'un joueur gagne aux taux du joueur** (le plus haut des joueurs du groupe), et non plus aux taux normaux.
+- **L'expérience des instances de groupe** reste celle du jeu officiel quels que soient les taux : elle est maintenant divisée par le taux
+  premium au lieu du taux normal.
+
+**À tester**
+- Changer un taux premium dans la page Réglages du launcher, redémarrer, et vérifier le gain en jeu, seul puis en groupe avec un bot.
+
+---
+
 ## v0.1.0-beta.2 — 06/11/2026
 
 Révision `c979e97` pour le code (celle du serveur déployé ici) ; le serveur installé par le launcher affiche dans `//bot version` le commit du

@@ -7,6 +7,23 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ---
 
+## v0.1.0-beta.3 — 2026-11-07
+
+Revision `9164482`, the one `//bot version` shows. It goes with launcher v0.3.0-beta.5, which sets the premium rates. **No SQL, no navmesh to
+rebuild.** **One default settings file changes**, `login-server/config/network/network.properties` (the new option below); the launcher
+replaces it if it was not edited, and puts the new version beside it otherwise.
+
+**What changes for players and testers**
+- **Every player account is premium** (`loginserver.accounts.minimum_membership = 1`): new accounts are created premium, older ones become
+  premium when the login server starts. The premium rates are therefore the players', and the regular rates the bots', which have no account.
+- **A bot in a player's group earns at the player's rates** (the highest of the group's players), no longer at the regular ones.
+- **Group instance experience** stays the official game's whatever the rates: it is now divided by the premium rate instead of the regular one.
+
+**To test**
+- Change a premium rate on the launcher's Settings page, restart, and check the gain in game, alone and then in a group with a bot.
+
+---
+
 ## v0.1.0-beta.2 — 2026-11-06
 
 Revision `c979e97` for the code (the one of the server deployed here); a server installed by the launcher shows in `//bot version` the tag's
