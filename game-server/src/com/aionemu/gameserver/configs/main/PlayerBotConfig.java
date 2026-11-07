@@ -159,4 +159,11 @@ public class PlayerBotConfig {
 
 	@Property(key = "gameserver.playerbot.broker.buyer.daily_kinah_per_item", defaultValue = "50000000")
 	public static volatile long BROKER_BUYER_DAILY_KINAH_PER_ITEM;
+
+	/**
+	 * The port the interface addons' pages are served on (the combat meter), 0 to serve none. A client reaches it from wherever it plays, so it is
+	 * opened on every interface; a page shows only what concerns the character whose session token asks for it.
+	 */
+	@Property(key = "gameserver.playerbot.addon.port", defaultValue = "7790")
+	public static int ADDON_PORT;
 }

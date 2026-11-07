@@ -42,6 +42,7 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_QUIT_RESPONSE;
 import com.aionemu.gameserver.network.chatserver.ChatServer;
 import com.aionemu.gameserver.network.loginserver.LoginServer;
 import com.aionemu.gameserver.playerbot.PlayerBotService;
+import com.aionemu.gameserver.playerbot.addon.AddonWebServer;
 import com.aionemu.gameserver.questEngine.QuestEngine;
 import com.aionemu.gameserver.services.*;
 import com.aionemu.gameserver.services.abyss.AbyssRankUpdateService;
@@ -189,6 +190,7 @@ public class GameServer {
 		Runtime.getRuntime().addShutdownHook(ShutdownHook.getInstance());
 		ShutdownRequestWatcher.start();
 		AdminChannel.start();
+		AddonWebServer.start(); // playerbots: the pages the interface addons show
 		PlayerBotService.getInstance().onStartUp(); // bots have no connection, so nothing else ever puts them back into the world
 		log.info("Game server started in {} seconds", System.currentTimeMillis() / 1000 - START_TIME_SECONDS);
 
