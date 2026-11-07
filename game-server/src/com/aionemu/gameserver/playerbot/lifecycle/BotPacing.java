@@ -222,6 +222,22 @@ public class BotPacing implements StatOwner {
 		return player.isBot() && Math.round(player.getGameStats().getStat(StatEnum.BOOST_QUEST_XP_RATE, 100).getCurrent()) == HUNTING_XP_PERCENT;
 	}
 
+	/**
+	 * @return The membership whose rates this character earns at: a player's own, and for a bot in a team the highest of the players' in it. Every
+	 *         player account is premium (the login server's minimum membership) and a bot has no account, so without this a bot in a player's
+	 *         group would earn at the regular rates while the player earns at the premium ones.
+	 */
+	public static int membershipOf(Player player) {
+		int own = player.getAccount().getMembership();
+		if (!player.isBot() || player.getCurrentTeam() == null)
+			return own;
+		return player.getCurrentTeam().getOnlineMembers().stream()
+			.filter(member -> !member.isBot())
+			.mapToInt(member -> member.getAccount().getMembership())
+			.max()
+			.orElse(own);
+	}
+
 	/** @return Whether the percents set on this bot are the ones the options give now. */
 	private boolean paceIsCurrent() {
 		return Stream.of(PACED_RATES).allMatch(rate -> Math.round(bot.getGameStats().getStat(rate, 100).getCurrent()) == percentOf(rate));

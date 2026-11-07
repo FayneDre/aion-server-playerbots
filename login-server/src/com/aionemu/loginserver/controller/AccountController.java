@@ -274,7 +274,7 @@ public class AccountController {
 		account.setName(name);
 		account.setPasswordHash(passwordHash);
 		account.setAccessLevel((byte) 0);
-		account.setMembership((byte) 0);
+		account.setMembership(Config.MINIMUM_MEMBERSHIP);
 		account.setActivated((byte) 1);
 
 		if (AccountDAO.insertAccount(account)) {

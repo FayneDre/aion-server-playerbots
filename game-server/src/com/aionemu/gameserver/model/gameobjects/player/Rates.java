@@ -170,7 +170,7 @@ public enum Rates {
 			LoggerFactory.getLogger(Rates.class).warn("Missing rates", new IllegalStateException());
 			return 1;
 		}
-		int membershipLevel = player.getAccount().getMembership();
+		int membershipLevel = BotPacing.membershipOf(player); // playerbots: a bot in a player's team earns at the player's rates
 		return membershipRates[Math.min(membershipRates.length - 1, membershipLevel)];
 	}
 

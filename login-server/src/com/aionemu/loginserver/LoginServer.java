@@ -9,6 +9,7 @@ import com.aionemu.commons.utils.info.SystemInfo;
 import com.aionemu.commons.utils.info.VersionInfo;
 import com.aionemu.loginserver.configs.Config;
 import com.aionemu.loginserver.controller.BannedIpController;
+import com.aionemu.loginserver.dao.AccountDAO;
 import com.aionemu.loginserver.dao.BannedHddDAO;
 import com.aionemu.loginserver.dao.BannedMacDAO;
 import com.aionemu.loginserver.network.NetConnector;
@@ -34,6 +35,7 @@ class LoginServer {
 		BannedIpController.start();
 		BannedMacDAO.cleanExpiredBans();
 		BannedHddDAO.cleanExpiredBans();
+		raiseAccountsToMinimumMembership();
 
 		PlayerTransferService.getInstance();
 
@@ -42,6 +44,14 @@ class LoginServer {
 
 		NetConnector.connect();
 		Runtime.getRuntime().addShutdownHook(new ShutdownHook());
+	}
+
+	private static void raiseAccountsToMinimumMembership() {
+		if (Config.MINIMUM_MEMBERSHIP <= 0)
+			return;
+		int raised = AccountDAO.raiseMembership(Config.MINIMUM_MEMBERSHIP);
+		if (raised > 0)
+			LoggerFactory.getLogger(LoginServer.class).info("Raised {} account(s) to membership {}", raised, Config.MINIMUM_MEMBERSHIP);
 	}
 
 	private static class ShutdownHook extends Thread {

@@ -67,6 +67,14 @@ public class Config {
 	public static boolean ACCOUNT_AUTO_CREATION;
 
 	/**
+	 * playerbots: the membership every player account has at least (0 regular, 1 premium). New accounts are created with it and older ones are
+	 * raised to it when the login server starts, so the rates the server is given for premium accounts are the players' own, and the regular
+	 * ones are left to the bots, which have no account here.
+	 */
+	@Property(key = "loginserver.accounts.minimum_membership", defaultValue = "1")
+	public static byte MINIMUM_MEMBERSHIP;
+
+	/**
 	 * URL for external authentication, that is used to receive an JSON encoded string, holding the auth status
 	 */
 	@Property(key = "loginserver.accounts.external_auth.url", defaultValue = "")

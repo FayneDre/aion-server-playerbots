@@ -152,6 +152,24 @@ public class AccountDAO {
 		});
 	}
 
+	/**
+	 * Raises every account below this membership to it, the membership it returns to after a timed one included.
+	 *
+	 * @return the number of accounts raised, or -1 when the database refused
+	 */
+	public static int raiseMembership(byte minimum) {
+		try (Connection con = DatabaseFactory.getConnection();
+			PreparedStatement st = con.prepareStatement(
+				"UPDATE account_data SET membership = GREATEST(membership, ?), old_membership = GREATEST(old_membership, ?) WHERE membership < ? OR old_membership < ?")) {
+			for (int index = 1; index <= 4; index++)
+				st.setByte(index, minimum);
+			return st.executeUpdate();
+		} catch (SQLException e) {
+			log.error("Could not raise the accounts to membership " + minimum, e);
+			return -1;
+		}
+	}
+
 	public static boolean updateMembership(int accountId) {
 		return DB.insertUpdate("UPDATE account_data SET membership = old_membership, expire = NULL WHERE id = ? and expire < CURRENT_TIMESTAMP", st -> {
 			st.setInt(1, accountId);
