@@ -62,12 +62,13 @@ closed on 1 November; meshes checked against what people walked ([verification-t
 villages always full, about 950 bots awake on 26 maps ([how-it-works.md](population/how-it-works.md)); the density modes (5 November).
 
 **Left** ([backlog.md](population/backlog.md), [living-world-plan.md](population/plans/living-world-plan.md)):
-1. **Lot A, memory first**: a heap guard on the director, one budget for every navmesh, the density in the launcher, a density that finds its level.
+1. **Lot A, memory first**: a heap guard on the director (A1), the density in the launcher (A3), one budget for every navmesh (A2), and last a
+   density that finds its own level (A4).
    Everything else is bounded by it: about 800 awake bots fill the 2560 MB heap.
 2. **Bots yield to real players**: a design rule to settle before a settled 2000 (nothing yields to a person today).
-3. **The director, lot F**: a pool stocked by level band and role, pre-filling a map before a player arrives, moving a bot that outgrew its region
-   across maps, a day on the clock, sessions.
-4. **Careers on the roads, lot C**: travelling merchants, road wardens, caravans.
+3. **The director, lot F**: a pool stocked by level band and role (F1), with pre-filling a map before a player arrives and moving a bot that
+   outgrew its region across maps; a day on the clock (F2); sessions (F3).
+4. **Careers on the roads, lot C**: travelling merchants (C1), road wardens (C2), caravans (C3).
 5. By decision, left as they are: Reshanta's numbers (29 awake with nobody online) and its middle layer, not lived.
 
 ## 3. Classes and combat
@@ -119,8 +120,10 @@ the bots' chat in French or English with jokes and reactions, and the stores' co
 **Left**:
 1. **The in-game shop**: the server has none (the 4.8 client asks for a web shop token upstream answers empty). A decision first: a small web shop,
    or the old packets if the client still reads them ([social/backlog.md](social/backlog.md)).
-2. **A world that talks about itself, lot I**: true rumours, personalities, contested named monsters ([living-world-plan.md](population/plans/living-world-plan.md)).
-3. **A window on the bots inside the game, lot H**: pages in the client's browser, interface addons, GM tools in game.
+2. **A world that talks about itself, lot I**: personalities (I2), then true rumours (I1) and contested named monsters (I3, which needs E2)
+   ([living-world-plan.md](population/plans/living-world-plan.md)).
+3. **A window on the bots inside the game, lot H**: pages served to the client's browser (H1), an interface addon (H2), GM tools in game (H3), and
+   what else is used while playing (H4: teleport, one's characters, the world map, orders, a tester's note). H1 and H2 can run beside anything.
 
 ## 7. Gear
 
@@ -137,7 +140,8 @@ they own worn, potions drunk ([gear/how-it-works.md](gear/how-it-works.md)).
 **Left**:
 1. **A watch in game** with the property on: no bot has met a player yet.
 2. **Hunting grounds in PvP zones** (milestone 3), then **rifts** (4), then the **measure** (5).
-3. **Limits, raids, grudges** (lot D of [living-world-plan.md](population/plans/living-world-plan.md)).
+3. **Lot D** of [living-world-plan.md](population/plans/living-world-plan.md): limits on a fight (D1), rift raids (D2), raids the world answers (D3),
+   and last grudges (D4).
 
 ## 9. Broker
 
@@ -161,3 +165,12 @@ which needs bots grouping with each other first (theme 4).
 
 **Not started**, the stretch goal. Its supply line is designed: bots at the level cap become the elders the endgame needs
 ([population/how-it-works.md](population/how-it-works.md)). Panesterra's four fields hold no civilians and have no mesh (no heightmap in the data).
+
+## The living world plan and the group options, in their own order
+
+Decided on 5 November and spread above by theme. The [living-world-plan.md](population/plans/living-world-plan.md) proposes this order across
+themes: 1. A1, then A3, A2 after the density histogram; 2. B1; 3. D1 to D3; 4. E1, E2; 5. C1 to C3; 6. I2, then I1 and I3; 7. F1 to F3; 8. B2 and
+B3, unless dungeons are brought forward; 9. G1, D4, A4 when the rest stands; H1 and H2 beside any of them. The
+[group-options-plan.md](social/plans/group-options-plan.md) (starting level, dice, orders and marks, one's own characters) stands apart, each point
+small. Left out by decision: quests for world bots, patching the client's executables, rewards of our own invention, changes to monster strength, a
+market other than the native broker, freezing the maps nobody is on, another mesh format, a decision engine other than the playbooks.
