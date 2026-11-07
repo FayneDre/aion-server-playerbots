@@ -56,7 +56,7 @@ whatever needs the socket tests the socket. See [docs/architecture/how-it-works.
 
 [docs/README.md](docs/README.md) is the index: every document by topic, with each plan's status. The ones to open first:
 
-- [docs/roadmap.md](docs/roadmap.md) — **start here**: what is left, by priority, with what blocks each one.
+- [docs/roadmap.md](docs/roadmap.md) — **start here**: what is done and what is left, by theme in priority order, each theme's work in order.
 - [docs/built.md](docs/built.md) — what already works, one paragraph a topic, each pointing to its `how-it-works.md`.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command.
 - [docs/patch-notes/current.md](docs/patch-notes/current.md) — every test patch, in French for the testers, by version tag, with its English twin in

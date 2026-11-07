@@ -1,6 +1,6 @@
 # What is built
 
-What works today, one paragraph a topic, each pointing to the document that says how it works. For what is **left**, see [roadmap.md](roadmap.md);
+What works today, one paragraph a topic, each pointing to the document that says how it works. For what is **left**, theme by theme, see [roadmap.md](roadmap.md);
 for every document, [README.md](README.md). Rewritten on 28 October 2026: the reasoning this file used to hold moved to the topic it belongs to.
 
 ## Where it stands
@@ -33,5 +33,5 @@ validated in game on 27 October, except duels, friends and trades with a compani
 
 ## Known limits and traps
 
-Known limits are kept in one place, [roadmap.md](roadmap.md) ("Known limits"), reviewed with each patch. What the engine and the data do to a bot that
+Known limits are kept in one place, [known-limits.md](known-limits.md), reviewed with each patch. What the engine and the data do to a bot that
 nothing warns about is in [traps/](traps/): where to look first when a bot does nothing and says nothing about why.

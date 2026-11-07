@@ -1,7 +1,7 @@
 # Documentation
 
-Every document of the bot module, by topic. Start with [roadmap.md](roadmap.md) for what is left, and [built.md](built.md) for what works, a paragraph a topic.
-Last checked 28 October 2026.
+Every document of the bot module, by topic. Start with [roadmap.md](roadmap.md): what is done and what is left, by theme, each theme's work in order.
+Last checked 7 November 2026.
 
 ## How the folders work
 
@@ -9,7 +9,8 @@ Each topic folder holds three kinds of document, and a reader looking for how so
 
 - **at its top**: `how-it-works.md`, what is true today, kept up to date when the code changes, and other references (lists, measurements);
 - **`plans/`**: work still open, each opening with its Status;
-- **`history/`**: plans that are done, kept unchanged for their reasons and their numbers; what they left open is in the roadmap or a backlog.
+- **`history/`**: plans that are done, kept unchanged for their reasons and their numbers; what they left open is in the roadmap or a backlog;
+- **`backlog.md`**: the detail of what is left in a topic that has no single plan for it, in the roadmap's order.
 
 A Status line opens every plan and backlog, in fixed words: `not started`, `in progress: <where>`, `built, unverified: <what>`, `done`, or
 `reference`; the details go in the paragraph below it. A plan moves from `plans/` to `history/` the day it is done. `tools/check-docs.ps1` checks
@@ -20,7 +21,8 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 
 | File | What it holds |
 |---|---|
-| [roadmap.md](roadmap.md) | **Start here**: what is left, by priority, with what blocks each item. |
+| [roadmap.md](roadmap.md) | **Start here**: what is done and what is left, by theme in the project's priority order, each theme's work in order. |
+| [known-limits.md](known-limits.md) | What the project does not control or lives with, in order of how much it bites; reviewed with each patch. |
 | [built.md](built.md) | What already works, one paragraph a topic, each pointing to its `how-it-works.md`. |
 | [bot-commands.md](bot-commands.md) | Every `//bot` command, and the one number that decides who may run them (`check-bot-docs.ps1` keeps it complete). |
 | [patch-notes/current.md](patch-notes/current.md) | Every test patch, in French for the testers, newest first, by version tag; older ones in [patch-notes/2026-10.md](patch-notes/2026-10.md). |
@@ -57,6 +59,7 @@ Where to look first when a bot does nothing and says nothing about why.
 | [population-director.md](population/population-director.md) | The pool and the director: how a region keeps the people it should. |
 | [bot-careers.md](population/bot-careers.md) | How a bot gains levels, where it lives as it grows, what keeps it out of trouble. |
 | [resident-leftovers.md](population/resident-leftovers.md) | What is left of the dropped resident/adventurer system, to check before any removal. |
+| [backlog.md](population/backlog.md) | What is left in detail: the director's stocking, pre-filling and moves across maps; bots yielding to players. |
 | [plans/living-world-plan.md](population/plans/living-world-plan.md) | A world that lives with or without a player: memory, learned ground, road careers, PvP, groups, the director, a window in the game. Not started. |
 
 History: [the-pool.md](population/history/the-pool.md) (what the pool cost to build, and the residents it replaced),
@@ -85,7 +88,7 @@ per class, are in [glossary/](classes/glossary/README.md): [templar](classes/glo
 History, one plan per class guide, each validated in game on 27 October: [templar](classes/history/templar-plan.md),
 [chanter](classes/history/chanter-plan.md), [cleric](classes/history/cleric-plan.md), [ranger](classes/history/ranger-plan.md),
 [gladiator](classes/history/gladiator-plan.md), [sorcerer](classes/history/sorcerer-plan.md). Assassin, spirit master, bard, gunner and aethertech
-have no plan yet ([roadmap.md](roadmap.md), "Group play").
+have no plan yet ([roadmap.md](roadmap.md), theme 3).
 
 ## Gear — [gear/](gear/)
 
@@ -122,6 +125,7 @@ History: [navigation-prototype.md](navigation/history/navigation-prototype.md) (
 | File | What it holds |
 |---|---|
 | [how-it-works.md](flight/how-it-works.md) | **How a bot flies today**: what the engine leaves to the client, when a bot leaves the ground, Reshanta, the limits. |
+| [backlog.md](flight/backlog.md) | What is left in detail: the Abyss on foot, long journeys, the middle layer, ambient flights that stall. |
 | [plans/abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md) | Flight links between Reshanta's islands. In progress: 1 to 5 built, 6 not started. |
 | [plans/flying-with-a-player-plan.md](flight/plans/flying-with-a-player-plan.md) | The 19 October report. In progress: 1 to 5 validated, 6 waits on the tester. |
 
@@ -130,6 +134,8 @@ History: [flight-plan.md](flight/history/flight-plan.md) (take-off, landing, ter
 ## Capitals — [capitals/](capitals/)
 
 [how-it-works.md](capitals/how-it-works.md): **how the capitals live today**, the town day, private stores, visitors, speech.
+
+[backlog.md](capitals/backlog.md): what is left in the economy in detail (selling, shops, gear that keeps up).
 
 Plans: [plans/auction-house-plan.md](capitals/plans/auction-house-plan.md) (an auction house stocked by the server on the AHBot model; seller, settling and buyer built, unverified).
 
@@ -145,6 +151,7 @@ History, all built: [bot-store-consumables-plan.md](capitals/history/bot-store-c
 |---|---|
 | [how-it-works.md](social/how-it-works.md) | **How bots deal with players today**: groups, requests, the chat channels. |
 | [groups.md](social/groups.md) | Why groups work the way they do: following as the anchor, no initiative, assisting, slots, leaders. |
+| [backlog.md](social/backlog.md) | What is left in detail: dungeons and instances, group play, what was asked in game on 19 October, the chat server. |
 | [plans/player-interactions-plan.md](social/plans/player-interactions-plan.md) | Trades with a companion, friends, duels. Built, unverified in game. |
 | [plans/cohort-plan.md](social/plans/cohort-plan.md) | Bots in an alliance. Not started. |
 | [plans/group-options-plan.md](social/plans/group-options-plan.md) | Playing with one's bots: the starting level, bots rolling the dice, stay, guard, passive and two marks. Not started. |
