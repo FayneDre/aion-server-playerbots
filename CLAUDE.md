@@ -123,9 +123,11 @@ To pull upstream updates: `git fetch upstream`, then fast-forward `beyond-aion` 
   of the reports before. A measurement tool written in a scratch folder is lost with the session: write it here.
 - **Check a mesh against what a person walked**: `tools/check-golden-routes.ps1` (routes a tester walked, both ways; `navmesh.ps1` runs it after a build), `tools/check-walker-routes.ps1` (the patrol routes
   of the data, against a baseline per map) and the route lines of `//bot note` ([docs/navigation/verification-tools.md](docs/navigation/verification-tools.md)). A fix for a tester's note adds its line to `tools/golden-routes.txt`.
-- `tools/apply-sql.ps1` runs the statements of `game-server/sql/update.sql` the database has not had yet, once each (a table `schema_applied_sql` holds
-  their hashes), after a `mysqldump` and with the game server stopped; `deploy.ps1` runs it after the build, so nobody runs upstream's SQL by hand.
-  A database that has them already is told once with `-MarkApplied -Apply`.
+- `tools/apply-sql.ps1` runs the statements of a server's `sql/update.sql` (`-Server game`, the default, or `login`) the database has not had yet,
+  once each (a table `schema_applied_sql` holds their hashes), after a `mysqldump` and with that server stopped; `deploy.ps1` runs it for both
+  after the build, so nobody runs upstream's SQL by hand. A database that has them already is told once with `-MarkApplied -Apply`. `-Create`
+  makes a database from nothing (the schema, then `update.sql` recorded): what an install from nothing runs. `tools/check-schema.ps1`, after
+  every upstream merge, checks into a scratch MySQL that the schema and `update.sql` still make the live database.
 - `tools/sync-install.ps1` brings the installed servers in line with the repository. `deploy.ps1` runs its `-LibsOnly` part on every deploy (the
   libraries the poms ask for, the login server's jar, commons for the login and chat servers; nothing is resolved while the poms are unchanged). After an
   upstream merge, `-From <the commit or patch tag the install holds>` adds the data and configuration files the install still holds as the repository

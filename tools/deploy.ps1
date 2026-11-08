@@ -92,8 +92,11 @@ if ($docProblems) {
 # The database is asked now, before a build of minutes: MySQL not started, or a password that changed, is found out here and not after the tests.
 # Only looks (no -Apply); the statements are run after the build.
 if (-not $SkipSql) {
-    $sqlLook = & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot
-    $sqlLook | Where-Object { $_ -match ', [1-9][0-9]* not applied yet' } | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
+    # the game and login servers have an update.sql each; the chat server has none
+    foreach ($sqlServer in 'game', 'login') {
+        $sqlLook = & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Server $sqlServer
+        $sqlLook | Where-Object { $_ -match ', [1-9][0-9]* not applied yet' } | ForEach-Object { Write-Host "$sqlServer`: $_" -ForegroundColor Yellow }
+    }
 }
 
 if (-not $SkipBuild) {
@@ -123,10 +126,12 @@ if (-not $SkipBuild) {
 
 # The schema changes the database has not had yet, once each, from a backup. Only with something new does it do anything, and then the game server
 # must be stopped, which a deploy has asked of it since the start (-Restart stops it; without, it refuses). A failing statement stops the deploy:
-# a server started on a half migrated schema fails in ways that are harder to read.
+# a server started on a half migrated schema fails in ways that are harder to read. The login server's database the same way: rarer, and the login
+# server stopped by hand for it, since a deploy leaves it running.
 if (-not $SkipSql) {
-    Write-Host 'Checking the database...' -ForegroundColor Cyan
+    Write-Host 'Checking the databases...' -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Apply
+    & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Server login -Apply
 }
 
 # The libraries the poms ask for, and the jars the login and chat servers load from their own folders. Moving to Netty 4.2 on 28 October left an

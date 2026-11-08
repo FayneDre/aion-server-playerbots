@@ -1,6 +1,6 @@
 # What the server needs before the launcher installs it from nothing
 
-Status: not started. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -32,16 +32,27 @@ an install finds an empty MySQL, a machine of unknown size and nobody who knows 
   of it, with its own ledger table in that database. `deploy.ps1` runs both.
 - `apply-sql.ps1 -Create`: creates the database if missing, runs the schema, then records every statement of `update.sql` as applied, in one
   transaction where MySQL allows it, refusing a database that has tables already. The launcher runs exactly that, so the rules stay here.
-- A rule for the schemas: an upstream merge that changes `update.sql` is checked against the schema it ships with (`-Scratch` into a throwaway
-  database: schema, then `update.sql` marked, then a diff of `SHOW CREATE TABLE` against the live database after its updates).
+- A rule for the schemas: after an upstream merge, `tools/check-schema.ps1 -Server game|login|chat` makes the database from nothing into a
+  scratch MySQL (`<schema>_check`, dropped after) and compares it with the live one, table by table, column by column; exit code 1 lists what
+  differs.
 
 The database is a portable MySQL the launcher ships and starts itself (decided on 8 November): the zip archive of the same major version as
 the one the server is developed on, in its own folder, on its own port, with a user and password the launcher sets. Nothing is installed on the
 system, nothing collides with a MySQL a person has already, and the assistant has nothing to ask about the database. MySQL rather than MariaDB
 because the server's driver (`mysql-connector-j`), upstream and every daily test run against MySQL.
 
-Checked, on that portable MySQL: both databases created from the bundle alone into `aion_gs_fresh` / `aion_ls_fresh`, their tables diffed against the live ones, no
-difference but the data; `-Create` on the live database refuses.
+**Built and checked on 8 November**, on the official MySQL 26.7.0 zip (Oracle's signature checked), started on port 3307 beside the live
+server: the three databases made in 1.9, 0.6 and 0.4 s (63, 9 and 2 tables, `aion_gs.sql` holding `playerbot_characters` already);
+`check-schema.ps1` finds them the live databases' tables column for column, and finds a column added to a copy of the schema; a second
+`-Create` refuses; a broken schema is taken back to nothing, the database dropped when the run made it, its tables when it was there empty; a
+login database without a ledger whose two statements are in it records them `already` (`DROP TABLE` of a missing table, error 1051, now
+counts as done). The live `aion_ls` had no ledger: marked once (`-Server login -MarkApplied -Apply`). The chat server has a schema and no
+`update.sql`, so three schemas ship and two `update.sql`.
+
+Left, on the launcher's side: its update runs the login server's `update.sql` too (with `-Server login`, a tester's login database marked
+once when its ledger is absent, as the game one is); the install from nothing runs `-Create` for the three servers. And the portable MySQL
+itself: the zip is 346 MB and 1.3 GB unpacked, 809 MB of it debug symbols (`.pdb`) and much of the rest tools a server never runs (`mysqld.exe` is
+52 MB, the two clients 15), to be trimmed to what `mysqld` and the two clients need before it ships.
 
 ### 2. A1: the heap guard on the director
 

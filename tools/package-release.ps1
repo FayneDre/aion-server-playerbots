@@ -4,8 +4,10 @@
 
 .DESCRIPTION
     What a tester installs is what Maven's assembly puts in each server's zip (game-server/assembly.xml: config, data, the start scripts, every
-    library with the project's own jars), the three zips merged, plus game-server/sql/update.sql and tools/apply-sql.ps1, which the launcher runs
-    from the bundle so the rules of the SQL live in one place (docs/architecture/plans/release-process-plan.md, milestone 6).
+    library with the project's own jars), the three zips merged, plus tools/apply-sql.ps1 and each server's SQL (the schemas aion_gs.sql,
+    aion_ls.sql and aion_cs.sql, the game and login servers' update.sql), which the launcher runs from the bundle so the rules of the SQL live in
+    one place: an update (docs/architecture/plans/release-process-plan.md, milestone 6), an install from nothing (apply-sql.ps1 -Create,
+    docs/architecture/plans/fresh-install-readiness-plan.md, milestone 1).
 
     Writes into release/<tag>/:
     - aion-server-<tag>.zip, holding manifest.json too;
@@ -109,10 +111,15 @@ try {
             # each zip holds its own top folder: game-server/..., login-server/..., chat-server/...
             [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $repoRoot "$module\target\$module.zip"), $staging)
         }
-        New-Item -ItemType Directory -Force (Join-Path $staging 'tools'), (Join-Path $staging 'game-server\sql') | Out-Null
-        # at the same place as in the repository, so the script finds update.sql by its default path
+        New-Item -ItemType Directory -Force (Join-Path $staging 'tools') | Out-Null
+        # at the same place as in the repository, so the script finds them by its default paths: each server's update.sql for an update, and
+        # its schema for an install from nothing (apply-sql.ps1 -Create; the chat server has a schema and no update.sql)
         Copy-Item (Join-Path $repoRoot 'tools\apply-sql.ps1') (Join-Path $staging 'tools\apply-sql.ps1')
-        Copy-Item (Join-Path $repoRoot 'game-server\sql\update.sql') (Join-Path $staging 'game-server\sql\update.sql')
+        foreach ($sql in 'game-server\sql\aion_gs.sql', 'game-server\sql\update.sql', 'login-server\sql\aion_ls.sql', 'login-server\sql\update.sql',
+            'chat-server\sql\aion_cs.sql') {
+            New-Item -ItemType Directory -Force (Split-Path -Parent (Join-Path $staging $sql)) | Out-Null
+            Copy-Item (Join-Path $repoRoot $sql) (Join-Path $staging $sql)
+        }
 
         $tracked = @{}
         foreach ($path in git ls-files -- '*/config/*' '*/data/*') { $tracked[$path] = $true }
