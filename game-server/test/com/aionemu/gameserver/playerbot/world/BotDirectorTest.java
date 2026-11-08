@@ -267,6 +267,26 @@ class BotDirectorTest {
 		return posts;
 	}
 
+	private static BotRoster.Resident arrival(int id) {
+		return new BotRoster.Resident(id, "Bot" + id, 220020000, GROUND_A, Race.ASMODIANS);
+	}
+
+	@Test
+	void aHeldWorldExchangesHuntersOfUnplayedMapsForArrivalsWhereAPlayerIs() {
+		List<BotDirector.Exchange> exchanges = BotDirector.exchanges(List.of(arrival(1), arrival(2), arrival(3), arrival(4)),
+			List.of(List.of(10, 11, 12), List.of(20), List.of()), 25);
+		// in turn from each map, the one with a single hunter left alone once it has given it, the empty one skipped
+		assertEquals(List.of(10, 20, 11, 12), exchanges.stream().map(BotDirector.Exchange::leaving).toList());
+		assertEquals(List.of(1, 2, 3, 4), exchanges.stream().map(exchange -> exchange.arriving().playerId()).toList());
+	}
+
+	@Test
+	void exchangesStopAtTheBudgetOrWhenNobodyIsLeftToGive() {
+		assertEquals(2, BotDirector.exchanges(List.of(arrival(1), arrival(2), arrival(3)), List.of(List.of(10, 11, 12)), 2).size());
+		assertEquals(1, BotDirector.exchanges(List.of(arrival(1), arrival(2)), List.of(List.of(10)), 25).size());
+		assertTrue(BotDirector.exchanges(List.of(arrival(1)), List.of(), 25).isEmpty(), "no map nobody plays on: no exchange");
+	}
+
 	private static List<Settlement> field(Vector3f... grounds) {
 		List<Settlement> plan = new ArrayList<>();
 		for (Vector3f ground : grounds)

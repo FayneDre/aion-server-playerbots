@@ -49,6 +49,14 @@ search per bot); the guard never had to hold at its 85/80 marks. With the marks 
 1907 and left 702 asleep; the first review asked for 694 wakes, 2 came and 692 were held; held at 73 %, kept at 70, released at 66, and the
 next review's 692 gave 41 arrivals and 651 held.
 
+**While the guard holds, the played maps take bots from the others** (`exchanges`): each arrival a map with a player is short of is paired with a
+bot awake on a map nobody plays on, hunters first, then villagers, taken in turn from each such map; the bot leaves, and only if it did the
+arrival follows, on the lane, without the heap check (the count does not change). A bot that would not leave (a fight, a road) is passed over
+for 2 minutes. The played maps also come first in every review, so a wake budget spent early is spent where somebody is. Measured on 8 November
+at 1536 MB, four processors, `AUTO`: without it the world filled to 690 before anybody came, and Morheim stayed at 18 of 190 with a player on it.
+With it, hunters only ran out after 32 exchanges (a full world is mostly villages); with villagers too, Morheim went from 3 to 128 of 129 in six
+minutes at 25 a review, the world holding at 770 throughout, each review's arrivals equal to its departures.
+
 That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
 a world asleep overnight comes back to the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
 

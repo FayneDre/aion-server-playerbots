@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
-and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built, its measurement at a small heap left. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -115,7 +115,12 @@ Measured the same evening on the live server, nobody online, at the worst case: 
 thread: queues of up to 98 bots behind searches that give up, the longest wait 15 s against the guard's 20. With at least two route threads
 (the same run again, 22 minutes): the queue at most 41, the longest wait 6 s, the plateau the same (686 to 689), searches given up at the same
 rate (158, about 7 a minute, which are goals out of reach, not waits). So a 1536 MB heap holds about 680 bots: `AUTO` stays far under it, and
-`FIXED` on such a machine is about 30 %. Left: the hour of `AUTO` with a player in game at that heap.
+`FIXED` on such a machine is about 30 %.
+
+The hour of `AUTO` at that heap failed its check before anybody came: with nobody online `AUTO` wants 902 (every village full), the heap holds
+about 690, so the guard held from the start. Worse, with a player in Morheim the map stayed at 18 of 190, every other bot on maps nobody saw.
+Hence the exchanges of [population-director.md](../../population/population-director.md): with them Morheim filled to 129 of 129 in six minutes,
+the world's count unchanged, and the player found it peopled. The check is now that one: on the smallest heap, the map a player is on fills.
 
 ### 5. A first start on an empty database, measured
 
