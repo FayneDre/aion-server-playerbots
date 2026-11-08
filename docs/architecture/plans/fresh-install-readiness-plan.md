@@ -1,0 +1,92 @@
+# What the server needs before the launcher installs it from nothing
+
+Status: not started. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+the next launcher work is installing one on a machine that has none. Six milestones, in this order; each says how it is checked. The class
+playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
+
+## Why
+
+Updating a server and installing one are not the same job. An update finds a database, a configuration and a heap that a person already set up;
+an install finds an empty MySQL, a machine of unknown size and nobody who knows what `mygs.properties` is. What the bundle lacks today:
+
+- **No schema.** The bundle carries `game-server/sql/update.sql` and `tools/apply-sql.ps1`, not `aion_gs.sql` nor `aion_ls.sql`: an empty
+  database cannot be made from it.
+- **A fresh database would be updated twice.** `aion_gs.sql` already holds what `update.sql` adds (`pvp_exp`, `chin_height`): run on a database
+  made from it, `apply-sql.ps1` would replay `ALTER TABLE ... ADD COLUMN` and fail.
+- **The login server's updates are run by nobody.** `apply-sql.ps1` reads the game server's `database.url` only; `login-server/sql/update.sql`
+  (the `toll` column, `account_rewards`) has always been run by hand.
+- **The defaults are one machine's.** `density.mode = AUTO` at 30 %, a 2560 MB heap and no guard: about 800 awake bots fill that heap, and nothing
+  stops the director before it does ([living-world-plan.md](../../population/plans/living-world-plan.md), lot A).
+- **Nobody has ever started this server on an empty database.** The bot pool, the broker's 6000 lots and the first navmesh loads have only ever
+  met a database that had them already.
+
+## Milestones
+
+### 1. The schemas in the bundle, a fresh database made in one step
+
+- `package-release.ps1` adds `game-server/sql/aion_gs.sql` and `login-server/sql/aion_ls.sql`, plus `login-server/sql/update.sql`, at their
+  repository paths; the manifest lists them like every other file.
+- `apply-sql.ps1` learns the login server: `-Server login` reads `login-server/config/network/database.properties` and `config/myls.properties` on top
+  of it, with its own ledger table in that database. `deploy.ps1` runs both.
+- `apply-sql.ps1 -Create`: creates the database if missing, runs the schema, then records every statement of `update.sql` as applied, in one
+  transaction where MySQL allows it, refusing a database that has tables already. The launcher runs exactly that, so the rules stay here.
+- A rule for the schemas: an upstream merge that changes `update.sql` is checked against the schema it ships with (`-Scratch` into a throwaway
+  database: schema, then `update.sql` marked, then a diff of `SHOW CREATE TABLE` against the live database after its updates).
+
+Checked: both databases created from the bundle alone into `aion_gs_fresh` / `aion_ls_fresh`, their tables diffed against the live ones, no
+difference but the data; `-Create` on the live database refuses.
+
+### 2. A1: the heap guard on the director
+
+As written in [living-world-plan.md](../../population/plans/living-world-plan.md): the old generation after a collection
+(`MemoryPoolMXBean.getCollectionUsage`), a review that wakes nobody above the upper threshold and again below the lower one, a log line and a
+line in `//bot pool`. The thresholds come from a measurement: `FIXED` at 100 % on the live server, the heap after each collection logged until
+awake bots level off. Checked: the server stays up with `FIXED` at 100 %, and `//bot pool` shows the guard holding.
+
+### 3. A3: the density in the launcher, and defaults for an unknown machine
+
+- Server: the density mode, percent and the guard's state on the admin channel the launcher already reads (`version` gives `API_LEVEL`; the
+  level is raised, the launcher's minimum with it). The mode and percent are written to `playerbot.properties` by the launcher, read at start.
+- Launcher: the mode as a list, the percent as a slider bounded by what milestone 2 measured, the guard shown on the Bots page.
+- Defaults: the heap chosen from the machine's memory (a table in the launcher: 8 GB, 16 GB, more), the density at a percent that stays under
+  the guard on the smallest of them. Measured on the live server with that heap, not reasoned.
+
+Checked: the slider moves the world on a restart; at the smallest heap the guard is never reached in an hour of `AUTO`.
+
+### 4. A first start on an empty database, measured
+
+A second install beside the live one (other folder, other ports, the databases of milestone 1), started from the bundle with the defaults of
+milestone 3, the live server stopped first (two servers do not fit this machine's memory). Written down, in a measurement under
+`log/bot-measures` and a section here:
+
+- each phase's time: the data loaded, the bot pool created (how many characters, how long), the broker filled, the first bots awake, the
+  login server registered;
+- the heap after collections through that hour, against the live server's;
+- every error and warning of the log (`check-server-log.ps1`);
+- every setting a person had to type for it to start: the database user and password, the addresses, the admin account. That list is what the
+  launcher's first-launch assistant must ask for or set itself, and nothing else.
+
+Checked: a client logs in to the fresh server, creates a character and sees bots around it.
+
+### 5. Tests for the combat half of `PlayerBotAI`
+
+`PlayerBotAI` is 1924 lines and its combat half has no test ([known-limits.md](../../known-limits.md), Tests). Before the upstream merge
+touches the skill engine under it: the decisions it takes (which target, when to close in or back off, when to drink, when to give up a fight)
+moved into pure functions of a situation record, as `TownRoutine` and `LostTrail` are, with a suite each. No behaviour changes: the measures of
+the day before and after are compared with `compare-measures.ps1`. Checked: the suites pass, the measure stays in its band.
+
+### 6. The upstream merge, then the first stable pair
+
+- `git fetch upstream`, `beyond-aion` fast-forwarded, merged into `develop` the way
+  [upstream-merge-plan.md](../history/upstream-merge-plan.md) did it: the trial first, the tests of milestone 5, `sync-install.ps1 -From` for
+  the install, `update.sql` checked against the schemas by the rule of milestone 1.
+- Then release milestone 7 ([release-process-plan.md](release-process-plan.md)): a server pre-release and a launcher pre-release validated in
+  game together, `develop` merged into `main` in both repositories, each tagged with its stable version. The launcher's install from nothing
+  installs that pair, never a beta.
+
+Checked: a tester's launcher updates to the stable pair and plays on it.
+
+## After this plan
+
+The launcher's side, in its own roadmap: the first-launch assistant (Java, MySQL, memory, disk; MySQL installed and its user made; the
+settings of milestone 4 asked once), the first download that resumes and verifies, and the install from nothing running `apply-sql.ps1 -Create`.

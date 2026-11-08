@@ -37,6 +37,7 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 | [addon-pages.md](architecture/addon-pages.md) | The pages the interface addons show: the web server, who a page belongs to, the combat meter's count. |
 | [moving-a-body.md](architecture/moving-a-body.md) | Driving a body from the server: what a movement packet carries, how often, and the task manager that drops a body that arrived. |
 | [release-process-plan.md](architecture/plans/release-process-plan.md) | Plan: one release process for the server and the launcher (`develop` and pre-releases on both sides, a compatibility level the launcher checks, a beta launcher installing the server pre-releases, notes in French and English). In progress: milestones 1-6 validated; next, the first stable pair. |
+| [fresh-install-readiness-plan.md](architecture/plans/fresh-install-readiness-plan.md) | Plan: what the server needs before the launcher installs it from nothing (the schemas in the bundle and `apply-sql.ps1 -Create`, the heap guard, the density in the launcher and defaults for an unknown machine, a first start on an empty database measured, tests for the combat half of `PlayerBotAI`, the upstream merge and the stable pair). Not started. |
 
 History: [upstream-merge-plan.md](architecture/history/upstream-merge-plan.md) (69 upstream commits merged on 28 October: the trial, the install, the measure),
 [module-structure-plan.md](architecture/history/module-structure-plan.md) (the module untangled before navigation went further, five steps, each measured),
