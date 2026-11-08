@@ -7,6 +7,25 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ---
 
+## v0.1.0-beta.4 — 2026-11-08
+
+Revision `a494079`, the one `//bot version` shows. It goes with addons v0.1.0-beta.4 (the combat meter), which it serves. **No SQL, no navmesh
+to rebuild.** **One default settings file changes**, `game-server/config/main/playerbot.properties` (the new option below); the launcher
+replaces it if it was not edited, and puts the new version beside it otherwise.
+
+**What changes for players and testers**
+- **The combat meter**: the server counts each player's damage and healing, by skill (overhealing included, a summon's numbers going to its
+  master), and the bots' while they are in a player's group. The count is the group's since its last reset; per second figures only count the
+  time in combat.
+- **The addons' pages**: the server serves them on port 7790 (`gameserver.playerbot.addon.port`, 0 to serve none). A page shows a character
+  only to a request coming from the address of its game connection.
+
+**To test**
+- Install addons v0.1.0-beta.4, then in game open Combat Meter (the game's menu, Additional Functions, or `/dps`) and fight, alone and then in a
+  group with a bot: damage, healing, a member's skills with a click on its name, the reset.
+
+---
+
 ## v0.1.0-beta.3 — 2026-11-07
 
 Revision `9164482`, the one `//bot version` shows. It goes with launcher v0.3.0-beta.5, which sets the premium rates. **No SQL, no navmesh to
