@@ -184,11 +184,12 @@ public class BotScheduler {
 	}
 
 	/**
-	 * @return The longest a route search waited for a thread since the last call, which starts the next count. For the population guard
-	 *         ({@code BotLoadGuard}), once a review.
+	 * @return The longest a route search waited for a thread since the last call, which starts the next count, or the wait of the search still
+	 *         waiting longest if that is more: a queue that stops moving would otherwise only be seen when its oldest search finally ran, as late as
+	 *         the wait itself. For the population guard ({@code BotLoadGuard}), once a review.
 	 */
 	public long takeLongestRouteWait() {
-		return longestWaitForGuard.getAndSet(0);
+		return Math.max(longestWaitForGuard.getAndSet(0), waitingRoutes.longestWaiting(System.currentTimeMillis()));
 	}
 
 	/** @return How many bots have a route search waiting for a thread, how many run, and how many were replaced by a newer one since the start. */

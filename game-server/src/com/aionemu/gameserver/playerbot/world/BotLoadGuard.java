@@ -131,7 +131,13 @@ public final class BotLoadGuard {
 			PlayerBotConfig.GUARD_ROUTES_RELEASE * 1000L);
 	}
 
-	/** @return The old generation after its last collection, in percent of what it may grow to; -1 before the first collection or without one. */
+	/**
+	 * @return The old generation after its last collection, in percent of what it may grow to; -1 before the first collection or without one.
+	 *         Never above what the old generation holds now: the figure after a collection only moves when a collection reaches the old
+	 *         generation, and one left high after a large drop would hold the wakes for ever. On the probe a drop from 91 % was read at 3 % at once,
+	 *         so this is a safety rather than a fix; what the generation holds now, garbage and all, is never less than what is live in it, so the
+	 *         smaller of the two is still a figure for the live set.
+	 */
 	private int heapPercentAfterCollection() {
 		if (oldGeneration == null)
 			return -1;
@@ -139,7 +145,8 @@ public final class BotLoadGuard {
 		if (after == null || after.getUsed() == 0)
 			return -1;
 		long max = after.getMax() > 0 ? after.getMax() : Runtime.getRuntime().maxMemory();
-		return (int) (after.getUsed() * 100 / max);
+		long used = Math.min(after.getUsed(), oldGeneration.getUsage().getUsed());
+		return (int) (used * 100 / max);
 	}
 
 	/** @return The heap pool long-lived objects end up in ("G1 Old Gen", "Tenured Gen", "PS Old Gen"...), or null when the collector names none. */

@@ -75,4 +75,19 @@ class LatestPerKeyTest {
 		assertTrue(served.contains(10), "bot 10 was served");
 		assertEquals(10, served.size(), "and in its turn, after the nine before it");
 	}
+
+	/** The population guard reads how long the oldest place has waited, which a newer job for the same key does not reset. */
+	@Test
+	void theWaitIsTheKeysAndEndsWhenItsTurnComes() {
+		LatestPerKey lane = new LatestPerKey();
+		assertEquals(0, lane.longestWaiting(5_000), "nobody waits");
+		lane.offer(1, () -> {}, 1_000);
+		lane.offer(2, () -> {}, 3_000);
+		lane.offer(1, () -> {}, 4_000); // a newer search for bot 1 keeps its place, and its wait
+		assertEquals(4_000, lane.longestWaiting(5_000));
+		lane.take(1);
+		assertEquals(2_000, lane.longestWaiting(5_000), "bot 2 waits longest once bot 1's turn came");
+		lane.take(2);
+		assertEquals(0, lane.longestWaiting(5_000));
+	}
 }

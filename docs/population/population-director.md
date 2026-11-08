@@ -37,8 +37,9 @@ every review, so `//reload config` applies them within 30 s.
 
 **The population guard** (`BotLoadGuard`, `gameserver.playerbot.guard.*`) is what stops a percent set too high: a review wakes nobody, nor the
 capitals' visitors, while the old generation after a collection is at 85 % of the heap or more, or a route search waited 20 s or more since the
-last review, and wakes again under 80 % and 5 s; departures go on, and a player's recruits are not held. Each signal releases on its own. Under G1
-the heap figure is 0 until the old generation passes about 45 % (no concurrent cycle before), read as unknown; from there it follows the live set.
+last review (or one still waiting has), and wakes again under 80 % and 5 s; departures go on, and a player's recruits are not held. Each signal releases on its own. Under G1
+the heap figure is 0 until the old generation passes about 45 % (no concurrent cycle before), read as unknown; from there it follows the live set,
+never read above what the old generation holds now.
 The review's log line ends with the guard's state, `//bot pool` starts with it, and a change is logged once (`Population guard: wakes held by`).
 
 That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
