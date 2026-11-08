@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.navmesh;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
@@ -36,9 +37,13 @@ final class TileBudget {
 	private final List<Navmesh> meshes = new CopyOnWriteArrayList<>();
 	private final AtomicLong bytes = new AtomicLong();
 	private final AtomicLong reads = new AtomicLong(), readNanos = new AtomicLong(), givenBack = new AtomicLong();
-	/** Which map's clock turns next. Guarded by {@link #lock}. */
+	/** Which map's clock turns next. Written only by the thread holding {@link #giving}. */
 	private int next;
-	private final Object lock = new Object();
+	/**
+	 * Set while a thread gives tiles back. The others pass on rather than wait: the one at work takes the total under the floor for all of them, and a
+	 * route thread blocked behind it would only find, once let in, that nothing is left to do.
+	 */
+	private final AtomicBoolean giving = new AtomicBoolean();
 	private volatile long lastReport = System.currentTimeMillis();
 	/** A budget in bytes set by a test, in place of the share of the heap; 0 when none is. */
 	private volatile long testLimit;
@@ -79,18 +84,23 @@ final class TileBudget {
 	}
 
 	private void giveBack() {
-		synchronized (lock) {
+		if (!giving.compareAndSet(false, true))
+			return;
+		try {
 			long floor = (long) (limit() * FLOOR);
+			// the maps as they are now: a map closed meanwhile is still turned once, which only gives back tiles nobody will read again
+			Navmesh[] open = meshes.toArray(new Navmesh[0]);
 			// every map's clock turned at most twice round all of them: a first turn may only clear marks, which is each tile's second chance
-			for (int turns = meshes.size() * 2; bytes.get() > floor && turns > 0 && !meshes.isEmpty(); turns--) {
-				next = (next + 1) % meshes.size();
-				Navmesh mesh = meshes.get(next);
-				long freed = mesh.giveBack(bytes.get() - floor);
+			for (int turns = open.length * 2; bytes.get() > floor && turns > 0; turns--) {
+				next = (next + 1) % open.length;
+				long freed = open[next].giveBack(bytes.get() - floor);
 				if (freed > 0) {
 					bytes.addAndGet(-freed);
 					givenBack.addAndGet(freed);
 				}
 			}
+		} finally {
+			giving.set(false);
 		}
 	}
 

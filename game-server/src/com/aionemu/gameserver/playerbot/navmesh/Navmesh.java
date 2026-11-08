@@ -101,6 +101,8 @@ public class Navmesh {
 	private int clockHand;
 	/** Held only while giving tiles back, so the readers that fill the cache never contend with each other. */
 	private final Object evictionLock = new Object();
+	/** Set by {@link #close}, under {@link #evictionLock}: a closed map's tiles have left the budget's count, and it gives none back again. */
+	private boolean closed;
 	private final FileChannel channel;
 	/** How steep a body walks up on this map, as the rise over the run; see {@link MapSlopes}. */
 	float slopeTangent() {
@@ -243,7 +245,10 @@ public class Navmesh {
 	 * can be deleted again, which Windows refuses while the file is open.
 	 */
 	public void close() throws IOException {
-		TileBudget.INSTANCE.closed(this, tileBytes.get());
+		synchronized (evictionLock) {
+			closed = true;
+			TileBudget.INSTANCE.closed(this, tileBytes.get());
+		}
 		channel.close();
 	}
 
@@ -408,6 +413,8 @@ public class Navmesh {
 	long giveBack(long wanted) {
 		long freed = 0;
 		synchronized (evictionLock) {
+			if (closed)
+				return 0;
 			int steps = tiles.length();
 			while (freed < wanted && steps-- > 0) {
 				int index = clockHand;
