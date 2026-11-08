@@ -108,6 +108,15 @@ above the bot list, and asks for it only from a server of level 2: an older one 
 launcher's minimum stays at 1. The heap is chosen at start from the machine's memory, only ever below start.bat's `-Xmx`: under 6 GB 1024 MB,
 under 10 GB 1536 MB, under 14 GB 2048 MB, start.bat's (2560 MB) above. Those bands are the reasoning the measurement checks.
 
+Measured the same evening on the live server, nobody online, at the worst case: `-Xmx1536m -XX:ActiveProcessorCount=4`, `FIXED` 100 %
+(2002 wanted). The startup restored 441 of 914 and left the rest to the guard; the world then settled at 650 to 690 awake, the guard holding at
+85 to 92 % and letting go at 77 to 79 %, the check at each wake's turn letting 1 to 12 through a review of about 1230 asked for. No error, no
+`OutOfMemoryError`; the tile budget (184 MB) full, 15 000 to 50 000 tiles read per 5 minutes in 2 to 6.6 s. Four processors gave one route
+thread: queues of up to 98 bots behind searches that give up, the longest wait 15 s against the guard's 20. With at least two route threads
+(the same run again, 22 minutes): the queue at most 41, the longest wait 6 s, the plateau the same (686 to 689), searches given up at the same
+rate (158, about 7 a minute, which are goals out of reach, not waits). So a 1536 MB heap holds about 680 bots: `AUTO` stays far under it, and
+`FIXED` on such a machine is about 30 %. Left: the hour of `AUTO` with a player in game at that heap.
+
 ### 5. A first start on an empty database, measured
 
 A second install beside the live one (other folder, other ports, the portable MySQL and the databases of milestone 1), started from the bundle with the defaults of

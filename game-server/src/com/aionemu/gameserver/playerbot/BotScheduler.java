@@ -72,7 +72,9 @@ public class BotScheduler {
 		// journey abandoned — and without this the queue grows with the number of cancellations instead of the number of pending ticks.
 		executor.setRemoveOnCancelPolicy(true);
 		pool = executor;
-		int routeThreads = Math.max(1, threads / 2);
+		// Never fewer than two: one search that gives up holds its thread for seconds, and measured on 8 November at four processors the single
+		// thread this made queued 98 bots behind such searches.
+		int routeThreads = Math.max(2, threads / 2);
 		routePool = new ThreadPoolExecutor(routeThreads, routeThreads, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), threadsNamed("PlayerBotRoute"));
 		lifecyclePool = Executors.newSingleThreadExecutor(threadsNamed("PlayerBotLifecycle"));
 		log.info("Bot scheduler running on {} tick thread(s), {} route thread(s) and one lifecycle thread", threads, routeThreads);
