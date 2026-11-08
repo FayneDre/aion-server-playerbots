@@ -35,7 +35,12 @@ an install finds an empty MySQL, a machine of unknown size and nobody who knows 
 - A rule for the schemas: an upstream merge that changes `update.sql` is checked against the schema it ships with (`-Scratch` into a throwaway
   database: schema, then `update.sql` marked, then a diff of `SHOW CREATE TABLE` against the live database after its updates).
 
-Checked: both databases created from the bundle alone into `aion_gs_fresh` / `aion_ls_fresh`, their tables diffed against the live ones, no
+The database is a portable MySQL the launcher ships and starts itself (decided on 8 November): the zip archive of the same major version as
+the one the server is developed on, in its own folder, on its own port, with a user and password the launcher sets. Nothing is installed on the
+system, nothing collides with a MySQL a person has already, and the assistant has nothing to ask about the database. MySQL rather than MariaDB
+because the server's driver (`mysql-connector-j`), upstream and every daily test run against MySQL.
+
+Checked, on that portable MySQL: both databases created from the bundle alone into `aion_gs_fresh` / `aion_ls_fresh`, their tables diffed against the live ones, no
 difference but the data; `-Create` on the live database refuses.
 
 ### 2. A1: the heap guard on the director
@@ -73,7 +78,7 @@ Checked: the slider moves the world on a restart; at the smallest heap the guard
 
 ### 5. A first start on an empty database, measured
 
-A second install beside the live one (other folder, other ports, the databases of milestone 1), started from the bundle with the defaults of
+A second install beside the live one (other folder, other ports, the portable MySQL and the databases of milestone 1), started from the bundle with the defaults of
 milestone 4, the live server stopped first (two servers do not fit this machine's memory). Written down, in a measurement under
 `log/bot-measures` and a section here:
 
@@ -106,5 +111,5 @@ Checked: a tester's launcher updates to the stable pair and plays on it.
 
 ## After this plan
 
-The launcher's side, in its own roadmap: the first-launch assistant (Java, MySQL, memory, disk; MySQL installed and its user made; the
-settings of milestone 5 asked once), the first download that resumes and verifies, and the install from nothing running `apply-sql.ps1 -Create`.
+The launcher's side, in its own roadmap: the first-launch assistant (Java, memory, disk; the portable MySQL unpacked, started and its
+user made; the settings of milestone 5 asked once), the first download that resumes and verifies, and the install from nothing running `apply-sql.ps1 -Create`.
