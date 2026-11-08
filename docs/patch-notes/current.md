@@ -9,7 +9,7 @@ otherwise. When this file nears 200 lines, the oldest entries move to `<year>-<m
 
 ## v0.1.0-beta.4 — 08/11/2026
 
-Révision `a494079`, celle que `//bot version` affiche. Il va avec les addons v0.1.0-beta.4 (le compteur de combat), qu'il sert. **Pas de SQL,
+Révision `0d967aa`, celle que `//bot version` affiche. Il va avec les addons v0.1.0-beta.4 (le compteur de combat), qu'il sert. **Pas de SQL,
 pas de navmesh à reconstruire.** **Un fichier de réglages par défaut change**, `game-server/config/main/playerbot.properties` (la nouvelle
 option ci-dessous) ; le launcher le remplace s'il n'a pas été modifié, sinon il pose la nouvelle version à côté.
 

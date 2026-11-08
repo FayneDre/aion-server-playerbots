@@ -9,7 +9,7 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ## v0.1.0-beta.4 — 2026-11-08
 
-Revision `a494079`, the one `//bot version` shows. It goes with addons v0.1.0-beta.4 (the combat meter), which it serves. **No SQL, no navmesh
+Revision `0d967aa`, the one `//bot version` shows. It goes with addons v0.1.0-beta.4 (the combat meter), which it serves. **No SQL, no navmesh
 to rebuild.** **One default settings file changes**, `game-server/config/main/playerbot.properties` (the new option below); the launcher
 replaces it if it was not edited, and puts the new version beside it otherwise.
 
