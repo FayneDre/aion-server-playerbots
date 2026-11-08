@@ -14,6 +14,7 @@ import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.function.UnaryOperator;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,6 +134,8 @@ public class BotDirector {
 
 	/** Whether the reviews are running, which is false for the whole of startup. See {@link #reviewNow()}. */
 	private volatile boolean started;
+	/** Whether a review, or a review of the capitals' visitors, is waiting on the lane: see {@link #queueOnce}. */
+	private final AtomicBoolean reviewQueued = new AtomicBoolean(), visitorsQueued = new AtomicBoolean();
 
 	/**
 	 * The timer is on the tick lane because that is the only lane that can keep one, but all it does is hand the review over: reading the pool is a
@@ -142,9 +145,9 @@ public class BotDirector {
 	public void start() {
 		started = true;
 		BotScheduler scheduler = BotScheduler.getInstance();
-		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(this::review), REVIEW_INTERVAL_MILLIS, REVIEW_INTERVAL_MILLIS);
+		scheduler.scheduleAtFixedRate(() -> queueOnce(reviewQueued, this::review), REVIEW_INTERVAL_MILLIS, REVIEW_INTERVAL_MILLIS);
 		// the capitals' visitors on a clock of their own, on the same lane: a player often only passes through a capital
-		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(BotVisitors::review), BotVisitors.REVIEW_MILLIS, BotVisitors.REVIEW_MILLIS);
+		scheduler.scheduleAtFixedRate(() -> queueOnce(visitorsQueued, BotVisitors::review), BotVisitors.REVIEW_MILLIS, BotVisitors.REVIEW_MILLIS);
 		// what bots say in the capitals: a few packets every few minutes, so on the tick lane itself
 		scheduler.scheduleAtFixedRate(BotSpeech::review, BotSpeech.REVIEW_MILLIS, BotSpeech.REVIEW_MILLIS);
 		// and what they say in the chat channels, as cheap
@@ -164,7 +167,20 @@ public class BotDirector {
 		// which the world refuses with a DuplicateAionObjectException apiece. The order in onStartUp is deliberate and this has to respect it.
 		if (!started)
 			return;
-		BotScheduler.getInstance().enterOrLeaveWorld(this::review);
+		queueOnce(reviewQueued, this::review);
+	}
+
+	/**
+	 * Hands a review to the lane unless one is already waiting there. The clock keeps turning while the lane is busy, and on a first start it is
+	 * busy for minutes finding every map's places: each turn queued one more review, and a dozen then ran back to back in thirty milliseconds on
+	 * the same picture, each asking for the same arrivals. One waiting review reads the world when its turn comes, which is all of them would.
+	 */
+	private static void queueOnce(AtomicBoolean queued, Runnable review) {
+		if (queued.compareAndSet(false, true))
+			BotScheduler.getInstance().enterOrLeaveWorld(() -> {
+				queued.set(false);
+				review.run();
+			});
 	}
 
 	/** Works out what each region should hold, and acts on the difference. */

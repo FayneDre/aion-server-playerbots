@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
-and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges); milestone 5 run once, its four faults fixed and a player's check passed (the hour of measurement left). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -136,6 +136,28 @@ milestone 4, the live server stopped first (two servers do not fit this machine'
   launcher's first-launch assistant must ask for or set itself, and nothing else.
 
 Checked: a client logs in to the fresh server, creates a character and sees bots around it.
+
+**Run on 8 November** (the beta.5 trial bundle in `server-fresh`, the portable MySQL on port 3307, 2560 MB, four processors; the navmesh
+files copied from the live install in place of the launcher's download). Checked: a player logged in at Poeta and found bots. What it found:
+
+- **The shipped setting populated Poeta alone**: the first start made 35 bots and opened in 4 s on a world of one village. The default is now
+  the 24 maps the population is measured on.
+- **Reviews piled up** behind a lifecycle lane busy for minutes finding every map's places: a dozen ran in 30 ms on the same picture. One
+  review now waits on the lane at most.
+- **`apply-sql.ps1` from the bundle took `AION_SERVER_HOME`, the live install**, as its default (its `-Create` refused: the live database had
+  tables). It now takes the install it sits in, and says which on its first line. Its "server running" check matched any install's server by
+  its class; it now asks whether this install's own jar is held open.
+- **The login server refused the game server**: `aion_ls.sql` knows none. `-Create -Server login` now enters this install's, with the id and
+  password its configuration gives, accepted from this machine only.
+
+Phases, with all of it fixed, from an empty database: started 21:52:17; the bot module running at 21:52:26 (data loaded in 9 s); 2002 bots
+created over 24 maps by 22:03:15, from 35 for Poeta to 157 for Inggison, and the login server registered then (**658 s**); the broker house full
+(6000 listings a race) at 21:58:27. The first review at 22:03:45 asked for 902 (`AUTO`, nobody online); 416 came, then the guard held for
+route planning (waits of 28 to 42 s, 423 bots queued, the two route threads at full processor, the capitals' searches the slow ones), the heap
+peaking at 87 % once; 903 awake at 22:05:37, the queue empty at 22:08:15, the guard released at 57 %. No error; the warnings are the data's
+own, plus periodic tasks late while the 2002 were made (one 33 s). Settings typed by hand: the database port in the three `my*.properties`
+(the user root, no password, the defaults); the `gameservers` row, now made by the script. Not done: the full hour, and the comparison with the
+live server's.
 
 ### 6. Tests for the combat half of `PlayerBotAI`
 

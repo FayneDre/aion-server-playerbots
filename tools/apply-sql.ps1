@@ -23,7 +23,8 @@
     config/network/database.properties, then its own config/mygs.properties, myls.properties or mycs.properties on top.
 
 .PARAMETER ServerRoot
-    The install. Defaults to AION_SERVER_HOME.
+    The install. Defaults to the install this script sits in (a release bundle's tools folder, beside its game-server), otherwise to
+    AION_SERVER_HOME: a bundle unpacked next to a live install must never reach the live one's database by default.
 
 .PARAMETER Server
     game (the default), login or chat: whose database, configuration, update.sql and schema.
@@ -48,7 +49,7 @@
     Do it.
 #>
 param(
-    [string]$ServerRoot = $env:AION_SERVER_HOME,
+    [string]$ServerRoot,
     [ValidateSet('game', 'login', 'chat')]
     [string]$Server = 'game',
     [string]$SqlFile,
@@ -62,7 +63,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $ServerRoot) {
+    $ownInstall = Split-Path $PSScriptRoot -Parent
+    $ServerRoot = if (Test-Path (Join-Path $ownInstall 'game-server\start.bat')) { $ownInstall } else { $env:AION_SERVER_HOME }
+}
 if (-not $ServerRoot) { throw 'Set AION_SERVER_HOME or pass -ServerRoot.' }
+Write-Host "Install: $ServerRoot"
 if ($Create -and $MarkApplied) { throw '-Create records the statements itself: -MarkApplied is for a database that exists.' }
 
 # what tells the three servers apart: their folder, their override file, their schema and the class a running one shows on its command line
@@ -140,10 +146,19 @@ try {
         Invoke-SqlFile $work $database
     }
     function Quote([string]$s) { "'" + $s.Replace('\', '\\').Replace("'", "''") + "'" }
+    # A server's command line names its class but not its install ("-cp libs/*", relative), so a server of another install running on another
+    # database would read as this one. What only this install's server does is hold its own jar open: the one with its main class (the JVM
+    # opens a jar when it first loads a class from it, so any other could still be closed), which nobody else opens and the JVM keeps open
+    # for as long as it runs, so asking for it unshared fails exactly then.
     function Test-ServerRunning {
+        $libs = Join-Path (Join-Path $ServerRoot $target.Folder) 'libs'
+        $held = Get-ChildItem $libs -Filter "$($target.Folder)-*.jar" -ErrorAction SilentlyContinue | Where-Object {
+            try { [IO.File]::Open($_.FullName, 'Open', 'Read', 'None').Close(); $false } catch { $true }
+        }
+        if (-not $held) { return }
         $running = Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue |
             Where-Object { $_.CommandLine -like "*$($target.MainClass)*" }
-        if ($running) { return $running[0].ProcessId }
+        if ($running) { return ($running.ProcessId -join ', ') } else { return 'unknown' }
     }
     $createLedger = "CREATE TABLE IF NOT EXISTS ``$LedgerTable`` (hash char(64) NOT NULL PRIMARY KEY, statement text NOT NULL, how varchar(10) NOT NULL, " +
         'applied_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
@@ -182,6 +197,22 @@ try {
         $ledger = Invoke-Sql $createLedger
         if ($ledger.Code -ne 0) { throw "Could not create the table of applied statements: $($ledger.Output)" }
         foreach ($s in $statements) { Record $s 'created' }
+        if ($Server -eq 'login') {
+            # the schema makes the login server know no game server, so a game server from nothing is refused at its first start: this
+            # install's own is entered, with the id and password its configuration gives, and only from this machine (the mask)
+            $gs = @{ 'gameserver.network.login.gsid' = '1'; 'gameserver.network.login.password' = '' }
+            $gsConfig = Join-Path $ServerRoot 'game-server\config'
+            foreach ($file in @((Join-Path $gsConfig 'network\network.properties'), (Join-Path $gsConfig 'mygs.properties'))) {
+                if (-not (Test-Path $file)) { continue }
+                foreach ($line in Get-Content $file -Encoding UTF8) {
+                    if ($line -match '^\s*(gameserver\.network\.login\.(?:gsid|password))\s*=\s*(.*?)\s*$') { $gs[$Matches[1]] = $Matches[2] }
+                }
+            }
+            $gsId = [int]$gs['gameserver.network.login.gsid']
+            $entered = Invoke-Sql "INSERT INTO gameservers (id, mask, password) VALUES ($gsId, '127.0.0.1', $(Quote $gs['gameserver.network.login.password']));"
+            if ($entered.Code -ne 0) { throw "Could not enter the game server $gsId`: $($entered.Output)" }
+            Write-Output "Game server $gsId entered, accepted from this machine only."
+        }
         $count = Invoke-Sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = $(Quote $schema);" ''
         Write-Output "Created $schema`: $($count.Output.Trim()) table(s), $($statements.Count) statement(s) recorded."
         $global:LASTEXITCODE = 0
