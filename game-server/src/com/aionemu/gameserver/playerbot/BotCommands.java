@@ -35,6 +35,7 @@ import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.positioning.PositioningMode;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.world.BotDirector;
+import com.aionemu.gameserver.playerbot.world.BotLoadGuard;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.world.World;
@@ -550,7 +551,7 @@ public final class BotCommands {
 		if (review.isEmpty())
 			return "No population review has run yet. The first one is half a minute after startup.";
 		if (region == null || region.isBlank())
-			return String.join(System.lineSeparator(), review);
+			return BotLoadGuard.getInstance().state() + System.lineSeparator() + String.join(System.lineSeparator(), review);
 		Integer worldId = resolveMap(region, commander);
 		if (worldId == null)
 			return "No map matches " + region;

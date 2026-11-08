@@ -181,6 +181,8 @@ public class BotDirector {
 
 		PlayerBotService bots = PlayerBotService.getInstance();
 		int budget = anybodyOnline ? CHANGES_PER_REVIEW : Integer.MAX_VALUE;
+		// A server short of memory or of route planning wakes nobody until it is well clear; departures go on, so a world over its target still sheds.
+		boolean held = BotLoadGuard.getInstance().review();
 		int woken = 0, slept = 0;
 		int awakeInAll = 0, wantedInAll = 0, asleepInAll = 0, shortAndEmpty = 0;
 		List<String> report = new ArrayList<>();
@@ -225,7 +227,7 @@ public class BotDirector {
 			// could still pull against each other -- a village asking for somebody while the countryside around it is over-supplied -- and the region
 			// would be bringing people in while sending people away, which is the shape of the fault this is here to stop recurring. It sheds first;
 			// what it is short of, it is short of until it has.
-			if (difference.awake() <= wanted) {
+			if (!held && difference.awake() <= wanted) {
 				for (BotRoster.Resident resident : difference.toWake()) {
 					if (woken >= budget)
 						break;
@@ -254,9 +256,9 @@ public class BotDirector {
 		// One line at every review, whether or not it changes anything: a review with nothing to do used to write nothing, so a world settled and a
 		// director that had stopped read the same, and on 5 November a watch waited forty minutes for a line that was never coming. It also says what
 		// the per map lines only imply, a pool run dry: maps short of their target with nobody left asleep to wake.
-		log.info("Population: {} awake, {} wanted, {} asleep, {} map(s) short with nobody asleep; density {} {}%; asks for {} arrival(s) and {} departure(s); {}",
+		log.info("Population: {} awake, {} wanted, {} asleep, {} map(s) short with nobody asleep; density {} {}%; asks for {} arrival(s) and {} departure(s); {}; {}",
 			awakeInAll, wantedInAll, asleepInAll, shortAndEmpty, PlayerBotConfig.DENSITY_MODE, PlayerBotConfig.DENSITY_PERCENT, woken, slept,
-			BotScheduler.getInstance().routeQueue());
+			BotScheduler.getInstance().routeQueue(), BotLoadGuard.getInstance().state());
 		if (woken > 0 || slept > 0) {
 			log.info("Population review asks for {} arrival(s) and {} departure(s) across {} map(s)", woken, slept, maps.size());
 			// The per map lines, which until now only an operator running //bot pool ever saw. A total cannot say which region is asking for what,

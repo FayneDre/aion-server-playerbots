@@ -1,6 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
-Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
+the same day, unverified: the measurement at `FIXED` 100 %. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -59,7 +60,9 @@ itself: the zip is 346 MB and 1.3 GB unpacked, 809 MB of it debug symbols (`.pdb
 As written in [living-world-plan.md](../../population/plans/living-world-plan.md): the old generation after a collection
 (`MemoryPoolMXBean.getCollectionUsage`), a review that wakes nobody above the upper threshold and again below the lower one, a log line and a
 line in `//bot pool`. The thresholds come from a measurement: `FIXED` at 100 % on the live server, the heap after each collection logged until
-awake bots level off. Checked: the server stays up with `FIXED` at 100 %, and `//bot pool` shows the guard holding.
+awake bots level off. Checked: the server stays up with `FIXED` at 100 %, and `//bot pool` shows the guard holding. **Built on 8 November**
+(`BotLoadGuard`, `gameserver.playerbot.guard.*`, 85/80 % and 20/5 s until measured; six tests of the decision); under G1 the heap figure is 0 below
+about 45 % of the heap, measured on a probe, and read as unknown.
 
 A second signal beside the heap: route planning. On 5 November, at `FIXED` 100 % on sixteen cores, it gave out before the memory did (25 000
 searches queued, ten-minute waits); on a player's four or six cores it gives out much sooner. The guard also holds the wakes while the planning

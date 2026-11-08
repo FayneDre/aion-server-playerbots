@@ -35,6 +35,12 @@ cores. A bot costs about 0.15 MB of live set; navmesh tiles stay near 605 MB wha
 bots stood still waiting for a path. Until the planner keeps up, a percent above about 50 is not to be offered. The director reads both options at
 every review, so `//reload config` applies them within 30 s.
 
+**The population guard** (`BotLoadGuard`, `gameserver.playerbot.guard.*`) is what stops a percent set too high: a review wakes nobody, nor the
+capitals' visitors, while the old generation after a collection is at 85 % of the heap or more, or a route search waited 20 s or more since the
+last review, and wakes again under 80 % and 5 s; departures go on, and a player's recruits are not held. Each signal releases on its own. Under G1
+the heap figure is 0 until the old generation passes about 45 % (no concurrent cycle before), read as unknown; from there it follows the live set.
+The review's log line ends with the guard's state, `//bot pool` starts with it, and a change is logged once (`Population guard: wakes held by`).
+
 That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
 a world asleep overnight comes back to the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
 

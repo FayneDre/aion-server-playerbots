@@ -58,6 +58,29 @@ public class PlayerBotConfig {
 	public static volatile int DENSITY_PERCENT = 30;
 
 	/**
+	 * Whether the population guard holds the director's wakes (and the capitals' visitors) while the server is short of memory or of route planning.
+	 * Departures go on either way. See {@code BotLoadGuard}. Read at every review (30 s).
+	 */
+	@Property(key = "gameserver.playerbot.guard.enable", defaultValue = "true")
+	public static volatile boolean GUARD_ENABLE = true;
+
+	/** The old generation after a collection, in percent of the heap, from which the wakes are held. */
+	@Property(key = "gameserver.playerbot.guard.heap.hold", defaultValue = "85")
+	public static volatile int GUARD_HEAP_HOLD = 85;
+
+	/** The percent of the heap under which wakes held for the heap go on again. */
+	@Property(key = "gameserver.playerbot.guard.heap.release", defaultValue = "80")
+	public static volatile int GUARD_HEAP_RELEASE = 80;
+
+	/** The seconds a route search waited for a thread, within one review, from which the wakes are held. */
+	@Property(key = "gameserver.playerbot.guard.routes.hold", defaultValue = "20")
+	public static volatile int GUARD_ROUTES_HOLD = 20;
+
+	/** The seconds under which wakes held for route planning go on again. */
+	@Property(key = "gameserver.playerbot.guard.routes.release", defaultValue = "5")
+	public static volatile int GUARD_ROUTES_RELEASE = 5;
+
+	/**
 	 * Whether bots may attack players of the other race (real players and bots) where the engine makes them enemies, which is a PvP zone. Off, no bot
 	 * ever picks a player as a target and nothing of the PvP behaviour runs.
 	 */

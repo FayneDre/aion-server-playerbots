@@ -62,6 +62,8 @@ public class BotScheduler {
 	private volatile long lastQueueReport;
 	/** The longest a search waited for a route thread since the last report. */
 	private final AtomicLong longestWait = new AtomicLong();
+	/** The same since the population guard last asked, kept apart because the report resets its own when it writes. See {@link #takeLongestRouteWait}. */
+	private final AtomicLong longestWaitForGuard = new AtomicLong();
 
 	private BotScheduler() {
 		int threads = Math.max(2, (int) (Runtime.getRuntime().availableProcessors() * PROCESSOR_SHARE));
@@ -164,6 +166,7 @@ public class BotScheduler {
 				// that are slow by themselves
 				long now = System.currentTimeMillis();
 				long longest = longestWait.accumulateAndGet(now - queued, Math::max);
+				longestWaitForGuard.accumulateAndGet(now - queued, Math::max);
 				// one line every so often, with the longest wait since the last, rather than one per slow search: at full density that was 12 000
 				// lines in ten minutes
 				if (longest >= SLOW_QUEUE_MILLIS && now - lastQueueReport >= QUEUE_REPORT_MILLIS) {
@@ -178,6 +181,14 @@ public class BotScheduler {
 			// shutting down; the caller is a bot that will not be walking anywhere
 			waitingRoutes.take(botId);
 		}
+	}
+
+	/**
+	 * @return The longest a route search waited for a thread since the last call, which starts the next count. For the population guard
+	 *         ({@code BotLoadGuard}), once a review.
+	 */
+	public long takeLongestRouteWait() {
+		return longestWaitForGuard.getAndSet(0);
 	}
 
 	/** @return How many bots have a route search waiting for a thread, how many run, and how many were replaced by a newer one since the start. */
