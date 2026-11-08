@@ -75,8 +75,8 @@ com.aionemu.gameserver.playerbot/
                 selling (BotVendorManager), stores (BotStores, BotStoreStock, BotStoreGoods, BotStorePricing, BotManastones), BotTrades
   social/       Groups and instances (BotGroupManager, BotInstances, BotRole, BotMarks, BotSquads, RecruitPlan, LeaderGlides, BotTransports),
                 requests (BotRequests), speech and chat (BotSpeech, BotChat, BotChatLines)
-  addon/        The pages the interface addons show (AddonWebServer, port 7790, their level at /addon/version) and the combat meter's count and page (CombatMeter,
-                CombatMeterPage); see addon-pages.md
+  addon/        The pages the interface addons show (AddonWebServer, port 7790, their level at /addon/version)
+                and the combat meter's count and page (CombatMeter, CombatMeterPage); see addon-pages.md
 ```
 
 The admin command lives **outside** core sources, at `game-server/data/handlers/admincommands/Bot.java` (runtime-compiled scripts): zero core diff.
