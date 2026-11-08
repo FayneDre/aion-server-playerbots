@@ -88,10 +88,10 @@ Push-Location $root
 try {
     $lastTag = if ($Since) { $Since } else { git describe --tags --match 'patch-*' --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>$null }
     if ($lastTag) {
-        $changed = @(git diff --name-only "$lastTag" HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot') + @(git diff --name-only HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot')
+        $changed = @(git diff --name-only "$lastTag" HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot') + @(git -c core.safecrlf=false diff --name-only HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot')
         $classes = @($changed | Where-Object { $_ -like '*.java' } | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) } | Sort-Object -Unique)
         # a doc not yet committed counts as touched too: a plan written today names classes changed today, and is not stale for it
-        $touched = @(git diff --name-only "$lastTag" HEAD -- docs) + @(git diff --name-only HEAD -- docs) + @(git ls-files --others --exclude-standard -- docs) |
+        $touched = @(git diff --name-only "$lastTag" HEAD -- docs) + @(git -c core.safecrlf=false diff --name-only HEAD -- docs) + @(git ls-files --others --exclude-standard -- docs) |
             ForEach-Object { $_.Replace('/', '\') }
         foreach ($plan in $files | Where-Object { (Split-Path -Leaf $_.DirectoryName) -eq 'plans' -or $_.Name -eq 'how-it-works.md' }) {
             if ($touched -contains (Get-Relative $plan.FullName).Replace('/', '\')) { continue }

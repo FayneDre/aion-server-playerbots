@@ -2,8 +2,9 @@
 
 Written in French, for the testers who read them; [current.en.md](current.en.md) holds the same entries in English, for the launcher's "What's
 new" and the public releases. Newest first. Each entry is headed by its version tag, `## vX.Y.Z-beta.N` for a test patch (the `patch-YYYY-MM-DD`
-tags below are the ones made before), names the revision `//bot version` shows, and has its English twin: `tools/tag-patch.ps1` refuses a tag
-otherwise. When this file nears 200 lines, the oldest entries move to `<year>-<month>.md`, and their English ones to `<year>-<month>.en.md`.
+tags below are the ones made before), and has its English twin: `tools/tag-patch.ps1` refuses a tag otherwise. An entry names no revision:
+the published notes get, as their first line, the tagged commit's, which is the one `//bot version` shows on a server installed from the
+bundle (the entries up to v0.1.0-beta.4 named the server deployed here, which only it shows). When this file nears 200 lines, the oldest entries move to `<year>-<month>.md`, and their English ones to `<year>-<month>.en.md`.
 
 ---
 

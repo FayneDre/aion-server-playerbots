@@ -78,7 +78,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # The docs' links, index, sizes and plan statuses; printed and never blocking, since a stale doc is no reason to keep a fix off the server.
-$docProblems = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-docs.ps1')
+# A line on its error stream (git's line-ending warning was one, and stopped two deploys) is a problem of the check, said as such.
+try {
+    $docProblems = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-docs.ps1')
+} catch {
+    $docProblems = @("the check itself failed: $($_.Exception.Message)")
+}
 if ($docProblems) {
     Write-Host 'Docs (tools/check-docs.ps1):' -ForegroundColor Yellow
     $docProblems | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }

@@ -121,7 +121,8 @@ The decision of 5 November ("test patches stay in French") is changed: testers r
 - **Two files with the same entries**: `docs/patch-notes/current.md` (French, as today) and `docs/patch-notes/current.en.md` (English). Same
   headings, one per version, in the same order, so a script can pair them. Archives move together (`2026-11.md` and `2026-11.en.md`).
 - **`tag-patch.ps1` refuses** a version whose entry is missing from either file, as it refuses one missing from the French file today, checks
-  that both entries name the same revision, and that the version is higher than the last one.
+  that both entries name the same revision, and that the version is higher than the last one. Changed 8 November: the entries name no
+  revision, `tag-patch.ps1` writes the tagged commit's (the bundle's) into the published notes, and the server deployed here is only said.
 - **The launcher repository does the same** with `docs/release-notes/current.md` and `current.en.md`, and a script `tools/release.ps1` that
   refuses: a dirty tree, a failed `npm test`, a `package.json` version that differs from the tag, an entry missing in either language, or an
   entry that names no minimum server version.

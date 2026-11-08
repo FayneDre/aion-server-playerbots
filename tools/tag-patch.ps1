@@ -13,10 +13,11 @@
     - a beta made from another branch than develop, a release from another branch than main;
     - a dirty tree: a build from uncommitted code has a revision ending in -DIRTY, which matches nothing anyone can look at afterwards;
     - docs/patch-notes/current.md (French) or current.en.md (English) with no entry for the tag: a patch nobody wrote up is one a tester cannot
-      tell apart from the last, and the launcher shows the notes in the player's language;
-    - a deployed jar whose revision is -DIRTY, or is not HEAD with nothing but docs and tools committed since (the patch note is written after the deploy):
-      twice a deploy from a clean tree kept the previous -DIRTY jar, because Maven repackages nothing when no source changed;
-    - an entry, in either language, that does not name that revision, which is the one //bot version will show the testers.
+      tell apart from the last, and the launcher shows the notes in the player's language.
+
+    The entries name no revision: the bundle is built from the tagged commit, so the revision //bot version shows the testers is that commit's,
+    which exists only once the notes are committed. The published notes get it as their first line. The server deployed here is only looked at:
+    a jar of another revision, or -DIRTY, is said (what was tried in game is then not exactly what ships), never refused.
 
     Once tagged, writes into release/<tag>/ (ignored by git, out of reach of mvn clean) the release body (the English entry, then the French one folded in a <details> block)
     and the two entries as notes.en.md and notes.fr.md, the files the launcher reads; builds from the tagged commit the bundle a beta launcher installs
@@ -52,7 +53,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $ServerRoot) { $ServerRoot = [Environment]::GetEnvironmentVariable('AION_SERVER_HOME', 'User') }
-if (-not $ServerRoot) { throw 'No server path. Set AION_SERVER_HOME or pass -ServerRoot: the deployed jar is what this checks.' }
+if (-not $ServerRoot) { throw 'No server path. Set AION_SERVER_HOME or pass -ServerRoot: the bundle and the deployed jar are read there.' }
 
 $versionPattern = '^v?(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$'
 
@@ -67,7 +68,7 @@ function Get-VersionKey([string]$text) {
 function Get-DeployedRevision {
     $jar = Get-ChildItem (Join-Path $ServerRoot 'game-server\libs\game-server-*.jar') -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -notmatch '-(sources|javadoc)\.jar$' } | Sort-Object LastWriteTime | Select-Object -Last 1
-    if (-not $jar) { throw "No game-server jar under $ServerRoot\game-server\libs. Deploy first." }
+    if (-not $jar) { return $null }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [IO.Compression.ZipFile]::OpenRead($jar.FullName)
     try {
@@ -78,7 +79,7 @@ function Get-DeployedRevision {
         $zip.Dispose()
     }
     if ($manifest -match '(?m)^Revision: (\S+)') { return $Matches[1] }
-    throw "The deployed jar's manifest names no revision."
+    return $null
 }
 
 # The entry headed '## <tag>' of a notes file, heading included, up to the next entry or the separator before it.
@@ -110,20 +111,25 @@ try {
     $dirty = git status --porcelain
     if ($dirty) { throw "The working tree has uncommitted changes. Commit them, then deploy and tag from a clean tree." }
 
-    $deployed = Get-DeployedRevision
-    if ($deployed -match 'DIRTY') {
-        throw "The deployed jar is revision $deployed. Delete game-server\target\*.jar and commons\target\*.jar, run deploy.ps1 -Restart from this clean tree, then tag."
-    }
     $head = git rev-parse --short=7 HEAD # the length the jar's manifest uses (git-commit-id-maven-plugin's default)
-    if ($deployed -ne $head) {
+    # What was tried in game: said when it is not what ships, never refused (the bundle is built from the tag whatever runs here).
+    $deployed = Get-DeployedRevision
+    $deployedNote = $null
+    if (-not $deployed) {
+        $deployedNote = "no deployed jar naming its revision under $ServerRoot"
+    } elseif ($deployed -match 'DIRTY') {
+        $deployedNote = "the server here runs $deployed, built from uncommitted code; what ships is $head"
+    } elseif ($deployed -ne $head) {
         git cat-file -e "$deployed^{commit}" 2>$null
-        if ($LASTEXITCODE -ne 0) { throw "The deployed jar is revision $deployed, which this repository does not know. Deploy from here first." }
-        # what reaches a server: the modules' sources, handlers and poms; docs and tools do not
-        $since = @(git diff --name-only $deployed HEAD | Where-Object { $_ -match '^(game-server|commons|chat-server)/|(^|/)pom\.xml$' -and $_ -notlike '*.md' })
-        if ($since) {
-            throw "The deployed jar is revision $deployed, and code changed since ($($since -join ', ')). Deploy HEAD, then tag."
+        if ($LASTEXITCODE -ne 0) {
+            $deployedNote = "the server here runs $deployed, a revision this repository does not know"
+        } else {
+            # what reaches a server: the modules' sources, handlers and poms; docs and tools do not
+            $since = @(git diff --name-only $deployed HEAD | Where-Object { $_ -match '^(game-server|commons|chat-server)/|(^|/)pom\.xml$' -and $_ -notlike '*.md' })
+            if ($since) { $deployedNote = "the server here runs $deployed; code changed since, not tried in game: $($since -join ', ')" }
         }
     }
+    if ($deployedNote) { Write-Host "Not blocking: $deployedNote." -ForegroundColor Yellow }
 
     $entries = @{}
     foreach ($language in @(@{ Name = 'fr'; File = 'current.md' }, @{ Name = 'en'; File = 'current.en.md' })) {
@@ -131,29 +137,30 @@ try {
         if (-not $entry) {
             throw "docs/patch-notes/$($language.File) has no entry for this patch. Add a section headed '## $tag' in both files, commit them, and run this again."
         }
-        if ($entry -notmatch [regex]::Escape($deployed)) {
-            throw "The entry '## $tag' of docs/patch-notes/$($language.File) does not name revision $deployed, which //bot version will show. Write it in the entry."
-        }
         $entries[$language.Name] = $entry
     }
 
-    $docProblems = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-docs.ps1')
+    try {
+        $docProblems = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-docs.ps1')
+    } catch {
+        $docProblems = @("the check itself failed: $($_.Exception.Message)")
+    }
     if ($docProblems) {
         Write-Host 'Docs (tools/check-docs.ps1), not blocking:' -ForegroundColor Yellow
         $docProblems | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
     }
 
     if ($Check) {
-        Write-Host "Every check passed: $tag can be made on $head (deployed revision $deployed)." -ForegroundColor Green
+        Write-Host "Every check passed: $tag can be made on $head, the revision //bot version will show the testers." -ForegroundColor Green
         return
     }
     if (-not $Message) { $Message = git log -1 --format=%s }
     git tag -a $tag -m $Message
     if ($LASTEXITCODE -ne 0) { throw "git tag failed" }
 
-    # The entries without their heading: GitHub shows the tag as the release's title.
-    $bodyEn = ($entries.en -replace '^## [^\n]*\n', '').Trim()
-    $bodyFr = ($entries.fr -replace '^## [^\n]*\n', '').Trim()
+    # The entries without their heading (GitHub shows the tag as the release's title), led by the revision the bundle carries
+    $bodyEn = "Revision ``$head``, the one ``//bot version`` shows.`n`n" + ($entries.en -replace '^## [^\n]*\n', '').Trim()
+    $bodyFr = "R$([char]0xE9)vision ``$head``, celle que ``//bot version`` affiche.`n`n" + ($entries.fr -replace '^## [^\n]*\n', '').Trim()
     $out = Join-Path $repoRoot "release\$tag" # not under a target folder: a deploy from a clean tree runs mvn clean
     New-Item -ItemType Directory -Force $out | Out-Null
     $utf8 = New-Object Text.UTF8Encoding($false)
@@ -180,7 +187,7 @@ try {
     if (-not $preRelease) {
         Write-Host 'A stable release carries the English in full and a short French summary: shorten the French part of body.md first unless both are short.' -ForegroundColor Yellow
     }
-    Write-Host "//bot version on the server should say revision $deployed."
+    Write-Host "//bot version on a server installed from this bundle says revision $head."
 } finally {
     Pop-Location
 }
