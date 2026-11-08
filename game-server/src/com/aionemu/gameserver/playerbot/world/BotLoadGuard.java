@@ -4,6 +4,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -49,7 +50,7 @@ public final class BotLoadGuard {
 	}
 
 	/** One look at the server: the old generation after the last collection in percent of the heap (-1 when unknown), and the longest route wait. */
-	record Reading(int heapPercent, long routeWaitMillis) {
+	public record Reading(int heapPercent, long routeWaitMillis) {
 	}
 
 	private static final BotLoadGuard INSTANCE = new BotLoadGuard();
@@ -117,6 +118,16 @@ public final class BotLoadGuard {
 			return false;
 		int heap = heapPercentAfterCollection();
 		return heap >= 0 && heap >= PlayerBotConfig.GUARD_HEAP_HOLD;
+	}
+
+	/** @return What holds the wakes, as the last review decided; empty while they go on. */
+	public Set<Cause> causes() {
+		return Collections.unmodifiableSet(holding);
+	}
+
+	/** @return What the last review read. */
+	public Reading lastReading() {
+		return last;
 	}
 
 	/** @return true while the wakes are held, as the last review decided. */

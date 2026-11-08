@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
-and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built, its measurement at a small heap left. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -100,6 +100,13 @@ after, are still to compare (`measure.sh`).
   (`-XX:ActiveProcessorCount=4`), not reasoned.
 
 Checked: the slider moves the world on a restart; at the smallest heap the guard is never reached in an hour of `AUTO`.
+
+Built on 8 November. The server answers `population` (API level 2): the density in force, the last review's awake, wanted, asleep and short
+totals, the guard (`open`, `off`, or `held` and its causes), the heap after a collection and the route wait. The launcher offers the mode and the
+percent on its Bots page (written to `mygs.properties` and applied by `reload-config` at the next review, so no restart), shows the population
+above the bot list, and asks for it only from a server of level 2: an older one shows the page as before rather than refusing to start, so the
+launcher's minimum stays at 1. The heap is chosen at start from the machine's memory, only ever below start.bat's `-Xmx`: under 6 GB 1024 MB,
+under 10 GB 1536 MB, under 14 GB 2048 MB, start.bat's (2560 MB) above. Those bands are the reasoning the measurement checks.
 
 ### 5. A first start on an empty database, measured
 

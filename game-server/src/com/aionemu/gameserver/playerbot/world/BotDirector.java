@@ -102,6 +102,8 @@ public class BotDirector {
 	private final Map<Integer, Long> lastSeenPlayer = new ConcurrentHashMap<>();
 	/** What the last review concluded, for {@code //bot pool} to report. Written once a review, read rarely. */
 	private volatile List<String> lastReview = List.of();
+	/** The last review's totals across the maps, for the launcher through the admin channel; null until the first review. */
+	private volatile Totals lastTotals;
 	/**
 	 * What the changes asked for by the previous review actually came to.
 	 * <p>
@@ -256,6 +258,7 @@ public class BotDirector {
 		departures.clear();
 
 		lastReview = List.copyOf(report);
+		lastTotals = new Totals(awakeInAll, wantedInAll, asleepInAll, shortAndEmpty);
 		// One line at every review, whether or not it changes anything: a review with nothing to do used to write nothing, so a world settled and a
 		// director that had stopped read the same, and on 5 November a watch waited forty minutes for a line that was never coming. It also says what
 		// the per map lines only imply, a pool run dry: maps short of their target with nobody left asleep to wake.
@@ -693,6 +696,15 @@ public class BotDirector {
 
 	/** What a region should hold at this moment, at its quietest, and at its busiest. */
 	public record Band(int now, int quiet, int crowded) {
+	}
+
+	/** A review's figures across every map: bots in the world, bots it should hold, residents left asleep, and maps short with nobody to wake. */
+	public record Totals(int awake, int wanted, int asleep, int shortAndEmpty) {
+	}
+
+	/** @return The last review's totals, or null before the first review, which comes once the startup is done. */
+	public Totals lastTotals() {
+		return lastTotals;
 	}
 
 	/** @return What the last review concluded, a line per map, for an operator asking where the population stands. */

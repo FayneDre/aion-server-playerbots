@@ -6,17 +6,24 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.configs.Config;
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.teleport.TelelocationTemplate;
+import com.aionemu.gameserver.playerbot.world.BotDirector;
+import com.aionemu.gameserver.playerbot.world.BotLoadGuard;
+import com.aionemu.gameserver.playerbot.world.DensityMode;
 import com.aionemu.gameserver.services.teleport.TeleportService;
 import com.aionemu.gameserver.world.World;
 import com.aionemu.gameserver.world.WorldMap;
@@ -42,9 +49,11 @@ public final class AdminChannel {
 	 * <ul>
 	 * <li>1 (6 November 2026): {@code version}, {@code reload-config}, {@code teleport}, {@code destinations}, and the bot settings of
 	 * {@code playerbot.properties} (experience, PvP shares and level band, chat).</li>
+	 * <li>2 (8 November 2026): {@code population}, and the density settings ({@code density.mode}, {@code density.percent}) applied by
+	 * {@code reload-config} at the next review.</li>
 	 * </ul>
 	 */
-	public static final int API_LEVEL = 1;
+	public static final int API_LEVEL = 2;
 
 	private static final Logger log = LoggerFactory.getLogger(AdminChannel.class);
 	/** Relative to the working directory, which is the game-server folder. */
@@ -132,6 +141,8 @@ public final class AdminChannel {
 			case "reload-config" -> reloadConfig();
 			case "teleport" -> words.length == 6 ? teleport(words) : "error usage: teleport <character id> <map id> <x> <y> <z>";
 			case "destinations" -> destinations();
+			case "population" -> population(BotDirector.getInstance().lastTotals(), PlayerBotConfig.DENSITY_MODE, PlayerBotConfig.DENSITY_PERCENT,
+				PlayerBotConfig.GUARD_ENABLE, BotLoadGuard.getInstance().causes(), BotLoadGuard.getInstance().lastReading());
 			default -> "error unknown command " + words[0];
 		};
 	}
@@ -139,6 +150,24 @@ public final class AdminChannel {
 	/** One {@code key value} line each: {@code version} (a release, or {@code dev}), {@code revision} (as {@code //bot version} shows it), {@code api}. */
 	static String version(String release, String revision) {
 		return "ok\nversion " + release + "\nrevision " + (revision == null ? "unknown" : revision) + "\napi " + API_LEVEL;
+	}
+
+	/**
+	 * One {@code key value} line each: {@code mode} and {@code percent} (the density in force), {@code awake}, {@code wanted}, {@code asleep} and
+	 * {@code short} (the last review's totals; absent before the first review, which comes once the startup is done), {@code guard} ({@code open},
+	 * {@code off}, or {@code held} followed by its causes), {@code heap} (the percent after a collection, or {@code unknown}) and {@code route-wait} (in
+	 * seconds).
+	 */
+	static String population(BotDirector.Totals totals, DensityMode mode, int percent, boolean guardOn, Set<BotLoadGuard.Cause> causes,
+		BotLoadGuard.Reading reading) {
+		List<String> lines = new ArrayList<>(List.of("ok", "mode " + mode, "percent " + percent));
+		if (totals != null)
+			lines.addAll(List.of("awake " + totals.awake(), "wanted " + totals.wanted(), "asleep " + totals.asleep(), "short " + totals.shortAndEmpty()));
+		String guard = !guardOn ? "off" : causes.isEmpty() ? "open" : "held " + causes.stream().map(Enum::name).collect(Collectors.joining(" "));
+		lines.add("guard " + guard);
+		lines.add("heap " + (reading.heapPercent() < 0 ? "unknown" : reading.heapPercent()));
+		lines.add("route-wait " + reading.routeWaitMillis() / 1000);
+		return String.join("\n", lines);
 	}
 
 	/** The same as {@code //reload config}: settings read at each use, the rates among them, apply at once. */
