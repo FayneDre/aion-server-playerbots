@@ -41,6 +41,13 @@ last review (or one still waiting has), and wakes again under 80 % and 5 s; depa
 the heap figure is 0 until the old generation passes about 45 % (no concurrent cycle before), read as unknown; from there it follows the live set,
 never read above what the old generation holds now.
 The review's log line ends with the guard's state, `//bot pool` starts with it, and a change is logged once (`Population guard: wakes held by`).
+The heap is also read again **as each wake's turn comes**, and by the roster put back at startup before each bot: with nobody online a review asks
+for every wake at once, and a restart brought back the whole world unseen by any review (1907 bots, the login reached after 482 s instead of 78).
+A wake stopped that way is counted `held by the population guard`. **Measured on 8 November** at `FIXED` 100 %, 2560 MB: 1895 awake, the pool
+short on several maps, the heap 75 to 80 % after collections, the route queue empty after the fill (5 November's runaway queue is gone with one
+search per bot); the guard never had to hold at its 85/80 marks. With the marks lowered to 72/67 for the check: the startup put back 1205 of
+1907 and left 702 asleep; the first review asked for 694 wakes, 2 came and 692 were held; held at 73 %, kept at 70, released at 66, and the
+next review's 692 gave 41 arrivals and 651 held.
 
 That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
 a world asleep overnight comes back to the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.

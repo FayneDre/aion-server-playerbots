@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
-the same day, unverified: the measurement at `FIXED` 100 %. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+and measured the same day. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -62,7 +62,10 @@ As written in [living-world-plan.md](../../population/plans/living-world-plan.md
 line in `//bot pool`. The thresholds come from a measurement: `FIXED` at 100 % on the live server, the heap after each collection logged until
 awake bots level off. Checked: the server stays up with `FIXED` at 100 %, and `//bot pool` shows the guard holding. **Built on 8 November**
 (`BotLoadGuard`, `gameserver.playerbot.guard.*`, 85/80 % and 20/5 s until measured; six tests of the decision); under G1 the heap figure is 0 below
-about 45 % of the heap, measured on a probe, and read as unknown.
+about 45 % of the heap, measured on a probe, and read as unknown. **Measured on 8 November**: `FIXED` 100 % held 1895 bots in 75 to 80 %
+of the 2560 MB heap with the route queue empty, so the guard never held at 85/80; lowered to 72/67 it held, kept and released as meant, and
+two holes the measurement found are closed (the heap read again at each wake's turn and at the startup's roster, which brought 1907 bots back
+unseen and held the login off for 8 minutes). For milestone 5: a startup that puts back 1205 bots took 322 s to reach the login server.
 
 A second signal beside the heap: route planning. On 5 November, at `FIXED` 100 % on sixteen cores, it gave out before the memory did (25 000
 searches queued, ten-minute waits); on a player's four or six cores it gives out much sooner. The guard also holds the wakes while the planning

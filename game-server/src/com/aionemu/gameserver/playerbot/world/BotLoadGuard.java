@@ -108,6 +108,17 @@ public final class BotLoadGuard {
 		return !after.isEmpty();
 	}
 
+	/**
+	 * @return true when the heap is at the hold mark now, read at the moment a wake's turn comes. The review reads once and may queue many wakes;
+	 *         this stops the ones after the heap filled. The heap only: a route wait is read over a review, and the review's verdict holds that.
+	 */
+	public boolean heapFullNow() {
+		if (!PlayerBotConfig.GUARD_ENABLE)
+			return false;
+		int heap = heapPercentAfterCollection();
+		return heap >= 0 && heap >= PlayerBotConfig.GUARD_HEAP_HOLD;
+	}
+
 	/** @return true while the wakes are held, as the last review decided. */
 	public boolean holds() {
 		return !holding.isEmpty();

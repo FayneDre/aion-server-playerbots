@@ -232,7 +232,10 @@ public class BotDirector {
 					if (woken >= budget)
 						break;
 					woken++;
-					BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(bots.wake(resident), 1, Integer::sum));
+					// the heap read again when its turn comes, not only at the review: with nobody online a review may ask for a thousand wakes,
+					// all of them queued before the first is done, and measured on 8 November they ran past the review's reading in one go
+					BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(BotLoadGuard.getInstance().heapFullNow() ? PlayerBotService.Change.HELD
+						: bots.wake(resident), 1, Integer::sum));
 				}
 			}
 			for (int playerId : difference.toSleep()) {
@@ -660,6 +663,7 @@ public class BotDirector {
 					case SEEN -> " within sight of a player";
 					case BUSY -> " in a fight or on a road";
 					case UNAVAILABLE -> " no longer available";
+					case HELD -> " held by the population guard";
 					default -> "";
 				});
 		}

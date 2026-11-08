@@ -1,6 +1,6 @@
 # A living world: memory, learned ground, road careers, PvP, groups, the director, rumours and prizes
 
-Status: in progress: the density modes built on 5 November; A1, the guard, built on 8 November, unverified: its marks against `FIXED` at 100 %.
+Status: in progress: the density modes built on 5 November; A1, the guard, built and measured on 8 November (A2 to A4 left).
 
 The aim is a world that lives whether a player watches or not. This plan gathers what would take the project there, in lots, after the density
 modes of 5 November. **Out, by decision**: quests for world bots, patching the client's executables, rewards of our own invention (tickets,
@@ -18,7 +18,8 @@ round number: on 5 November the live set was already 69 % of the heap with 1158 
 something near 85 % on, 80 % off is the likely pair. It is the safety net the density slider needs: a percent set too high fills up to the guard and
 stops, rather than taking the server down. Measured: with `FIXED` at 100 %, awake bots level off and the server stays up. **Built on 8 November**
 (`BotLoadGuard`, [population-director.md](../population-director.md)), with route planning as a second signal: a search that waited 20 s holds,
-under 5 s releases.
+under 5 s releases. Measured the same day, the heap read again at each wake's turn and at the startup's roster
+([population-director.md](../population-director.md)): the server held 1895 bots at `FIXED` 100 % in 75 to 80 % of its heap, so 85/80 stay.
 
 **A2. One budget for every navmesh, tiles released when nobody walks them.** On 5 November `short[]` tile heights were 603 MB of a 1771 MB live set
 (569 MB of 1740 on 27 October), under a budget of 32 MB a map with 26 maps open. One budget for all of them, a least recently used set of tiles

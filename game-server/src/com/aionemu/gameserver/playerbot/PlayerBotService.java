@@ -25,6 +25,7 @@ import com.aionemu.gameserver.playerbot.movement.BotFlight;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.social.BotSquads;
 import com.aionemu.gameserver.playerbot.world.BotDirector;
+import com.aionemu.gameserver.playerbot.world.BotLoadGuard;
 import com.aionemu.gameserver.playerbot.world.BotNavmeshHost;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.services.player.PlayerService;
@@ -109,6 +110,7 @@ public class PlayerBotService {
 			return;
 		int restored = 0;
 		int left = 0;
+		int held = 0;
 		for (String characterName : roster) {
 			// Already in the world, because populating a map on this very startup both creates a bot and puts it there. Asking to load it again
 			// returns null, exactly as a deleted character does, and reading that null as "gone" printed forty five warnings about losing characters
@@ -122,6 +124,13 @@ public class PlayerBotService {
 			// one thing it must not do with somebody else's character. It leaves the roster here, so nothing goes looking for it again.
 			if (BotRoster.isSomebodysOwn(characterName)) {
 				left++;
+				continue;
+			}
+			// The heap asked before each one, as the director's wakes ask it: a world brought back whole is a wake of two thousand bots that no
+			// review sees, and on 8 November it held the server off its login for eight minutes. The ones left sleep, and the director wakes them
+			// when the guard lets it.
+			if (held > 0 || BotLoadGuard.getInstance().heapFullNow()) {
+				held++;
 				continue;
 			}
 			Player bot = loadAvailableBot(characterName);
@@ -138,7 +147,8 @@ public class PlayerBotService {
 			}
 		}
 		rememberRoster(); // drops whatever could not be restored, so a broken name is not retried every restart
-		log.info("Restored {} of {} bot(s) from the roster, leaving {} belonging to players", restored, roster.size(), left);
+		log.info("Restored {} of {} bot(s) from the roster, leaving {} belonging to players{}", restored, roster.size(), left,
+			held > 0 ? " and " + held + " asleep, held by the population guard" : "");
 	}
 
 	/**
@@ -345,7 +355,8 @@ public class PlayerBotService {
 	 * is how a server with nobody on it came to report that a dozen departures had been refused for being watched.
 	 */
 	public enum Change {
-		DONE, SEEN, BUSY, UNAVAILABLE
+		/** HELD: not tried, the population guard found the heap full when its turn came (BotLoadGuard). */
+		DONE, SEEN, BUSY, UNAVAILABLE, HELD
 	}
 
 	/**
