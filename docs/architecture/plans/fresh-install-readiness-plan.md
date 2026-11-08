@@ -18,6 +18,7 @@ an install finds an empty MySQL, a machine of unknown size and nobody who knows 
 - **The navmesh holds memory nobody uses.** A cache per map, 32 MB each, 26 maps open: tiles of maps no bot walks stay loaded.
 - **The defaults are one machine's.** `density.mode = AUTO` at 30 %, a 2560 MB heap and no guard: about 800 awake bots fill that heap, and nothing
   stops the director before it does ([living-world-plan.md](../../population/plans/living-world-plan.md), lot A).
+- **Memory is not the only limit.** Route planning ran out first at full density on sixteen cores; a player's machine has fewer.
 - **Nobody has ever started this server on an empty database.** The bot pool, the broker's 6000 lots and the first navmesh loads have only ever
   met a database that had them already.
 
@@ -44,6 +45,10 @@ As written in [living-world-plan.md](../../population/plans/living-world-plan.md
 line in `//bot pool`. The thresholds come from a measurement: `FIXED` at 100 % on the live server, the heap after each collection logged until
 awake bots level off. Checked: the server stays up with `FIXED` at 100 %, and `//bot pool` shows the guard holding.
 
+A second signal beside the heap: route planning. On 5 November, at `FIXED` 100 % on sixteen cores, it gave out before the memory did (25 000
+searches queued, ten-minute waits); on a player's four or six cores it gives out much sooner. The guard also holds the wakes while the planning
+queue stays above a threshold, measured the same way, and says which of the two holds it.
+
 ### 3. A2: one budget for every navmesh
 
 The largest share of the heap is not the bots: on 5 November navmesh tile heights (`short[]`) were 603 MB of a 1771 MB live set, where 200 more
@@ -61,7 +66,8 @@ Checked: the live set after a collection, the plans given up and the route waits
   level is raised, the launcher's minimum with it). The mode and percent are written to `playerbot.properties` by the launcher, read at start.
 - Launcher: the mode as a list, the percent as a slider bounded by what milestones 2 and 3 measured, the guard shown on the Bots page.
 - Defaults: the heap chosen from the machine's memory (a table in the launcher: 8 GB, 16 GB, more), the density at a percent that stays under
-  the guard on the smallest of them. Measured on the live server with that heap, not reasoned.
+  the guard on the smallest of them. Measured on the live server with that heap and with the cores of a modest machine
+  (`-XX:ActiveProcessorCount=4`), not reasoned.
 
 Checked: the slider moves the world on a restart; at the smallest heap the guard is never reached in an hour of `AUTO`.
 
@@ -73,7 +79,7 @@ milestone 4, the live server stopped first (two servers do not fit this machine'
 
 - each phase's time: the data loaded, the bot pool created (how many characters, how long), the broker filled, the first bots awake, the
   login server registered;
-- the heap after collections through that hour, against the live server's;
+- the heap after collections and the planning queue through that hour, at four cores, against the live server's;
 - every error and warning of the log (`check-server-log.ps1`);
 - every setting a person had to type for it to start: the database user and password, the addresses, the admin account. That list is what the
   launcher's first-launch assistant must ask for or set itself, and nothing else.
