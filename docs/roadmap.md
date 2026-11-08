@@ -12,7 +12,7 @@ Words used for a state: **validated** (seen working in game by a tester), **buil
 
 | # | Theme | Where it stands | First thing left |
 |---|---|---|---|
-| 0 | Feedback, tooling and releases | running; release milestones 5 and 6 built, unverified | verify a tester's install going to a pre-release and back |
+| 0 | Feedback, tooling and releases | running; release milestones 1 to 6 validated | the first stable pair (milestone 7) |
 | 1 | Navigation | validated on 26 maps and 45 dungeons; four places wait for a note | the four places a tester is to walk |
 | 2 | Population and the living world | validated; density modes built 5 November | lot A: memory measured and guarded |
 | 3 | Classes and combat | six playbooks validated | spirit master, aethertech, bard and gunner playbooks |
@@ -36,10 +36,8 @@ English, the compatibility check). Everything shipped up to `patch-2026-10-25-2`
 
 **Left**:
 1. **Feedback as it comes**: the tester reports while playing; each plan's Status line says what has been seen ([feedback/](feedback/README.md)).
-2. **Release milestones 5 and 6, built, unverified**: an installed beta launcher updating itself from GitHub, and a tester's install going to a
-   pre-release and back (server v0.1.0-beta.2, launcher v0.3.0-beta.3) ([release-process-plan.md](architecture/plans/release-process-plan.md)).
-3. **Milestone 7, the first stable pair**: `develop` merged into `main` in both repositories once a pair is validated in game.
-4. **The next upstream merge**, as soon as `4.8` moves, then `tools/sync-install.ps1` for the install and the SQL: the sooner, the smaller.
+2. **Milestone 7, the first stable pair**: `develop` merged into `main` in both repositories once a pair is validated in game.
+3. **The next upstream merge**, as soon as `4.8` moves, then `tools/sync-install.ps1` for the install and the SQL: the sooner, the smaller.
 5. **The combat half of `PlayerBotAI` is untested and unsplit** ([known-limits.md](known-limits.md), Tests).
 
 ## 1. Navigation
