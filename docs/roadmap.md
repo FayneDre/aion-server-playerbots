@@ -37,7 +37,7 @@ English, the compatibility check). Everything shipped up to `patch-2026-10-25-2`
 **Left**:
 1. **Feedback as it comes**: the tester reports while playing; each plan's Status line says what has been seen ([feedback/](feedback/README.md)).
 2. **Before the launcher installs the server from nothing** ([fresh-install-readiness-plan.md](architecture/plans/fresh-install-readiness-plan.md)): the
-   schemas in the bundle, lot A's A1 and A3, a first start on an empty database measured, combat tests, the upstream merge, then milestone 7.
+   schemas in the bundle, lot A's A1, A2 and A3, a first start on an empty database measured, combat tests, the upstream merge, then milestone 7.
 3. **Milestone 7, the first stable pair**: `develop` merged into `main` in both repositories once a pair is validated in game.
 4. **The next upstream merge**, as soon as `4.8` moves, then `tools/sync-install.ps1` for the install and the SQL: the sooner, the smaller.
 5. **The combat half of `PlayerBotAI` is untested and unsplit** ([known-limits.md](known-limits.md), Tests).

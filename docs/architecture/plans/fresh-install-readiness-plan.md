@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: not started. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
-the next launcher work is installing one on a machine that has none. Six milestones, in this order; each says how it is checked. The class
+the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
 ## Why
@@ -15,6 +15,7 @@ an install finds an empty MySQL, a machine of unknown size and nobody who knows 
   made from it, `apply-sql.ps1` would replay `ALTER TABLE ... ADD COLUMN` and fail.
 - **The login server's updates are run by nobody.** `apply-sql.ps1` reads the game server's `database.url` only; `login-server/sql/update.sql`
   (the `toll` column, `account_rewards`) has always been run by hand.
+- **The navmesh holds memory nobody uses.** A cache per map, 32 MB each, 26 maps open: tiles of maps no bot walks stay loaded.
 - **The defaults are one machine's.** `density.mode = AUTO` at 30 %, a 2560 MB heap and no guard: about 800 awake bots fill that heap, and nothing
   stops the director before it does ([living-world-plan.md](../../population/plans/living-world-plan.md), lot A).
 - **Nobody has ever started this server on an empty database.** The bot pool, the broker's 6000 lots and the first navmesh loads have only ever
@@ -43,20 +44,31 @@ As written in [living-world-plan.md](../../population/plans/living-world-plan.md
 line in `//bot pool`. The thresholds come from a measurement: `FIXED` at 100 % on the live server, the heap after each collection logged until
 awake bots level off. Checked: the server stays up with `FIXED` at 100 %, and `//bot pool` shows the guard holding.
 
-### 3. A3: the density in the launcher, and defaults for an unknown machine
+### 3. A2: one budget for every navmesh
+
+The largest share of the heap is not the bots: on 5 November navmesh tile heights (`short[]`) were 603 MB of a 1771 MB live set, where 200 more
+awake bots cost 30 MB. Each open map has its own tile cache today (`Navmesh.TILE_BUDGET_BYTES`, 32 MB, a clock evicting past it), so 26 open maps
+may hold 832 MB whether bots walk them or not. One budget for all of them, as a share of the heap, with the same clock run across maps and a tile
+unused for some minutes given back, puts that memory where bots are. Measured with `tools/heap-snapshot.ps1` before and after, and the routes
+with `measure.sh` (a tile read again from its file costs planning time: the route queue must not grow). It comes before the defaults because
+every megabyte it frees is bots the smallest machine can hold.
+
+Checked: the live set after a collection, the plans given up and the route waits of a day, before and after.
+
+### 4. A3: the density in the launcher, and defaults for an unknown machine
 
 - Server: the density mode, percent and the guard's state on the admin channel the launcher already reads (`version` gives `API_LEVEL`; the
   level is raised, the launcher's minimum with it). The mode and percent are written to `playerbot.properties` by the launcher, read at start.
-- Launcher: the mode as a list, the percent as a slider bounded by what milestone 2 measured, the guard shown on the Bots page.
+- Launcher: the mode as a list, the percent as a slider bounded by what milestones 2 and 3 measured, the guard shown on the Bots page.
 - Defaults: the heap chosen from the machine's memory (a table in the launcher: 8 GB, 16 GB, more), the density at a percent that stays under
   the guard on the smallest of them. Measured on the live server with that heap, not reasoned.
 
 Checked: the slider moves the world on a restart; at the smallest heap the guard is never reached in an hour of `AUTO`.
 
-### 4. A first start on an empty database, measured
+### 5. A first start on an empty database, measured
 
 A second install beside the live one (other folder, other ports, the databases of milestone 1), started from the bundle with the defaults of
-milestone 3, the live server stopped first (two servers do not fit this machine's memory). Written down, in a measurement under
+milestone 4, the live server stopped first (two servers do not fit this machine's memory). Written down, in a measurement under
 `log/bot-measures` and a section here:
 
 - each phase's time: the data loaded, the bot pool created (how many characters, how long), the broker filled, the first bots awake, the
@@ -68,17 +80,17 @@ milestone 3, the live server stopped first (two servers do not fit this machine'
 
 Checked: a client logs in to the fresh server, creates a character and sees bots around it.
 
-### 5. Tests for the combat half of `PlayerBotAI`
+### 6. Tests for the combat half of `PlayerBotAI`
 
 `PlayerBotAI` is 1924 lines and its combat half has no test ([known-limits.md](../../known-limits.md), Tests). Before the upstream merge
 touches the skill engine under it: the decisions it takes (which target, when to close in or back off, when to drink, when to give up a fight)
 moved into pure functions of a situation record, as `TownRoutine` and `LostTrail` are, with a suite each. No behaviour changes: the measures of
 the day before and after are compared with `compare-measures.ps1`. Checked: the suites pass, the measure stays in its band.
 
-### 6. The upstream merge, then the first stable pair
+### 7. The upstream merge, then the first stable pair
 
 - `git fetch upstream`, `beyond-aion` fast-forwarded, merged into `develop` the way
-  [upstream-merge-plan.md](../history/upstream-merge-plan.md) did it: the trial first, the tests of milestone 5, `sync-install.ps1 -From` for
+  [upstream-merge-plan.md](../history/upstream-merge-plan.md) did it: the trial first, the tests of milestone 6, `sync-install.ps1 -From` for
   the install, `update.sql` checked against the schemas by the rule of milestone 1.
 - Then release milestone 7 ([release-process-plan.md](release-process-plan.md)): a server pre-release and a launcher pre-release validated in
   game together, `develop` merged into `main` in both repositories, each tagged with its stable version. The launcher's install from nothing
@@ -89,4 +101,4 @@ Checked: a tester's launcher updates to the stable pair and plays on it.
 ## After this plan
 
 The launcher's side, in its own roadmap: the first-launch assistant (Java, MySQL, memory, disk; MySQL installed and its user made; the
-settings of milestone 4 asked once), the first download that resumes and verifies, and the install from nothing running `apply-sql.ps1 -Create`.
+settings of milestone 5 asked once), the first download that resumes and verifies, and the install from nothing running `apply-sql.ps1 -Create`.
