@@ -82,13 +82,14 @@ function Read-Tables([string]$cnf, [string]$database) {
     return $tables
 }
 
+# defined before the try, so the finally never meets an unset path and hides the error that brought it there
+$drop = Join-Path $work 'drop.sql'
 try {
     # the scratch database made from nothing, as an install makes it, through a configuration of its own
     $fakeRoot = Join-Path $work 'install'
     New-Item -ItemType Directory -Force (Join-Path $fakeRoot "$folder\config") | Out-Null
     Set-Content (Join-Path $fakeRoot "$folder\config\$override") @("database.url = jdbc:mysql://127.0.0.1:$ScratchPort/$check",
         "database.user = $ScratchUser", "database.password = $ScratchPassword") -Encoding ascii
-    $drop = Join-Path $work 'drop.sql'
     Set-Content $drop "DROP DATABASE IF EXISTS ``$check``;" -Encoding ascii
     cmd /c "`"$mysql`" --defaults-extra-file=`"$scratchCnf`" < `"$drop`" 2>&1" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "The scratch MySQL on port $ScratchPort does not answer." }
@@ -116,7 +117,7 @@ try {
         $code = 1
     }
 } finally {
-    if (Test-Path $drop) { cmd /c "`"$mysql`" --defaults-extra-file=`"$scratchCnf`" < `"$drop`" 2>&1" | Out-Null }
+    if (Test-Path -LiteralPath $drop) { cmd /c "`"$mysql`" --defaults-extra-file=`"$scratchCnf`" < `"$drop`" 2>&1" | Out-Null }
     Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 }
 # a real exit, so a caller in another process (powershell -File) sees it too

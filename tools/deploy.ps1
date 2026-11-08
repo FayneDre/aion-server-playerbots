@@ -95,7 +95,11 @@ if (-not $SkipSql) {
     # the game and login servers have an update.sql each; the chat server has none
     foreach ($sqlServer in 'game', 'login') {
         $sqlLook = & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Server $sqlServer
-        $sqlLook | Where-Object { $_ -match ', [1-9][0-9]* not applied yet' } | ForEach-Object { Write-Host "$sqlServer`: $_" -ForegroundColor Yellow }
+        $sqlLook | Where-Object { $_ -match ', [1-9][0-9]* not applied yet' } | ForEach-Object {
+            # a deploy stops the game server (-Restart) and never the login server: said now, not after the build
+            $hint = if ($sqlServer -eq 'login') { ' (the login server must be stopped for them, or the deploy stops after the build)' } else { '' }
+            Write-Host "$sqlServer`: $_$hint" -ForegroundColor Yellow
+        }
     }
 }
 
