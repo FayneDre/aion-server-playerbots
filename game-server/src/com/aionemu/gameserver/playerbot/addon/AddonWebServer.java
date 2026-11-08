@@ -30,8 +30,16 @@ import com.sun.net.httpserver.HttpServer;
  */
 public final class AddonWebServer {
 
+	/**
+	 * What the pages offer the addons, raised when an addon of an earlier level would no longer work with them, or a new addon needs pages an
+	 * earlier server lacks. The installation's manifest.json carries it (deploy.ps1, package-release.ps1 read this line), for the launcher to
+	 * compare with the level an addons release asks for; {@code /addon/version} answers it too.
+	 */
+	public static final int API_LEVEL = 1;
+
 	private static final Logger log = LoggerFactory.getLogger(AddonWebServer.class);
 	private static final String COMBAT_METER = "/addon/combat-meter";
+	private static final String VERSION = "/addon/version";
 
 	private static HttpServer server;
 
@@ -48,9 +56,17 @@ public final class AddonWebServer {
 			return;
 		}
 		server.createContext(COMBAT_METER, AddonWebServer::combatMeter);
+		server.createContext(VERSION, AddonWebServer::version);
 		server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
 		server.start();
 		log.info("Addon pages: served on port {}", PlayerBotConfig.ADDON_PORT);
+	}
+
+	/** The pages' level, to anyone: it says nothing of a player. */
+	private static void version(HttpExchange exchange) throws IOException {
+		try (exchange) {
+			send(exchange, 200, "application/json", "{\"apiLevel\":" + API_LEVEL + "}");
+		}
 	}
 
 	private static void combatMeter(HttpExchange exchange) throws IOException {

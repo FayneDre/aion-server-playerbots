@@ -172,21 +172,29 @@ $revision = if ($jarManifest -match '(?m)^Revision: (\S+)') { $Matches[1] } else
 $release = if ($jarManifest -match '(?m)^Implementation-Version: (\S+)') { $Matches[1] } else { 'dev' }
 # The level of the code the jar was built from, not of the working tree: a -SkipBuild after a checkout deploys an older jar. A -DIRTY build is the
 # working tree's. The line is the one AdminChannelTest checks, so a rewording fails a test rather than this.
-$apiPath = 'game-server/src/com/aionemu/gameserver/AdminChannel.java'
-$apiSource = $null
-if ($revision -match '^[0-9a-f]{7,40}$') { $apiSource = (git -C $repoRoot show "${revision}:$apiPath" 2>$null) -join "`n" }
-if (-not $apiSource) { $apiSource = Get-Content -Raw (Join-Path $repoRoot $apiPath) }
-$apiMatch = [regex]::Match($apiSource, 'public static final int API_LEVEL = (\d+);')
-if (-not $apiMatch.Success) { throw "AdminChannel.java at revision $revision has no API_LEVEL line to read." }
+function Get-ApiLevel([string]$path) {
+    $source = $null
+    if ($revision -match '^[0-9a-f]{7,40}$') { $source = (git -C $repoRoot show "${revision}:$path" 2>$null) -join "`n" }
+    if (-not $source -and (Test-Path (Join-Path $repoRoot $path))) { $source = Get-Content -Raw (Join-Path $repoRoot $path) }
+    $match = [regex]::Match([string]$source, 'public static final int API_LEVEL = (\d+);')
+    if ($match.Success) { return [int]$match.Groups[1].Value }
+    return $null
+}
+$apiLevel = Get-ApiLevel 'game-server/src/com/aionemu/gameserver/AdminChannel.java'
+if ($null -eq $apiLevel) { throw "AdminChannel.java at revision $revision has no API_LEVEL line to read." }
+# what the addons' pages offer (0: a jar from before them)
+$addonApiLevel = Get-ApiLevel 'game-server/src/com/aionemu/gameserver/playerbot/addon/AddonWebServer.java'
+if ($null -eq $addonApiLevel) { $addonApiLevel = 0 }
 $installManifest = [ordered]@{
-    source     = 'deploy'
-    version    = $release
-    revision   = $revision
-    apiLevel   = [int]$apiMatch.Groups[1].Value
-    deployedAt = (Get-Date).ToString('o')
+    source        = 'deploy'
+    version       = $release
+    revision      = $revision
+    apiLevel      = $apiLevel
+    addonApiLevel = $addonApiLevel
+    deployedAt    = (Get-Date).ToString('o')
 }
 [IO.File]::WriteAllText((Join-Path $ServerRoot 'manifest.json'), ($installManifest | ConvertTo-Json) + "`n", (New-Object Text.UTF8Encoding($false)))
-Write-Host "  manifest.json: $release, revision $revision, launcher API level $($installManifest.apiLevel)"
+Write-Host "  manifest.json: $release, revision $revision, launcher API level $apiLevel, addon API level $addonApiLevel"
 
 # The chat server carries the bots' channel lines (CM_BOT_MESSAGE) since 24 October, so it is built and deployed too, but only when its jar changed:
 # most deploys touch the game server alone. It holds nothing to save, so stopping it is safe, and a running game server reconnects to it by itself.

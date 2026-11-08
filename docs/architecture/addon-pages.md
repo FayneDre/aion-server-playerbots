@@ -12,6 +12,10 @@ need live in a separate repository (`echoes-of-atreia-addons`); this file says w
   `HttpServer` on virtual threads, started by `GameServer` after `AdminChannel`.
 - `/addon/combat-meter` is the page (`CombatMeterPage`), `/addon/combat-meter/data` its numbers as JSON, `/addon/combat-meter/reset` starts the
   viewer's team over from zero.
+- **The level of the pages**: `AddonWebServer.API_LEVEL` (1 today), raised when the pages change in a way an addon notices. `deploy.ps1` and
+  `package-release.ps1` write it into the installation's `manifest.json` as `addonApiLevel` (0 for a jar from before the pages), and
+  `/addon/version` answers it to anyone. An addons release says the level it needs (`addonApiLevel` in its `package.json`), for the launcher to
+  refuse a pair that would show an empty window.
 
 ## Who a page belongs to
 

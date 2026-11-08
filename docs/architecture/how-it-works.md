@@ -75,7 +75,7 @@ com.aionemu.gameserver.playerbot/
                 selling (BotVendorManager), stores (BotStores, BotStoreStock, BotStoreGoods, BotStorePricing, BotManastones), BotTrades
   social/       Groups and instances (BotGroupManager, BotInstances, BotRole, BotMarks, BotSquads, RecruitPlan, LeaderGlides, BotTransports),
                 requests (BotRequests), speech and chat (BotSpeech, BotChat, BotChatLines)
-  addon/        The pages the interface addons show (AddonWebServer, port 7790) and the combat meter's count and page (CombatMeter,
+  addon/        The pages the interface addons show (AddonWebServer, port 7790, their level at /addon/version) and the combat meter's count and page (CombatMeter,
                 CombatMeterPage); see addon-pages.md
 ```
 

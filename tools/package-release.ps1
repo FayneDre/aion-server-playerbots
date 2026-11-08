@@ -128,8 +128,11 @@ try {
         if ($jarManifest -notmatch "(?m)^Implementation-Version: $([regex]::Escape($tag))\s*$") { throw "The game server jar does not name $tag as its release." }
         if ($jarManifest -notmatch "(?m)^Revision: $head\s*$") { throw "The game server jar does not name revision $head." }
         $api = [regex]::Match((Get-Content -Raw 'game-server\src\com\aionemu\gameserver\AdminChannel.java'), 'public static final int API_LEVEL = (\d+);')
+        $addonApi = [regex]::Match((Get-Content -Raw 'game-server\src\com\aionemu\gameserver\playerbot\addon\AddonWebServer.java'), 'public static final int API_LEVEL = (\d+);')
         $java = [regex]::Match((Get-Content -Raw 'pom.xml'), '<maven.compiler.release>(\d+)</maven.compiler.release>')
-        if (-not $api.Success -or -not $java.Success) { throw 'Could not read the API level (AdminChannel.java) or the Java release (pom.xml).' }
+        if (-not $api.Success -or -not $addonApi.Success -or -not $java.Success) {
+            throw 'Could not read the API levels (AdminChannel.java, AddonWebServer.java) or the Java release (pom.xml).'
+        }
 
         # ---- the navmesh: every map file, and the release that carries it ----------------------------------------------------------------
         if (-not $Previous) {
@@ -168,6 +171,8 @@ try {
             version  = $tag
             revision = $head
             apiLevel = [int]$api.Groups[1].Value
+            # what the addons' pages offer: the launcher installs only an addons release asking for this level or lower
+            addonApiLevel = [int]$addonApi.Groups[1].Value
             java     = [int]$java.Groups[1].Value
             builtAt  = (Get-Date).ToString('o')
             # folders that hold only what the bundle lists (a stale jar stays on the classpath, a removed handler is still compiled), and the
