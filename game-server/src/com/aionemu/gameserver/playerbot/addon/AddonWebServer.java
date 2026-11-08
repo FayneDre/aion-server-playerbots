@@ -66,6 +66,8 @@ public final class AddonWebServer {
 				CombatMeter.reset(viewer.get());
 				send(exchange, 200, "application/json", CombatMeter.json(viewer.get()));
 			} else {
+				// the page itself, loaded at each opening of the window: what a tester's empty window is checked against
+				log.info("Addon pages: combat meter for {} from {}", viewer.get().getName(), remoteAddress(exchange));
 				send(exchange, 200, "text/html", CombatMeterPage.html());
 			}
 		}
