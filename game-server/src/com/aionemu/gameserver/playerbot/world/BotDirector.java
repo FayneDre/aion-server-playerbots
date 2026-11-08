@@ -96,7 +96,7 @@ public class BotDirector {
 	private static final int DEAD_BAND = 1;
 	/** How many hunters of the side over its share are swapped for sleepers of the side under it in one review, so a region rebalances without churning. */
 	private static final int SWAPS_PER_REVIEW = 2;
-	/** How long a bot that would not leave for an exchange is passed over. Four reviews: a fight is over by then, a road mostly. */
+	/** How long a bot that would not leave for an exchange is passed over. Four reviews, long enough for most fights to end; a guess, not a measurement. */
 	private static final long REFUSED_EXCHANGE_MILLIS = 120_000;
 
 	private static final BotDirector INSTANCE = new BotDirector();
@@ -194,10 +194,12 @@ public class BotDirector {
 		int budget = anybodyOnline ? CHANGES_PER_REVIEW : Integer.MAX_VALUE;
 		// A server short of memory or of route planning wakes nobody until it is well clear; departures go on, so a world over its target still sheds.
 		boolean held = BotLoadGuard.getInstance().review();
+		boolean exchanging = held && anybodyOnline && !BotLoadGuard.getInstance().causes().contains(BotLoadGuard.Cause.ROUTES);
 		int woken = 0, slept = 0;
 		int awakeInAll = 0, wantedInAll = 0, asleepInAll = 0, shortAndEmpty = 0;
 		List<String> report = new ArrayList<>();
-		// While the guard holds: what the played maps are short of, and the hunters the others could give them. See exchanges().
+		// While the guard holds for the heap: what the played maps are short of, and the bots the others could give them. See exchanges(). Not for route
+		// planning: an exchange is an arrival, and an arrival asks for routes, which is what that guard is short of.
 		List<BotRoster.Resident> shortWherePlayed = new ArrayList<>();
 		List<List<Integer>> spareWhereUnplayed = new ArrayList<>();
 		// the played maps first, so a budget spent before the end of the list is spent where somebody is
@@ -232,7 +234,7 @@ public class BotDirector {
 			if (!difference.rehoused().isEmpty())
 				log.info("map {}: moving {} sleeper(s) house", worldId, difference.rehoused().size());
 			difference.rehoused().forEach(mover -> BotRoster.setHome(mover.name(), mover.home()));
-			if (held && anybodyOnline) {
+			if (exchanging) {
 				if (busy && difference.awake() < wanted)
 					shortWherePlayed.addAll(difference.toWake());
 				else if (!busy)
@@ -517,7 +519,7 @@ public class BotDirector {
 	 * world being mostly villages (in {@code AUTO} a map nobody plays on keeps a twentieth of its countryside and all of its villages), and a village
 	 * nobody walks into is no more seen than a field.
 	 *
-	 * @param arrivals What the played maps are short of, busiest first.
+	 * @param arrivals What the played maps are short of, in the order the review met them.
 	 * @param spareByMap The bots each map nobody plays on keeps awake, hunters first.
 	 * @param budget The most exchanges this review.
 	 */

@@ -49,7 +49,7 @@ search per bot); the guard never had to hold at its 85/80 marks. With the marks 
 1907 and left 702 asleep; the first review asked for 694 wakes, 2 came and 692 were held; held at 73 %, kept at 70, released at 66, and the
 next review's 692 gave 41 arrivals and 651 held.
 
-**While the guard holds, the played maps take bots from the others** (`exchanges`): each arrival a map with a player is short of is paired with a
+**While the guard holds for the heap, the played maps take bots from the others** (`exchanges`; not while it holds for route planning, an arrival asking for routes): each arrival a map with a player is short of is paired with a
 bot awake on a map nobody plays on, hunters first, then villagers, taken in turn from each such map; the bot leaves, and only if it did the
 arrival follows, on the lane, without the heap check (the count does not change). A bot that would not leave (a fight, a road) is passed over
 for 2 minutes. The played maps also come first in every review, so a wake budget spent early is spent where somebody is. Measured on 8 November
