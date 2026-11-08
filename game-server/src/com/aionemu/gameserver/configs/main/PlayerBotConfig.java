@@ -162,7 +162,7 @@ public class PlayerBotConfig {
 
 	/**
 	 * The port the interface addons' pages are served on (the combat meter), 0 to serve none. A client reaches it from wherever it plays, so it is
-	 * opened on every interface; a page shows only what concerns the character whose session token asks for it.
+	 * opened on every interface; a page shows only what concerns the character it names, to a request from where that character's game connection comes from.
 	 */
 	@Property(key = "gameserver.playerbot.addon.port", defaultValue = "7790")
 	public static int ADDON_PORT;

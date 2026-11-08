@@ -26,7 +26,7 @@ would need a channel the Lua can read, which none was found to be.
 ## The combat meter's count
 
 `CombatMeter` is called from `CreatureLifeStats.reduceHp` (the health the target lost) and `increaseHp` (the health it gained, and the rest of
-the heal as overhealing; a heal without a skill, natural regeneration, is not counted). The source is the attacker's or the effector's master, so
+the heal as overhealing; a heal without a skill, natural regeneration, is not counted). A fault of the meter is logged and never stops the hit or the heal. The source is the attacker's or the effector's master, so
 a summon's or a servant's numbers go to its player. Counted: players, and bots while they are in a team with a player, so a world of bots alone
 costs one test per hit. Per second figures are over the time in combat: an action less than five seconds after the previous one adds the time
 between them, a later one a second. The numbers are kept per player since its team's last reset; idle ones are dropped past 500 players.
@@ -34,4 +34,5 @@ between them, a later one a second. The numbers are kept per player since its te
 ## The address the addon uses
 
 `http://127.0.0.1:7790` by default, the server on the player's machine. A client launched with `-updsvr:http://<host>:<port>` uses that one: the
-client keeps the option's text in `g_launcherUpdateURL`, which it reads for nothing else, and the addon reads it with `GetConsole`.
+client keeps the option's text in `g_launcherUpdateURL`, which it reads for nothing else, and the addon reads it with `GetConsole`, a function the client gives only to a plugin it trusts
+that asks `## Require: console` (the addons' installer adds them to its trusted plugins).

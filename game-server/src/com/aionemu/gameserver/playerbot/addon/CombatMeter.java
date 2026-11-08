@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -25,6 +28,8 @@ import com.aionemu.gameserver.skillengine.model.SkillTemplate;
  */
 public final class CombatMeter {
 
+	private static final Logger log = LoggerFactory.getLogger(CombatMeter.class);
+
 	static final long COMBAT_GAP_MILLIS = 5000;
 	private static final long FIRST_SECOND_MILLIS = 1000;
 	private static final int PRUNE_ABOVE = 500;
@@ -35,21 +40,30 @@ public final class CombatMeter {
 	private CombatMeter() {
 	}
 
+	/** Called by the health's own code in the middle of a hit, which a fault of the meter must never stop: a fault is logged and the hit goes on. */
 	public static void onDamage(Creature target, Creature attacker, int skillId, int amount, TYPE type) {
 		if (amount <= 0 || type == TYPE.USED_HP)
 			return;
-		Player source = countedSource(attacker);
-		if (source != null && source != target)
-			tallyOf(source).add(skillId, amount, 0, 0);
+		try {
+			Player source = countedSource(attacker);
+			if (source != null && source != target)
+				tallyOf(source).add(skillId, amount, 0, 0);
+		} catch (RuntimeException e) {
+			log.error("Combat meter: damage of skill {} by {} not counted", skillId, attacker, e);
+		}
 	}
 
 	/** @param amount the health the target gained; {@code wanted} what the heal would have given it without its maximum */
 	public static void onHeal(Creature target, Creature effector, int skillId, int amount, int wanted) {
 		if (skillId == 0 || wanted <= 0)
 			return;
-		Player source = countedSource(effector);
-		if (source != null)
-			tallyOf(source).add(skillId, 0, amount, Math.max(0, wanted - amount));
+		try {
+			Player source = countedSource(effector);
+			if (source != null)
+				tallyOf(source).add(skillId, 0, amount, Math.max(0, wanted - amount));
+		} catch (RuntimeException e) {
+			log.error("Combat meter: healing of skill {} by {} not counted", skillId, effector, e);
+		}
 	}
 
 	/** The members whose numbers a viewer sees: the online members of its team, or itself alone. */

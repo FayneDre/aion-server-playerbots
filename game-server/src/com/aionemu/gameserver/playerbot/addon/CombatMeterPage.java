@@ -42,7 +42,7 @@ final class CombatMeterPage {
 		<script>
 		var mode = 'damage', selected = null, query = location.search;
 		function el(id) { return document.getElementById(id); }
-		function esc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+		function esc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 		function num(v) { return v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e4 ? (v / 1e3).toFixed(1) + 'k' : String(Math.round(v)); }
 		function rate(v, s) { return s > 0 ? num(v / s) : '0'; }
 		function get(path, done) {
