@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
-and measured the same day. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -16,7 +16,7 @@ an install finds an empty MySQL, a machine of unknown size and nobody who knows 
   made from it, `apply-sql.ps1` would replay `ALTER TABLE ... ADD COLUMN` and fail.
 - **The login server's updates are run by nobody.** `apply-sql.ps1` reads the game server's `database.url` only; `login-server/sql/update.sql`
   (the `toll` column, `account_rewards`) has always been run by hand.
-- **The navmesh holds memory nobody uses.** A cache per map, 32 MB each, 26 maps open: tiles of maps no bot walks stay loaded.
+- **The navmesh holds memory nobody uses.** A cache per map, 32 MB each, 26 maps open: tiles of maps no bot walks stay loaded (until milestone 3).
 - **The defaults are one machine's.** `density.mode = AUTO` at 30 %, a 2560 MB heap and no guard: about 800 awake bots fill that heap, and nothing
   stops the director before it does ([living-world-plan.md](../../population/plans/living-world-plan.md), lot A).
 - **Memory is not the only limit.** Route planning ran out first at full density on sixteen cores; a player's machine has fewer.
@@ -81,6 +81,14 @@ with `measure.sh` (a tile read again from its file costs planning time: the rout
 every megabyte it frees is bots the smallest machine can hold.
 
 Checked: the live set after a collection, the plans given up and the route waits of a day, before and after.
+
+**Built on 8 November** (`TileBudget`, `gameserver.playerbot.navmesh.tile_budget`, 12 % of the heap: 307 MB of 2560): every map's tiles under
+one budget, the maps' clocks turned in turn when the total passes it, down to 95 % of it. A tile unused for minutes is not given back on a clock
+of its own: under one budget the tiles nobody touched are the ones given back first, wherever they are, and that is what puts the memory where
+bots are. Measured the same evening at `AUTO`, nobody online, about 910 awake, nine minutes after a start each time: the live set after a full
+GC **1663 MB before, 1406 MB after** (tile heights, `short[]`, 581 then 407 MB); in steady play some 19 000 tiles read again every five
+minutes, in 3.5 to 3.8 s of reading (about 0.2 ms a tile, about 1 % of one core); route waits at 0 s. The day's plans given up, before and
+after, are still to compare (`measure.sh`).
 
 ### 4. A3: the density in the launcher, and defaults for an unknown machine
 

@@ -1,6 +1,6 @@
 # A living world: memory, learned ground, road careers, PvP, groups, the director, rumours and prizes
 
-Status: in progress: the density modes built on 5 November; A1, the guard, built and measured on 8 November (A2 to A4 left).
+Status: in progress: the density modes built on 5 November; A1, the guard, and A2, one tile budget, built and measured on 8 November (A3, A4 left).
 
 The aim is a world that lives whether a player watches or not. This plan gathers what would take the project there, in lots, after the density
 modes of 5 November. **Out, by decision**: quests for world bots, patching the client's executables, rewards of our own invention (tickets,
@@ -24,7 +24,8 @@ under 5 s releases. Measured the same day, the heap read again at each wake's tu
 **A2. One budget for every navmesh, tiles released when nobody walks them.** On 5 November `short[]` tile heights were 603 MB of a 1771 MB live set
 (569 MB of 1740 on 27 October), under a budget of 32 MB a map with 26 maps open. One budget for all of them, a least recently used set of tiles
 released after some minutes unused and loaded again on demand, puts the memory where bots are. Measured with `tools/heap-snapshot.ps1` before and
-after. Every megabyte saved is bots.
+after. Every megabyte saved is bots. **Built on 8 November** (`TileBudget`, 12 % of the heap), measured: the live set 1663 to 1406 MB
+with 910 bots, at about 1 % of a core in tile reads ([fresh-install-readiness-plan.md](../../architecture/plans/fresh-install-readiness-plan.md), milestone 3).
 
 **A3. The density setting in the launcher**: the mode as a list, the percent as a slider bounded by what lot A measured, the guard's state shown.
 

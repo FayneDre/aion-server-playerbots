@@ -27,9 +27,11 @@ planned waypoint walks the plan, since that is what being wedged inside geometry
 
 - Generated offline (`tools/navmesh.ps1`, [history/navmesh-plan.md](history/navmesh-plan.md)): a grid of walkable surfaces, several per column, for 26
   open-world maps and 45 dungeon geometries serving the 54 group dungeons ([instance-navmesh-list.md](instance-navmesh-list.md)).
-- **Tiles of 64 cells, read when first touched and given back**: opening a map reads its tile directory only, and each map keeps at most
-  `TILE_BUDGET_BYTES` (32 MB) of tiles. A whole map would be about 117 MB; a camp needs four tiles. The tiles are the largest part of the heap
-  (about 570 MB with 26 maps open, 27 October), which is why the budget is per map and why a global one is the first memory lever.
+- **Tiles of 64 cells, read when first touched and given back**: opening a map reads its tile directory only, and every open map's tiles share
+  one budget (`TileBudget`, `gameserver.playerbot.navmesh.tile_budget`, 12 % of the heap): past it, each map's clock in turn gives back the tiles
+  nobody touched lately, so a map nobody walks empties for one that is busy. A whole map would be about 117 MB; a camp needs four tiles. Each map
+  had 32 MB of its own until 8 November (26 maps, up to 832 MB); the shared budget took the live set from 1663 to 1406 MB with 910 bots, at the
+  cost of about 19 000 tiles read again every five minutes (3.7 s of reading). The log reports it every five minutes (`Navmesh tiles:`).
 - **Links**, in files beside the mesh, joining ground the walk cannot: **glide links** (`GlideLinks`, off an edge, landing within ten metres; in the
   open world only from small ground onto large, four a pair, 575 000 on 24 maps), **ride links** (`RideLinks`, Sanctum's lifts and boat, ends placed
   by a tester), **flight links** (`FlightLinks`, Reshanta's islands, edge to edge within what one flight pays). Whether the air is clear is asked of the

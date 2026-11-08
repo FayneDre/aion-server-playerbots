@@ -81,6 +81,14 @@ public class PlayerBotConfig {
 	public static volatile int GUARD_ROUTES_RELEASE = 5;
 
 	/**
+	 * The navmesh tiles every open map holds together, in percent of the heap (1 to 100). Past it, the tiles nobody walked on lately are given back,
+	 * on whichever map they are, and read again from the file when a bot comes back. See {@code TileBudget}. Initialised here as well as by the
+	 * property, because the offline navmesh tools read it without loading the configuration.
+	 */
+	@Property(key = "gameserver.playerbot.navmesh.tile_budget", defaultValue = "12")
+	public static volatile int NAVMESH_TILE_BUDGET = 12;
+
+	/**
 	 * Whether bots may attack players of the other race (real players and bots) where the engine makes them enemies, which is a PvP zone. Off, no bot
 	 * ever picks a player as a target and nothing of the PvP behaviour runs.
 	 */
