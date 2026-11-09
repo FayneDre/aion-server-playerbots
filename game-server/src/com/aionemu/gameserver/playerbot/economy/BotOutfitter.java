@@ -153,13 +153,15 @@ public class BotOutfitter {
 		// After the dressing, so the pieces it just put on are counted once rather than refined twice: equipping already brings a piece up to level.
 		int refined = refineWornGear(bot);
 		long scrollsAdded = stockScrolls(bot);
+		long potionsAdded = BotVendorManager.stockPotions(bot);
 		if (stripped == 0 && worn == 0 && refined == 0)
-			return bot.getName() + " had nothing to change" + (scrollsAdded > 0 ? " but its scrolls, " + scrollsAdded + " added" : "");
+			return bot.getName() + " had nothing to change" + (scrollsAdded + potionsAdded > 0
+				? " but its bag, " + scrollsAdded + " scroll(s) and " + potionsAdded + " flask(s) added" : "");
 		// Dressing says this for itself whenever it puts something on, so it is only needed for a bot that was stripped and found nothing to replace
 		// the piece with. Said unconditionally because the alternative is a condition that is wrong the day dressing stops announcing it.
 		BotEquipManager.showAppearance(bot);
 		return bot.getName() + " took off " + stripped + " piece(s) it should not wear, put on " + worn + ", improved " + refined + " and was given "
-			+ scrollsAdded + " scroll(s)";
+			+ scrollsAdded + " scroll(s) and " + potionsAdded + " flask(s)";
 	}
 
 	private static boolean isWinged(Player bot) {

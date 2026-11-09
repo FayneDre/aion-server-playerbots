@@ -31,3 +31,9 @@ A weapon is only ever weighed against a weapon and armour against armour. Slots 
 Which piece is better is judged on its level first and its quality second. That is a proxy and says so: comparing what items actually grant would mean weighing attack against defence against a resistance, which has no answer that holds for every class.
 
 **Bots drink.** A class with no heal of its own had nothing between being hurt and sitting down, and healers spent their last mana without ever reaching for the flask that would have given it back. Potions are found by what they do rather than by a list of item ids — an item whose use casts a skill that heals — and used through the same path the client packet takes, so the prison, the abnormal states, the cooldown and "this would do nothing at full health" are all still the engine's call. That path only became reachable once `isOnline()` stopped meaning "has a socket".
+
+**Bots are born with flasks.** The starting kit (`player_initial_data`) holds flasks for the starting classes alone, so a bot created a daeva went
+into its first fights with none: the first start from an empty database, on 9 November, counted 266 deaths in 27 minutes against 107 on a world
+whose bots had shopped for days, falling as they bought, and 1316 of 2004 still had no flask after an hour. Creation and `//bot regear` now top up
+the life and mana flasks to the 20 of each a shop trip buys (`BotVendorManager.stockPotions`), the strongest a keeper sells for kinah and the level
+allows; below level 10, where no bot shops for flasks either, the starting kit is left as it is.
