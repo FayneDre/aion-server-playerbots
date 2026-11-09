@@ -325,7 +325,7 @@ public class BotPathFinder {
 		long deadline = deadlineIn(PLAN_BUDGET_MILLIS);
 		int next = 0;
 		while (next < guide.size()) {
-			if (System.currentTimeMillis() > deadline)
+			if (isPast(deadline))
 				return outOfBudget(mesh, full, avoid);
 			// a guide point can land on a patch the fine grid cannot reach, since a coarse cell counts as routable on a quarter of its ground.
 			// skipping it and aiming further along is what keeps one awkward spot from failing the whole journey
@@ -429,7 +429,7 @@ public class BotPathFinder {
 		int expanded = 0;
 		while (!open.isEmpty() && expanded++ < MAX_COARSE_NODES) {
 			// every 64: a node here reads the levels of a whole coarse cell, and 1024 of them overran a 300 ms deadline by as much again
-			if ((expanded & 63) == 0 && System.currentTimeMillis() > deadline)
+			if ((expanded & 63) == 0 && isPast(deadline))
 				return OUT_OF_TIME;
 			int current = open.poll()[0];
 			if (current == goal)
@@ -860,7 +860,15 @@ public class BotPathFinder {
 
 	/** @return true once the end a caller set on the search has passed; never without one. */
 	private static boolean isPastCallerDeadline() {
-		return System.currentTimeMillis() > CALLER_DEADLINE.orElse(Long.MAX_VALUE);
+		return isPast(CALLER_DEADLINE.orElse(Long.MAX_VALUE));
+	}
+
+	/**
+	 * @return true from the deadline's own millisecond on. Read as strictly after, a deadline of now was not past until the clock ticked, and a warm
+	 *         search finished well within one tick: asked for no time at all, it planned the whole way.
+	 */
+	static boolean isPast(long deadline) {
+		return System.currentTimeMillis() >= deadline;
 	}
 
 	/**
@@ -899,7 +907,7 @@ public class BotPathFinder {
 		long deadline = CALLER_DEADLINE.orElse(Long.MAX_VALUE);
 		int expanded = 0;
 		while (!space.isQueueEmpty() && expanded++ < MAX_NODES) {
-			if ((expanded & 255) == 0 && System.currentTimeMillis() > deadline)
+			if ((expanded & 255) == 0 && isPast(deadline))
 				return new Route(List.of(), true);
 			long current = space.pop();
 			if (current == goal)

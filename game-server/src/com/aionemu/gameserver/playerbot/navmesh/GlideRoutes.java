@@ -71,7 +71,7 @@ final class GlideRoutes {
 					: chainsFrom(mesh, start, goals, blocked, air);
 				undecided |= chains.size() > CHAINS_TRIED;
 				for (List<Integer> chain : chains.subList(0, Math.min(CHAINS_TRIED, chains.size()))) {
-					if (System.currentTimeMillis() > deadline)
+					if (BotPathFinder.isPast(deadline))
 						return new BotPathFinder.Route(List.of(), true);
 					BotPathFinder.Route route = follow(mesh, chain, startX, startY, startZ, goalX, goalY, goalZ, avoid, air, deadline, blocked);
 					if (!route.isEmpty())
@@ -205,7 +205,7 @@ final class GlideRoutes {
 			choices.sort(Comparator.comparingDouble(link -> Math.hypot(link.fromX() - nearX, link.fromY() - nearY) + Math.hypot(link.toX() - goalX, link.toY() - goalY)));
 			boolean done = false, undecided = choices.size() > LINKS_TRIED;
 			for (GlideLink link : choices.subList(0, Math.min(LINKS_TRIED, choices.size()))) {
-				if (System.currentTimeMillis() > deadline)
+				if (BotPathFinder.isPast(deadline))
 					return new BotPathFinder.Route(List.of(), true);
 				if (blocked.contains(link))
 					continue;
