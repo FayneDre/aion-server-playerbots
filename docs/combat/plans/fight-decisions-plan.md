@@ -1,6 +1,6 @@
 # Plan: the fight's decisions out of `PlayerBotAI`, each with a suite
 
-Status: in progress: steps 1 and 2 built (`FightGiveUps`, `FightVerdicts` and their suites, 9 November); `SkillOrder` left, then the measure of a day before and after. Written on 9 November, from a reading of `PlayerBotAI` at b637b7aab, as the detail of milestone 6 of
+Status: built, unverified: the three classes and their suites (9 November, 594 tests pass); the measure of a day of play before and after, with `compare-measures.ps1`, not made yet. Written on 9 November, from a reading of `PlayerBotAI` at b637b7aab, as the detail of milestone 6 of
 [fresh-install-readiness-plan.md](../../architecture/plans/fresh-install-readiness-plan.md).
 
 ## Why

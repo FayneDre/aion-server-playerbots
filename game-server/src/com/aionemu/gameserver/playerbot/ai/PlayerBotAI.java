@@ -1157,61 +1157,42 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	}
 
 	/**
-	 * Picks the one thing the bot does with this moment of the fight, most urgent first.
-	 * <p>
-	 * The order is the whole of the bot's combat judgement, so it lives in one place rather than being restated wherever a skill might be cast. It
-	 * reads as a set of priorities: survive, then keep the advantage the class was given, then deal damage. A cast costs a swing either way, which is
-	 * why staying alive comes first and why nothing here is tried twice in the same tick.
+	 * Picks the one thing the bot does with this moment of the fight, most urgent first: the steps of {@link SkillOrder}, tried in turn until one acts.
+	 * See docs/classes/history/templar-plan.md for the templar's own first refusal.
 	 *
 	 * @return true if a skill went off, in which case the bot is busy and should not also swing.
 	 */
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
-		// The class gets first refusal, and what it declines falls through to the order below. See docs/classes/history/templar-plan.md for the templar's.
-		if (BotPlaybooks.of(bot).act(bot, target) || BotPlaybooks.of(bot).heal(bot))
-			return true;
 		boolean healer = BotRole.of(bot) == BotRole.HEALER;
-		// A healer heals before anything else, and that is the whole of its priority: every other thing it does, the damage it is allowed included, is what
-		// it does when nobody needs mending. Itself first, since a dead healer heals nobody, then whoever is in the most danger.
-		if (healer && (BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
-			|| BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT, true))))
-			return true;
 		boolean closing = !BotAttackManager.isInAttackRange(bot, target);
-		if (closing && !approachSpent) {
-			approachSpent = true;
-			// only while there is still ground to cover: hiding on top of a target it is about to hit buys the bot nothing
-			if (BotSkillManager.tryApproachUnseen(bot))
+		for (SkillOrder.Step step : SkillOrder.steps(healer, closing, approachSpent, openingSpent, isAlmostDead(target))) {
+			// spent once reached, whether it acts or not: tried and refused at the start of a fight is the same as used
+			if (step == SkillOrder.Step.APPROACH)
+				approachSpent = true;
+			else if (step == SkillOrder.Step.OPENING)
+				openingSpent = true;
+			if (tryStep(step, bot, target))
 				return true;
 		}
-		if (!openingSpent) {
-			openingSpent = true;
-			// before the first blow, because a burst spent on a mob already dying is a burst thrown away — and self buffs need no range, so this works
-			// while still closing in
-			if (BotSkillManager.tryOpeningCooldown(bot))
-				return true;
-		}
-		// Finish it. A target this close to death dies to the next blow or two, and every second spent mending instead is a second it spends hitting
-		// back: a bot at low health healing in front of a mob with a sliver left heals, gets hit, heals again, and dies to something it could have
-		// killed twice over. Ending the fight is the best defence available and no rule below can see that.
-		if (!isAlmostDead(target)) {
-			// the defensive ability comes before the heal: it is cheaper in mana and it stops damage instead of repairing it, which only works ahead
-			if (BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT))
-				return true;
-			// the flask is what a class with no heal of its own has instead, and what a healer reaches for when the heal is on cooldown
-			if (BotPotionManager.tryHealingPotion(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
-				|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT))
-				return true;
-		}
-		// A group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody. A healer has done this at the top of the method, ahead
-		// of everything and outside the finishing rule: that rule is about the bot's own survival and says nothing about the tank, and a monster with a sliver
-		// of health left is no reason to let the tank die under it, which is what a healer did every time the group's target got low.
-		if (!healer && !isAlmostDead(target)
-			&& BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT)))
-			return true;
-		// a leap covers ground the bot would otherwise walk, and those last metres on foot are where bots get stuck
-		if (closing && BotSkillManager.tryGapCloser(bot, target))
-			return true;
-		return BotSkillManager.tryCastSkill(bot, target);
+		return false;
+	}
+
+	/** @return true if the step acted. */
+	private static boolean tryStep(SkillOrder.Step step, Player bot, Creature target) {
+		return switch (step) {
+			case PLAYBOOK -> BotPlaybooks.of(bot).act(bot, target) || BotPlaybooks.of(bot).heal(bot);
+			case HEAL_SELF_FIRST, HEAL_SELF -> BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT);
+			case HEAL_ALLY_FIRST -> BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT, true));
+			case APPROACH -> BotSkillManager.tryApproachUnseen(bot);
+			case OPENING -> BotSkillManager.tryOpeningCooldown(bot);
+			case DEFENSIVE -> BotSkillManager.tryDefensiveCooldown(bot);
+			case POTIONS -> BotPotionManager.tryHealingPotion(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
+				|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT);
+			case HEAL_ALLY -> BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT));
+			case GAP_CLOSER -> BotSkillManager.tryGapCloser(bot, target);
+			case ATTACK -> BotSkillManager.tryCastSkill(bot, target);
+		};
 	}
 
 

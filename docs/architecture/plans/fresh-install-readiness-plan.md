@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
-and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges); milestone 5 run and measured (its faults fixed, a player's check passed, deaths twice the live world's left open). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges); milestone 5 run and measured (its faults fixed, a player's check passed, deaths twice the live world's left open); milestone 6 built, its measure before and after not made. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
