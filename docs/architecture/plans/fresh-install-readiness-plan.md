@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
-and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges); milestone 5 run once, its four faults fixed and a player's check passed (the hour of measurement left). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges); milestone 5 run and measured (its faults fixed, a player's check passed, deaths twice the live world's left open). Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -156,8 +156,18 @@ created over 24 maps by 22:03:15, from 35 for Poeta to 157 for Inggison, and the
 route planning (waits of 28 to 42 s, 423 bots queued, the two route threads at full processor, the capitals' searches the slow ones), the heap
 peaking at 87 % once; 903 awake at 22:05:37, the queue empty at 22:08:15, the guard released at 57 %. No error; the warnings are the data's
 own, plus periodic tasks late while the 2002 were made (one 33 s). Settings typed by hand: the database port in the three `my*.properties`
-(the user root, no password, the defaults); the `gameservers` row, now made by the script. Not done: the full hour, and the comparison with the
-live server's.
+(the user root, no password, the defaults); the `gameservers` row, now made by the script.
+
+**The hour, 9 November** (same install, databases made again from nothing): 2002 bots created by 18:49:00 and the login registered then, in
+about 270 s; 903 to 910 awake for 902 wanted through the hour; no error, no route wait over a second; the guard held five times for 30 s at
+86-89 % and released at 58-62 %; tiles 292-300 MB of a 307 MB budget. Against the live server's first 27 minutes after its login on 8 November
+(9d6340b, 907 awake), the same 27 minutes here: routes 16 591 planned and 377 refused (live 18 915 and 324), day plans given up 251 (199), the
+heap and the tiles alike. One thing differs: **266 deaths against 107**, falling through the hour (105 to 60 in ten minutes, live about 40). A bot
+made a daeva was born without a flask, so flasks are now handed over at creation (`stockPotions`); run again with them, 247 deaths: not the cause.
+Ruled out as well: deaths at the spawn (12 of 247 in the first minute), the bots' levels (within a level of the live ones), learned caches. The
+gap is on five maps of the middle levels (210020000, 210040000, 210060000, 220030000, 220040000), the others alike. Left open, not blocking this
+plan: the anchors the director has moved over days on the live world are the lead not yet compared. Reports in `log/bot-measures` of
+`server-fresh` (`nav-2026-11-09-1849`, `-1849-27min`, `-2045`).
 
 ### 6. Tests for the combat half of `PlayerBotAI`
 
