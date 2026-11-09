@@ -1,6 +1,6 @@
 # Plan: the fight's decisions out of `PlayerBotAI`, each with a suite
 
-Status: not started. Written on 9 November, from a reading of `PlayerBotAI` at b637b7aab, as the detail of milestone 6 of
+Status: in progress: step 1 built (`FightGiveUps` and its suite, 9 November); `FightVerdicts` and `SkillOrder` left, then the measure of a day before and after. Written on 9 November, from a reading of `PlayerBotAI` at b637b7aab, as the detail of milestone 6 of
 [fresh-install-readiness-plan.md](../../architecture/plans/fresh-install-readiness-plan.md).
 
 ## Why

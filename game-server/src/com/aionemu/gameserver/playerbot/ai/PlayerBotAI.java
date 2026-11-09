@@ -2,8 +2,6 @@ package com.aionemu.gameserver.playerbot.ai;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 import org.slf4j.Logger;
@@ -86,14 +84,6 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	 * seconds at every pack, reported by a tester as a templar dawdling between them. In an instance it is not put away at all.
 	 */
 	private static final long GROUP_SHEATHE_DELAY_MILLIS = 60_000;
-	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
-	private static final long UNREACHABLE_MILLIS = 10000;
-	/** How long a target given up on a second time, then a third and after, is left alone. */
-	private static final long UNREACHABLE_AGAIN_MILLIS = 120000, UNREACHABLE_FOR_GOOD_MILLIS = 600000;
-	/** Give-ups in a row, with no blow landed between them, after which the bot goes back to its camp instead of picking the next monster beside it. */
-	private static final int GIVE_UPS_BEFORE_CAMP = 3;
-	/** How many monsters' failures are remembered before the memory is started again: a monster respawns under a new id, so old ones only take room. */
-	private static final int MAX_FAILED_CHASES_KEPT = 256;
 	/**
 	 * How long a bot may be in a fight without the attack loop running before the fight is abandoned.
 	 * <p>
@@ -243,12 +233,8 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	private volatile long combatEndedAt;
 	/** How many times running the bot has walked off ground that hurts it to rest, 0 once it rests on ground that does not. */
 	private volatile int harmfulGroundTries;
-	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
-	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
-	/** How many times each monster was given up on as out of reach, so the next time it is left alone for longer. */
-	private final Map<Integer, Integer> failedChases = new ConcurrentHashMap<>();
-	/** Give-ups since the bot last landed a blow. */
-	private volatile int giveUpsInARow;
+	/** Targets not to pick for a while, the chases that failed and how many in a row: see {@link FightGiveUps}. */
+	private final FightGiveUps giveUps = new FightGiveUps();
 	/**
 	 * Until when a bot brought in at the server's start waits before its day begins: shop trips, hunting grounds, errands. Every bot of the world
 	 * spawned in the same few seconds and set off in the same few seconds, and the first eight minutes after a restart held three times the refused
@@ -309,7 +295,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 
 	/** Leaves a creature alone until then: the bot picks no fight with it and gives up one it is in. */
 	void ignoreFor(Creature creature, long until) {
-		ignoredTargets.put(creature.getObjectId(), until);
+		giveUps.ignore(creature.getObjectId(), until);
 	}
 
 	/** Has the next tick look at where the bot stands, once a move it has just been given has settled. */
@@ -957,7 +943,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			(now - lastBlow) / 1000);
 		stopAttacking();
 		if (target != null)
-			ignoredTargets.put(target.getObjectId(), now + UNREACHABLE_MILLIS);
+			giveUps.ignore(target.getObjectId(), now + FightGiveUps.UNREACHABLE_MILLIS);
 	}
 
 	private String nameOfTarget() {
@@ -1017,7 +1003,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			// a class that never swings (a sorcerer's "Always Be Casting") waits for a spell rather than reaching for its orb
 			if (useBestSkill(target) || BotPlaybooks.of(bot).swings(bot) && BotAttackManager.autoAttack(bot, target)) {
 				lastBlow = System.currentTimeMillis();
-				giveUpsInARow = 0;
+				giveUps.landed();
 			}
 		} else if (target instanceof Player flier && flier.isFlying() && takeOffAfter(bot, flier)) {
 			// an enemy player who took to the air: every walking rule below would give the fight up, since the air has no floor to route to
@@ -1026,7 +1012,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		} else if (castFromAfar(target)) {
 			pulledFromAfar = true;
 			lastBlow = System.currentTimeMillis();
-			giveUpsInARow = 0;
+			giveUps.landed();
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
 		} else if (chase.holdsStation(target)) {
 			// a ranged class in its place with nothing in reach to cast. Walking up to the enemy would be the chase this whole rule exists to replace, and
@@ -1039,22 +1025,16 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			// told apart, because the two read the same in the log and are not the same fault: the second is the mesh's, the first is not
 			if (chase.isOffLeash(target)) {
 				log.info("Bot {} leaves {} alone: it is beyond its camp", bot.getName(), target.getName());
-				ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
+				giveUps.ignore(target.getObjectId(), System.currentTimeMillis() + FightGiveUps.UNREACHABLE_MILLIS);
 				stopAttacking();
 				return;
 			}
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
 			rememberShutOff(target);
-			// the same monster given up on again is left alone for longer each time: ten seconds was shorter than a round of three of them
-			if (failedChases.size() > MAX_FAILED_CHASES_KEPT)
-				failedChases.clear();
-			int failures = failedChases.merge(target.getObjectId(), 1, Integer::sum);
-			ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + unreachableFor(failures));
+			boolean backToCamp = giveUps.chaseFailed(target.getObjectId(), System.currentTimeMillis());
 			stopAttacking();
-			if (++giveUpsInARow >= GIVE_UPS_BEFORE_CAMP) {
-				// three in a row without landing a blow: the ground here is the problem, not the monster, and the camp is where its ground is good
-				giveUpsInARow = 0;
-				log.info("Bot {} gave up on {} targets in a row and goes back to its camp", bot.getName(), GIVE_UPS_BEFORE_CAMP);
+			if (backToCamp) {
+				log.info("Bot {} gave up on {} targets in a row and goes back to its camp", bot.getName(), FightGiveUps.GIVE_UPS_BEFORE_CAMP);
 				returnToAnchor();
 			}
 			return;
@@ -1323,7 +1303,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			: useBestSkill(target); // something that reaches from here, which the engine answers by casting it or not
 		if (landed) {
 			lastBlow = System.currentTimeMillis();
-			giveUpsInARow = 0;
+			giveUps.landed();
 		}
 	}
 
@@ -1338,7 +1318,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			return false;
 		if (castFromAfar(flier)) {
 			lastBlow = System.currentTimeMillis();
-			giveUpsInARow = 0;
+			giveUps.landed();
 			return true;
 		}
 		return BotFlight.tryPursue(bot, flier);
@@ -1716,7 +1696,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			return false;
 		long until = System.currentTimeMillis() + RETREAT_AVOIDED_MILLIS;
 		for (Creature attacker : attackers)
-			ignoredTargets.put(attacker.getObjectId(), until);
+			giveUps.ignore(attacker.getObjectId(), until);
 		log.info("Bot {} breaks off from {} attacker(s) at {}% health and heads home", bot.getName(), attackers.size(),
 			bot.getLifeStats().getHpPercentage());
 		BotPlaybooks.of(bot).onRetreat(bot);
@@ -1748,7 +1728,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			return true;
 		long until = System.currentTimeMillis() + RETREAT_AVOIDED_MILLIS;
 		for (Player opponent : opponents)
-			ignoredTargets.put(opponent.getObjectId(), until);
+			giveUps.ignore(opponent.getObjectId(), until);
 		log.info("Bot {} breaks off from {} enemy player(s) at {}% health and heads home", bot.getName(), opponents.size(), hp);
 		BotPlaybooks.of(bot).onRetreat(bot);
 		stopAttacking();
@@ -1801,10 +1781,6 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return attacker[0];
 	}
 
-	/** @return How long a monster given up on for the n-th time is left alone. */
-	static long unreachableFor(int failures) {
-		return failures <= 1 ? UNREACHABLE_MILLIS : failures == 2 ? UNREACHABLE_AGAIN_MILLIS : UNREACHABLE_FOR_GOOD_MILLIS;
-	}
 
 
 	/** A monster the planner proved no walk reaches is told to the bots standing round, which would each spend a search and a chase to learn it. */
@@ -1826,13 +1802,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	}
 
 	private boolean isIgnored(Creature target) {
-		Long until = ignoredTargets.get(target.getObjectId());
-		if (until == null)
-			return false;
-		if (until > System.currentTimeMillis())
-			return true;
-		ignoredTargets.remove(target.getObjectId());
-		return false;
+		return giveUps.isIgnored(target.getObjectId(), System.currentTimeMillis());
 	}
 
 	@Override
