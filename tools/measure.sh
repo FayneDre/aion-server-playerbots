@@ -45,8 +45,13 @@ echo "--- route queue waits over a second"; grep -o "waited [0-9]* ms for a rout
   | awk '{c++; s+=$2; if($2>m)m=$2; q+=$8} END{if(c) printf "%d, avg %d ms, longest %d ms, avg %d queued\n", c, s/c, m, q/c; else print 0}'
 echo "--- characters per map in the database (map:count), then villages retired per map"
 G=$SERVER/game-server
-P=$(grep -h "^database.password" $G/config/mygs.properties | cut -d= -f2 | tr -d ' \r')
-"$MYSQL" -uaion -p"$P" aion_gs -N -e "select world_id, count(*) from players group by world_id order by 1" 2>/dev/null | tr '\t\n' ': ' ; echo
+# the server's own database settings, mygs.properties over the defaults: on 9 November a fixed user "aion" and an empty -p on an install with
+# no password left mysql asking for one on a terminal nobody read, and the report waited for it for half an hour. MYSQL_PWD never asks.
+setting() { grep -h "^database\.$1 *=" $G/config/network/database.properties $G/config/mygs.properties 2>/dev/null | tail -1 | cut -d= -f2- | tr -d ' \r'; }
+URL=$(setting url); HOSTPORT=$(echo "$URL" | sed -E 's#^jdbc:mysql://([^/]+)/.*#\1#'); DB=$(echo "$URL" | sed -E 's#^jdbc:mysql://[^/]+/([^?]+).*#\1#')
+DBPORT=${HOSTPORT##*:}; [ "$DBPORT" = "$HOSTPORT" ] && DBPORT=3306
+MYSQL_PWD=$(setting password) "$MYSQL" --protocol=TCP -h "${HOSTPORT%%:*}" -P "$DBPORT" -u "$(setting user)" "$DB" \
+  -N -e "select world_id, count(*) from players group by world_id order by 1" < /dev/null 2>/dev/null | tr '\t\n' ': ' ; echo
 for s in $G/cache/playerbot/stranded-*.txt; do [ -f "$s" ] && printf "%s:%d " "$(basename $s .txt | cut -d- -f2)" $(( $(wc -l < "$s") - 1 )); done; echo
 echo "--- flights not taken instead of a journey given up, by reason"; grep "does not fly to" $W/window.log | sed -E "s/.*instead: //; s/^[A-Z][a-z]+ //; s/[0-9]+/N/g" | cut -c1-90 | sort | uniq -c | sort -rn | head -8
 echo "--- day plans given up, by activity and cause"; grep "BotDay - Bot .* cannot get to" $W/window.log | sed -nE 's/.*cannot get to (where ([A-Z_]+) would take it|its hunting ground)[^(]*\(map ([0-9]+) .*, ([^,)]+)\)$/\2\1 \4/p' | sed -E 's/where [A-Z_]+ would take it//; s/its hunting ground/FARMING/' | sort | uniq -c | sort -rn | head -14
