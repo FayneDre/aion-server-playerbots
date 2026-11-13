@@ -8,8 +8,19 @@ $script:AionServers = @(
     [pscustomobject]@{ Name = 'chat';  Folder = 'chat-server';  Override = 'mycs.properties' }
 )
 
-function Find-MySqlTool([string]$Name, [string]$MysqlBin) {
+# The portable MySQL an install carries in <install>\mysql (setup-mysql.ps1 makes the database in it); $null when the install has none, and the
+# callers then fall back to the installer's MySQL, as they always did.
+function Get-PortableMysql([string]$ServerRoot) {
+    if (-not $ServerRoot) { return $null }
+    $mysqlHome = Join-Path $ServerRoot 'mysql'
+    if (-not (Test-Path (Join-Path $mysqlHome 'bin\mysqld.exe'))) { return $null }
+    [pscustomobject]@{ Home = $mysqlHome; Bin = Join-Path $mysqlHome 'bin'; Ini = Join-Path $mysqlHome 'my.ini'; Data = Join-Path $mysqlHome 'data' }
+}
+
+function Find-MySqlTool([string]$Name, [string]$MysqlBin, [string]$ServerRoot) {
     if ($MysqlBin -and (Test-Path (Join-Path $MysqlBin $Name))) { return Join-Path $MysqlBin $Name }
+    $portable = Get-PortableMysql $ServerRoot
+    if ($portable -and (Test-Path (Join-Path $portable.Bin $Name))) { return Join-Path $portable.Bin $Name }
     $onPath = Get-Command $Name -ErrorAction SilentlyContinue
     if ($onPath) { return $onPath.Source }
     $found = foreach ($root in 'C:\Program Files\MySQL', 'C:\Program Files (x86)\MySQL') {
@@ -20,11 +31,26 @@ function Find-MySqlTool([string]$Name, [string]$MysqlBin) {
     return $best.FullName
 }
 
-# The option file the installer wrote, the newest version when there are several.
-function Find-OptionsFile {
-    $found = Get-ChildItem 'C:\ProgramData\MySQL' -Recurse -Filter my.ini -ErrorAction SilentlyContinue | Sort-Object FullName | Select-Object -Last 1
+# The option file of the install's portable MySQL, else the one the installer wrote (the newest version when there are several).
+function Find-OptionsFile([string]$ServerRoot) {
+    $portable = Get-PortableMysql $ServerRoot
+    if ($portable -and (Test-Path $portable.Ini)) { return $portable.Ini }
+    $found =Get-ChildItem 'C:\ProgramData\MySQL' -Recurse -Filter my.ini -ErrorAction SilentlyContinue | Sort-Object FullName | Select-Object -Last 1
     if (-not $found) { throw 'No my.ini under C:\ProgramData\MySQL: pass -DefaultsFile.' }
     return $found.FullName
+}
+
+# The process id(s) of THIS install's game server, or $null. A server's command line names its class but not its install ("-cp libs/*"), so a server of
+# another install would read as this one; what only this install's server does is hold its own jar open (the JVM keeps it open as long as it runs).
+function Get-RunningGameServer([string]$ServerRoot) {
+    $libs = Join-Path (Join-Path $ServerRoot 'game-server') 'libs'
+    $held = Get-ChildItem $libs -Filter 'game-server-*.jar' -ErrorAction SilentlyContinue | Where-Object {
+        try { [IO.File]::Open($_.FullName, 'Open', 'Read', 'None').Close(); $false } catch { $true }
+    }
+    if (-not $held) { return $null }
+    $running = Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like '*com.aionemu.gameserver.GameServer*' }
+    if ($running) { return ($running.ProcessId -join ', ') } else { return 'unknown' }
 }
 
 # Asks the system's table first, then connects (the table alone has answered nothing on this machine while every port was open).

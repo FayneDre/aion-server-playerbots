@@ -51,9 +51,10 @@ counts as done). The live `aion_ls` had no ledger: marked once (`-Server login -
 `update.sql`, so three schemas ship and two `update.sql`.
 
 Left, on the launcher's side: its update runs the login server's `update.sql` too (with `-Server login`, a tester's login database marked
-once when its ledger is absent, as the game one is); the install from nothing runs `-Create` for the three servers. And the portable MySQL
-itself: the zip is 346 MB and 1.3 GB unpacked, 809 MB of it debug symbols (`.pdb`) and much of the rest tools a server never runs (`mysqld.exe` is
-52 MB, the two clients 15), to be trimmed to what `mysqld` and the two clients need before it ships.
+once when its ledger is absent, as the game one is); the install from nothing runs `-Create` for the three servers. The portable MySQL itself was
+1.3 GB unpacked (809 MB of it debug symbols): **trimmed on 13 November** by `tools/package-mysql.ps1` to a 29 MB zip (89 MB unpacked), and
+`tools/setup-mysql.ps1` makes the data folder, the accounts and the three databases from it ([database.md](../database.md)); both tried on a
+throwaway install, not yet with a game server on it nor from the launcher.
 
 ### 2. A1: the heap guard on the director
 

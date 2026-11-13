@@ -36,7 +36,7 @@ if (-not $ServerRoot) { throw 'Set AION_SERVER_HOME or pass -ServerRoot.' }
 $game = Read-DatabaseSettings $ServerRoot ($script:AionServers | Where-Object Name -eq 'game')
 if (-not $game) { throw "No usable database.url in the game server's configuration under $ServerRoot." }
 if (-not (Test-PortListening $game.Port)) { throw "MySQL does not answer on port $($game.Port): run start-mysql.ps1 first." }
-$mysql = Find-MySqlTool 'mysql.exe' $MysqlBin
+$mysql = Find-MySqlTool 'mysql.exe' $MysqlBin $ServerRoot
 
 # Runs one statement as the given account; the password goes through the environment of this call only. Native stderr is read as text (5.1).
 function Invoke-MySql([string]$User, [string]$Password, [string]$Statement) {

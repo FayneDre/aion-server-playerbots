@@ -1,9 +1,10 @@
 # The database: how MySQL runs, what it costs, how it is saved
 
 **Status**: built and applied to the development machine on 13 November: the light settings are in its option file (188 MB resident measured, from
-~530), the binary logs are deleted (4.9 GB), and start and dump are tried. `stop-mysql.ps1` refuses cleanly for now: the game account lacks
-`SHUTDOWN`, to be given once (below). `start-server.ps1` tried on 13 November with MySQL already up: clean log, 904 bots, MySQL at 255 MB
-resident and 16 connections at most under that load. Not yet tried: a start from a stopped MySQL, and `deploy.ps1 -Restart` with these calls.
+~530), the binary logs are deleted (4.9 GB), `start-server.ps1` and `deploy.ps1 -Restart` tried (clean log, 904 bots, MySQL at 255 MB resident and
+16 connections at most under that load). The development MySQL cannot yet be stopped cleanly: its game account lacks `SHUTDOWN`
+(`grant-shutdown.ps1`, once, by the person). The portable MySQL of an install is built (`package-mysql.ps1`, `setup-mysql.ps1`) and tried end to end on a
+throwaway install; not yet tried with a game server on it, nor from the launcher.
 
 ## What runs
 
@@ -73,13 +74,38 @@ way out is MariaDB's own driver, which changes the poms the upstream merges touc
 goes away, 20-60 MB of RAM is small against a 2.5 GB heap, and the pair of driver and server that upstream and every test here run stays the one
 that ships. MariaDB is a measured fallback if the download or the memory of a weak machine ever decides it; it needs the game server run on it first.
 
+## The portable MySQL of an install (built on 13 November)
+
+The plan of 8 November ([fresh-install-readiness-plan.md](plans/fresh-install-readiness-plan.md)) has an install carry its own MySQL in
+`<install>\mysql`. Three scripts make and run it; each was tried end to end on a throwaway install (other folder, port 3307), the development
+machine's database and port 3306 untouched.
+
+| Script | What it does |
+|---|---|
+| `package-mysql.ps1 -Source <official zip> -OutDir <folder> [-ZipOut <zip>]` | Refuses anything not signed by Oracle, keeps `mysqld`, the three clients and the DLLs they import (read from the programs' import tables), ICU data, the English messages and the licence, adds a NOTICE (GPL v2, where the source is) and `runtime.json` (version, SHA-256 of the source zip). **330 MB zip, 1.3 GB unpacked, down to 29 MB zip, 89 MB unpacked, 5 DLLs.** The zip is written entry by entry with `/`: `Compress-Archive` of PowerShell 5.1 writes `\`, which a Node extractor may refuse. |
+| `setup-mysql.ps1 -ServerRoot <install> [-Port 3307]` | Writes `my.ini` (`my-portable.ini` + `my-light.ini`), has mysqld make the data folder, starts it, makes the accounts, writes each server's `database.url`, user and password into its override file (`mygs.properties`, `myls.properties`, `mycs.properties`; the old file is kept as `.bak`), then runs `apply-sql.ps1 -Create` for the three databases. 63, 9 and 2 tables, the game server entered at the login server. Leaves MySQL running. |
+| `start-mysql.ps1`, `stop-mysql.ps1`, `backup-db.ps1`, `grant-shutdown.ps1` | Use `<install>\mysql` when it exists (its programs, its `my.ini`, the port of the game server's `database.url`), the installer's MySQL otherwise. |
+
+Decisions, taken on 13 November:
+
+- **Port 3307** by default, so it never meets a MySQL on 3306; `-Port` for another. Refused when something already answers on it.
+- **Local only**: `bind-address=127.0.0.1`; the database is never offered to a network.
+- **Passwords**: 24 random letters and digits (no character a properties file or a statement would read differently), one per account, made at
+  setup. The servers' is in their override files, which a deploy never touches; root's is in `<install>\mysql\root.cnf`, readable by the person who
+  set up. `aion` has all rights on the three databases and `SHUTDOWN`, so `mysqladmin shutdown` is how it stops (a clean stop, "Shutdown complete").
+- **Never near existing data**: setup refuses a data folder that is not empty, an existing `my.ini`, a port that answers, and `apply-sql.ps1 -Create`
+  refuses a database with tables. The development install has no `mysql` folder, so it cannot be set up by mistake.
+- **The version is pinned**, never updated on its own (an update touches the data): MySQL 26.7.0, zip SHA-256
+  `e8d5b08f0d430555497679fa713a9649953ea067f952708a74cdcdf34f8e4b7d` (same bytes on two downloads from `cdn.mysql.com`).
+- **A path with a letter outside ASCII is refused**: the option file is read in the system's code page.
+
+Measured on the throwaway install: 206 MB resident with the three databases made; the server's driver connects under TLS and runs its upserts; the
+cycle start, dump, stop, start from cold, stop (5 s) worked, and a second start left a running MySQL alone.
+
 ## For the launcher (a separate repository)
 
-Not done here. The plan ([fresh-install-readiness-plan.md](plans/fresh-install-readiness-plan.md)) has the launcher ship and start a portable MySQL
-of its own, on its own port. What carries over from this page:
-
-1. Ship `tools/mysql/my-light.ini` in it (about 190 MB resident instead of 530), and trim the zip to what the servers use.
-2. Create the servers' account with `SHUTDOWN` from the start, so `mysqladmin shutdown` is the way it stops (`grant-shutdown.ps1` exists for a
-   database that was not made that way, such as the development machine's).
-3. The launcher keeps its own backups (its backup service); `backup-db.ps1` is for the development machine and the scripts.
-4. Dumps of a MySQL restore into a MySQL: take them with `--set-gtid-purged=OFF` if one ever has to cross engines.
+Not done here. What the launcher does with the above, in its first-launch assistant: download the 29 MB zip and check its SHA-256 against the
+manifest, unpack it into `<install>\mysql`, ask for a port when 3307 answers, call `setup-mysql.ps1`, then start and stop MySQL with
+`start-mysql.ps1` / `stop-mysql.ps1` (or its own program mode, which needs the same `mysqladmin shutdown`). It keeps its own backups (its backup
+service); `backup-db.ps1` is for this repository's scripts. Dumps of a MySQL restore into a MySQL: take them with `--set-gtid-purged=OFF` if one
+ever has to cross engines. The first start of the game server on this database, with a player logging in, is milestone 5 of the plan, to repeat.

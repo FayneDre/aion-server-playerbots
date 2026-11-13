@@ -32,7 +32,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'mysql-common.ps1')
 if (-not $ServerRoot) { throw 'Set AION_SERVER_HOME or pass -ServerRoot.' }
 
-$dump = Find-MySqlTool 'mysqldump.exe' $MysqlBin
+$dump = Find-MySqlTool 'mysqldump.exe' $MysqlBin $ServerRoot
 $backups = Join-Path $ServerRoot 'backups'
 $folder = Join-Path $backups ('auto-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Force $folder | Out-Null

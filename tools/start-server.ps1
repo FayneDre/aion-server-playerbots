@@ -154,7 +154,7 @@ function Start-AionServer([string]$Name, [int]$Port) {
 
 # All three servers read the database while they start
 if (-not $SkipMysql) {
-    & (Join-Path $PSScriptRoot 'start-mysql.ps1')
+    & (Join-Path $PSScriptRoot 'start-mysql.ps1') -ServerRoot $ServerRoot
 }
 if (-not $SkipChat) {
     Start-AionServer 'chat-server' 9021

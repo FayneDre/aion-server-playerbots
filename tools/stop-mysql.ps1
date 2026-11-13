@@ -43,11 +43,10 @@ if (-not (Test-PortListening $game.Port)) {
     return
 }
 
-$gameServer = Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -like '*com.aionemu.gameserver.GameServer*' }
-if ($gameServer) { throw "The game server is running (PID $($gameServer.ProcessId)): it saves through this database while it exits. Run stop-server.ps1 first." }
+$gameServer = Get-RunningGameServer $ServerRoot
+if ($gameServer) { throw "This install's game server is running (PID $gameServer): it saves through this database while it exits. Run stop-server.ps1 first." }
 
-$mysqladmin = Find-MySqlTool 'mysqladmin.exe' $MysqlBin
+$mysqladmin = Find-MySqlTool 'mysqladmin.exe' $MysqlBin $ServerRoot
 Write-Host "Shutting MySQL down (account $($game.User))..." -ForegroundColor Cyan
 
 # stderr of a native command is an error record under 'Stop' in Windows PowerShell 5.1: read it as text instead
@@ -65,9 +64,12 @@ if ($code -ne 0) {
     throw "mysqladmin refused: $($said -join ' ') If it is the SHUTDOWN privilege, give it once with: GRANT SHUTDOWN ON *.* TO '$($game.User)'@'localhost'; (MySQL was not touched.)"
 }
 
+# only the processes of the MySQL we stopped: another install's, or the installer's, may be running beside it
+$binFolder = Split-Path $mysqladmin -Parent
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 while ((Get-Date) -lt $deadline) {
-    if (-not (Test-PortListening $game.Port) -and -not (Get-Process mysqld -ErrorAction SilentlyContinue)) {
+    $still = @(Get-Process mysqld -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$binFolder*" })
+    if (-not (Test-PortListening $game.Port) -and $still.Count -eq 0) {
         Write-Host 'MySQL stopped.' -ForegroundColor Green
         return
     }

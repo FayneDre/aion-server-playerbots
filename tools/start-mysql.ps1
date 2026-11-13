@@ -10,14 +10,18 @@
 
     stop-mysql.ps1 stops it again, cleanly; start-server.ps1 calls this one first.
 
+.PARAMETER ServerRoot
+    Root of the server installation. Defaults to the AION_SERVER_HOME environment variable. An install that carries its own MySQL (<install>\mysql,
+    made by setup-mysql.ps1) starts that one with its own my.ini; any other starts the installer's.
+
 .PARAMETER DefaultsFile
-    The option file. Defaults to the installer's my.ini under C:\ProgramData\MySQL.
+    The option file. Defaults to the install's own, else the installer's my.ini under C:\ProgramData\MySQL.
 
 .PARAMETER MysqlBin
-    The folder of mysqld.exe, when it is not under C:\Program Files\MySQL or on the PATH.
+    The folder of mysqld.exe, when it is not the install's own, under C:\Program Files\MySQL or on the PATH.
 
 .PARAMETER Port
-    The port MySQL is expected to answer on.
+    The port MySQL is expected to answer on. Defaults to the one the game server's database.url names, else 3306.
 
 .PARAMETER TimeoutSeconds
     How long to wait for the port before giving up.
@@ -26,23 +30,29 @@
     .\tools\start-mysql.ps1
 #>
 param(
+    [string]$ServerRoot = $env:AION_SERVER_HOME,
     [string]$DefaultsFile,
     [string]$MysqlBin,
-    [int]$Port = 3306,
+    [int]$Port = 0,
     [int]$TimeoutSeconds = 90
 )
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'mysql-common.ps1')
 
+if ($Port -eq 0) {
+    $game = if ($ServerRoot) { Read-DatabaseSettings $ServerRoot ($script:AionServers | Where-Object Name -eq 'game') } else { $null }
+    $Port = if ($game) { $game.Port } else { 3306 }
+}
+
 if (Test-PortListening $Port) {
     Write-Host "MySQL already running (port $Port)" -ForegroundColor Yellow
     return
 }
 
-if (-not $DefaultsFile) { $DefaultsFile = Find-OptionsFile }
+if (-not $DefaultsFile) { $DefaultsFile = Find-OptionsFile $ServerRoot }
 if (-not (Test-Path $DefaultsFile)) { throw "No option file at $DefaultsFile." }
-$mysqld = Find-MySqlTool 'mysqld.exe' $MysqlBin
+$mysqld = Find-MySqlTool 'mysqld.exe' $MysqlBin $ServerRoot
 
 Write-Host "Starting MySQL ($DefaultsFile)..." -ForegroundColor Cyan
 $process = Start-Process -FilePath $mysqld -ArgumentList "--defaults-file=`"$DefaultsFile`"" -WindowStyle Hidden -PassThru

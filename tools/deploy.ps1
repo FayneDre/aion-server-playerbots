@@ -93,7 +93,7 @@ if ($docProblems) {
 # Only looks (no -Apply); the statements are run after the build.
 if (-not $SkipSql) {
     # MySQL is started when it is down (nothing when it already answers), instead of failing here for a database nobody had started
-    & (Join-Path $PSScriptRoot 'start-mysql.ps1')
+    & (Join-Path $PSScriptRoot 'start-mysql.ps1') -ServerRoot $ServerRoot
     # the game and login servers have an update.sql each; the chat server has none
     foreach ($sqlServer in 'game', 'login') {
         $sqlLook = & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Server $sqlServer
