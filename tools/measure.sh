@@ -11,7 +11,9 @@ SERVER=$(cygpath -u "${AION_SERVER_HOME:-D:/Jeux/Aion/server}")
 MYSQL=${MYSQL_EXE:-"/c/Program Files/MySQL/MySQL Server 26.7/bin/mysql.exe"}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 M=$SERVER/game-server/log/bot-measures
-F=$SERVER/game-server/log/server_console.log
+# MEASURE_LOG=<file> reads another console log (an archived run, unzipped) instead of the running server's: the "before" of a change that is
+# already deployed, from the runs the server archived at each start (game-server/log/archived/<from> to <to>.zip, one run each).
+F=${MEASURE_LOG:-$SERVER/game-server/log/server_console.log}
 mkdir -p $M
 W=$(mktemp -d)
 mkdir -p $W/game-server/log
