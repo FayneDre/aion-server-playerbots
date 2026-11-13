@@ -2,11 +2,14 @@ package com.aionemu.chatserver.model.channel;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.aionemu.chatserver.model.ChannelType;
 import com.aionemu.chatserver.model.ChatClient;
 import com.aionemu.chatserver.model.Race;
+import com.aionemu.chatserver.service.GameServerService;
 
 /**
  * What {@link ChatChannels#find} hands a line said for a playerbot: the channel a reader of the bot's own race joined, never one of the other race,
@@ -16,6 +19,19 @@ import com.aionemu.chatserver.model.Race;
 class ChatChannelsTest {
 
 	private static final int GAME_SERVER = 1;
+	private static byte sessionGameServer;
+
+	/** A channel is only made for the game server of the session (upstream refuses any other), so the session must name one, as the game server does. */
+	@BeforeAll
+	static void theSessionHasAGameServer() {
+		sessionGameServer = GameServerService.GAMESERVER_ID;
+		GameServerService.GAMESERVER_ID = (byte) GAME_SERVER;
+	}
+
+	@AfterAll
+	static void restoreTheSession() {
+		GameServerService.GAMESERVER_ID = sessionGameServer;
+	}
 
 	@Test
 	void aRegionLineReachesOnlyItsOwnRaceOnItsOwnMap() {

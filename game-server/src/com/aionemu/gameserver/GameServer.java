@@ -56,6 +56,7 @@ import com.aionemu.gameserver.services.instance.PeriodicInstanceManager;
 import com.aionemu.gameserver.services.player.PlayerLimitService;
 import com.aionemu.gameserver.services.transfers.PlayerTransferService;
 import com.aionemu.gameserver.spawnengine.SpawnEngine;
+import com.aionemu.gameserver.taskmanager.AbstractPeriodicTaskManager;
 import com.aionemu.gameserver.taskmanager.tasks.housing.AuctionAutoFillTask;
 import com.aionemu.gameserver.taskmanager.tasks.housing.AuctionEndTask;
 import com.aionemu.gameserver.taskmanager.tasks.housing.MaintenanceTask;
@@ -77,12 +78,13 @@ import com.aionemu.gameserver.world.zone.ZoneService;
  */
 public class GameServer {
 
+	private static final long START_TIME_NANOS = System.nanoTime();
+	public static final int START_TIME_SECONDS = (int) (ManagementFactory.getRuntimeMXBean().getStartTime() / 1000);
+
 	static {
 		Logging.init(); // must run before instantiating any logger
 	}
 	private static final Logger log = LoggerFactory.getLogger(GameServer.class);
-
-	public static final int START_TIME_SECONDS = (int) (ManagementFactory.getRuntimeMXBean().getStartTime() / 1000);
 	public static final VersionInfo versionInfo = new VersionInfo(GameServer.class);
 
 	private static NioServer nioServer;
@@ -129,6 +131,7 @@ public class GameServer {
 		MaintenanceTask.getInstance();
 		ChallengeTaskService.getInstance();
 
+		AbstractPeriodicTaskManager.startAll();
 		SpawnEngine.spawnAll();
 		TownService.getInstance();
 		FlyRingService.getInstance();
@@ -192,7 +195,7 @@ public class GameServer {
 		AdminChannel.start();
 		AddonWebServer.start(); // playerbots: the pages the interface addons show
 		PlayerBotService.getInstance().onStartUp(); // bots have no connection, so nothing else ever puts them back into the world
-		log.info("Game server started in {} seconds", System.currentTimeMillis() / 1000 - START_TIME_SECONDS);
+		log.info(Logging.formatStartupMessage("Game server", START_TIME_NANOS));
 
 		LoginServer.getInstance().connect(nioServer);
 		if (GSConfig.ENABLE_CHAT_SERVER)
