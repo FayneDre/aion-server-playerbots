@@ -4,7 +4,9 @@
 ~530), the binary logs are deleted (4.9 GB), `start-server.ps1` and `deploy.ps1 -Restart` tried (clean log, 904 bots, MySQL at 255 MB resident and
 16 connections at most under that load). The development MySQL cannot yet be stopped cleanly: its game account lacks `SHUTDOWN`
 (`grant-shutdown.ps1`, once, by the person). The portable MySQL of an install is built (`package-mysql.ps1`, `setup-mysql.ps1`) and tried end to end on a
-throwaway install; not yet tried with a game server on it, nor from the launcher.
+throwaway install, then **with the whole stack on it** (13 November, `server-fresh`, empty database, `ActiveProcessorCount=4`): registered with the
+login server after 313 s (107 s on the live database), no ERROR line, 2002 bot characters and 6034 broker lots made, 318 bots in the world and
+rising, 16 connections at most, MySQL 261 MB resident, the game server 2.7 GB. Not yet tried: a player logging in on it, nor the launcher.
 
 ## What runs
 
