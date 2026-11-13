@@ -164,7 +164,7 @@ check makes sure they never drift.
    deployed after this milestone, is offered nothing.
 7. **The first stable pair.** `develop` merged into `main` in both repositories once a pair is validated in game, each tagged with its own
    `vX.Y.Z`, the launcher's notes naming the server release. This is also where the server release plan starts, a separate plan: the
-   install on an empty machine (the geo, the whole navmesh, embedded Java and the portable MySQL, [database.md](../database.md)), diff updates, a signed launcher. This plan stops at
+   install on an empty machine (the geo, the whole navmesh, embedded Java and the portable MySQL, [empty-machine-install-plan.md](empty-machine-install-plan.md)), diff updates, a signed launcher. This plan stops at
    testers who already have a server built from git.
 
 Milestones 1 and 2 are independent and small; 4 is the one that would have prevented the report of 6 November; 5 and 6 are the ones that

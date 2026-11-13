@@ -1,0 +1,14 @@
+{
+    "version": "25.0.4.1",
+    "vendor": "Microsoft Build of OpenJDK",
+    "signer": "Microsoft Corporation",
+    "url": "https://aka.ms/download-jdk/microsoft-jdk-25.0.4.1-windows-x64.zip",
+    "sha256": "3c9099e60a82e17f5847052f50f3b107bfc1d32b366e1a20adbd1d0f303760e7",
+    "sha256Published": "https://aka.ms/download-jdk/microsoft-jdk-25.0.4.1-windows-x64.zip.sha256sum.txt",
+    "modules": [
+        "java.base", "java.compiler", "java.desktop", "java.logging", "java.management", "java.naming", "java.net.http", "java.rmi",
+        "java.security.sasl", "java.sql", "jdk.attach", "jdk.charsets", "jdk.compiler", "jdk.crypto.ec", "jdk.httpserver", "jdk.jcmd",
+        "jdk.jfr", "jdk.localedata", "jdk.management", "jdk.net", "jdk.unsupported", "jdk.zipfs"
+    ],
+    "note": "The JDK zip the install's Java runtime is made from (package-java.ps1, jlink). A full JDK is needed to build it, and the game server needs jdk.compiler at run time: it compiles its handlers at start. Never moved on its own: a Java update is a decision, tried with check-portable-java.ps1 first."
+}

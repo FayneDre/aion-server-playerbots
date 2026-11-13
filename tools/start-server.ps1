@@ -53,6 +53,14 @@ if (-not $ServerRoot) {
     throw "No server path. Set the AION_SERVER_HOME environment variable or pass -ServerRoot."
 }
 
+# An install that carries its own Java (<install>\runtime, made by package-java.ps1) runs on it, whatever Java the machine has: the servers are
+# started from this process, which hands them this PATH.
+$ownJava = Join-Path $ServerRoot 'runtime\bin'
+if (Test-Path (Join-Path $ownJava 'java.exe')) {
+    $env:PATH = "$ownJava;$env:PATH"
+    Write-Host "Java: the install's own runtime ($ownJava)" -ForegroundColor DarkGray
+}
+
 # Asks the system's table first, then connects. On 5 November Get-NetTCPConnection returned nothing at all on this machine while every port was
 # open: the script took the running chat server for stopped, started a second one, and stopped there when that one failed on the busy port.
 function Test-PortListening([int]$Port) {

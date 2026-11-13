@@ -41,7 +41,7 @@ English, the compatibility check). Everything shipped up to `patch-2026-10-25-2`
 3. **Milestone 7, the first stable pair**: `develop` merged into `main` in both repositories once a pair is validated in game.
 4. **The next upstream merge**, as soon as `4.8` moves, then `tools/sync-install.ps1` for the install and the SQL: the sooner, the smaller.
 5. **The combat half of `PlayerBotAI` is untested and unsplit** ([known-limits.md](known-limits.md), Tests).
-6. **The portable MySQL in the launcher** (its repository): the server side is built (`package-mysql.ps1` makes a 29 MB zip, `setup-mysql.ps1` makes the
+6. **The install on a machine that has nothing** ([empty-machine-install-plan.md](architecture/plans/empty-machine-install-plan.md): the Java runtime and the portable MySQL, the launcher's side) (its repository): the server side is built (`package-mysql.ps1` makes a 29 MB zip, `setup-mysql.ps1` makes the
    database; [database.md](architecture/database.md)). Left: the launcher downloads and checks the zip, calls `setup-mysql.ps1`, starts and stops MySQL; then
    a first start of the game server on that database with a player logging in (milestone 5 again); then the development machine moves to the same MySQL.
    MySQL, not MariaDB: measured and compared in the same page.
