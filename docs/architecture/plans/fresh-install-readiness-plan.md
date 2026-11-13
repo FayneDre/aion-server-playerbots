@@ -1,7 +1,7 @@
 # What the server needs before the launcher installs it from nothing
 
 Status: in progress: milestone 1 built and checked on 8 November on the server's side (the launcher's side of it left: below); milestone 2 built
-and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges); milestone 5 run and measured (its faults fixed, a player's check passed, deaths twice the live world's left open); milestone 6 built, its measure before and after not made. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
+and measured the same day; milestone 3 built and measured that evening (the day's plans given up left to compare); milestone 4 built and measured at a small heap (the guard holds; a played map fills by exchanges); milestone 5 run and measured (its faults fixed, a player's check passed, deaths twice the live world's left open); milestone 6 built and measured on 13 November (nothing worse); milestone 7: the upstream merge (49 commits, 7f1bbe626) built, tested (601 tests) and deployed on 13 November, a player's check in game left, then the stable pair. Written on 8 November, once release milestones 5 and 6 were validated: the launcher can update an installed server, and
 the next launcher work is installing one on a machine that has none. Seven milestones, in this order; each says how it is checked. The class
 playbooks left (spirit master, aethertech, bard, gunner, assassin) are not part of it: they come later.
 
@@ -183,6 +183,12 @@ what stays, rule by rule: [fight-decisions-plan.md](../../combat/history/fight-d
 - `git fetch upstream`, `beyond-aion` fast-forwarded, merged into `develop` the way
   [upstream-merge-plan.md](../history/upstream-merge-plan.md) did it: the trial first, the tests of milestone 6, `sync-install.ps1 -From` for
   the install, `update.sql` checked against the schemas by the rule of milestone 1.
+- **Done on 13 November** (49 commits, `upstream/4.8` at `2deb96507`, merge `7f1bbe626`): five conflicts out of 22 files touched on both sides (the three
+  `logback.xml`, `GameServer`, `World`), every one kept as ours plus upstream's change; it compiled at once; 601 tests pass after one fix of ours,
+  `ChatChannelsTest`, which upstream's new check on the game server's id had left asserting `null == null` (the test now names the session's server).
+  Upstream added no SQL and no library. `sync-install.ps1` replaced 25 data and configuration files (0 edited here), the stack restarted with no ERROR
+  line and 1058 bots in the world. **Left**: the player's check in game (the client connects, a flight and a landing, a purchase, a group with a bot),
+  and a measure of the navigation and fights against the baselines (upstream changed `windstreams.xml`, `skill_templates.xml` and `world_maps.xml`).
 - Then release milestone 7 ([release-process-plan.md](release-process-plan.md)): a server pre-release and a launcher pre-release validated in
   game together, `develop` merged into `main` in both repositories, each tagged with its stable version. The launcher's install from nothing
   installs that pair, never a beta.
