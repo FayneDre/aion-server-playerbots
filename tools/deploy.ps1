@@ -92,6 +92,8 @@ if ($docProblems) {
 # The database is asked now, before a build of minutes: MySQL not started, or a password that changed, is found out here and not after the tests.
 # Only looks (no -Apply); the statements are run after the build.
 if (-not $SkipSql) {
+    # MySQL is started when it is down (nothing when it already answers), instead of failing here for a database nobody had started
+    & (Join-Path $PSScriptRoot 'start-mysql.ps1')
     # the game and login servers have an update.sql each; the chat server has none
     foreach ($sqlServer in 'game', 'login') {
         $sqlLook = & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Server $sqlServer

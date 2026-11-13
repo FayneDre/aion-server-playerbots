@@ -132,6 +132,9 @@ To pull upstream updates: `git fetch upstream`, then fast-forward `beyond-aion` 
   libraries the poms ask for, the login server's jar, commons for the login and chat servers; nothing is resolved while the poms are unchanged). After an
   upstream merge, `-From <the commit or patch tag the install holds>` adds the data and configuration files the install still holds as the repository
   had them (and lists the ones edited here, for a hand merge).
+- `tools/start-mysql.ps1` / `stop-mysql.ps1` run MySQL as a program (no service, no administrator rights; `start-server.ps1` and `deploy.ps1` call the first),
+  `backup-db.ps1` dumps the three schemas on every `stop-server.ps1` and keeps ten; the light settings are `tools/mysql/my-light.ini`
+  ([docs/architecture/database.md](docs/architecture/database.md)).
 - `tools/check-server-log.ps1` reads the game server log for errors, a log that has gone silent (a console clicked into pauses the whole server) and the
   number of bots in the world; `start-server.ps1` runs it after startup. `tools/skill-lookup.ps1` finds skills by name (French ones through the glossary), group, id or class, with their group,
   cooldown, reach and tier. Use them before reading the data by hand.

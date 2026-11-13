@@ -41,6 +41,8 @@ English, the compatibility check). Everything shipped up to `patch-2026-10-25-2`
 3. **Milestone 7, the first stable pair**: `develop` merged into `main` in both repositories once a pair is validated in game.
 4. **The next upstream merge**, as soon as `4.8` moves, then `tools/sync-install.ps1` for the install and the SQL: the sooner, the smaller.
 5. **The combat half of `PlayerBotAI` is untested and unsplit** ([known-limits.md](known-limits.md), Tests).
+6. **The light MySQL settings in the launcher** (its repository): ship [my-light.ini](../tools/mysql/my-light.ini) in the bundle in a MySQL and a
+   MariaDB variant, start MySQL with it in the launcher's program mode, check the `SHUTDOWN` privilege ([database.md](architecture/database.md)).
 
 ## 1. Navigation
 

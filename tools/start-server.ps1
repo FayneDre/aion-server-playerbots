@@ -18,6 +18,9 @@
 .PARAMETER SkipChat
     Do not start the chat server (in-game chat channels will not work).
 
+.PARAMETER SkipMysql
+    Do not start MySQL first (start-mysql.ps1, which leaves a MySQL that already answers alone).
+
 .PARAMETER SkipCheck
     Do not read the game server log after the stack is up (see check-server-log.ps1).
 
@@ -37,6 +40,7 @@
 param(
     [string]$ServerRoot = $env:AION_SERVER_HOME,
     [switch]$SkipChat,
+    [switch]$SkipMysql,
     [switch]$SkipCheck,
     [int]$CheckSeconds = 45,
     [int]$TimeoutSeconds = 120,
@@ -148,6 +152,10 @@ function Start-AionServer([string]$Name, [int]$Port) {
     throw "$Name did not start listening on port $Port within $TimeoutSeconds seconds. Check its window for errors."
 }
 
+# All three servers read the database while they start
+if (-not $SkipMysql) {
+    & (Join-Path $PSScriptRoot 'start-mysql.ps1')
+}
 if (-not $SkipChat) {
     Start-AionServer 'chat-server' 9021
 }
