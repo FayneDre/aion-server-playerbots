@@ -1,0 +1,6 @@
+{
+    "version": "26.7.0",
+    "url": "https://cdn.mysql.com/Downloads/MySQL-26.7/mysql-26.7.0-winx64.zip",
+    "sha256": "e8d5b08f0d430555497679fa713a9649953ea067f952708a74cdcdf34f8e4b7d",
+    "note": "The official MySQL Community Server zip the install's portable MySQL is made from (package-mysql.ps1). Never moved on its own: an update touches the data, so it is a decision, tried with check-portable-mysql.ps1 first."
+}

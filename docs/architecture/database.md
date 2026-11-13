@@ -89,6 +89,7 @@ machine's database and port 3306 untouched.
 | `package-mysql.ps1 -Source <official zip> -OutDir <folder> [-ZipOut <zip>]` | Refuses anything not signed by Oracle, keeps `mysqld`, the three clients and the DLLs they import (read from the programs' import tables), ICU data, the English messages and the licence, adds a NOTICE (GPL v2, where the source is) and `runtime.json` (version, SHA-256 of the source zip). **330 MB zip, 1.3 GB unpacked, down to 29 MB zip, 89 MB unpacked, 5 DLLs.** The zip is written entry by entry with `/`: `Compress-Archive` of PowerShell 5.1 writes `\`, which a Node extractor may refuse. |
 | `setup-mysql.ps1 -ServerRoot <install> [-Port 3307]` | Writes `my.ini` (`my-portable.ini` + `my-light.ini`), has mysqld make the data folder, starts it, makes the accounts, writes each server's `database.url`, user and password into its override file (`mygs.properties`, `myls.properties`, `mycs.properties`; the old file is kept as `.bak`), then runs `apply-sql.ps1 -Create` for the three databases. 63, 9 and 2 tables, the game server entered at the login server. Leaves MySQL running. |
 | `start-mysql.ps1`, `stop-mysql.ps1`, `backup-db.ps1`, `grant-shutdown.ps1` | Use `<install>\mysql` when it exists (its programs, its `my.ini`, the port of the game server's `database.url`), the installer's MySQL otherwise. |
+| `check-portable-mysql.ps1` | The whole of the above, tried on a throwaway install in the temp directory (port 3317, the repository's own configuration and schemas, nothing of this machine read or written): 24 PASS or FAIL lines, exit code 1 on a failure, about two minutes. Run it after a change to these scripts or the option files, after an upstream merge that touches the schemas, and before the pinned version moves. |
 
 Decisions, taken on 13 November:
 
@@ -99,8 +100,8 @@ Decisions, taken on 13 November:
   set up. `aion` has all rights on the three databases and `SHUTDOWN`, so `mysqladmin shutdown` is how it stops (a clean stop, "Shutdown complete").
 - **Never near existing data**: setup refuses a data folder that is not empty, an existing `my.ini`, a port that answers, and `apply-sql.ps1 -Create`
   refuses a database with tables. The development install has no `mysql` folder, so it cannot be set up by mistake.
-- **The version is pinned**, never updated on its own (an update touches the data): MySQL 26.7.0, zip SHA-256
-  `e8d5b08f0d430555497679fa713a9649953ea067f952708a74cdcdf34f8e4b7d` (same bytes on two downloads from `cdn.mysql.com`).
+- **The version is pinned**, never updated on its own (an update touches the data): [portable-mysql.json](../../tools/mysql/portable-mysql.json) holds
+  MySQL 26.7.0, its URL and the zip's SHA-256 (same bytes on every download from `cdn.mysql.com` so far); the launcher can read the same file.
 - **A path with a letter outside ASCII is refused**: the option file is read in the system's code page.
 
 Measured on the throwaway install: 206 MB resident with the three databases made; the server's driver connects under TLS and runs its upserts; the
