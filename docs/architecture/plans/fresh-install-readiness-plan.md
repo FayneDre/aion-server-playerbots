@@ -186,8 +186,9 @@ what stays, rule by rule: [fight-decisions-plan.md](../../combat/history/fight-d
 - **Done on 13 November** (49 commits, `upstream/4.8` at `2deb96507`, merge `7f1bbe626`): five conflicts in 22 files touched on both sides (three
   `logback.xml`, `GameServer`, `World`), each kept as ours plus upstream's change; it compiled at once; 601 tests pass after one fix of ours:
   `ChatChannelsTest` asserted `null == null` once upstream checked the game server's id. No SQL, no library; `sync-install.ps1` replaced 25 data and
-  configuration files (0 edited here); the stack restarted with no ERROR line, 1058 bots. The player's check in game passed (connect, a flight and
-  a landing, a purchase, a group with a bot). **Left**: a measure against the run with a player online of 21:15 (`windstreams.xml`, `skill_templates.xml`, `world_maps.xml` changed).
+  configuration files (0 edited here); no ERROR line, 1058 bots; the check in game passed (connect, flight, landing, a purchase, a group with a bot).
+  **Measured** (23:02-23:27, a player online, 1049 awake of 1051 wanted as before): against two windows of the run before, fights, give-ups, arrivals
+  in band, deaths 271 against 242-253 (15 per 1000 attacks against 13-14), glide routes 11 against 23-67 (the first minutes of a run glide most).
 - Then release milestone 7 ([release-process-plan.md](release-process-plan.md)): a server pre-release and a launcher pre-release validated in
   game together, `develop` merged into `main` in both repositories, each tagged with its stable version. The launcher's install from nothing
   installs that pair, never a beta.
