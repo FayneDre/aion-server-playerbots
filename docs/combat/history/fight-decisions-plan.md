@@ -1,6 +1,6 @@
 # Plan: the fight's decisions out of `PlayerBotAI`, each with a suite
 
-Status: built, unverified: a full day of play with a player fighting beside the bots. Measured on 13 November from the runs the server had archived (below, short and including the start-up): fights, give-ups and deaths stay in the band of the code before, nothing worse. Written on 9 November, from a reading of `PlayerBotAI` at b637b7aab, as the detail of milestone 6 of
+Status: done; measured on 13 November from the runs the server had archived (below, short and including the start-up): fights, give-ups and deaths stay in the band of the code before, nothing worse. Written on 9 November, from a reading of `PlayerBotAI` at b637b7aab, as the detail of milestone 6 of
 [fresh-install-readiness-plan.md](../../architecture/plans/fresh-install-readiness-plan.md).
 
 ## Why

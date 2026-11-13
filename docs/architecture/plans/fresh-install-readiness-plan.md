@@ -176,7 +176,7 @@ plan: the anchors the director has moved over days on the live world are the lea
 touches the skill engine under it: the decisions it takes (which target, when to close in or back off, when to drink, when to give up a fight)
 moved into pure functions of a situation record, as `TownRoutine` and `LostTrail` are, with a suite each. No behaviour changes: the measures of
 the day before and after are compared with `compare-measures.ps1`. Checked: the suites pass, the measure stays in its band. What moves and
-what stays, rule by rule: [fight-decisions-plan.md](../../combat/plans/fight-decisions-plan.md).
+what stays, rule by rule: [fight-decisions-plan.md](../../combat/history/fight-decisions-plan.md).
 
 ### 7. The upstream merge, then the first stable pair
 
