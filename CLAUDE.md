@@ -134,7 +134,7 @@ To pull upstream updates: `git fetch upstream`, then fast-forward `beyond-aion` 
   had them (and lists the ones edited here, for a hand merge).
 - `tools/start-mysql.ps1` / `stop-mysql.ps1` run MySQL as a program (no service, no administrator rights; `start-server.ps1` and `deploy.ps1` call the first),
   `grant-shutdown.ps1` gives the game account the right to stop it (run by the user: it asks for the administrator's password),
-  `package-mysql.ps1` trims the official zip to the portable MySQL an install carries and `setup-mysql.ps1` makes its database from nothing (never near existing data), `check-portable-mysql.ps1` tries all of it on a throwaway install (run it after touching these or the schemas),
+  `package-mysql.ps1` trims the official zip to the portable MySQL an install carries and `setup-mysql.ps1` makes its database from nothing (never near existing data), `check-portable-mysql.ps1` tries all of it on a throwaway install (run it after touching these or the schemas), `migrate-to-portable-mysql.ps1` moves an install's data into its portable MySQL table by table,
   `backup-db.ps1` dumps the three schemas on every `stop-server.ps1` and keeps ten; the light settings are `tools/mysql/my-light.ini`
   ([docs/architecture/database.md](docs/architecture/database.md)).
 - `tools/check-server-log.ps1` reads the game server log for errors, a log that has gone silent (a console clicked into pauses the whole server) and the

@@ -9,6 +9,9 @@ login server after 313 s (107 s on the live database), no ERROR line, 2002 bot c
 rising, 16 connections at most, MySQL 261 MB resident, the game server 2.7 GB. **A player then logged in** (the account made by the login server on its
 own, a character made from the client, 927 bots around, bots seen moving) and logged out: the character was saved, with its new position and one
 item more, no error in the log; `stop-server.ps1 -WithMysql` then dumped the databases and stopped MySQL cleanly. Not yet tried: the launcher.
+**The development install was moved to its own portable MySQL on 13 November** (port 3307, `D:\Jeux\Aion\server\mysql`): 63, 9 and 2 tables, every
+table's `CHECKSUM TABLE` equal to the old database's, 2024 characters, servers up with no ERROR line and 904 bots. The old MySQL (3306) is
+untouched and idle until the game has been tried; see "Moving an install" below.
 
 ## What runs
 
@@ -106,6 +109,21 @@ Decisions, taken on 13 November:
 
 Measured on the throwaway install: 206 MB resident with the three databases made; the server's driver connects under TLS and runs its upserts; the
 cycle start, dump, stop, start from cold, stop (5 s) worked, and a second start left a running MySQL alone.
+
+## Moving an install to its portable MySQL (done on 13 November)
+
+`tools/migrate-to-portable-mysql.ps1 -ServerRoot <install> -Zip <official zip>` moves an install whose servers run on another MySQL. The old MySQL
+is only read; going back is copying each `config\my*.properties.bak` over its file (and deleting `myls.properties`). Servers stopped first (the script
+refuses otherwise), then: unpack, dump with `--hex-blob`, `CHECKSUM TABLE` of every table, `setup-mysql.ps1`, restore, `CHECKSUM TABLE` again, and
+exit 1 naming any table that differs. `-Resume` goes on from the dumps of an earlier run.
+
+- **Trap: `mysqldump` writes a `FLOAT` with six digits.** A position `1081.015380859375` came back as `1081.02` (up to 0.005 units): `players.x/y/z` and
+  `playerbot_characters.home_x/y/z`, the only two tables that differed. It is harmless in play but it is not the same data, and **every restore of
+  `backup-db.ps1`'s dumps does it**. The migration copies the exact values from the old database (17 digits, by primary key) and compares again;
+  a restore from a dump has no such source, so expect that rounding there.
+- `CHECKSUM TABLE` is the proof, not the row count: the counts were equal while two checksums were not. The ledger `aion_cs.schema_applied_sql`
+  exists only on the new side (`apply-sql.ps1` makes it); the comparison ignores a table the old side never had.
+- `mysql -e "SOURCE file"` does not run a file with this client (the server gets the word `SOURCE`): the script feeds the file as bytes on standard input.
 
 ## For the launcher (a separate repository)
 

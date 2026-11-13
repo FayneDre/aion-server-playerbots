@@ -50,7 +50,7 @@ Write-Host "Install: $ServerRoot"
 $mysqlHome = Join-Path $ServerRoot 'mysql'
 # the option file is plain ASCII, which MySQL reads in the system's code page: a letter outside it in the path would be read wrong
 if ($mysqlHome -match '[^\x00-\x7F]') { throw "The path $mysqlHome has a letter outside plain ASCII (an accent): MySQL would read it wrong. Install under a path without one." }
-$bin =if ($MysqlBin) { $MysqlBin } else { Join-Path $mysqlHome 'bin' }
+$bin = if ($MysqlBin) { $MysqlBin } else { Join-Path $mysqlHome 'bin' }
 foreach ($tool in 'mysqld.exe', 'mysql.exe', 'mysqladmin.exe') {
     if (-not (Test-Path (Join-Path $bin $tool))) { throw "No $tool in ${bin}: unpack the trimmed MySQL (package-mysql.ps1) into ${mysqlHome} first." }
 }
