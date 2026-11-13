@@ -2,7 +2,8 @@
 
 **Status**: built and applied to the development machine on 13 November: the light settings are in its option file (188 MB resident measured, from
 ~530), the binary logs are deleted (4.9 GB), and start and dump are tried. `stop-mysql.ps1` refuses cleanly for now: the game account lacks
-`SHUTDOWN`, to be given once (below). Not yet tried end to end: `start-server.ps1` and `deploy.ps1 -Restart` with these calls.
+`SHUTDOWN`, to be given once (below). `start-server.ps1` tried on 13 November with MySQL already up: clean log, 904 bots, MySQL at 255 MB
+resident and 16 connections at most under that load. Not yet tried: a start from a stopped MySQL, and `deploy.ps1 -Restart` with these calls.
 
 ## What runs
 
