@@ -59,7 +59,14 @@ server archives at each start (`log/archived`), read with `MEASURE_LOG=<unzipped
 | deaths | 116 to 117 | 98 (below), 114 |
 | routes planned, arrivals, day plans given up | in band | in band |
 | steps aside, routes with a glide | 609 / 40 at most | 696, 44 (above, the 43-minute run only) |
+| **with a player online** (21:15-22:02, 47 minutes, `a19437c`) | | fights 17733, given up 26, left beyond the camp 18, deaths 249, routes planned 29179, arrivals 9620, steps aside 1014 (11 figures out of the band) |
 
 Read: the fight's figures stayed in or below the band, deaths included; the four figures marked are two navigation counters (not touched by these
 classes) and deaths below the band, in one 43-minute window each. Limits: the runs are short and include the start-up, so the band is wide.
 A full day of play, with a player online, would settle what this cannot.
+
+**The run with a player online cannot be read against that band.** The director wanted 1051 bots awake (1049 there) against 902 (897) in every
+run above, none of which had a player in the world (no line of the player's characters in them); 615 distinct bots fought against about 380, and
+deaths per attack went from 1.05 % to 1.4 % (406 deaths in 28893 attacks, from the log of the window). Fewer give-ups per fight (26 in 17733 against
+30 in 11071) point away from the new classes, but nothing here separates the player's presence from the code. The comparison that would: the
+`86b1b72` jar deployed for an hour with a player online, then the current one for an hour, same hour of the evening. Not made.
