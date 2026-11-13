@@ -189,9 +189,8 @@ what stays, rule by rule: [fight-decisions-plan.md](../../combat/history/fight-d
   configuration files (0 edited here); no ERROR line, 1058 bots; the check in game passed (connect, flight, landing, a purchase, a group with a bot).
   **Measured** (23:02-23:27, a player online, 1049 awake of 1051 wanted as before): against two windows of the run before, fights, give-ups, arrivals
   in band, deaths 271 against 242-253 (15 per 1000 attacks against 13-14), glide routes 11 against 23-67 (the first minutes of a run glide most).
-- Then release milestone 7 ([release-process-plan.md](release-process-plan.md)): a server pre-release and a launcher pre-release validated in
-  game together, `develop` merged into `main` in both repositories, each tagged with its stable version. The launcher's install from nothing
-  installs that pair, never a beta.
+- Then release milestone 7 ([release-process-plan.md](release-process-plan.md)): a server and a launcher pre-release validated in game together,
+  `develop` merged into `main` in both repositories, each tagged stable. The launcher's install from nothing installs that pair, never a beta.
 
 Checked: a tester's launcher updates to the stable pair and plays on it.
 
