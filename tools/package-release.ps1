@@ -14,7 +14,10 @@
     - manifest.json: version, revision, launcher API level, the Java it needs, the SHA-256 of every file of the zip, the rules the launcher
       applies (which folders hold only what the bundle lists, which files are the person's to edit), the bundle's own hash, and the navmesh;
     - navmesh-<file>.gz for each map file (.nav, .glide, .ride, .flight of the install's data/navmesh) whose hash differs from the previous
-      bundle's: the manifest names, for every map file, the release that carries it, so a tester who skips versions still gets every map.
+      bundle's: the manifest names, for every map file, the release that carries it, so a tester who skips versions still gets every map;
+    - runtime-java-<version>.zip and runtime-mysql-<version>.zip, the Java runtime and the trimmed MySQL an install from nothing unpacks into
+      <install>\runtime and <install>\mysql (package-java.ps1, package-mysql.ps1, from the official zips pinned in tools/java and tools/mysql),
+      when their recipe (the pin file and that script) differs from the previous bundle's; the manifest names the release that carries each.
 
     Refuses a dirty tree (the revision would end in -DIRTY), a HEAD that is not the version's tag (unless -Trial), a file of config or data that
     git does not track (the assembly reads the working tree), and a jar whose manifest names another release or revision.
@@ -58,6 +61,32 @@ function Get-VersionKey([string]$text) {
 
 function Get-Sha256([string]$path) { (Get-FileHash -Algorithm SHA256 $path).Hash.ToLowerInvariant() }
 
+function Get-StringSha256([string]$text) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return (($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($text)) | ForEach-Object { $_.ToString('x2') }) -join '') } finally { $sha.Dispose() }
+}
+
+# The official zip a runtime is made from, in a cache of the temp directory (downloaded when missing), checked against its pin; then the
+# runtime made from it by its own script, into $zip.
+function New-RuntimeZip($runtime, $pin, [string]$zip) {
+    $cache = Join-Path $env:TEMP "aion-$($runtime.name)-cache"
+    New-Item -ItemType Directory -Force $cache | Out-Null
+    $source = Join-Path $cache (Split-Path $pin.url -Leaf)
+    if (-not (Test-Path $source) -or (Get-Sha256 $source) -ne $pin.sha256) {
+        Write-Host "Downloading $($pin.url)..." -ForegroundColor Cyan
+        $previousProgress = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
+        try { Invoke-WebRequest $pin.url -OutFile $source -UseBasicParsing } finally { $ProgressPreference = $previousProgress }
+    }
+    $hash = Get-Sha256 $source
+    if ($hash -ne $pin.sha256) { throw "$source is not the pinned zip of $($runtime.name) (SHA-256 $hash, pinned $($pin.sha256))." }
+    $made = Join-Path $env:TEMP "aion-runtime-$($runtime.name)-$PID"
+    Remove-Item $made -Recurse -Force -ErrorAction SilentlyContinue
+    try {
+        & (Join-Path $repoRoot $runtime.script) -Source $source -OutDir $made -ZipOut $zip
+    } finally { Remove-Item $made -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 function Read-JarManifest([string]$jar) {
     $zip = [IO.Compression.ZipFile]::OpenRead($jar)
     try {
@@ -96,6 +125,7 @@ try {
     $out = Join-Path $repoRoot ("release\" + $(if ($Trial) { "trial-$tag" } else { $tag }))
     New-Item -ItemType Directory -Force $out | Out-Null
     Get-ChildItem $out -Filter 'navmesh-*.gz' | Remove-Item
+    Get-ChildItem $out -Filter 'runtime-*.zip' | Remove-Item
     Remove-Item (Join-Path $out 'aion-server-*.zip'), (Join-Path $out 'manifest.json') -ErrorAction SilentlyContinue
 
     Write-Host "Building $tag ($head)..." -ForegroundColor Cyan
@@ -173,6 +203,33 @@ try {
             $attached++
         }
 
+        # ---- the runtimes: the Java and the MySQL an install from nothing unpacks, and the release that carries each -------------------------
+        # A runtime is rebuilt and attached only when its recipe moved (the pin file or the script that makes it): the zip itself differs at
+        # every build (file times), so its own hash cannot say whether it changed.
+        $runtimes = [ordered]@{}
+        $runtimesAttached = 0
+        foreach ($runtime in @(
+                @{ name = 'java'; pin = 'tools/java/portable-java.json'; script = 'tools/package-java.ps1'; target = 'runtime' },
+                @{ name = 'mysql'; pin = 'tools/mysql/portable-mysql.json'; script = 'tools/package-mysql.ps1'; target = 'mysql' })) {
+            $pin = Get-Content -Raw (Join-Path $repoRoot $runtime.pin) | ConvertFrom-Json
+            # the blobs git holds (the tree is clean), not the files: line endings differ between clones
+            $recipe = Get-StringSha256 (((git rev-parse "HEAD:$($runtime.pin)"), (git rev-parse "HEAD:$($runtime.script)")) -join ';')
+            $before = if ($previousManifest -and $previousManifest.runtimes) { $previousManifest.runtimes.($runtime.name) } else { $null }
+            if ($before -and $before.recipe -eq $recipe) {
+                $runtimes[$runtime.name] = $before
+                continue
+            }
+            $asset = "runtime-$($runtime.name)-$($pin.version).zip"
+            $zip = Join-Path $out $asset
+            New-RuntimeZip $runtime $pin $zip
+            $item = Get-Item $zip
+            $runtimes[$runtime.name] = [ordered]@{
+                version = $pin.version; target = $runtime.target; sha256 = (Get-Sha256 $zip); size = $item.Length
+                release = $tag; asset = $asset; recipe = $recipe
+            }
+            $runtimesAttached++
+        }
+
         $manifest = [ordered]@{
             source   = 'release'
             version  = $tag
@@ -191,6 +248,8 @@ try {
             }
             files    = $files
             navmesh  = $navmesh
+            # what an install from nothing unpacks before the bundle: <install>\<target> (an update leaves them alone)
+            runtimes = $runtimes
         }
         $utf8 = New-Object Text.UTF8Encoding($false)
         [IO.File]::WriteAllText((Join-Path $staging 'manifest.json'), ($manifest | ConvertTo-Json -Depth 6) + "`n", $utf8)
@@ -215,6 +274,7 @@ try {
     Write-Host ("Bundle {0}: {1} files, {2:N0} MB zipped." -f $zipItem.Name, $files.Count, ($zipItem.Length / 1MB)) -ForegroundColor Green
     $previousText = if ($Previous) { "unchanged since $Previous" } else { 'no previous bundle' }
     Write-Host "Navmesh: $($navmesh.Count) map files, $attached attached ($previousText for the others)."
+    Write-Host ("Runtimes: " + (($runtimes.Keys | ForEach-Object { "$_ $($runtimes[$_].version) from $($runtimes[$_].release)" }) -join ', ') + ", $runtimesAttached attached.")
     # a gh that found no manifest on an older release would otherwise be the script's exit code
     $global:LASTEXITCODE = 0
 } finally {
