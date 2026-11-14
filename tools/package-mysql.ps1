@@ -7,7 +7,8 @@
     headers and libraries to build against. A server needs mysqld and three clients. This keeps:
 
       - bin: mysqld.exe, mysql.exe, mysqladmin.exe, mysqldump.exe, and the DLLs they import, found by reading the import names out of each program
-        and out of each DLL in turn (nothing is kept on a guess, nothing needed is dropped);
+        and out of each DLL in turn (nothing is kept on a guess, nothing needed is dropped), with the Visual C++ runtime DLLs among them taken
+        from System32 (the zip lacks them and a clean Windows has none);
       - lib\private (ICU data, which mysqld reads);
       - lib\plugin only with -WithPlugins (the servers use none);
       - share: the character sets, the English messages and the two message lists;
@@ -92,11 +93,33 @@ try {
         }
     }
 
+    # ---- the Visual C++ runtime, beside the programs --------------------------------------------------------------------------------------
+    # Oracle's zip leaves it out (the MSI installs it): on a Windows that never had it, mysqld dies with 0xC0000135 (DLL not found) before it
+    # writes a line, which is what a clean-machine install met on 14 November. Its DLLs are redistributable app-locally, so the ones the programs
+    # import are taken from this computer's System32, signed by Microsoft, or nothing is made.
+    $imported = @{}
+    foreach ($path in @($programs | ForEach-Object { Join-Path $binDir $_ }) + @($keepDll.Values | ForEach-Object { Join-Path $binDir $_ })) {
+        foreach ($name in Get-ImportedNames $path) { $imported[$name] = $true }
+    }
+    $vcRuntime = @{}
+    foreach ($name in $imported.Keys | Where-Object { $_ -match '^(msvcp140.*|vcruntime140.*|concrt140)\.dll$' -and -not $available.ContainsKey($_) }) {
+        $system = Join-Path $env:windir "System32\$name"
+        if (-not (Test-Path $system)) { throw "$name is imported and not on this computer: install the Visual C++ Redistributable (x64) first." }
+        $signature = Get-AuthenticodeSignature $system
+        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft') {
+            throw "$system is not signed by Microsoft (status $($signature.Status)): nothing is made."
+        }
+        $vcRuntime[$name] = $system
+    }
+    if ($vcRuntime.Count -eq 0) { throw 'The programs import no msvcp140/vcruntime140 DLL: this check no longer knows what it is reading.' }
+    $vcVersion = (Get-Item $vcRuntime[($vcRuntime.Keys | Sort-Object | Select-Object -First 1)]).VersionInfo.FileVersion
+
     # ---- the copy ------------------------------------------------------------------------------------------------------------------------
     New-Item -ItemType Directory $OutDir | Out-Null
     New-Item -ItemType Directory (Join-Path $OutDir 'bin') | Out-Null
     foreach ($p in $programs) { Copy-Item (Join-Path $binDir $p) (Join-Path $OutDir "bin\$p") }
     foreach ($dll in $keepDll.Values) { Copy-Item (Join-Path $binDir $dll) (Join-Path $OutDir "bin\$dll") }
+    foreach ($name in $vcRuntime.Keys) { Copy-Item $vcRuntime[$name] (Join-Path $OutDir "bin\$name") }
     if (Test-Path (Join-Path $src 'lib\private')) {
         New-Item -ItemType Directory (Join-Path $OutDir 'lib') | Out-Null
         Copy-Item (Join-Path $src 'lib\private') (Join-Path $OutDir 'lib\private') -Recurse
@@ -120,11 +143,15 @@ try {
         'These programs are Oracle''s, unmodified: this folder is the official zip with files left out (debug symbols, programs the servers do not run,',
         'plugins, extra languages). They are licensed under the GNU General Public License, version 2 (the file LICENSE beside this one).',
         'The source code of this version is at https://github.com/mysql/mysql-server and https://dev.mysql.com/downloads/mysql/.',
-        'MySQL is a trademark of Oracle and its affiliates.')
+        'MySQL is a trademark of Oracle and its affiliates.',
+        '',
+        "bin also holds Microsoft's Visual C++ runtime $vcVersion ($(($vcRuntime.Keys | Sort-Object) -join ', ')), redistributable files the",
+        'programs need on a Windows that never installed the Visual C++ Redistributable.')
     $size = (Get-ChildItem $OutDir -Recurse -File | Measure-Object Length -Sum).Sum
     $info = [ordered]@{
         name = 'mysql'; version = $version; sourceZipSha256 = $zipHash; trimmed = $true; withPlugins = [bool]$WithPlugins
-        programs = $programs; dlls = @($keepDll.Values | Sort-Object); unpackedBytes = $size
+        programs = $programs; dlls = @($keepDll.Values | Sort-Object)
+        vcRuntime = [ordered]@{ version = $vcVersion; dlls = @($vcRuntime.Keys | Sort-Object) }; unpackedBytes = $size
     }
     $info | ConvertTo-Json | Set-Content (Join-Path $OutDir 'runtime.json') -Encoding UTF8
     Write-Host ("Made {0}: MySQL {1}, {2:N0} MB unpacked, {3} DLL(s) kept of {4}." -f $OutDir, $version, ($size / 1MB), $keepDll.Count, $available.Count) -ForegroundColor Green

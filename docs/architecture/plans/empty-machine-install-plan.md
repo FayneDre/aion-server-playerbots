@@ -81,8 +81,11 @@ on a database that has its bots): the launcher says so.
 3. **A first install on a clean machine**: Windows Sandbox (Windows 11 Pro has it) or a second account, from the launcher alone, to a player logging in.
    Milestone 5 of the install plan did the server's half on an empty database; the downloads, the unpacking and the SmartScreen warnings are not tried.
    The tool is the launcher's `tools/try-clean-machine.ps1 -Version <launcher release> [-Client <client folder>]`: a sandbox with that Setup
-   installed silently, the launcher open, and `collect.cmd` copying its settings, reports and the servers' logs out before it is closed. Windows
-   Sandbox is off on the development machine (14 November): turning it on is an administrator's command and a restart.
+   installed silently, the launcher open, and `collect.cmd` copying its settings, reports and the servers' logs out before it is closed.
+   First run (14 November, launcher beta.7, server beta.5): the downloads and the unpacking passed; `setup-mysql.ps1` failed, mysqld exit
+   -1073741515 (0xC0000135, DLL not found): Oracle's zip lacks the Visual C++ runtime its MSI installs. `package-mysql.ps1` now copies the
+   msvcp140/vcruntime140 DLLs the programs import from System32 (signed by Microsoft) into `bin`; the four copied by hand in the sandbox made the
+   database. Needs a server release whose `runtime-mysql` zip carries them (its recipe moved, so it is rebuilt). The Java runtime has its own.
 4. **The disk and the time**: ~3 GB written, and 2.1 GB downloaded at the first launch; a progress that says what it is doing.
 
 Checked: a person with the client and nothing else installs the server from the launcher and plays on it, with bots around.
