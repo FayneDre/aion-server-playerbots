@@ -26,7 +26,7 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 | [built.md](built.md) | What already works, one paragraph a topic, each pointing to its `how-it-works.md`. |
 | [bot-commands.md](bot-commands.md) | Every `//bot` command, and the one number that decides who may run them (`check-bot-docs.ps1` keeps it complete). |
 | [patch-notes/current.md](patch-notes/current.md) | Every test patch, in French for the testers, newest first, by version tag; older ones in [patch-notes/2026-11.md](patch-notes/2026-11.md) and [patch-notes/2026-10.md](patch-notes/2026-10.md). |
-| [patch-notes/current.en.md](patch-notes/current.en.md) | The same entries in English, from the first version tag on, for the launcher and the public releases. |
+| [patch-notes/current.en.md](patch-notes/current.en.md) | The same entries in English, from the first version tag on, for the launcher and the public releases; older ones in [patch-notes/2026-11.en.md](patch-notes/2026-11.en.md). |
 | [feedback/README.md](feedback/README.md) | What a useful tester report holds, the commands to type during a session, the template. |
 
 ## Architecture and tooling — [architecture/](architecture/)

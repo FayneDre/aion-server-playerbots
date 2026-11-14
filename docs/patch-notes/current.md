@@ -8,6 +8,25 @@ bundle (the entries up to v0.1.0-beta.4 named the server deployed here, which on
 
 ---
 
+## v0.1.0-beta.8 — 15/11/2026
+
+Il va avec le launcher v0.3.0-beta.12. **Pas de SQL, pas de navmesh à reconstruire.** **Un fichier de réglages par défaut change**,
+`game-server/config/main/playerbot.properties` (la nouvelle option ci-dessous) ; le launcher le remplace s'il n'a pas été modifié,
+sinon il pose la nouvelle version à côté.
+
+**Ce qui change pour les joueurs et les testeurs**
+- **Les bots cessent d'arriver quand la RAM du PC est pleine** : en plus de sa propre mémoire, le serveur regarde la RAM de tout
+  l'ordinateur, le jeu et les autres programmes compris (le chiffre du gestionnaire des tâches). Au-delà du seuil, 90 % par défaut, plus
+  aucun bot n'arrive ; ceux qui sont là restent, et les arrivées reprennent 5 points en dessous. La page Bots du launcher v0.3.0-beta.12
+  l'active ou non et règle le seuil (`gameserver.playerbot.guard.machine.enable` et `.hold`). `//bot pool` et le cadre « Population
+  en ce moment » du launcher affichent la RAM du PC utilisée.
+
+**À tester**
+- Sur un PC où le jeu et le serveur prennent beaucoup de RAM : voir le cadre Population dire « en pause » au-delà du seuil, et les bots
+  revenir en le montant ou en décochant la case.
+
+---
+
 ## v0.1.0-beta.7 — 14/11/2026
 
 Il va avec le launcher v0.3.0-beta.11. **Pas de SQL, pas de navmesh à reconstruire.** **Un fichier de réglages par défaut change**,
@@ -138,47 +157,3 @@ l'installe lui-même, sans Maven ni compilation. **Pas de SQL, pas de navmesh à
   et vérifier que le serveur démarre et que les bots se connectent après les deux.
 - Quelque chose ne va pas : `//bot note <texte>` près du bot, ou une capture du panneau « Version du serveur ».
 
----
-
-## v0.1.0-beta.1 — 06/11/2026
-
-Révision `eb82601`, celle que `//bot version` affiche. **Premier patch sous forme de version** : les patchs de test s'appellent maintenant
-`vX.Y.Z-beta.N`, sont publiés comme pre-releases sur GitHub et ont leurs notes en français et en anglais. Ce patch reprend tout ce qui est
-entré depuis patch-2026-11-03. Il va avec le launcher v0.3.0-beta.1. **Aucun SQL, aucun maillage à régénérer.** **Un fichier de réglages par
-défaut change**, `game-server/config/main/playerbot.properties` (les nouvelles options ci-dessous) : `.\tools\sync-install.ps1 -From
-patch-2026-11-03` dit ce qui sera remplacé, la même commande avec `-Apply` le fait ; tes propres réglages vont dans `config/mygs.properties`.
-Puis `.\tools\deploy.ps1 -Restart`.
-
-**Ce qui change pour les joueurs et les testeurs**
-- **La densité du monde a trois modes** (`gameserver.playerbot.density.mode`, et `density.percent`, 30 par défaut) :
-  - `AUTO` (par défaut) suit les joueurs : toute la campagne d'une carte où quelqu'un joue (et cinq minutes après), un cinquième ailleurs, un
-    vingtième quand personne n'est connecté ;
-  - `FIXED` garde le pourcentage partout, que quelqu'un regarde ou non ;
-  - `FLOOR` fait comme `AUTO`, sans jamais descendre sous le pourcentage.
-  Les villages restent toujours pleins. `//reload config` l'applique en 30 secondes.
-- **Les réglages des bots** (ceux de la page Bots du launcher), appliqués par `//reload config` :
-  - l'expérience d'un bot, en pourcentage du taux officiel, quels que soient les taux des joueurs : seul, en groupe et en PvP (1, 1 et 100 par
-    défaut). Un bot dans le groupe d'un joueur suit le taux du joueur ;
-  - le PvP : la part des bots qui attaquent à vue, de ceux qui n'attaquent qu'un joueur affaibli ou plus faible, et des pacifiques (25, 25 et
-    50), et l'écart de niveau (3 au-dessus, 6 en dessous) ;
-  - le chat des bots, activé ou non.
-- **Le canal d'administration du launcher** : recharger la configuration, lister les destinations (cartes du monde ouvert seulement) et
-  téléporter un personnage.
-- **Les recherches d'itinéraire** : une seule recherche attend par bot, la plus récente remplace l'ancienne et garde sa place. La file
-  montait au-delà d'une minute d'attente (25 000 recherches à 100 %).
-- **Le journal** : une ligne du directeur à chaque revue (réveillés, voulus, endormis, densité, file d'itinéraire) et une ligne de la file
-  toutes les 10 secondes, au lieu d'une ligne par recherche lente.
-
-**Ce qui n'est pas réglé** (à ne pas signaler : c'est connu)
-- **La file d'itinéraire à pleine densité** n'est pas encore mesurée dans sa nouvelle version.
-- **Après une session à forte densité**, le démarrage peut dépasser 10 minutes (environ 1 900 bots restaurés avant que le serveur s'annonce).
-- **Les réglages des bots et la téléportation** passent leurs tests mais n'ont pas été vérifiés en jeu.
-
-**À tester**
-- **Avec le launcher v0.3.0-beta.1** : la page Bots montre les réglages du serveur, la liste de téléportation est remplie.
-- **La densité** : `FIXED` à 30, puis `//reload config` ; la campagne doit rester peuplée quand on change de carte.
-- Tout ce qui cloche : `//bot note <texte>` près du bot.
-
----
-
-Older entries: [2026-11.md](2026-11.md), [2026-10.md](2026-10.md).
