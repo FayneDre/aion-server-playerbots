@@ -3,7 +3,7 @@
 Status: in progress: milestones 1 to 3 built and used on 6 November (server pre-release v0.1.0-beta.1 and launcher pre-release v0.3.0-beta.1
 published, `Latest` stays launcher v0.2.0); milestone 4 built and checked on the real server the same evening; milestones 5 (the launcher
 updating itself from GitHub) and 6 (a beta launcher installing the server's bundle, and going back) built the same night and validated in use on
-8 November. Next, milestone 7. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
+8 November; on 14 November both repositories went to one branch, `main` (the target below). Next, milestone 7. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
 
 ## Why
 
@@ -22,14 +22,16 @@ notes both audiences can read, since the launcher will show them to players in t
 
 ## The target
 
-**Same branches in both repositories.** `main` is stable and the GitHub default, `develop` is the daily work, and `main` moves only by merging
-`develop` once a version has been validated in game. The launcher gets its `develop` branch, cut from its `main` as it stands.
+**One branch in both repositories, `main`** (changed on 14 November: there were `main` and `develop`, and `main` had not moved for nine days
+while 169 commits went to `develop`; the updater and the launcher tell a beta from a stable by the tag and GitHub's pre-release flag, never by
+the branch). Every version is a tag on `main`; a stable one goes on a commit a beta was validated on. To fix a stable once `main` has moved on,
+a branch is cut from its tag that day, and only then.
 
 **Two kinds of release, named and published the same way in both repositories.**
 
 | | Server | Launcher |
 |---|---|---|
-| Test (testers) | GitHub **pre-release** `vX.Y.Z-beta.N` from `develop` | GitHub **pre-release** `vX.Y.Z-beta.N` from `develop` |
+| Test (testers) | GitHub **pre-release** `vX.Y.Z-beta.N` on `main` | GitHub **pre-release** `vX.Y.Z-beta.N` on `main` |
 | Stable (everyone) | release `vX.Y.Z` on `main` | release `vX.Y.Z` on `main` |
 
 Both use semantic versions: electron-builder and its updater read them, `-beta.N` sorts before the release it leads to, and a date-named tag
@@ -106,7 +108,7 @@ a launcher that is itself a pre-release installs it: the tester compiles nothing
 - **The first install** of a tester who built from git is the same update: the launcher finds a server with no `manifest.json`, says which
   version it is about to install, and goes on the same way.
 - **A development install is never updated.** `deploy.ps1` writes a `manifest.json` too, with `"source": "deploy"`, the revision and the
-  API level. On such an install the launcher offers no server update, so a beta launcher never overwrites a server built from `develop` with
+  API level. On such an install the launcher offers no server update, so a beta launcher never overwrites a server built from git with
   a bundle that is often older; it shows "development server, revision X" instead. The compatibility check still applies. Only a server with
   no manifest at all is taken for a first install, and a development install that wants the bundles again deletes its manifest.
 
@@ -162,8 +164,7 @@ check makes sure they never drift.
    next pre-release from the launcher alone, then back, and the game server starts and the bots log in after both; a lib and a handler
    removed between two test bundles are gone after the update; a hand-edited default file is kept beside the new one; the user's install,
    deployed after this milestone, is offered nothing.
-7. **The first stable pair.** `develop` merged into `main` in both repositories once a pair is validated in game, each tagged with its own
-   `vX.Y.Z`, the launcher's notes naming the server release. This is also where the server release plan starts, a separate plan: the
+7. **The first stable pair.** Once a pair is validated in game, its two commits tagged `vX.Y.Z` each, with its own version, the launcher's notes naming the server release. This is also where the server release plan starts, a separate plan: the
    install on an empty machine (the geo, the whole navmesh, embedded Java and the portable MySQL, [empty-machine-install-plan.md](empty-machine-install-plan.md)), diff updates, a signed launcher. This plan stops at
    testers who already have a server built from git.
 
@@ -172,10 +173,10 @@ let a tester take every update from the launcher, compiling nothing.
 
 ## The steps of a test patch, once built
 
-1. Server: commits on `develop`, `deploy.ps1`, checked in game.
+1. Server: commits on `main`, `deploy.ps1`, checked in game.
 2. When the user asks for a patch: the next `-beta.N` (or a new minor), one entry in each language for everything since the last version, then
    `tag-patch.ps1`, which builds the bundle with `package-release.ps1`; the push and the pre-release are the user's.
-3. Launcher, if it changed: commits on `develop`, `npm test`, version raised to its own next `-beta.N`, one entry in each language naming the
+3. Launcher, if it changed: commits on `main`, `npm test`, version raised to its own next `-beta.N`, one entry in each language naming the
    minimum server version, then `tools/release.ps1`; publishing is the user's.
 4. A tester's beta launcher offers its own update and the server pre-release itself; one that is too new for their server says which server
    version to take.

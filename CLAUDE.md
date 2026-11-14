@@ -78,15 +78,15 @@ the day it is done. A new document goes in the folder of its topic and gets a li
   - `origin` → personal fork (`https://github.com/FayneDre/aion-server-playerbots.git`)
   - `upstream` → `https://github.com/beyond-aion/aion-server.git`
   - Branch `beyond-aion`: a mirror of `upstream/4.8`, the emulator's updates come in through it (was `4.8` until 5 November 2026).
-  - Branch `develop`: day-to-day bot development, test patches tagged on it as `vX.Y.Z-beta.N` by `tools/tag-patch.ps1` and published as GitHub
-    pre-releases (`patch-YYYY-MM-DD` until November 2026; was `feature/playerbots`). The launcher has the same branches and its own version numbers.
-    `tag-patch.ps1` also builds the bundle a beta launcher installs (`tools/package-release.ps1`: the zip, its manifest, the navmesh maps rebuilt
-    since the previous bundle), which the printed `gh` command attaches.
-  - Branch `main`: stable, the default on GitHub; releases are made from it and tagged `vX.Y.Z`. It moves only by merging `develop` once a
-    version has been validated in game.
+  - Branch `main`: the one branch for the bot work, the default on GitHub (`develop` until 14 November 2026: one developer and one tester
+    gained nothing from two). Every version is a tag on it by `tools/tag-patch.ps1`: `vX.Y.Z-beta.N` published as a GitHub pre-release,
+    `vX.Y.Z` stable, on a commit a beta was validated on (`patch-YYYY-MM-DD` until November 2026). To fix a stable once `main` has moved on, a
+    branch is cut from its tag that day. The launcher works the same way, with its own version numbers. `tag-patch.ps1` also builds the bundle
+    a beta launcher installs (`tools/package-release.ps1`: the zip, its manifest, the navmesh maps rebuilt since the previous bundle), which
+    the printed `gh` command attaches.
 
 To pull upstream updates: `git fetch upstream`, then fast-forward `beyond-aion` to `upstream/4.8` and push it, then merge `beyond-aion` into
-`develop`. Never commit on `beyond-aion` itself.
+`main`. Never commit on `beyond-aion` itself.
 
 ## Repo modules (reminder)
 

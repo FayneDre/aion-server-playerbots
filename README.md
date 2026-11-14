@@ -38,11 +38,10 @@ server and to run on Windows 10 or later.
 
 | Branch | What it is |
 |---|---|
-| `main` | The stable branch: releases are made from it and tagged `vX.Y.Z`. |
-| `develop` | Day-to-day work. Test patches for the testers are tagged on it as `patch-YYYY-MM-DD`. |
+| `main` | The work. Every version is a tag on it: `vX.Y.Z-beta.N` for the testers (a GitHub pre-release), `vX.Y.Z` stable. |
 | `beyond-aion` | A mirror of Beyond Aion's `4.8`, through which its updates come in. |
 
-Updates flow one way: Beyond Aion into `beyond-aion`, merged into `develop`, and `develop` into `main` when a version has been validated in game.
+Updates flow one way: Beyond Aion into `beyond-aion`, merged into `main`.
 
 ## Building and running
 
