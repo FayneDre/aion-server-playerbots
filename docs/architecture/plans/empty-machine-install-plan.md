@@ -1,6 +1,6 @@
 # Plan: a server installed on a machine that has nothing
 
-Status: in progress: the server's side is built and tried (the bundle, the navmesh assets, the portable MySQL, the Java runtime); the launcher's side (download, check, unpack, set up, start) and a first install on a clean machine are not started. Written on 13 November 2026, after [fresh-install-readiness-plan.md](fresh-install-readiness-plan.md) made the server installable and [database.md](../database.md) chose its database.
+Status: in progress: the server's side is built and tried (the bundle, the navmesh assets, the portable MySQL, the Java runtime, both runtimes as release assets named in the manifest); the launcher's side (download, check, unpack, set up, start) and a first install on a clean machine are not started. Written on 13 November 2026, after [fresh-install-readiness-plan.md](fresh-install-readiness-plan.md) made the server installable and [database.md](../database.md) chose its database.
 
 ## Why
 
@@ -55,9 +55,25 @@ on a database that has its bots): the launcher says so.
   repeats the build and that compile (6 checks, about a minute); run it before the pin moves.
 - **Not covered**: a Java update. The pin is never moved on its own: each server release re-runs the check, and a security fix of Java is a release.
 
+## The runtimes as release assets (built on 14 November)
+
+- **What a release carries**: `package-release.ps1` attaches `runtime-java-<version>.zip` (55 MB) and `runtime-mysql-<version>.zip` (29 MB), made by
+  `package-java.ps1` and `package-mysql.ps1` from the pinned official zips (downloaded into `%TEMP%\aion-java-cache` and `aion-mysql-cache`, checked
+  against the pin before anything is made). The bundle also carries what the launcher runs on that MySQL: `tools\setup-mysql.ps1`,
+  `start-mysql.ps1`, `stop-mysql.ps1`, `backup-db.ps1`, `mysql-common.ps1` and `tools\mysql\my-portable.ini`, `my-light.ini`. Each gets `-ServerRoot`.
+- **What the launcher reads**: `manifest.json` has a `runtimes` object, one entry per runtime: `version`, `target` (the folder under the install:
+  `runtime`, `mysql`), `sha256`, `size`, `release` and `asset` (the URL is `releases/download/<release>/<asset>`), and `recipe`.
+- **Uploaded once, not per release**: a zip differs at every build (file times), so it is rebuilt only when its `recipe` moves: the SHA-256 of the git
+  blobs of its pin file and of its script. Otherwise the entry is copied from the previous release's manifest, as the navmesh maps are. The first
+  release with a `runtimes` section attaches both.
+- **Tried**: a trial build (`-Trial`, 14 November): both runtimes made, signatures valid, the Java smoke program passed, navmesh carried from beta.4. Then
+  a throwaway install from those files alone: the three hashes equal to the manifest, the runtimes unpacked to their `target`, the bundle over them,
+  `<install>\tools\setup-mysql.ps1` (63, 9 and 2 tables made), `stop-mysql.ps1` clean. Not tried: an entry carried from a published release (it needs
+  one published with the section), a game server started on that install (milestone 3).
+
 ## Left
 
-1. **Host the two runtimes** (Java, MySQL) as assets of a server release with their manifest entries, so the launcher reads a URL and a SHA-256.
+1. ~~Host the two runtimes~~: built, above.
 2. **The launcher** (its own repository, its own session): the first-launch assistant (disk, memory, a free port for MySQL), the downloads that
    resume and verify, the unpacking, `setup-mysql.ps1`, then starting and stopping the stack with the runtime first in the PATH.
 3. **A first install on a clean machine**: Windows Sandbox (Windows 11 Pro has it) or a second account, from the launcher alone, to a player logging in.
