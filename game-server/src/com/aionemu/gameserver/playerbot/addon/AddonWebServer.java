@@ -1,5 +1,6 @@
 package com.aionemu.gameserver.playerbot.addon;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.network.aion.AionConnection;
+import com.aionemu.gameserver.utils.ChatUtil;
 import com.aionemu.gameserver.world.World;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -94,11 +96,32 @@ public final class AddonWebServer {
 		String name = parameter(exchange, "name");
 		if (name == null || name.isEmpty())
 			return Optional.empty();
-		Player player = World.getInstance().getPlayer(name);
+		Player player = World.getInstance().getPlayer(characterName(name));
 		if (player == null || player.isBot())
 			return Optional.empty();
 		AionConnection connection = player.getClientConnection();
 		return connection != null && sameMachine(connection.getIP(), remoteAddress(exchange)) ? Optional.of(player) : Optional.empty();
+	}
+
+	/**
+	 * The character an addon names, as the client shows it: a staff member's name carries its tag ({@code »Admin«} and an icon, admin.properties),
+	 * and the client's browser sends every byte of a name's UTF-8 above ASCII as a character of its own, {@code U+FF00} plus the byte.
+	 */
+	static String characterName(String shown) {
+		return ChatUtil.getRealCharName(utf8OfClientBytes(shown));
+	}
+
+	private static String utf8OfClientBytes(String text) {
+		if (text.chars().noneMatch(c -> c >= 0xFF80))
+			return text;
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		for (char c : text.toCharArray()) {
+			if (c >= 0xFF80)
+				bytes.write(c & 0xFF);
+			else
+				bytes.writeBytes(String.valueOf(c).getBytes(StandardCharsets.UTF_8));
+		}
+		return bytes.toString(StandardCharsets.UTF_8);
 	}
 
 	/**
