@@ -24,7 +24,8 @@ notes both audiences can read, since the launcher will show them to players in t
 
 **One branch in both repositories, `main`** (changed on 14 November: there were `main` and `develop`, and `main` had not moved for nine days
 while 169 commits went to `develop`; the updater and the launcher tell a beta from a stable by the tag and GitHub's pre-release flag, never by
-the branch). Every version is a tag on `main`; a stable one goes on a commit a beta was validated on. To fix a stable once `main` has moved on,
+the branch). Every version is a tag on `main`; a stable one goes on what a beta of the same version was validated with: `tag-patch.ps1` and
+`release.ps1` refuse a stable whose files differ from its newest beta's outside `docs/` (and, for the launcher, its `package.json` version). To fix a stable once `main` has moved on,
 a branch is cut from its tag that day, and only then.
 
 **Two kinds of release, named and published the same way in both repositories.**

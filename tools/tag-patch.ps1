@@ -10,7 +10,7 @@
 
     Refuses, each time saying why:
     - a version that is not X.Y.Z or X.Y.Z-beta.N, that is tagged already, or that is not above the highest version tagged;
-    - a version made from another branch than main;
+    - a version made from another branch than main, a stable whose code differs from its newest beta's (only docs/ may change);
     - a dirty tree: a build from uncommitted code has a revision ending in -DIRTY, which matches nothing anyone can look at afterwards;
     - docs/patch-notes/current.md (French) or current.en.md (English) with no entry for the tag: a patch nobody wrote up is one a tester cannot
       tell apart from the last, and the launcher shows the notes in the player's language.
@@ -107,6 +107,17 @@ try {
     # One branch: a beta and a stable are both tags on main, a stable on a commit a beta was validated on.
     $branch = git rev-parse --abbrev-ref HEAD
     if ($branch -ne 'main') { throw "$tag is made from main, and this is $branch." }
+
+    # A stable ships what a beta of the same version was validated with: only the docs (its notes) may have changed since its newest beta.
+    if (-not $preRelease) {
+        $betas = @(git tag --list "$tag-beta.*" | Where-Object { Get-VersionKey $_ } | Sort-Object { Get-VersionKey $_ })
+        if (-not $betas) { throw "$tag is stable, and no $tag-beta.N was made: a stable goes on what a beta was validated with." }
+        $beta = $betas[-1]
+        git merge-base --is-ancestor $beta HEAD
+        if ($LASTEXITCODE -ne 0) { throw "$beta, the newest beta of $tag, is not in this branch's history." }
+        $changed = @(git diff --name-only $beta HEAD | Where-Object { $_ -notmatch '^docs/' })
+        if ($changed) { throw "$tag would ship more than $beta was validated with ($($changed -join ', ') changed since): make a new beta first." }
+    }
 
     $dirty = git status --porcelain
     if ($dirty) { throw "The working tree has uncommitted changes. Commit them, then deploy and tag from a clean tree." }
