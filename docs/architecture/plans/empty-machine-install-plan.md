@@ -1,6 +1,6 @@
 # Plan: a server installed on a machine that has nothing
 
-Status: in progress: the server's side is built and tried (the bundle, the navmesh assets, the portable MySQL, the Java runtime, both runtimes as release assets named in the manifest); the launcher's side (download, check, unpack, set up, start) and a first install on a clean machine are not started. Written on 13 November 2026, after [fresh-install-readiness-plan.md](fresh-install-readiness-plan.md) made the server installable and [database.md](../database.md) chose its database.
+Status: in progress: the server's side is built and tried (the bundle, the navmesh assets, the portable MySQL, the Java runtime, both runtimes as release assets named in the manifest); the launcher's side is built (14 November) and a first install on a clean machine is not started. Written on 13 November 2026, after [fresh-install-readiness-plan.md](fresh-install-readiness-plan.md) made the server installable and [database.md](../database.md) chose its database.
 
 ## Why
 
@@ -74,8 +74,10 @@ on a database that has its bots): the launcher says so.
 ## Left
 
 1. ~~Host the two runtimes~~: built, above.
-2. **The launcher** (its own repository, its own session): the first-launch assistant (disk, memory, a free port for MySQL), the downloads that
-   resume and verify, the unpacking, `setup-mysql.ps1`, then starting and stopping the stack with the runtime first in the PATH.
+2. **The launcher**: built, unverified on a real release (launcher `0d01335`, its `docs/server-update.md`): offered on the home page while no server
+   is found; the folder (empty, or a new `echoes-server` in it; plain ASCII), the room, the runtimes, the bundle and the maps downloaded and checked
+   (maps and runtimes resumed file by file), `setup-mysql.ps1` on the first free port from 3307, then the folder taken as the launcher's server, whose
+   runtime and MySQL `ownRuntimes` already starts. End-to-end tests against a fake feed. Left there: memory checked before the first start.
 3. **A first install on a clean machine**: Windows Sandbox (Windows 11 Pro has it) or a second account, from the launcher alone, to a player logging in.
    Milestone 5 of the install plan did the server's half on an empty database; the downloads, the unpacking and the SmartScreen warnings are not tried.
 4. **The disk and the time**: ~3 GB written, and 2.1 GB downloaded at the first launch; a progress that says what it is doing.
