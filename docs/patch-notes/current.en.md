@@ -7,6 +7,22 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ---
 
+## v0.1.0-beta.6 — 2026-11-14
+
+It goes with launcher v0.3.0-beta.8. **No SQL, no navmesh to rebuild, no settings file changes.** The game server is the same as beta.5's:
+only the database an install from nothing downloads changes.
+
+**What changes for players and testers**
+- **The install from nothing works on a fresh Windows**: the MySQL database would not start on a computer that never installed Microsoft's
+  "Visual C++ Redistributable" ("The database could not be made"). It now carries the four Microsoft files it needs. An existing install is
+  not affected.
+
+**To test**
+- With launcher v0.3.0-beta.8 in Windows Sandbox (8 GB): "Install the server", log in and see bots, then "Uninstall the server"; the
+  characters' backup must stay in `Documents\Echoes of Atreia\backups`.
+
+---
+
 ## v0.1.0-beta.5 — 2026-11-14
 
 It goes with launcher v0.3.0-beta.6, which can install it on a computer that has nothing but the game client. **No SQL, no navmesh to

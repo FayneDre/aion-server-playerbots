@@ -8,6 +8,22 @@ bundle (the entries up to v0.1.0-beta.4 named the server deployed here, which on
 
 ---
 
+## v0.1.0-beta.6 — 14/11/2026
+
+Il va avec le launcher v0.3.0-beta.8. **Pas de SQL, pas de navmesh à reconstruire, aucun fichier de réglages ne change.** Le serveur de jeu
+est le même que celui de la beta.5 : seule la base de données qu'une installation à partir de rien télécharge change.
+
+**Ce qui change pour les joueurs et les testeurs**
+- **L'installation à partir de rien marche sur un Windows neuf** : la base de données MySQL ne démarrait pas sur un ordinateur qui n'avait
+  jamais installé le « Visual C++ Redistributable » de Microsoft (« La base de données n'a pas pu être créée »). Elle embarque maintenant les
+  quatre fichiers de Microsoft qu'il lui faut. Une installation existante n'est pas concernée.
+
+**À tester**
+- Avec le launcher v0.3.0-beta.8 dans Windows Sandbox (8 Go) : « Installer le serveur », se connecter en jeu et voir des bots, puis
+  « Désinstaller le serveur » ; la sauvegarde des personnages doit rester dans `Documents\Echoes of Atreia\backups`.
+
+---
+
 ## v0.1.0-beta.5 — 14/11/2026
 
 Il va avec le launcher v0.3.0-beta.6, qui sait l'installer sur un ordinateur qui n'a que le client du jeu. **Pas de SQL, pas de navmesh à
