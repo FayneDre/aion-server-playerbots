@@ -145,6 +145,13 @@ try {
         # at the same place as in the repository, so the script finds them by its default paths: each server's update.sql for an update, and
         # its schema for an install from nothing (apply-sql.ps1 -Create; the chat server has a schema and no update.sql)
         Copy-Item (Join-Path $repoRoot 'tools\apply-sql.ps1') (Join-Path $staging 'tools\apply-sql.ps1')
+        # what an install from nothing runs on its portable MySQL: setup-mysql.ps1 makes the database, start/stop-mysql.ps1 run it, backup-db.ps1
+        # dumps it; the launcher passes -ServerRoot to each
+        New-Item -ItemType Directory -Force (Join-Path $staging 'tools\mysql') | Out-Null
+        foreach ($tool in 'tools\setup-mysql.ps1', 'tools\start-mysql.ps1', 'tools\stop-mysql.ps1', 'tools\backup-db.ps1', 'tools\mysql-common.ps1',
+            'tools\mysql\my-portable.ini', 'tools\mysql\my-light.ini') {
+            Copy-Item (Join-Path $repoRoot $tool) (Join-Path $staging $tool)
+        }
         foreach ($sql in 'game-server\sql\aion_gs.sql', 'game-server\sql\update.sql', 'login-server\sql\aion_ls.sql', 'login-server\sql\update.sql',
             'chat-server\sql\aion_cs.sql') {
             New-Item -ItemType Directory -Force (Split-Path -Parent (Join-Path $staging $sql)) | Out-Null
