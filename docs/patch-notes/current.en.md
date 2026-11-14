@@ -7,6 +7,26 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ---
 
+## v0.1.0-beta.7 — 2026-11-14
+
+It goes with launcher v0.3.0-beta.11. **No SQL, no navmesh to rebuild.** **One default settings file changes**,
+`game-server/config/administration/admin.properties` (the new option below); the launcher replaces it if it was not edited, else it puts
+the new version beside it.
+
+**What changes for players and testers**
+- **The combat meter works with an administrator account**: it said "The server does not recognise this character", because the game gave
+  it the name with its »Admin« tag.
+- **Game master modes from the launcher**: the Account page of launcher v0.3.0-beta.11 switches, for an administrator account whose
+  character is in game, Invulnerable, Invisible, Left alone, See hidden, No cooldowns and Fly anywhere, through the game master commands
+  themselves.
+- **The »Admin« tag can be removed**: `gameserver.administration.customtags.enable = false` (or the launcher's box) shows administrators'
+  names without their tag.
+
+**To test**
+- With an administrator account: open the combat meter in game, then switch each mode from the launcher and see it in game.
+
+---
+
 ## v0.1.0-beta.6 — 2026-11-14
 
 It goes with launcher v0.3.0-beta.8. **No SQL, no navmesh to rebuild, no settings file changes.** The game server is the same as beta.5's:

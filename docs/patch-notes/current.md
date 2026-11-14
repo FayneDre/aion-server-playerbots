@@ -8,6 +8,26 @@ bundle (the entries up to v0.1.0-beta.4 named the server deployed here, which on
 
 ---
 
+## v0.1.0-beta.7 — 14/11/2026
+
+Il va avec le launcher v0.3.0-beta.11. **Pas de SQL, pas de navmesh à reconstruire.** **Un fichier de réglages par défaut change**,
+`game-server/config/administration/admin.properties` (la nouvelle option ci-dessous) ; le launcher le remplace s'il n'a pas été modifié,
+sinon il pose la nouvelle version à côté.
+
+**Ce qui change pour les joueurs et les testeurs**
+- **Le compteur de combat marche avec un compte administrateur** : il disait « The server does not recognise this character », parce que le
+  jeu lui donnait le nom avec son tag »Admin«.
+- **Les modes de maître du jeu depuis le launcher** : la page Compte du launcher v0.3.0-beta.11 bascule, pour un compte administrateur
+  dont le personnage est en jeu, Invulnérable, Invisible, Laissé tranquille, Voir les cachés, Sans temps de recharge et Voler partout, par
+  les commandes de maître du jeu elles-mêmes.
+- **Le tag »Admin« peut être retiré** : `gameserver.administration.customtags.enable = false` (ou la case du launcher) affiche les noms
+  des administrateurs sans leur tag.
+
+**À tester**
+- Avec un compte administrateur : ouvrir le compteur de combat en jeu, puis basculer chaque mode depuis le launcher et le voir en jeu.
+
+---
+
 ## v0.1.0-beta.6 — 14/11/2026
 
 Il va avec le launcher v0.3.0-beta.8. **Pas de SQL, pas de navmesh à reconstruire, aucun fichier de réglages ne change.** Le serveur de jeu
