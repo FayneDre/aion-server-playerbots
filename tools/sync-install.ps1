@@ -228,9 +228,10 @@ foreach ($module in $modules) {
 if ($Apply -and $resolve -and $everythingDone) { Set-Content $stampFile $stampValue -Encoding ascii }
 
 # ---- SQL --------------------------------------------------------------------------------------------------------------------------------------
-# the statements of update.sql the database has not had yet, once each, after a backup (apply-sql.ps1; deploy.ps1 runs it too)
+# the statements of update.sql the databases have not had yet, once each, after a backup (apply-sql.ps1; deploy.ps1 runs it too)
 if (-not $LibsOnly) {
     & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Apply:$Apply
+    & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Server login -Apply:$Apply
 }
 
 if (-not $Apply) { Write-Output 'Nothing changed: -Apply does it.' }

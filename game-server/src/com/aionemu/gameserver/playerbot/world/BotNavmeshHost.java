@@ -37,7 +37,7 @@ public final class BotNavmeshHost implements NavmeshService.Host {
 	}
 
 	@Override
-	public void planRoute(Runnable search) {
-		BotScheduler.getInstance().planRoute(search);
+	public void planRoute(int botId, Runnable search) {
+		BotScheduler.getInstance().planRoute(botId, search);
 	}
 }

@@ -27,9 +27,11 @@ planned waypoint walks the plan, since that is what being wedged inside geometry
 
 - Generated offline (`tools/navmesh.ps1`, [history/navmesh-plan.md](history/navmesh-plan.md)): a grid of walkable surfaces, several per column, for 26
   open-world maps and 45 dungeon geometries serving the 54 group dungeons ([instance-navmesh-list.md](instance-navmesh-list.md)).
-- **Tiles of 64 cells, read when first touched and given back**: opening a map reads its tile directory only, and each map keeps at most
-  `TILE_BUDGET_BYTES` (32 MB) of tiles. A whole map would be about 117 MB; a camp needs four tiles. The tiles are the largest part of the heap
-  (about 570 MB with 26 maps open, 27 October), which is why the budget is per map and why a global one is the first memory lever.
+- **Tiles of 64 cells, read when first touched and given back**: opening a map reads its tile directory only, and every open map's tiles share
+  one budget (`TileBudget`, `gameserver.playerbot.navmesh.tile_budget`, 12 % of the heap): past it, each map's clock in turn gives back the tiles
+  nobody touched lately, so a map nobody walks empties for one that is busy. A whole map would be about 117 MB; a camp needs four tiles. Each map
+  had 32 MB of its own until 8 November (26 maps, up to 832 MB); the shared budget took the live set from 1663 to 1406 MB with 910 bots, at the
+  cost of about 19 000 tiles read again every five minutes (3.7 s of reading). The log reports it every five minutes (`Navmesh tiles:`).
 - **Links**, in files beside the mesh, joining ground the walk cannot: **glide links** (`GlideLinks`, off an edge, landing within ten metres; in the
   open world only from small ground onto large, four a pair, 575 000 on 24 maps), **ride links** (`RideLinks`, Sanctum's lifts and boat, ends placed
   by a tester), **flight links** (`FlightLinks`, Reshanta's islands, edge to edge within what one flight pays). Whether the air is clear is asked of the
@@ -41,7 +43,10 @@ planned waypoint walks the plan, since that is what being wedged inside geometry
 - **Under 150 m** (`LONG_DISTANCE`), on a map without air links, a route is planned inline in tens of milliseconds. Longer, or on a map with glides or
   flights, it goes to the **route threads** (half the tick threads: four of eight here, `BotScheduler`) while the bot walks straight at its goal,
   and is picked up at the end of the current leg. A
-  search waiting in the queue is never asked again for the same journey; one lost for a minute (`PLAN_LOST`) is.
+  search waiting in the queue is never asked again for the same journey; one lost for a minute (`PLAN_LOST`) is. **A bot holds one place in the
+  queue** (`LatestPerKey`, 5 November): a newer search for it takes the place of the one waiting and keeps its turn, the older never answers. Before,
+  each re-asking joined the queue behind the old search, which still ran: at full density (1894 bots awake) the queue fed itself to 25 000 searches
+  and ten minutes of waiting; with one place per bot it held under 400 bots waiting and about 10 s.
 - **A\* over the fine grid** (`MAX_NODES` 150 000, `PLAN_BUDGET_MILLIS` 6 s), then string pulling to a handful of waypoints. A long route, or a short
   one the fine search gives up on, is planned in **two passes** ([history/long-walk-planner.md](history/long-walk-planner.md)): a rough route over 4 m
   cells and the stretches of ground in each (3 s, `navmesh.levelledBudget`), then fine searches between guide points about 40 m apart. Glide links

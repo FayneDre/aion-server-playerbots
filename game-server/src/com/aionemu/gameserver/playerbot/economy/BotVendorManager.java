@@ -35,6 +35,7 @@ import com.aionemu.gameserver.skillengine.effect.EffectType;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.model.trade.TradeList;
 import com.aionemu.gameserver.services.TradeService;
+import com.aionemu.gameserver.services.item.ItemFactory;
 import com.aionemu.gameserver.playerbot.navmesh.DeathSpots;
 import com.aionemu.gameserver.playerbot.navmesh.NavmeshService;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
@@ -471,6 +472,65 @@ public class BotVendorManager {
 			return false;
 		order.addItem(best.getTemplateId(), wanted);
 		return true;
+	}
+
+	/** Every life and mana flask some keeper sells for kinah, read from the trade lists on first use rather than when the class loads. */
+	private static volatile List<ItemTemplate> flasksOnSale;
+
+	private static List<ItemTemplate> flasksOnSale() {
+		List<ItemTemplate> found = flasksOnSale;
+		if (found == null) {
+			Set<Integer> onSale = new HashSet<>();
+			for (int npcId : DataManager.TRADE_LIST_DATA.getTradeListTemplate().keySet())
+				onSale.addAll(onSaleFor(npcId));
+			flasksOnSale = found = onSale.stream().map(DataManager.ITEM_DATA::getItemTemplate)
+				.filter(template -> template != null
+					&& (grants(template, BotPotionManager.RESTORES_HEALTH) || grants(template, BotPotionManager.RESTORES_MANA)))
+				.toList();
+		}
+		return found;
+	}
+
+	/**
+	 * Fills the bag with the life and mana flasks a character of the bot's level would carry, up to {@value #POTIONS_CARRIED} of each, as the counter
+	 * would.
+	 * <p>
+	 * Handed over at creation because the starting kit has flasks for the starting classes alone ({@code player_initial_data}): a bot made a daeva went
+	 * into its first fights with none and bought its first ones on its first trip to a shop. The first start from an empty database, on 9 November,
+	 * counted 266 deaths in 27 minutes against 107 on a world whose bots had shopped for days, falling as they shopped; 1316 of 2004 still had no
+	 * flask after an hour. The strongest flask a keeper sells and the level allows, so it is what the next trip buys anyway. Topped up rather than
+	 * added to, like the scrolls; below {@value #POTION_BUYING_LEVEL} the starting kit is left as it is, since no bot shops for flasks there either.
+	 *
+	 * @return How many flasks were added.
+	 */
+	public static long stockPotions(Player bot) {
+		if (bot.getLevel() < POTION_BUYING_LEVEL)
+			return 0;
+		return stock(bot, BotPotionManager.RESTORES_HEALTH) + stock(bot, BotPotionManager.RESTORES_MANA);
+	}
+
+	private static long stock(Player bot, EffectType... effects) {
+		ItemTemplate best = null;
+		for (ItemTemplate template : flasksOnSale()) {
+			if (!grants(template, effects) || template.getLevel() > bot.getLevel()
+				|| template.getRace() != Race.PC_ALL && template.getRace() != bot.getRace())
+				continue;
+			// the lower id between two of a level, so that which one a bot is given does not depend on the order of a set
+			if (best == null || template.getLevel() > best.getLevel()
+				|| template.getLevel() == best.getLevel() && template.getTemplateId() < best.getTemplateId())
+				best = template;
+		}
+		if (best == null)
+			return 0;
+		long missing = POTIONS_CARRIED - held(bot, effects);
+		if (missing <= 0)
+			return 0;
+		Item stack = bot.getInventory().getFirstItemByItemId(best.getTemplateId());
+		if (stack != null)
+			bot.getInventory().increaseItemCount(stack, missing);
+		else if (bot.getInventory().add(ItemFactory.newItem(best.getTemplateId(), missing)) == null)
+			return 0; // a full bag: the next trip to a shop buys them
+		return missing;
 	}
 
 	/** Reads what an item does the same way {@code BotPotionManager} does when it decides to drink one: through the skill its use action casts. */

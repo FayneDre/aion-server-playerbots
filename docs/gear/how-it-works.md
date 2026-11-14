@@ -151,6 +151,11 @@ the gear, not paid for, and renewed when the level changes (`renewWings`). **Pow
 a light purse), worn on one hand or both, and switched on for a fight (`BotPowerShards`). The merchants' shelves stop at the level 50 shards. Why, and
 what to watch, is in [feedback-2026-10-25.md](../feedback/feedback-2026-10-25.md).
 
+**Flasks at creation and regear** (9 November): from level 10, a bot made (`BotPopulator`, `//bot create`) or regeared (`BotOutfitter`, `//bot regear`) has its life
+and mana flasks topped up to 20 of each, the strongest a keeper sells at its level and race (`BotVendorManager.stockPotions`). The starting
+kit has flasks for the starting classes alone: a world made from an empty database counted 266 deaths in 27 minutes against 107 on one whose bots
+had shopped for days. A full bag gets none; the next trip to a shop buys them.
+
 ## See also
 
 - [bot-gear-upgrades.md](bot-gear-upgrades.md) — enchanting and socketing a piece once it is chosen.

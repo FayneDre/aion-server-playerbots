@@ -1,200 +1,181 @@
-# What is left to do
+# Roadmap: what is done and what is left, by theme
 
-Written to be picked up cold; every document is indexed in [README.md](README.md). For what already works and why, see [built.md](built.md). For how a world gets its
-inhabitants, [population.md](population/how-it-works.md). For what this engine does to a bot that no documentation warns about, [engine-traps.md](traps/engine-traps.md)
-and [world-and-data-traps.md](traps/world-and-data-traps.md).
+Rewritten on 7 November 2026 as one page by theme. The themes are in the order of the project's priorities (PvE first, then wild PvP, the broker,
+shops, legions, RvR), with the tooling that serves them all first; inside a theme, **Done** says what works and where it is explained, **Left**
+is in the order to do it. The detail of each item is in its theme's backlog or plan, linked; every document is indexed in [README.md](README.md),
+and what each topic does, a paragraph a topic, is in [built.md](built.md). What the project lives with is in [known-limits.md](known-limits.md).
 
-Each section says what the work is *for*, what it needs, and what blocks it. The order follows the project's priorities (PvE, wild PvP, broker, shops,
-legions, RvR), then value per unit of effort inside each. The list just below is that order in one place; the sections give the detail.
+Words used for a state: **validated** (seen working in game by a tester), **built, unverified** (the code is there, nobody has watched it in game),
+**not started**.
 
-## Next, by priority
+## The themes at a glance
 
-0. **Feedback as it comes**: the user reports from the game while playing; each plan's Status line says what has been seen. On 27 October
-   everything shipped up to `patch-2026-10-25-2` was validated in game, except duels, friends and trades with a companion. **Validated in game on 1 November**: the bots' chat
-   (French or English, jokes and reactions in Region: [chat-fun-and-languages-plan.md](social/history/chat-fun-and-languages-plan.md), feedback of 25 October) and the bots' stores (food, scrolls, stones of
-   60 and 70, a whole page, the rare goods always in a market: [bot-store-consumables-plan.md](capitals/history/bot-store-consumables-plan.md), feedback of 29 October).
-1. **Done on 28 October**: the module structure plan ([module-structure-plan.md](architecture/history/module-structure-plan.md), five steps) and the
-   merge of 69 upstream commits ([upstream-merge-plan.md](architecture/history/upstream-merge-plan.md)), both measured. Next merge: when `4.8` has moved,
-   then `tools/sync-install.ps1` for the install and the SQL; the sooner, the smaller.
-2. **Navigation**, mostly closed on 1 November: long journeys, sliding, gliding and parasitic moves are done and measured ([navigation-backlog.md](navigation/backlog.md)). Open: obstacles and slopes (point 2,
-   reopened by a note) and dungeons with the Draupnir report (point 6). The meshes are checked against what people walked ([verification-tools.md](navigation/verification-tools.md)), erosion options A and C are on, Morheim's
-   cave is mended. Waiting for a tester's note: the Airship Dock of Pandaemonium, Altgard's cave, the Fire Temple of Morheim, and Pandaemonium's broker and warehouse district (1306 1523 z 210: proved shut from the town centre, its floor made of patches of 21 to 144 cells with risers of 0.7 to 1.1 m, under the step census's 400 cells; about 205 of the 627 town errands refused in the 31 October run, every broker of the map among them) ([step-links-plan.md](navigation/plans/step-links-plan.md)).
-3. **A world alive with or without a player**, a lead to explore within the 2560 MB heap: density independent of who is online, sleepers living
-   off-world, memory measured first and freed where it can be.
-4. **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech, from the guide's documents as the six before them.
-   Damage that waits for the tank stays ours.
-5. **Dungeons**: lifts and teleporters taken by the bots themselves, only if the 13 s wait proves too long; bosses' mechanics.
-6. **The director**: a pool stocked by level and role, a bot moved to the map its level calls for.
-7. **Cohorts** ([cohort-plan.md](social/plans/cohort-plan.md)): a bot in an alliance acting as a member of its own group of six.
-8. **Wild PvP, rifts and the arenas.**
-9. **Economy**: the broker, then player shops, then gathering and crafting.
-10. **Legions**, accepting a legion's invitation first.
-11. **RvR and sieges.**
+| # | Theme | Where it stands | First thing left |
+|---|---|---|---|
+| 0 | Feedback, tooling and releases | running; release milestones 1 to 6 validated | the first stable pair (milestone 7) |
+| 1 | Navigation | validated on 26 maps and 45 dungeons; four places wait for a note | the four places a tester is to walk |
+| 2 | Population and the living world | validated; density modes built 5 November | lot A: memory measured and guarded |
+| 3 | Classes and combat | six playbooks validated | spirit master, aethertech, bard and gunner playbooks |
+| 4 | Groups and dungeons | validated (Noschana, composition); companion interactions unverified | watch duels, friends and trades with a companion |
+| 5 | Flight and the Abyss | validated (milestones 1 to 5) | the last flying-with-a-player milestone, waiting for a tester |
+| 6 | Capitals and social life | validated (town day, stores, chat on 1 November) | a decision on the in-game shop |
+| 7 | Gear | dressed at creation; only wings follow the level | gear that keeps up, through the broker or crafting |
+| 8 | Wild PvP and rifts | built, unverified (milestones 0 to 2b, off by default) | a watch in game with the property on |
+| 9 | Broker | built, unverified (milestones 0 to 4 and the buyer) | a watch in game in both capitals |
+| 10 | Player shops, gathering, crafting | not started | player shops |
+| 11 | Legions | not started | answer a legion's invitation |
+| 12 | RvR and sieges | not started; the supply of high-level bots designed | after the rest is stable |
 
-## Where things stand
+## 0. Feedback, tooling and releases
 
-Last reviewed 2026-11-01 for navigation, chat and stores, 2026-10-27 for the rest. **Built and running**: the population (pool, director, civic and field presence, each side woken
-for its own grounds, sent home to an obelisk of its own faction, rehomed when its place is dropped), combat with class skills, group roles, playbooks
-for the templar, chanter, ranger, cleric, gladiator and sorcerer, ground spells, the marking and target rules, group positioning, the death
-routine, gear and stigmas, merchants' wings and power shards, flight in its five milestones and flying with a player, navmesh planning on 26 open-world maps with their glide links,
-flight links on Reshanta and a long-walk planner, 45 dungeon meshes, duels, friends and trades with a companion, steering vetted by the mesh,
-capitals with a town routine, 40 bot stores each with broker prices (food and scrolls to come), visitors of every level, shouted adverts and calls for a group, bots
-speaking in the chat channels (in French or English from 31 October), and the test harness (`//bot squad`, notes, the command inbox, patch tags). **Watched with
-a bot-only squad**: group fights at level 24 in Eltnen and 40 in Heiron, and a squad crossing Reshanta's upper layer by air. **Watched with a
-player**: a Noschana run, Sanctum's town day, Pandaemonium's visitors and speech. **Validated in game on 27 October**: everything shipped up to `patch-2026-10-25-2`, the six playbooks, positioning against a
-boss and flying with a player among it. **Not watched in game**: duels, friends and trades with a companion. **Not started**: wild PvP, the broker and player shops, legions, gathering, RvR.
+**Done**: the test harness (notes in the log, feedback zips, the command inbox, patch tags: [test-harness-plan.md](architecture/history/test-harness-plan.md));
+the module structure ([module-structure-plan.md](architecture/history/module-structure-plan.md)) and the merge of 69 upstream commits on 28 October
+([upstream-merge-plan.md](architecture/history/upstream-merge-plan.md)); the measuring and mesh-checking tools (`measure.sh`, `compare-measures.ps1`,
+golden routes); about 400 game-server tests run on every deploy; release milestones 1 to 4 used on 6 November (pre-releases with notes in French and
+English, the compatibility check). Everything shipped up to `patch-2026-10-25-2` was validated in game on 27 October.
 
-## Dungeons and instances
+**Left**:
+1. **Feedback as it comes**: the tester reports while playing; each plan's Status line says what has been seen ([feedback/](feedback/README.md)).
+2. **Before the launcher installs the server from nothing** ([fresh-install-readiness-plan.md](architecture/plans/fresh-install-readiness-plan.md)): the
+   schemas in the bundle, lot A's A1, A2 and A3, a first start on an empty database measured, combat tests, the upstream merge, then milestone 7.
+3. **Milestone 7, the first stable pair**: once a pair is validated in game, its commits tagged stable in both repositories.
+4. **The next upstream merge**, as soon as `4.8` moves, then `tools/sync-install.ps1` for the install and the SQL: the sooner, the smaller.
+5. **The combat half of `PlayerBotAI` is untested and unsplit** ([known-limits.md](known-limits.md), Tests).
+6. **The install on a machine that has nothing** ([empty-machine-install-plan.md](architecture/plans/empty-machine-install-plan.md): the Java runtime and the portable MySQL, the launcher's side) (its repository): the server side is built (`package-mysql.ps1` makes a 29 MB zip, `setup-mysql.ps1` makes the
+   database; [database.md](architecture/database.md)). Left: the launcher downloads and checks the zip, calls `setup-mysql.ps1`, starts and stops MySQL; then
+   a first start of the game server on that database with a player logging in (milestone 5 again); then the development machine moves to the same MySQL.
+   MySQL, not MariaDB: measured and compared in the same page.
 
-**The largest player-facing value in the project**: a solo player can run group content. Everything else makes the world look alive; this makes it
-playable alone, and it is the next thing worth doing.
+## 1. Navigation
 
-What exists: group roles, six class playbooks, positioning, marks, a squad of bots that fights as a group, and **45 dungeon meshes** with glide links,
-each put through a reach check ([dungeon-navmesh-plan.md](navigation/history/dungeon-navmesh-plan.md)). What is missing:
+**Done**: a generated navmesh for 26 open-world maps and 45 dungeon geometries, A\* with glide, ride and flight links, a mover that probes only where
+the mesh is silent ([how-it-works.md](navigation/how-it-works.md)); long journeys, the slide before a run, gliding with a player and parasitic moves,
+closed on 1 November; meshes checked against what people walked ([verification-tools.md](navigation/verification-tools.md)).
 
-- **Instance entry: built and watched 18 October** (Noschana). A grouped bot follows its player into the instance and out again (`BotInstances`),
-  revives at the entrance, and a bot saved inside starts at the exit; `BotMapChange` spawns a bot a map change would leave waiting for a client's
-  `CM_LEVEL_READY`. The run showed bots slow to catch up and never gliding: they now keep a route within 8 m of a moving leader and copy the
-  leader's glide from its takeoff (`LeaderGlides`). A player who logs out inside is waited for five minutes, then the bots leave the group and the instance (`BotInstances`). Both validated in game on 27 October.
-- **A bot cut off from its player** in an instance (a teleporter, a lever, a lift, a windstream, a door the player's key opens) is put beside them
-  at any distance after about 13 s (`PlayerBotAI.freeItself`, 19 October); before, past 200 m, it went to its home's coordinates on the instance's
-  map. Validated in game on 27 October.
-- **The instance meshes** (54 files for the 45 geometries) are walked: Noschana's was. On 19 October floors the generator dropped were put back in 20
-  of them (Steel Rake 99 %, the Danuar Sanctuaries 94 and 95 %, the Dredgions 96 to 99 %, Sauro 91 %), and Esoterrace reads 99 % once its
-  windstreams' landings count as arrivals, and both Dragon Lord's Refuges 100 % once the teleporters their handler codes count too. Left under 80 %: **Theobomos Lab** (72 %, its lift after the elemental rooms; Queen Arachne's room, its
-  first boss, walked to since a face that is no wall in game was left out) and **Rentus** (77 and 72 %: a lift that appears at Kuhara's death, the tester says, which no mesh holds).
-- **Doors, lifts and windstreams** are not used by a bot itself: it is put beside its player instead. Links "walk to the object, use it, arrive
-  there" are the next step if 13 s turns out too long ([dungeon-navmesh-plan.md](navigation/history/dungeon-navmesh-plan.md)).
-- **Bosses**: a bot that simply fights correctly clears most low-level instances; mechanics are a later refinement, not a prerequisite. Positioning
-  against a boss has never been seen, because the only Elyos boss in reach outdoors stands off the mesh.
-- **Levels**: no level 50 bots for the Theobomos instances and Dark Poeta (asked by a tester on 9 October); they exist on another test server,
-  whose feedback is awaited.
+**Left** ([backlog.md](navigation/backlog.md)):
+1. **Four places waiting for a tester's walk**: the Airship Dock of Pandaemonium, Altgard's cave, the Fire Temple of Morheim, and Pandaemonium's broker
+   and warehouse district, proved shut from the town centre ([step-links-plan.md](navigation/plans/step-links-plan.md)).
+2. **Obstacles and slopes** (backlog point 2, reopened by a note): not started.
+3. **Dungeons, with the Draupnir report** (backlog point 6): not started.
+4. **Lifts and moving platforms** ridden by the bots: what closes Theobomos Lab (72 %) and Rentus (77 and 72 %) ([living-world-plan.md](population/plans/living-world-plan.md), B2).
+5. **Ground that refused a bot remembered**, then **prepared corridors** for journeys across Reshanta's 3 km (B1, B3).
 
-## Group play
+## 2. Population and the living world
 
-What is left once roles, playbooks and positioning exist:
+**Done**: a pool of inhabitants created asleep, a director that wakes and sleeps each region to its target, careers that move a bot's home as it grows,
+villages always full, about 950 bots awake on 26 maps ([how-it-works.md](population/how-it-works.md)); the density modes (5 November).
 
-- **The other classes' playbooks**: assassin, spirit master, bard, gunner, aethertech. The pattern is set (`ClassPlaybook`, rules by
-  skill group, a data test that checks every group against the skill templates); each is a plan from the guide's document, a playbook and a test.
-  **Spirit master, aethertech, bard and gunner come first**: on Reshanta's upper layer they died 36 times of 40 in half an hour, four bots against
-  the other 21's four deaths, on the generic rotation.
-- **Damage waits for the tank to hold.** It focuses the tank's target, but opens at the same instant, so the first blow can pull the mob off.
-  `AggroList.getTarget(MOST_HATED)` can answer "the tank holds it".
-- **Composition: built and watched 18 October.** An offer in the Find Group window is filled with bots, a tank, a healer and a support first, at the
-  instance's levels, counting the player's own role (`BotRecruiter`); recruits go home when released. Needs `form_anywhere` in the server's config. Left: the Recruit Group Members tab, alliances, and a pool stocked by role,
-  since a missing templar or cleric at a level is a missing tank or healer (see the director below).
-- **Bots never form a group of their own.** They join a player's, an offer's or a `//bot squad`; two bots in a field never party with each other.
-- **Tester points still open**: the templar that "drops the fight" (needs the tester's log or the time and the bot's name; a grouped bot no longer
-  breaks off from any fight since 17 October, which may be it), the cleric against an assassin's rune ([cleric-plan.md](classes/history/cleric-plan.md)).
+**Left** ([backlog.md](population/backlog.md), [living-world-plan.md](population/plans/living-world-plan.md)):
+1. **Lot A, memory first**: a heap guard on the director (A1), the density in the launcher (A3), one budget for every navmesh (A2), and last a
+   density that finds its own level (A4).
+   Everything else is bounded by it: about 800 awake bots fill the 2560 MB heap.
+2. **Bots yield to real players**: a design rule to settle before a settled 2000 (nothing yields to a person today).
+3. **The director, lot F**: a pool stocked by level band and role (F1), with pre-filling a map before a player arrives and moving a bot that
+   outgrew its region across maps; a day on the clock (F2); sessions (F3).
+4. **Careers on the roads, lot C**: travelling merchants (C1), road wardens (C2), caravans (C3).
+5. By decision, left as they are: Reshanta's numbers (29 awake with nobody online) and its middle layer, not lived.
 
-## What the director still does not do
+## 3. Classes and combat
 
-The pool is built: inhabitants are created asleep, and the director wakes and sleeps the countryside to match each region's target unseen. Since 17
-October a hunter is woken for a ground of the plan nobody works, the nearest sleeper of that ground's side, and a few a review move from a ground
-worked twice to an empty one: before, the field was woken in the pool's order, and Reshanta's upper layer was never woken at all. Three pieces were
-deliberately left out.
+**Done**: combat in two ticks with targets read from the group's aggro, the death routine, retreat from a lost fight, marks, group positioning
+([combat/how-it-works.md](combat/how-it-works.md)); six playbooks validated on 27 October: templar, chanter, cleric, ranger, gladiator, sorcerer
+([classes/how-it-works.md](classes/how-it-works.md)).
 
-- **Stocking.** *"Do I have a level-16 Asmodian scout?"*, growing one if not, retiring the oldest at the cap and freeing their names. Without it a
-  population is whatever the populate setting created once. `populate` creates the busy plan, so a surge has sleepers to wake.
-- **Pre-filling a map before a player arrives.** A teleport knows its destination before the client loads, and the character list is known on the
-  selection screen. It is also what would let settlements sleep, which they cannot: a village is all within sight of the obelisk a player lands on.
-- **Moving a bot that outgrew its region, across maps.** Within a map `BotDay.moveOutIfOutgrown` rehomes it; past the region's ceiling `BotPacing`
-  stops it, a documented stopgap. A sleep and a wake on another map is cheap with the pool.
+**Left**:
+1. **Spirit master, aethertech, bard and gunner playbooks first**: on Reshanta's upper layer they died 36 times of 40 in half an hour, against four
+   deaths for the other 21. Then the **assassin**. Each from the guide's document, with its data test.
+2. **Damage waits for the tank to hold**: today it opens at the same instant and can pull the mob off (`AggroList.getTarget(MOST_HATED)`).
+3. **Two tester points still open**: the templar that "drops the fight" (needs a log or a time and a name), the cleric against an assassin's rune.
+4. **Bosses' mechanics**: a later refinement, not a prerequisite; positioning against a boss was validated on 27 October.
 
-A region's band has two parts where its monsters do (`BotPlaces.isLivedAt`): Theobomos and Brusthonin were repopulated with 20 to 30 in their middle
-band. **Reshanta's numbers are left as they are by decision** (18 October): 29 awake with nobody online (its villages and one hunter), 85 with a player
-on it. Counting each set of islands as a region of its own is the way to raise them when wanted.
+## 4. Groups and dungeons
 
-## Asked in game, 19 October
+**Done**: invitations, following, instances entered and left with the player (Noschana), a bot cut off from its player put beside it after 13 s, groups
+filled from the Find Group window with a tank, a healer and a support ([social/how-it-works.md](social/how-it-works.md)), all validated on 27 October;
+45 dungeon meshes; duels, friends and trades with a companion built on 19 October.
 
-The list "missing features in game", each with what stands today:
+**Left** ([backlog.md](social/backlog.md)):
+1. **Watch duels, friends and trades with a companion** in game: built, unverified ([player-interactions-plan.md](social/plans/player-interactions-plan.md)).
+2. **Playing with one's bots**: the starting level, bots rolling the dice, orders and marks, one's own characters; not started
+   ([group-options-plan.md](social/plans/group-options-plan.md)). The launcher shows each once the server has it.
+3. **Cohorts**: a bot in an alliance acting as a member of its own group of six; not started ([cohort-plan.md](social/plans/cohort-plan.md)).
+4. **Composition**: the Recruit Group Members tab, alliances, and bots posting in the Find Group window themselves (lot E1).
+5. **Bots group with each other** in the field (lot E2): today they never do.
+6. **Level 50 bots** for the Theobomos instances and Dark Poeta, asked on 9 October; awaiting another test server's feedback.
+7. **Doors, lifts and windstreams used by a bot itself**, only if the 13 s wait proves too long.
+8. **The arenas**: instances of their own, after the dungeons.
 
-- **Trading with one's companion**: built 19 October, with its owner only; `//bot give` hands over the companion's side ([player-interactions-plan.md](social/plans/player-interactions-plan.md)).
-- **Adding a bot as a friend**: built 19 October; a bot shows online while awake.
-- **A legion's invitation**: not answered. The first step of the legions section below.
-- **Cohorts** (alliances): a bot answers an alliance invitation but acts as if the whole alliance were its group ([cohort-plan.md](social/plans/cohort-plan.md)).
-- **Duels**: built 19 October; a free bot within 10 levels accepts and attacks, and never asks for one.
-- **The in-game shop does not work**, and is not the bots' work: the server has none. The 4.8 client opens a web shop with a token
-  (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty one, a TODO upstream); the older shop packets are commented out and `config/ingameshop` is unused.
-  Either a small web shop answering the token, or reviving the old packets if this client still reads them: a decision, then a project of its own.
-- **The arenas** (four or five kinds): not started; they are instances of their own, after the dungeons.
-- **A living world**: built 20 to 23 October, a town day and 40 bot stores a capital ([living-capitals-plan.md](capitals/history/living-capitals-plan.md)).
+## 5. Flight and the Abyss
 
-## Wild PvP and rifts
+**Done**: take-off, landing, cruise and flown descents, following a flying player (milestones 1 to 5 validated), Reshanta's islands crossed by air and
+lived on both layers, 120 of its 134 places ([flight/how-it-works.md](flight/how-it-works.md)).
 
-Priority two, much closer than RvR: it needs none of the mass coordination. Rifts are the door to enemy territory and the data is there
-(`spawns/Rifts`). The work: a bot deciding to invade, using a rift, hunting players rather than mobs, and knowing when to go home. `PvpService` no
-longer throws when a bot kills a real player. The one prerequisite is **visible movement**, so a bot can be intercepted, which the mesh now gives on
-every open-world map with steering that no longer walks through scenery. In the Abyss a crossing refuses the other side's islands for now: that is
-the switch to turn when wild PvP is a decision rather than an accident.
+**Left** ([backlog.md](flight/backlog.md)):
+1. **Flying with a player, milestone 6**: waits for a time and a bot name from the tester ([flying-with-a-player-plan.md](flight/plans/flying-with-a-player-plan.md)).
+2. **Ambient flights stall on fly-zone maps** (a leg handed over again 14 to 100 times in forty minutes): not looked into.
+3. **The new playbooks of theme 3**, which are what the Abyss's deaths come down to.
+4. **Gliding on the way down** (Abyss crossing milestone 6), only if flights run short of points ([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)).
 
-## Economy
+## 6. Capitals and social life
 
-**Selling works**: 37 sales in 38 trips on the night of 2 October, keepers found among the living npcs, refused shops remembered, trade within 8 m,
-and the keeper's own floor where it stands a storey away (17 October, Teminon), unless that floor is a pocket behind a counter, where a bot
-walked in and could not get out (18 October, the Verteron citadel). Since 18 October a trip walks to the keeper it chose, not the nearest one
-seen, and to the floor in front of it rather than its feet: trips given up 269 -> 91 in the first 23 minutes. No shop on another layer of the map is gone to; fortress shops are
-kept, by decision. A player's own bot never sells, buys, dresses from, identifies or binds what is in its bag ([bot-gear.md](gear/how-it-works.md)).
+**Done**: a town day in the capitals, 40 bot stores a capital at broker prices, high-level visitors, shouted adverts ([capitals/how-it-works.md](capitals/how-it-works.md));
+the bots' chat in French or English with jokes and reactions, and the stores' consumables, validated on 1 November.
 
-Next is the **broker** (`BrokerService`), on the same "find the right npc" mechanism, then **player shops**. **Gathering and crafting** would feed the
-broker and make the countryside look used; they are not started.
+**Left**:
+1. **The in-game shop**: the server has none (the 4.8 client asks for a web shop token upstream answers empty). A decision first: a small web shop,
+   or the old packets if the client still reads them ([social/backlog.md](social/backlog.md)).
+2. **A world that talks about itself, lot I**: personalities (I2), then true rumours (I1) and contested named monsters (I3, which needs E2)
+   ([living-world-plan.md](population/plans/living-world-plan.md)).
+3. **A window on the bots inside the game, lot H**: pages served to the client's browser (H1) and an interface addon (H2) are built for the
+   combat meter ([addon-pages.md](architecture/addon-pages.md)); left: GM tools in game (H3), and what else is used while playing (H4: teleport,
+   one's characters, the world map, orders, a tester's note).
 
-## Legions
+## 7. Gear
 
-Priority five. Bots forming and filling legions, which mostly falls out of group play plus a reason to gather.
+**Done**: bots dressed at creation (enchanted, socketed, with stigmas), wearing what they loot, wings renewed with the level, junk sold, the best of what
+they own worn, potions drunk ([gear/how-it-works.md](gear/how-it-works.md)).
 
-## Flight, the Abyss, RvR
+**Left**: **gear that keeps up** from 1 to 65, through buying or crafting, so it follows themes 9 and 10 ([capitals/backlog.md](capitals/backlog.md)).
 
-**Bots fly** ([flight-plan.md](flight/history/flight-plan.md)): take off and land, reach terraces, fly when the mesh proves there is no walk, follow a flying leader,
-glide down a planned glide link, and **cross the Abyss** by flight links between islands ([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)). Reshanta
-is lived on both its layers: 120 of its 134 places, Teminon's and Primum's stairs walked (a 62 degree slope for its buildings), residents three levels
-above their place and nowhere near a hostile elite, nobody in a fortress, no landing in one, on the other side's ground or beside a creature the bot
-cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no crossing refused in flight. What is left:
+## 8. Wild PvP and rifts
 
-- **The playbooks above**, which are what the Abyss's deaths come down to.
-- **The Abyss is dangerous on foot**, and is left so: a squad meets level 65 Balaur elites between landings and dies to them. Kept from the walk as
-  well, they made the search give up (726 of them on the upper layer).
-- **Long journeys**: 17 of 20 random upper-layer journeys of 300 m to 1 km are planned offline, in 0.15 to 3.3 s; across the whole map (3 km) the
-  5 s budget still runs out. The layers are not joined to one another (a flight link climbs 200 m, the layers are 1200 m apart).
-- **The middle layer** (the Abyss core, mostly the Divine Fortress) is not lived, by decision.
-- **Gliding on the way down** (milestone 6), only if flights run short of points; they have not so far.
+**Done**: milestones 0 (where PvP really is), 1 (a player as a target), 2 and 2b (defence and PvP behaviour), built, unverified; the property
+`gameserver.playerbot.pvp.enable` is off by default ([wild-pvp-plan.md](combat/plans/wild-pvp-plan.md)).
 
-**RvR and sieges** come next on Reshanta; their supply line is designed (bots at the level cap become the elders the endgame needs,
-[population.md](population/how-it-works.md)). Panesterra's four fields hold no civilians and have no mesh (no heightmap in the data).
+**Left**:
+1. **A watch in game** with the property on: no bot has met a player yet.
+2. **Hunting grounds in PvP zones** (milestone 3), then **rifts** (4), then the **measure** (5).
+3. **Lot D** of [living-world-plan.md](population/plans/living-world-plan.md): limits on a fight (D1), rift raids (D2), raids the world answers (D3),
+   and last grudges (D4).
 
-## Gaps nobody had raised
+## 9. Broker
 
-- **The chat server is off upstream** (`gameserver.chatserver.enable = false`, no password): a server that wants channels, a tester's own
-  included, sets both in its `mygs.properties` (or in `gameserver.properties` and `network.properties`).
-- **Bots do not yield to real players.** `BotTargetRegistry` stops two bots claiming one mob, but nothing yields to a person. Forty bots stripping a
-  spawn or a gathering node make a worse server than none; this is a design rule to settle before a settled 2000.
-- **Gear does not keep up.** Bots are dressed at creation (enchanted, socketed, with stigmas) and wear what they loot; only wings are renewed with
-  the level (25 October); crossing 1 to 65 needs buying or crafting. Existing gunners keep their cannon until `//bot regear all` (two pistols since 17 October).
-- **Ambient flights stall on fly-zone maps**: "flight has not moved, its leg is handed over again" comes up 14 to 100 times in forty minutes, mostly
-  at heights of 100 to 300 on the open world maps. Older than the Abyss work; not looked into.
-- **397 tests on the game server**, run on every deploy. The combat half of `PlayerBotAI` is still untested and unsplit, so a mistake there is
-  silent. Decisions written as pure functions of a situation record are what made the suites possible; keep writing them that way.
+**Done**: a house the server stocks, one per race: the census, the door, the house characters, the seller, settling and relisting, and a buyer of what
+players list, built, unverified; the seller is on by default ([auction-house-plan.md](capitals/plans/auction-house-plan.md)).
 
-## Known limits, in order of how much they will bite
+**Left**: 1. **the watch in game** (milestone 5): categories filled, prices believable, a purchase that works, in both capitals; 2. the buyer's watch;
+3. the **measure** (milestone 7): heap, tick cost, listings against targets, prices against the guide's.
 
-1. **How many characters a client tolerates in one place**: measured once on 20 October, in Sanctum on the tester's machine. It held 60 fps with
-   25 standing in sight, about 45 with 50, 35 with 75 and 30 with 97 ([living-capitals-plan.md](capitals/history/living-capitals-plan.md)). This is the ceiling
-   this project does not control and the one a player feels.
-2. **Memory**: about 800 awake bots fill a 2560 MB heap (90% old generation), which is why the two housing maps (Oriel, Pernon) are not populated.
-   The machine has little left besides: a long background wait of the tooling was killed for low memory on 17 October.
-3. **Only maps with a mesh are planned on**: 26 open-world maps and 45 dungeons (`tools/navmesh.ps1 <mapId>`, then `-Obelisks`); flight links on Reshanta
-   alone (`NavmeshTool <mapId> flights`, server stopped). The Cloister of Kaisinel and Panesterra have no heightmap.
-4. **The mesh is not the geometry**: props placed at run time (gatherables, doors) are not in it. Walls are, at a body's width since 18 October
-   (erosion per surface, every open-world mesh generated again; a test server runs `tools/navmesh.ps1 -OpenWorld` once). What is left of the steps aside is the berth round gatherables, which the client does
-   need: a body does not walk through one (checked in game, 18 October; [obstacle-steering-plan.md](navigation/history/obstacle-steering-plan.md)).
-5. **Walkable ground comes in islands**, and a route between two does not exist: `NavmeshTool <mapId> components` says so. Fortress obelisks are the
-   usual case ([navigation-stuck-plan.md](navigation/history/navigation-stuck-plan.md)); Reshanta's two pass the audit through the flight links.
-6. **A crash loses at most 5 minutes** of what bots did. A clean stop takes seconds since 18 October (it took 510 s while a dead bot searched for a
-   spot round Primum's obelisk); `stop-server.ps1` waits up to 900 s.
-7. **Bots flee only from a lost fight** (`retreatIfLosing`), never in a group; otherwise they heal, drink and shield themselves, and wait out the soul
-   sickness at a spot of their own after a death ([bot-careers.md](population/bot-careers.md)).
+## 10. Player shops, gathering, crafting
 
-## Done and moved
+**Done**: bots sell their junk to merchants ([capitals/backlog.md](capitals/backlog.md)). **Left**: 1. **player shops** run by bots; 2. **gathering and
+crafting**, which would feed the broker and make the countryside look used; 3. travelling merchants opening a store on the road (lot C1).
 
-The population churn of 4 October ([population-churn-followup.md](population/history/population-churn-followup.md)), the stigma blocker, names, Asmodian settlements and the roster's `owner_id`
-(see [built.md](built.md)), the walking-into-scenery plan ([obstacle-steering-plan.md](navigation/history/obstacle-steering-plan.md)) and the Abyss crossing ([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)).
+## 11. Legions
+
+**Not started.** **Left**: 1. **answering a legion's invitation** (asked in game on 19 October); 2. **bot legions born of who played together** (lot G1),
+which needs bots grouping with each other first (theme 4).
+
+## 12. RvR and sieges
+
+**Not started**, the stretch goal. Its supply line is designed: bots at the level cap become the elders the endgame needs
+([population/how-it-works.md](population/how-it-works.md)). Panesterra's four fields hold no civilians and have no mesh (no heightmap in the data).
+
+## The living world plan and the group options, in their own order
+
+Decided on 5 November and spread above by theme. The [living-world-plan.md](population/plans/living-world-plan.md) proposes this order across
+themes: 1. A1, then A3, A2 after the density histogram; 2. B1; 3. D1 to D3; 4. E1, E2; 5. C1 to C3; 6. I2, then I1 and I3; 7. F1 to F3; 8. B2 and
+B3, unless dungeons are brought forward; 9. G1, D4, A4 when the rest stands; H1 and H2 beside any of them. The
+[group-options-plan.md](social/plans/group-options-plan.md) (starting level, dice, orders and marks, one's own characters) stands apart, each point
+small. Left out by decision: quests for world bots, patching the client's executables, rewards of our own invention, changes to monster strength, a
+market other than the native broker, freezing the maps nobody is on, another mesh format, a decision engine other than the playbooks.

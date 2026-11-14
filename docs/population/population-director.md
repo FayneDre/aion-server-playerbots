@@ -24,6 +24,39 @@ empties.
 | a quiet map, somebody playing elsewhere | a fifth |
 | nobody online anywhere | a twentieth |
 
+**That table is one of three modes** (`gameserver.playerbot.density.mode`, with `density.percent`). `AUTO`, the default, is the table. `FIXED` holds
+every map at the percent of its *busy* countryside, watched or not: no wave of arrivals when a player comes, no emptying when they leave, a world the
+same seen or unseen. `FLOOR` is the table with the percent as its least: full where somebody plays, never below the percent elsewhere — so a floor
+under a fifth only shows with nobody online. They are the first step of a world alive without a player, and what the launcher's density setting is
+meant to write. **Measured on 5 November** (`tools/heap-snapshot.ps1`, nobody online, 24 maps, pool of 2004): `FIXED` 25 % held 1158 awake in a
+live set of about 1743 MB, 50 % 1429 in 1785 MB on 6 to 7 cores of 16, 100 % 1894 (the pool ran out of sleepers on several maps) in 1849 MB on 9.3
+cores. A bot costs about 0.15 MB of live set; navmesh tiles stay near 605 MB whatever the percent. **The limit is route planning, not memory**: at
+50 % a route search waited 5 s at most, at 100 % its queue grew without end (25 000 searches queued and a wait of 10 minutes after 35 minutes), so
+bots stood still waiting for a path. Until the planner keeps up, a percent above about 50 is not to be offered. The director reads both options at
+every review, so `//reload config` applies them within 30 s.
+
+**The population guard** (`BotLoadGuard`, `gameserver.playerbot.guard.*`) is what stops a percent set too high: a review wakes nobody, nor the
+capitals' visitors, while the old generation after a collection is at 85 % of the heap or more, or a route search waited 20 s or more since the
+last review (or one still waiting has), and wakes again under 80 % and 5 s; departures go on, and a player's recruits are not held. Each signal releases on its own. Under G1
+the heap figure is 0 until the old generation passes about 45 % (no concurrent cycle before), read as unknown; from there it follows the live set,
+never read above what the old generation holds now.
+The review's log line ends with the guard's state, `//bot pool` starts with it, and a change is logged once (`Population guard: wakes held by`).
+The heap is also read again **as each wake's turn comes**, and by the roster put back at startup before each bot: with nobody online a review asks
+for every wake at once, and a restart brought back the whole world unseen by any review (1907 bots, the login reached after 482 s instead of 78).
+A wake stopped that way is counted `held by the population guard`. **Measured on 8 November** at `FIXED` 100 %, 2560 MB: 1895 awake, the pool
+short on several maps, the heap 75 to 80 % after collections, the route queue empty after the fill (5 November's runaway queue is gone with one
+search per bot); the guard never had to hold at its 85/80 marks. With the marks lowered to 72/67 for the check: the startup put back 1205 of
+1907 and left 702 asleep; the first review asked for 694 wakes, 2 came and 692 were held; held at 73 %, kept at 70, released at 66, and the
+next review's 692 gave 41 arrivals and 651 held.
+
+**While the guard holds for the heap, the played maps take bots from the others** (`exchanges`; not while it holds for route planning, an arrival asking for routes): each arrival a map with a player is short of is paired with a
+bot awake on a map nobody plays on, hunters first, then villagers, taken in turn from each such map; the bot leaves, and only if it did the
+arrival follows, on the lane, without the heap check (the count does not change). A bot that would not leave (a fight, a road) is passed over
+for 2 minutes. The played maps also come first in every review, so a wake budget spent early is spent where somebody is. Measured on 8 November
+at 1536 MB, four processors, `AUTO`: without it the world filled to 690 before anybody came, and Morheim stayed at 18 of 190 with a player on it.
+With it, hunters only ran out after 32 exchanges (a full world is mostly villages); with villagers too, Morheim went from 3 to 128 of 129 in six
+minutes at 25 a review, the world holding at 770 throughout, each review's arrivals equal to its departures.
+
 That last row was going to be zero — "only the economy stays up" — and zero is wrong: a sleeping bot earns no experience, and this model is a *flow*, so
 a world asleep overnight comes back to the population it had on its first day. A twentieth keeps the careers moving at a cost nobody is observing.
 
@@ -54,7 +87,8 @@ holding more than it wants wakes nobody**, whatever any one place inside it is s
 
 **What made that visible, and what hid it.** The summary line — *"25 arrival(s) and 25 departure(s)"* — reads as orderly at every single review, and a
 population in perfect equilibrium while cycling 2200 times through the world looks identical to one holding still. Two things settle it: the per-map
-report is now written to the log on every review rather than only when somebody runs `//bot pool`, and counting *distinct* bots against total spawns
+report is now written to the log on every review that changes something rather than only when somebody runs `//bot pool` (and since 5 November
+one line at *every* review gives the totals, the maps short with nobody asleep, the density and the route queue), and counting *distinct* bots against total spawns
 separates a world filling up from a world on a treadmill. 2438 spawns over 222 bots is a treadmill; 79 spawns over 79 bots is a world filling up.
 
 **And underneath all of it was one bit of a float.** `home_z` is a `float` column and a coordinate does not come back from it bit for bit, so

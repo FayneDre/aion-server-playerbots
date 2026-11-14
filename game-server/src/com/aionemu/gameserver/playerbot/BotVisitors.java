@@ -18,6 +18,7 @@ import com.aionemu.gameserver.model.Race;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.playerbot.lifecycle.BotRoster;
+import com.aionemu.gameserver.playerbot.world.BotLoadGuard;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.TownServices;
 import com.aionemu.gameserver.services.teleport.TeleportService;
@@ -93,7 +94,8 @@ public final class BotVisitors {
 				continue;
 			}
 			long missing = VISITORS - visits.values().stream().filter(visit -> visit.capital() == worldId).count();
-			if (missing > 0)
+			// a visitor is a wake like any other: none while the population guard holds them (BotLoadGuard), the visits under way go on
+			if (missing > 0 && !BotLoadGuard.getInstance().holds())
 				bring(worldId, capital.getValue(), (int) missing, now);
 		}
 	}

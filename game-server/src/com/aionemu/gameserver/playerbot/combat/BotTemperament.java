@@ -1,12 +1,14 @@
 package com.aionemu.gameserver.playerbot.combat;
 
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
+
 /**
  * How readily a bot starts a fight with a player it meets in a PvP zone. Drawn once from the bot's object id, so it never changes and needs no
  * memory: human players differ the same way, and a bot that attacked on sight would empty the zone of everyone else.
  */
 public enum BotTemperament {
 
-	/** Attacks an enemy in range: about 1 bot in 4. */
+	/** Attacks an enemy in range: about 1 bot in 4 (the shares are options, `gameserver.playerbot.pvp.share.*`). */
 	FIGHTER,
 	/** Attacks only an enemy that is weakened or of a lower level: about 1 bot in 4. */
 	OPPORTUNIST,
@@ -27,11 +29,18 @@ public enum BotTemperament {
 		h ^= h >>> 13;
 		h *= 0xc2b2ae35;
 		h ^= h >>> 16;
-		return switch (h & 3) {
-			case 0 -> FIGHTER;
-			case 1 -> OPPORTUNIST;
-			default -> PEACEFUL;
-		};
+		return of(h, PlayerBotConfig.PVP_SHARE_FIGHTER, PlayerBotConfig.PVP_SHARE_OPPORTUNIST, PlayerBotConfig.PVP_SHARE_PEACEFUL);
+	}
+
+	/** @return the temperament a mixed value draws, the shares being relative to one another; with no share at all, peaceful. */
+	static BotTemperament of(int mixed, int fighters, int opportunists, int peacefuls) {
+		int total = Math.max(0, fighters) + Math.max(0, opportunists) + Math.max(0, peacefuls);
+		if (total == 0)
+			return PEACEFUL;
+		int draw = (mixed & 0x7fffffff) % total;
+		if (draw < Math.max(0, fighters))
+			return FIGHTER;
+		return draw < Math.max(0, fighters) + Math.max(0, opportunists) ? OPPORTUNIST : PEACEFUL;
 	}
 
 	/**

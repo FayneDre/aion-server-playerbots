@@ -208,6 +208,43 @@ class BotDirectorTest {
 		assertTrue(difference.toSleep().isEmpty(), "so the post is held, not emptied");
 	}
 
+	/**
+	 * The three density modes, on a countryside of 100 posts busy and 60 quiet: auto follows the players, fixed holds the percent whoever is online,
+	 * floor follows the players but never falls below the percent.
+	 */
+	@Test
+	void theDensityFollowsThePlayersHoldsAPercentOrNeverFallsBelowIt() {
+		List<Settlement> quiet = posts(60), busy = posts(100);
+
+		assertEquals(100, plan(quiet, busy, DensityMode.AUTO, 30, true, true));
+		assertEquals(12, plan(quiet, busy, DensityMode.AUTO, 30, false, true), "a fifth of the quiet plan");
+		assertEquals(3, plan(quiet, busy, DensityMode.AUTO, 30, false, false), "a twentieth of the quiet plan");
+		assertEquals(12, plan(quiet, busy, null, 30, false, true), "no mode is auto");
+
+		assertEquals(30, plan(quiet, busy, DensityMode.FIXED, 30, true, true), "a player arriving does not fill it");
+		assertEquals(30, plan(quiet, busy, DensityMode.FIXED, 30, false, true));
+		assertEquals(30, plan(quiet, busy, DensityMode.FIXED, 30, false, false));
+		assertEquals(100, plan(quiet, busy, DensityMode.FIXED, 250, false, false), "beyond the busy density there is nobody left to wake");
+		assertEquals(1, plan(quiet, busy, DensityMode.FIXED, -5, false, false), "zero keeps one hunter a region");
+
+		assertEquals(100, plan(quiet, busy, DensityMode.FLOOR, 30, true, true), "a player arriving fills it");
+		assertEquals(30, plan(quiet, busy, DensityMode.FLOOR, 30, false, true));
+		assertEquals(30, plan(quiet, busy, DensityMode.FLOOR, 30, false, false));
+		assertEquals(12, plan(quiet, busy, DensityMode.FLOOR, 5, false, true), "a floor beneath what the players give changes nothing");
+		assertEquals(5, plan(quiet, busy, DensityMode.FLOOR, 5, false, false));
+	}
+
+	private static int plan(List<Settlement> quiet, List<Settlement> busy, DensityMode mode, int percent, boolean isBusy, boolean anybodyOnline) {
+		return BotDirector.fieldPlan(quiet, busy, mode, percent, isBusy, anybodyOnline).size();
+	}
+
+	private static List<Settlement> posts(int posts) {
+		List<Settlement> plan = new ArrayList<>();
+		for (int i = 0; i < posts; i++)
+			plan.add(new Settlement(new Vector3f(1000 + i * 50, 1000, 100), 20f, 4, 20, Race.ELYOS));
+		return plan;
+	}
+
 	private static Difference sort(IntPredicate isAwake, List<BotRoster.Resident> residents, Map<Vector3f, Integer> villages,
 		List<Settlement> fieldPlan) {
 		return BotDirector.sort(isAwake, SETTLEMENTS, post -> null, residents, villages, fieldPlan);
@@ -228,6 +265,26 @@ class BotDirectorTest {
 		Map<Vector3f, Integer> posts = new LinkedHashMap<>();
 		posts.put(centre, wanted);
 		return posts;
+	}
+
+	private static BotRoster.Resident arrival(int id) {
+		return new BotRoster.Resident(id, "Bot" + id, 220020000, GROUND_A, Race.ASMODIANS);
+	}
+
+	@Test
+	void aHeldWorldExchangesHuntersOfUnplayedMapsForArrivalsWhereAPlayerIs() {
+		List<BotDirector.Exchange> exchanges = BotDirector.exchanges(List.of(arrival(1), arrival(2), arrival(3), arrival(4)),
+			List.of(List.of(10, 11, 12), List.of(20), List.of()), 25);
+		// in turn from each map, the one with a single hunter left alone once it has given it, the empty one skipped
+		assertEquals(List.of(10, 20, 11, 12), exchanges.stream().map(BotDirector.Exchange::leaving).toList());
+		assertEquals(List.of(1, 2, 3, 4), exchanges.stream().map(exchange -> exchange.arriving().playerId()).toList());
+	}
+
+	@Test
+	void exchangesStopAtTheBudgetOrWhenNobodyIsLeftToGive() {
+		assertEquals(2, BotDirector.exchanges(List.of(arrival(1), arrival(2), arrival(3)), List.of(List.of(10, 11, 12)), 2).size());
+		assertEquals(1, BotDirector.exchanges(List.of(arrival(1), arrival(2)), List.of(List.of(10)), 25).size());
+		assertTrue(BotDirector.exchanges(List.of(arrival(1)), List.of(), 25).isEmpty(), "no map nobody plays on: no exchange");
 	}
 
 	private static List<Settlement> field(Vector3f... grounds) {

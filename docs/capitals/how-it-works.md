@@ -38,6 +38,8 @@ High levels live where their monsters are (the Abyss, Inggison, Gelkmaros), so a
 in it, up to 15 at a time, their level drawn in the five-level band, from 10 to the top, that the town holds fewest of. A visitor spends 20 to 40 minutes on the
 town routine, then falls asleep out of sight and starts at home on its next spawn. Its home never moves: the column `visiting_from` (added on start
 by `SchemaUpdater`) files it under its own map, so no rule rehouses it in town, and it keeps no store. No awake bot is ever taken from its region.
+While the population guard holds the wakes (memory or route planning short, [population-director.md](../population/population-director.md)),
+no visitor comes; the visits under way go on.
 
 ## Speech
 

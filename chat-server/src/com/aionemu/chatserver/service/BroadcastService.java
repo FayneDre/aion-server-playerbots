@@ -33,6 +33,9 @@ public class BroadcastService {
 	}
 
 	public void broadcastMessage(Message message) {
+		// The client may name any channel id, so require the sender to be a member.
+		if (!message.getSender().isInChannel(message.getChannel()))
+			return;
 		for (ChatClient client : clients.values()) {
 			if (client.isInChannel(message.getChannel()))
 				sendMessage(client, message);

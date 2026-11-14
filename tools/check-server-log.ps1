@@ -10,6 +10,7 @@
       errors      ERROR lines and stack traces, grouped by the first line of the message, with how many of each
       silence     how long since the log was last written; a running server that is quiet is stuck, not idle
       population  how many bots entered the world, which is the one number that says the bot system started at all
+      routes      whether the route queue's last report shows searches waiting longer than RouteWaitSeconds for a thread
 
     Exits 1 when there are errors or the log has gone silent, 0 otherwise, so a script can act on it.
 
@@ -30,7 +31,8 @@
 param(
     [string]$ServerRoot = $env:AION_SERVER_HOME,
     [int]$WaitSeconds = 45,
-    [int]$SilentSeconds = 120
+    [int]$SilentSeconds = 120,
+    [int]$RouteWaitSeconds = 30
 )
 
 $ErrorActionPreference = 'Stop'
@@ -72,6 +74,28 @@ if ($silent.TotalSeconds -gt $SilentSeconds) {
     Write-Host ("The log has been silent for {0:N0} minutes. A running server is never that quiet: its console may be paused (it freezes when clicked into), so click it and press Enter." -f $silent.TotalMinutes) -ForegroundColor Red
 } else {
     Write-Host ("Log written {0:N0} s ago." -f $silent.TotalSeconds) -ForegroundColor Green
+}
+
+# The route queue: its last report says how long a search waited for a thread and how many bots were waiting. On 5 November it fell behind at full
+# density, 25 000 searches and ten minutes, and was seen only by reading the log by chance.
+$queue = $lines | Where-Object { $_ -match 'Route search waited (\d+) ms for a route thread, (\d+) (bot\(s\) still waiting|more queued)' } | Select-Object -Last 1
+# A report is written only while searches wait over a second, so the last one can be hours old and describe a queue long since caught up: only a
+# recent one counts.
+$queueAge = $null
+if ($queue -and $queue -match '^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)') {
+    $queueAge = (Get-Date) - [datetime]::ParseExact($Matches[1], 'yyyy-MM-ddTHH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
+}
+if ($queue -and $queueAge -and $queueAge.TotalSeconds -le 120 -and $queue -match 'waited (\d+) ms for a route thread, (\d+) ') {
+    $waitedSeconds = [int]$Matches[1] / 1000
+    $waiting = [int]$Matches[2]
+    if ($waitedSeconds -ge $RouteWaitSeconds) {
+        $problems++
+        Write-Host ("The route queue is behind: a search waited {0:N0} s for a thread, {1} waiting. Bots stand still waiting for paths; lower the density." -f $waitedSeconds, $waiting) -ForegroundColor Red
+    } else {
+        Write-Host ("Route queue: last report {0:N0} s of wait, {1} waiting." -f $waitedSeconds, $waiting) -ForegroundColor Green
+    }
+} elseif ($queue) {
+    Write-Host 'Route queue: no search has waited over a second in the last two minutes.' -ForegroundColor Green
 }
 
 $bots = ($lines | Where-Object { $_ -match 'PlayerBotAI - Bot \S+ spawned' }).Count

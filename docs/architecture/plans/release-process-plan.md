@@ -1,0 +1,182 @@
+# One release process for the server and the launcher, with notes in French and English
+
+Status: in progress: milestones 1 to 3 built and used on 6 November (server pre-release v0.1.0-beta.1 and launcher pre-release v0.3.0-beta.1
+published, `Latest` stays launcher v0.2.0); milestone 4 built and checked on the real server the same evening; milestones 5 (the launcher
+updating itself from GitHub) and 6 (a beta launcher installing the server's bundle, and going back) built the same night and validated in use on
+8 November; on 14 November both repositories went to one branch, `main` (the target below). Next, milestone 7. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
+
+## Why
+
+The server and the launcher are released by two processes that do not know each other:
+
+- **Server**: `develop` holds the daily work; a test patch is a tag `patch-YYYY-MM-DD` made by `tools/tag-patch.ps1`, with a French entry in
+  `docs/patch-notes/current.md`; `main` and the `vX.Y.Z` releases move once a version is validated in game (none yet).
+- **Launcher**: one branch, `main`; releases `v0.1.0` and `v0.2.0` published from it on GitHub, notes in English with a short French summary.
+
+On 6 November a tester on `patch-2026-11-03` ran launcher v0.2.0. The Bots page said the server had none of its settings, and the teleport list was
+empty: both need server commits (`ca5aba72b` the admin channel, `3087a1560` the bot settings) that were in no patch tag. Nothing told them apart
+from a bug. The tester asked the right question: since both testers run the server's `develop`, where is the launcher's?
+
+Three things are missing: the launcher's own test channel, a statement of which server a launcher needs, checked by the launcher itself, and
+notes both audiences can read, since the launcher will show them to players in their own language (launcher roadmap, phase 6).
+
+## The target
+
+**One branch in both repositories, `main`** (changed on 14 November: there were `main` and `develop`, and `main` had not moved for nine days
+while 169 commits went to `develop`; the updater and the launcher tell a beta from a stable by the tag and GitHub's pre-release flag, never by
+the branch). Every version is a tag on `main`; a stable one goes on a commit a beta was validated on. To fix a stable once `main` has moved on,
+a branch is cut from its tag that day, and only then.
+
+**Two kinds of release, named and published the same way in both repositories.**
+
+| | Server | Launcher |
+|---|---|---|
+| Test (testers) | GitHub **pre-release** `vX.Y.Z-beta.N` on `main` | GitHub **pre-release** `vX.Y.Z-beta.N` on `main` |
+| Stable (everyone) | release `vX.Y.Z` on `main` | release `vX.Y.Z` on `main` |
+
+Both use semantic versions: electron-builder and its updater read them, `-beta.N` sorts before the release it leads to, and a date-named tag
+would mean nothing to them. The server's test patches therefore stop being `patch-YYYY-MM-DD` tags: the first one made under this plan is
+`v0.1.0-beta.1`, and the date tags already pushed stay as they are, as history. The date of a patch is in its notes and on its GitHub page.
+
+**Independent numbers.** The server and the launcher each have their own `major.minor.patch`, raised by their own rhythm: a minor for a new
+feature, a patch for fixes, a major for a break of compatibility. A server 0.4 can go with a launcher 0.7. What ties a pair together is not the
+number but the minimum the launcher declares (below).
+
+**One rhythm per pair.** A test patch goes out as a pair whenever the launcher changed too: the server pre-release first, then the launcher
+pre-release, whose notes name the server version it needs. A launcher change that needs no server change is a launcher pre-release alone. A
+server pre-release with no launcher change keeps the last launcher pre-release, whose minimum still holds.
+
+**No channel setting.** The launcher gets no stable/test choice: a beta launcher follows the pre-releases, a stable one the releases
+(below). Testers install one beta launcher by hand, the first that updates itself (milestone 5); after that the launcher brings both its
+own updates and the server's.
+
+**The launcher checks its server.** The admin channel answers a new command, `version`: the server version (`v0.1.0-beta.1`), the revision (as
+`//bot version` shows it) and an integer, the **launcher API level**, a constant of `AdminChannel` raised whenever a command or a setting the
+launcher relies on is added or changed. Each launcher release declares the lowest level it works with, and its notes name the first server
+version that has it. Against an older server, the launcher says so in one line ("this server is older than this launcher: install server
+v0.1.0-beta.1 or later") instead of empty lists, on the pages that depend on it. A server without `version` is level 0, which is the tester's
+case of 6 November. While the game server is stopped, the admin channel answers nothing: the launcher then reads the version and the API level
+from the installed `manifest.json` (below), and the settings files as today; a setting missing from them is already handled.
+
+**The server knows its version.** The revision is already in the jar (`git-commit-id-maven-plugin`, read by `VersionInfo`), the version is
+not. `package-release.ps1` passes it to Maven, which writes it into the jar's manifest next to the revision; a build by `deploy.ps1` has none
+and says `dev`. `version` on the admin channel and `//bot version` show both.
+
+## A beta launcher installs the server's pre-releases
+
+Testers build the server from `develop` today, with Maven and Java on their machine. A server pre-release carries the server already built, and
+a launcher that is itself a pre-release installs it: the tester compiles nothing.
+
+- **The bundle.** Each server pre-release attaches `aion-server-vX.Y.Z-beta.N.zip`: the jars of the three servers and commons, the libraries,
+  `data/handlers`, `data/static_data`, the default `config` files, `sql/update.sql` and `apply-sql.ps1`, and a `manifest.json` (version,
+  revision, API level, the SHA-256 of every file). It is the whole server but the navmesh, 149 MB zipped, so every pre-release is a full
+  bundle and no diff is needed yet. `tools/package-release.ps1` builds it from Maven's assembly (`game-server/assembly.xml`, the three
+  servers' zips, which carry the geo too since it is in git), the one list of what a server is. It refuses a dirty tree (the revision would carry
+  `-dirty`), a commit that is not the version's tag, and a config or data file git does not track (the assembly reads the working tree). The
+  manifest is also attached on its own, naming the bundle's hash, so the launcher reads it without downloading the zip.
+- **The navmesh.** 2.4 GB, rebuilt rarely. The manifest lists every map's file with its hash and the release that carries it; a pre-release
+  attaches only the maps rebuilt since the previous one (each far under GitHub's 2 GB asset limit), and the launcher fetches each map whose
+  hash differs from its own from the release the manifest names, so a tester who skips versions still gets the maps of the ones skipped. The
+  maps the server reads (`.nav`, `.glide`, `.ride`, `.flight`) are attached gzipped, one asset each (`navmesh-<file>.gz`, 1.8 GB for the 140 of
+  November); the images and the `.walked` files a tester's own server writes stay out of it.
+- **A JDK is still needed.** The game server compiles `data/handlers/*.java` at every start (`commons/scripting/impl/javacompiler`), so a JRE
+  is not enough: the launcher checks for a JDK of the version the bundle names before installing, and says where to get one. Maven is no
+  longer needed. Embedding Java belongs to the server release plan.
+- **Beta mode without a setting.** A launcher whose own version carries `-beta` looks at the server's pre-releases too; a stable launcher sees
+  only stable releases. Installing a beta launcher is the choice, which keeps the decision of no channel setting.
+- **The update, in the launcher.** "Server vX.Y.Z-beta.N available", with its notes in the player's language. Then, on a click:
+  1. download the zip and check it against the SHA-256 GitHub gives for every release asset, before opening it (the hashes of the manifest
+     are inside the zip, so they only check what is unpacked);
+  2. stop the three servers, the game server the way `stop-server.ps1` does (never killed: the shutdown hook saves the players);
+  3. check every unpacked file against the manifest, and keep every file it replaces or removes in `update-backups/<previous>-to-<new>/`, with a record of every path written before anything moves;
+  4. copy; in `libs`, `data/handlers` and `data/static_data`, remove every file the manifest does not list, as `sync-install.ps1` does for
+     the libraries (a stale jar stays on the classpath, a removed handler is still compiled);
+  5. run `apply-sql.ps1` from the bundle: one implementation of the SQL rules, and its `mysqldump` is the only database backup taken. A
+     database with no `schema_applied_sql` table has never been through it (the script says `Ledger: absent`): the launcher says so before
+     running it with `-MarkApplied`, rather than playing the whole of `update.sql` again;
+  6. start the servers again.
+
+  `mygs.properties` and the other local files are never touched, as by `deploy.ps1`; local settings belong there (the launcher's settings
+  already go there). A default `config` file or start script that differs from the previous version's (any difference, for a first
+  install), edited by hand, is listed before the update and **left as it is**, the release's own put beside it as `<name>.new-<version>`,
+  as `sync-install.ps1` leaves one for a hand merge. Changed from "replaced, the old one kept as `.before-`" while building it: replacing a
+  hand-edited `login-server/config/network/database.properties` would lose its password and the login server would not start. A
+  difference of line endings alone is no edit.
+- **Going back.** "Return to the previous version" puts the last update's backup back. The SQL applied stays unless the tester also chooses
+  to restore the dump `apply-sql.ps1` took, which is said to lose everything played since the update; a pre-release whose `update.sql` the
+  previous version cannot run with says so in its notes.
+- **The first install** of a tester who built from git is the same update: the launcher finds a server with no `manifest.json`, says which
+  version it is about to install, and goes on the same way.
+- **A development install is never updated.** `deploy.ps1` writes a `manifest.json` too, with `"source": "deploy"`, the revision and the
+  API level. On such an install the launcher offers no server update, so a beta launcher never overwrites a server built from git with
+  a bundle that is often older; it shows "development server, revision X" instead. The compatibility check still applies. Only a server with
+  no manifest at all is taken for a first install, and a development install that wants the bundles again deletes its manifest.
+
+## Notes in French and English
+
+The decision of 5 November ("test patches stay in French") is changed: testers read French, but the notes now also serve the launcher's
+"What's new" and the public repositories.
+
+- **Two files with the same entries**: `docs/patch-notes/current.md` (French, as today) and `docs/patch-notes/current.en.md` (English). Same
+  headings, one per version, in the same order, so a script can pair them. Archives move together (`2026-11.md` and `2026-11.en.md`).
+- **`tag-patch.ps1` refuses** a version whose entry is missing from either file, as it refuses one missing from the French file today, checks
+  that both entries name the same revision, and that the version is higher than the last one. Changed 8 November: the entries name no
+  revision, `tag-patch.ps1` writes the tagged commit's (the bundle's) into the published notes, and the server deployed here is only said.
+- **The launcher repository does the same** with `docs/release-notes/current.md` and `current.en.md`, and a script `tools/release.ps1` that
+  refuses: a dirty tree, a failed `npm test`, a `package.json` version that differs from the tag, an entry missing in either language, or an
+  entry that names no minimum server version.
+- **GitHub release bodies, the same in both repositories**: the full English entry first, then the full French entry in a `<details>` block.
+  For a stable release the rule of the public releases stands (English in full, a short French summary) unless both entries are short. The two
+  entries are also attached as `notes.en.md` and `notes.fr.md`, which is what the launcher reads, so it never has to parse a release body.
+- **Past entries** stay French only. The English file starts with the first version made under this plan.
+
+Writing both is one more step per patch. It is made cheap by writing the English entry from the French one in the same pass, never later: the
+check makes sure they never drift.
+
+## Milestones
+
+1. **The launcher's `develop`.** Branch, push, GitHub default stays `main`. Its `CLAUDE.md` gets the branch lines the server's has. The next
+   launcher build goes out as `v0.3.0-beta.1`, a pre-release. Measured by: the tester installs a pre-release while `Latest` still points at v0.2.0.
+2. **Server pre-releases, notes in both languages.** `tag-patch.ps1` takes a version (`-Version 0.1.0-beta.1`), tags it, and builds the
+   pre-release (body and the two attached notes) for the user to publish with `gh release create --prerelease`; `current.en.md`, the check,
+   `CLAUDE.md`, `docs/README.md` and the patch-notes heading format updated from dates to versions; `check-docs.ps1` finds the last test patch
+   by both tag forms (it looks for `patch-*` only today, so it would keep comparing with 3 November). Measured by: `tag-patch.ps1 -Check`
+   refuses a French entry with no English one and a version not above the last, and accepts the pair; `check-docs.ps1` names the new tag.
+3. **The launcher's release script and notes.** `tools/release.ps1`, `docs/release-notes/`, the release body built from the two entries the
+   same way as the server's. Measured by: the script refuses each case above on a throwaway tag, then publishes `v0.3.0-beta.1` (the user's
+   call, as every push).
+4. **The compatibility check.** The version written into the jar, `version` on the admin channel with `API_LEVEL`, the launcher's minimum,
+   read from the channel or, server stopped, from the manifest (`deploy.ps1` writes it from this milestone on, not 6), and its message on the
+   Account, Bots and Settings pages. Measured by: an
+   end-to-end test with a fake server at level 0 shows the message; a real server at the current level, running or stopped, shows nothing.
+5. **The launcher updates itself.** `electron-updater` with the GitHub provider: `build.publish` in `package.json` (this repository), so
+   the installer carries its `app-update.yml`, and `npm run dist` with `--publish never`, so a build never publishes by itself. `release.ps1`
+   attaches the build's `latest.yml` and the installer's `.blockmap`, and refuses a build without them. A launcher whose own version carries
+   `-beta` sets `allowPrerelease`, a stable one does not: the same rule as for the server's bundles, no setting. At start, then every few
+   hours, it checks; a newer version downloads in the background, is shown with its `notes.<language>.md`, and installs on the person's
+   click, never while the launcher is starting or stopping a server. Only the installer updates itself: the portable build says a newer
+   version exists and links to it. Unsigned, Windows may warn at an update as at an install. Independent of 4 and 6, and best done before 6,
+   so the testers install by hand once more and then receive the rest. Measured by: an end-to-end test against a local update server (a
+   beta finds the next beta, a stable one ignores it); then a tester's beta launcher installed by hand goes to the next beta on its own.
+6. **The server bundle, installed by a beta launcher.** `package-release.ps1` and its manifest (navmesh maps with the release carrying each),
+   the bundle attached to the server pre-release, the manifest `deploy.ps1` writes, the launcher's JDK check, update (the six steps above)
+   and return to the previous version. Needs 2 and 4. Measured by: a tester's install built from git, its manifest deleted once, goes to the
+   next pre-release from the launcher alone, then back, and the game server starts and the bots log in after both; a lib and a handler
+   removed between two test bundles are gone after the update; a hand-edited default file is kept beside the new one; the user's install,
+   deployed after this milestone, is offered nothing.
+7. **The first stable pair.** Once a pair is validated in game, its two commits tagged `vX.Y.Z` each, with its own version, the launcher's notes naming the server release. This is also where the server release plan starts, a separate plan: the
+   install on an empty machine (the geo, the whole navmesh, embedded Java and the portable MySQL, [empty-machine-install-plan.md](empty-machine-install-plan.md)), diff updates, a signed launcher. This plan stops at
+   testers who already have a server built from git.
+
+Milestones 1 and 2 are independent and small; 4 is the one that would have prevented the report of 6 November; 5 and 6 are the ones that
+let a tester take every update from the launcher, compiling nothing.
+
+## The steps of a test patch, once built
+
+1. Server: commits on `main`, `deploy.ps1`, checked in game.
+2. When the user asks for a patch: the next `-beta.N` (or a new minor), one entry in each language for everything since the last version, then
+   `tag-patch.ps1`, which builds the bundle with `package-release.ps1`; the push and the pre-release are the user's.
+3. Launcher, if it changed: commits on `main`, `npm test`, version raised to its own next `-beta.N`, one entry in each language naming the
+   minimum server version, then `tools/release.ps1`; publishing is the user's.
+4. A tester's beta launcher offers its own update and the server pre-release itself; one that is too new for their server says which server
+   version to take.

@@ -18,6 +18,8 @@
 	<properties>
 		<maven.compiler.release>25</maven.compiler.release>
 		<maven.test.skip>true</maven.test.skip>
+		<!-- the version a build is released as (-Daion.release=v0.1.0-beta.1); dev for any other build -->
+		<aion.release>dev</aion.release>
 
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -107,6 +109,7 @@
 							<manifestEntries>
 								<POMVersion>${project.version}</POMVersion>
 								<Revision>${git.commit.id.abbrev}${git.dirty}</Revision>
+								<Implementation-Version>${aion.release}</Implementation-Version>
 								<Branch>${git.branch}</Branch>
 								<Date>${maven.build.timestamp}</Date>
 							</manifestEntries>

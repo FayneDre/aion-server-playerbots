@@ -75,6 +75,8 @@ com.aionemu.gameserver.playerbot/
                 selling (BotVendorManager), stores (BotStores, BotStoreStock, BotStoreGoods, BotStorePricing, BotManastones), BotTrades
   social/       Groups and instances (BotGroupManager, BotInstances, BotRole, BotMarks, BotSquads, RecruitPlan, LeaderGlides, BotTransports),
                 requests (BotRequests), speech and chat (BotSpeech, BotChat, BotChatLines)
+  addon/        The pages the interface addons show (AddonWebServer, port 7790, their level at /addon/version)
+                and the combat meter's count and page (CombatMeter, CombatMeterPage); see addon-pages.md
 ```
 
 The admin command lives **outside** core sources, at `game-server/data/handlers/admincommands/Bot.java` (runtime-compiled scripts): zero core diff.
@@ -100,6 +102,7 @@ selection, beside `BotDirector`.
 | `configs/Config.java:36-41` | Add `PlayerBotConfig.class` to the `CONFIGS` array | Low but **recurring**: upstream appends to the same list. |
 
 | `ShutdownRequestWatcher.java` (new) | A `shutdown.request` file beside the server stops it through the normal hook | None — a new file. `stop-server.ps1` uses it: a console CTRL+C lost the save one time in two |
+| `AdminChannel.java` (new) | A local `admin/` folder of request files the launcher writes and the server answers: `version` (release, revision, `API_LEVEL`), `reload-config`, `destinations`, `teleport <character id> <map> <x> <y> <z>`, `population` (density, the last review's totals, the guard; level 2). `API_LEVEL` rises with what the launcher relies on; `deploy.ps1` copies it into the install's `manifest.json` for a stopped server; `ServerRelease` reads the release the root pom's `aion.release` wrote into the jar (`dev` otherwise) | `GameServer` starts it after `ShutdownRequestWatcher`; `TeleLocationData.getAll()`. No port and no key: writing there already allows replacing the jar |
 | `dao/SchemaUpdater.java` (new) | Adds the bot module's tables and columns on start | None — a new file |
 | `configs/main/PlayerBotConfig.java` (new) | The `gameserver.playerbot.*` properties | None — a new file |
 | `model/gameobjects/player/ResponseRequester.java`, `RequestResponseHandler.java` | `requesterOf(messageId)`, `getRequester()` | Additive — a bot reads who asked instead of a question window |
@@ -110,6 +113,8 @@ selection, beside `BotDirector`.
 | `services/StigmaService.java` | The two socket counts made public | Minimal |
 | `dataholders/PetSkillData.java` | No longer throws for a pet that is not a toy pet | Minimal, a null check |
 | `services/DebugService.java` | Bots left out of the half-hourly "player without connection" warning | Minimal |
+| `model/stats/container/CreatureLifeStats.java` | One line in `reduceHp` and one in `increaseHp`: `CombatMeter.onDamage` / `onHeal` | Low — two calls after the health changed, nothing read back |
+| `GameServer.java` | One line: `AddonWebServer.start()` after `AdminChannel.start()` | Low — beside the other local services |
 | `network/chatserver/ChatServer.java`, `SM_CS_BOT_MESSAGE.java` (new) | A bot's line sent to the chat server | Additive; the chat server has its counterpart `CM_BOT_MESSAGE` ([chat-channels-plan.md](../social/history/chat-channels-plan.md)) |
 Nothing else in the game server (checked against the merge base on 27 October 2026). `MultiClientingService` skips connectionless players, as in the row above. The chat server has its own small patch for bot lines.
 

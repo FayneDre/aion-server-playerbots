@@ -2,6 +2,7 @@ package com.aionemu.gameserver.playerbot.world;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,10 +14,12 @@ import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.function.UnaryOperator;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.dataholders.DataManager;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.model.Race;
@@ -94,6 +97,8 @@ public class BotDirector {
 	private static final int DEAD_BAND = 1;
 	/** How many hunters of the side over its share are swapped for sleepers of the side under it in one review, so a region rebalances without churning. */
 	private static final int SWAPS_PER_REVIEW = 2;
+	/** How long a bot that would not leave for an exchange is passed over. Four reviews, long enough for most fights to end; a guess, not a measurement. */
+	private static final long REFUSED_EXCHANGE_MILLIS = 120_000;
 
 	private static final BotDirector INSTANCE = new BotDirector();
 
@@ -101,6 +106,8 @@ public class BotDirector {
 	private final Map<Integer, Long> lastSeenPlayer = new ConcurrentHashMap<>();
 	/** What the last review concluded, for {@code //bot pool} to report. Written once a review, read rarely. */
 	private volatile List<String> lastReview = List.of();
+	/** The last review's totals across the maps, for the launcher through the admin channel; null until the first review. */
+	private volatile Totals lastTotals;
 	/**
 	 * What the changes asked for by the previous review actually came to.
 	 * <p>
@@ -111,6 +118,12 @@ public class BotDirector {
 	 */
 	private final Map<PlayerBotService.Change, Integer> arrivals = new EnumMap<>(PlayerBotService.Change.class);
 	private final Map<PlayerBotService.Change, Integer> departures = new EnumMap<>(PlayerBotService.Change.class);
+	/**
+	 * The bots that would not leave for an exchange (in a fight, on a road), and when. Passed over for {@link #REFUSED_EXCHANGE_MILLIS}: the donors are
+	 * taken in the same order every review, and on 8 November the same three, fighting, were asked and refused review after review while Morheim
+	 * waited three short. Written and read on the lifecycle lane only, like the counters above.
+	 */
+	private final Map<Integer, Long> refusedExchange = new HashMap<>();
 
 	private BotDirector() {
 	}
@@ -121,6 +134,8 @@ public class BotDirector {
 
 	/** Whether the reviews are running, which is false for the whole of startup. See {@link #reviewNow()}. */
 	private volatile boolean started;
+	/** Whether a review, or a review of the capitals' visitors, is waiting on the lane: see {@link #queueOnce}. */
+	private final AtomicBoolean reviewQueued = new AtomicBoolean(), visitorsQueued = new AtomicBoolean();
 
 	/**
 	 * The timer is on the tick lane because that is the only lane that can keep one, but all it does is hand the review over: reading the pool is a
@@ -130,9 +145,9 @@ public class BotDirector {
 	public void start() {
 		started = true;
 		BotScheduler scheduler = BotScheduler.getInstance();
-		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(this::review), REVIEW_INTERVAL_MILLIS, REVIEW_INTERVAL_MILLIS);
+		scheduler.scheduleAtFixedRate(() -> queueOnce(reviewQueued, this::review), REVIEW_INTERVAL_MILLIS, REVIEW_INTERVAL_MILLIS);
 		// the capitals' visitors on a clock of their own, on the same lane: a player often only passes through a capital
-		scheduler.scheduleAtFixedRate(() -> scheduler.enterOrLeaveWorld(BotVisitors::review), BotVisitors.REVIEW_MILLIS, BotVisitors.REVIEW_MILLIS);
+		scheduler.scheduleAtFixedRate(() -> queueOnce(visitorsQueued, BotVisitors::review), BotVisitors.REVIEW_MILLIS, BotVisitors.REVIEW_MILLIS);
 		// what bots say in the capitals: a few packets every few minutes, so on the tick lane itself
 		scheduler.scheduleAtFixedRate(BotSpeech::review, BotSpeech.REVIEW_MILLIS, BotSpeech.REVIEW_MILLIS);
 		// and what they say in the chat channels, as cheap
@@ -152,7 +167,20 @@ public class BotDirector {
 		// which the world refuses with a DuplicateAionObjectException apiece. The order in onStartUp is deliberate and this has to respect it.
 		if (!started)
 			return;
-		BotScheduler.getInstance().enterOrLeaveWorld(this::review);
+		queueOnce(reviewQueued, this::review);
+	}
+
+	/**
+	 * Hands a review to the lane unless one is already waiting there. The clock keeps turning while the lane is busy, and on a first start it is
+	 * busy for minutes finding every map's places: each turn queued one more review, and a dozen then ran back to back in thirty milliseconds on
+	 * the same picture, each asking for the same arrivals. One waiting review reads the world when its turn comes, which is all of them would.
+	 */
+	private static void queueOnce(AtomicBoolean queued, Runnable review) {
+		if (queued.compareAndSet(false, true))
+			BotScheduler.getInstance().enterOrLeaveWorld(() -> {
+				queued.set(false);
+				review.run();
+			});
 	}
 
 	/** Works out what each region should hold, and acts on the difference. */
@@ -180,9 +208,19 @@ public class BotDirector {
 
 		PlayerBotService bots = PlayerBotService.getInstance();
 		int budget = anybodyOnline ? CHANGES_PER_REVIEW : Integer.MAX_VALUE;
+		// A server short of memory or of route planning wakes nobody until it is well clear; departures go on, so a world over its target still sheds.
+		boolean held = BotLoadGuard.getInstance().review();
+		boolean exchanging = held && anybodyOnline && !BotLoadGuard.getInstance().causes().contains(BotLoadGuard.Cause.ROUTES);
 		int woken = 0, slept = 0;
+		int awakeInAll = 0, wantedInAll = 0, asleepInAll = 0, shortAndEmpty = 0;
 		List<String> report = new ArrayList<>();
-		for (int worldId : maps) {
+		// While the guard holds for the heap: what the played maps are short of, and the bots the others could give them. See exchanges(). Not for route
+		// planning: an exchange is an arrival, and an arrival asks for routes, which is what that guard is short of.
+		List<BotRoster.Resident> shortWherePlayed = new ArrayList<>();
+		List<List<Integer>> spareWhereUnplayed = new ArrayList<>();
+		// the played maps first, so a budget spent before the end of the list is spent where somebody is
+		List<Integer> inOrder = maps.stream().sorted(Comparator.comparing((Integer id) -> !isBusy(id, playersByMap.getOrDefault(id, List.of()), now))).toList();
+		for (int worldId : inOrder) {
 			List<Player> watchers = playersByMap.getOrDefault(worldId, List.of());
 			boolean busy = isBusy(worldId, watchers, now);
 			List<BotRoster.Resident> residents = residentsByMap.getOrDefault(worldId, List.of());
@@ -190,12 +228,18 @@ public class BotDirector {
 			// rescued out of it over and over: the moves land in the roster, and this review still sorts them where they were, the next one where they are.
 			evictFromNowhere(worldId, residents);
 			Map<Vector3f, Integer> villages = countByPlace(BotPresence.civic(worldId));
-			List<Settlement> fieldPlan = BotPresence.share(BotPresence.field(worldId, busy), attention(busy, anybodyOnline));
+			List<Settlement> fieldPlan = fieldPlan(worldId, busy, anybodyOnline);
 			int hunters = fieldPlan.size();
 
 			Difference difference = sort(id -> bots.spawnedBot(id) != null, home -> BotPlaces.settlementAt(worldId, home),
 				post -> BotPlaces.raceOfPlace(worldId, post), residents, villages, fieldPlan);
 			int wanted = villages.values().stream().mapToInt(count -> count).sum() + hunters;
+			int asleep = residents.size() - difference.awake();
+			awakeInAll += difference.awake();
+			wantedInAll += wanted;
+			asleepInAll += asleep;
+			if (difference.awake() < wanted && asleep == 0)
+				shortAndEmpty++;
 			report.add(String.format("map %d: %d awake of %d, wants %d%s — villages %d/%d awake, %d asleep; field %d/%d awake, %d asleep", worldId,
 				difference.awake(), residents.size(), villages.values().stream().mapToInt(count -> count).sum() + hunters,
 				busy ? " (" + watchers.size() + " player(s))" : "", difference.villagersAwake(),
@@ -206,6 +250,12 @@ public class BotDirector {
 			if (!difference.rehoused().isEmpty())
 				log.info("map {}: moving {} sleeper(s) house", worldId, difference.rehoused().size());
 			difference.rehoused().forEach(mover -> BotRoster.setHome(mover.name(), mover.home()));
+			if (exchanging) {
+				if (busy && difference.awake() < wanted)
+					shortWherePlayed.addAll(difference.toWake());
+				else if (!busy)
+					spareWhereUnplayed.add(difference.kept().stream().filter(id -> !refusedLately(id, now)).toList());
+			}
 			// The band holds departures back and lets arrivals through, because only one of the two directions can churn. A region that wakes its way
 			// up to its target then stops: there is nothing left to ask for. A region that sleeps its way down to it sits on the boundary, and the next
 			// review finds it one over, or one under, and moves somebody again. Applied to both, the band left a map one inhabitant short for ever —
@@ -217,12 +267,15 @@ public class BotDirector {
 			// could still pull against each other -- a village asking for somebody while the countryside around it is over-supplied -- and the region
 			// would be bringing people in while sending people away, which is the shape of the fault this is here to stop recurring. It sheds first;
 			// what it is short of, it is short of until it has.
-			if (difference.awake() <= wanted) {
+			if (!held && difference.awake() <= wanted) {
 				for (BotRoster.Resident resident : difference.toWake()) {
 					if (woken >= budget)
 						break;
 					woken++;
-					BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(bots.wake(resident), 1, Integer::sum));
+					// the heap read again when its turn comes, not only at the review: with nobody online a review may ask for a thousand wakes,
+					// all of them queued before the first is done, and measured on 8 November they ran past the review's reading in one go
+					BotScheduler.getInstance().enterOrLeaveWorld(() -> arrivals.merge(BotLoadGuard.getInstance().heapFullNow() ? PlayerBotService.Change.HELD
+						: bots.wake(resident), 1, Integer::sum));
 				}
 			}
 			for (int playerId : difference.toSleep()) {
@@ -235,6 +288,26 @@ public class BotDirector {
 				BotScheduler.getInstance().enterOrLeaveWorld(() -> departures.merge(bots.sleep(bot), 1, Integer::sum));
 			}
 		}
+		// The count stays as it was, so the heap's check at each wake is not made: the arrival follows its departure on the lane, and only if it left.
+		int exchanged = 0;
+		for (Exchange exchange : exchanges(shortWherePlayed, spareWhereUnplayed, Math.min(budget - woken, budget - slept))) {
+			Player leaving = bots.spawnedBot(exchange.leaving());
+			if (leaving == null)
+				continue;
+			exchanged++;
+			BotScheduler.getInstance().enterOrLeaveWorld(() -> {
+				PlayerBotService.Change left = bots.sleep(leaving);
+				departures.merge(left, 1, Integer::sum);
+				if (left == PlayerBotService.Change.DONE)
+					arrivals.merge(bots.wake(exchange.arriving()), 1, Integer::sum);
+				else
+					refusedExchange.put(exchange.leaving(), System.currentTimeMillis());
+			});
+		}
+		woken += exchanged;
+		slept += exchanged;
+		if (exchanged > 0)
+			log.info("Population guard holds: {} bot(s) of maps nobody plays on exchanged for arrivals where a player is", exchanged);
 		// What the previous round came to, before this one's tasks start reporting into the same counters. Said as outcomes rather than as intentions:
 		// a refusal is ordinary, and reading the asked-for figure as the done figure is how a population holding still came to look like one churning.
 		if (!arrivals.isEmpty() || !departures.isEmpty())
@@ -243,6 +316,13 @@ public class BotDirector {
 		departures.clear();
 
 		lastReview = List.copyOf(report);
+		lastTotals = new Totals(awakeInAll, wantedInAll, asleepInAll, shortAndEmpty);
+		// One line at every review, whether or not it changes anything: a review with nothing to do used to write nothing, so a world settled and a
+		// director that had stopped read the same, and on 5 November a watch waited forty minutes for a line that was never coming. It also says what
+		// the per map lines only imply, a pool run dry: maps short of their target with nobody left asleep to wake.
+		log.info("Population: {} awake, {} wanted, {} asleep, {} map(s) short with nobody asleep; density {} {}%; asks for {} arrival(s) and {} departure(s); {}; {}",
+			awakeInAll, wantedInAll, asleepInAll, shortAndEmpty, PlayerBotConfig.DENSITY_MODE, PlayerBotConfig.DENSITY_PERCENT, woken, slept,
+			BotScheduler.getInstance().routeQueue(), BotLoadGuard.getInstance().state());
 		if (woken > 0 || slept > 0) {
 			log.info("Population review asks for {} arrival(s) and {} departure(s) across {} map(s)", woken, slept, maps.size());
 			// The per map lines, which until now only an operator running //bot pool ever saw. A total cannot say which region is asking for what,
@@ -423,7 +503,62 @@ public class BotDirector {
 		}
 		int villagersAwake = awakeInVillage.values().stream().mapToInt(List::size).sum();
 		int villagersAsleep = asleepInVillage.values().stream().mapToInt(List::size).sum();
-		return new Difference(awake, toWake, toSleep, rehoused, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size());
+		// who stays awake, hunters first: what an exchange takes from a map nobody plays on, in that order
+		List<Integer> kept = new ArrayList<>(wakers);
+		awakeInVillage.forEach((home, here) -> kept.addAll(here.subList(0, Math.min(here.size(), villages.getOrDefault(home, 0)))));
+		return new Difference(awake, toWake, toSleep, rehoused, villagersAwake, villagersAsleep, awakeInField.size(), asleepInField.size(),
+			List.copyOf(kept));
+	}
+
+	/** @return true when the bot refused to leave for an exchange within the last {@link #REFUSED_EXCHANGE_MILLIS}; older refusals are forgotten. */
+	private boolean refusedLately(int playerId, long now) {
+		Long when = refusedExchange.get(playerId);
+		if (when == null)
+			return false;
+		if (now - when < REFUSED_EXCHANGE_MILLIS)
+			return true;
+		refusedExchange.remove(playerId);
+		return false;
+	}
+
+	/** A bot of a map nobody plays on that leaves so that one arrives where a player is. */
+	record Exchange(int leaving, BotRoster.Resident arriving) {
+	}
+
+	/**
+	 * The exchanges a review makes while the guard holds the wakes: each arrival a played map is short of, paired with a bot awake on a map nobody
+	 * plays on, taken in turn from each such map so that no one of them is emptied first.
+	 * <p>
+	 * Without them a machine short of memory filled its world before anybody came and kept it so: on 8 November at 1536 MB in {@code AUTO}, 690 bots
+	 * held the heap, and Morheim stayed at 18 of the 190 it wanted with a player on it, while every other map kept bots nobody saw. An exchange
+	 * leaves the count as it was, so the memory too. Hunters go first, the villagers after them: hunters alone ran out after 32 exchanges, a full
+	 * world being mostly villages (in {@code AUTO} a map nobody plays on keeps a twentieth of its countryside and all of its villages), and a village
+	 * nobody walks into is no more seen than a field.
+	 *
+	 * @param arrivals What the played maps are short of, in the order the review met them.
+	 * @param spareByMap The bots each map nobody plays on keeps awake, hunters first.
+	 * @param budget The most exchanges this review.
+	 */
+	static List<Exchange> exchanges(List<BotRoster.Resident> arrivals, List<List<Integer>> spareByMap, int budget) {
+		List<Exchange> exchanges = new ArrayList<>();
+		int[] next = new int[spareByMap.size()];
+		int map = 0;
+		for (BotRoster.Resident arrival : arrivals) {
+			if (exchanges.size() >= budget)
+				break;
+			Integer leaving = null;
+			// round the maps, skipping the ones with nobody left to give
+			for (int tried = 0; leaving == null && tried < spareByMap.size(); tried++) {
+				List<Integer> spare = spareByMap.get(map);
+				if (next[map] < spare.size())
+					leaving = spare.get(next[map]++);
+				map = (map + 1) % spareByMap.size();
+			}
+			if (leaving == null)
+				break;
+			exchanges.add(new Exchange(leaving, arrival));
+		}
+		return exchanges;
 	}
 
 	/** How far a sleeper may live from a ground nobody works and still be woken for it: past this it would work somewhere else. */
@@ -529,12 +664,33 @@ public class BotDirector {
 	 * tested without a world: everything here is a count, an id or a place.
 	 */
 	record Difference(int awake, List<BotRoster.Resident> toWake, List<Integer> toSleep, List<BotRoster.Resident> rehoused, int villagersAwake,
-		int villagersAsleep, int huntersAwake, int huntersAsleep) {
+		int villagersAsleep, int huntersAwake, int huntersAsleep, List<Integer> kept) {
 	}
 
 	/** @return How much of a region's countryside is awake at this moment. Settlements are not scaled at all — see {@link BotPresence#civic}. */
 	private static float attention(boolean busy, boolean anybodyOnline) {
 		return busy ? ATTENTION_BUSY : anybodyOnline ? ATTENTION_QUIET : ATTENTION_UNWATCHED;
+	}
+
+	/** @return The countryside a region should have awake now, under the density options as they stand. */
+	private static List<Settlement> fieldPlan(int worldId, boolean busy, boolean anybodyOnline) {
+		return fieldPlan(BotPresence.field(worldId, false), BotPresence.field(worldId, true), PlayerBotConfig.DENSITY_MODE,
+			PlayerBotConfig.DENSITY_PERCENT, busy, anybodyOnline);
+	}
+
+	/**
+	 * @return The countryside to keep awake: the share the players' attention gives ({@link DensityMode#AUTO}), the percent of the busy plan whoever
+	 *         is online ({@link DensityMode#FIXED}), or whichever of the two is larger ({@link DensityMode#FLOOR}).
+	 */
+	static List<Settlement> fieldPlan(List<Settlement> quietField, List<Settlement> busyField, DensityMode mode, int percent, boolean busy,
+		boolean anybodyOnline) {
+		List<Settlement> followed = BotPresence.share(busy ? busyField : quietField, attention(busy, anybodyOnline));
+		if (mode == null || mode == DensityMode.AUTO)
+			return followed;
+		List<Settlement> held = BotPresence.share(busyField, Math.clamp(percent, 0, 100) / 100f);
+		if (mode == DensityMode.FIXED)
+			return held;
+		return held.size() > followed.size() ? held : followed;
 	}
 
 	/**
@@ -623,6 +779,7 @@ public class BotDirector {
 					case SEEN -> " within sight of a player";
 					case BUSY -> " in a fight or on a road";
 					case UNAVAILABLE -> " no longer available";
+					case HELD -> " held by the population guard";
 					default -> "";
 				});
 		}
@@ -643,14 +800,24 @@ public class BotDirector {
 		Map<Integer, List<Player>> playersByMap = realPlayersByMap();
 		int villagers = BotPresence.civic(worldId).size();
 		boolean busy = isBusy(worldId, playersByMap.getOrDefault(worldId, List.of()), System.currentTimeMillis());
-		int now = villagers + BotPresence.share(BotPresence.field(worldId, busy), attention(busy, !playersByMap.isEmpty())).size();
-		int quiet = villagers + BotPresence.share(BotPresence.field(worldId, false), ATTENTION_UNWATCHED).size();
-		int crowded = villagers + BotPresence.share(BotPresence.field(worldId, true), ATTENTION_BUSY).size();
+		int now = villagers + fieldPlan(worldId, busy, !playersByMap.isEmpty()).size();
+		// Under a fixed density the three are one figure, under a floor the quietest is the floor.
+		int quiet = villagers + fieldPlan(worldId, false, false).size();
+		int crowded = villagers + fieldPlan(worldId, true, true).size();
 		return new Band(now, quiet, crowded);
 	}
 
 	/** What a region should hold at this moment, at its quietest, and at its busiest. */
 	public record Band(int now, int quiet, int crowded) {
+	}
+
+	/** A review's figures across every map: bots in the world, bots it should hold, residents left asleep, and maps short with nobody to wake. */
+	public record Totals(int awake, int wanted, int asleep, int shortAndEmpty) {
+	}
+
+	/** @return The last review's totals, or null before the first review, which comes once the startup is done. */
+	public Totals lastTotals() {
+		return lastTotals;
 	}
 
 	/** @return What the last review concluded, a line per map, for an operator asking where the population stands. */

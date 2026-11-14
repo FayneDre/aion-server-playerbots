@@ -31,7 +31,8 @@ import java.util.zip.Inflater;
  * therefore compressed separately and read as they are first touched, which is why opening a map is instant and costs almost nothing.
  * <p>
  * Read lazily and <em>given back</em>, which was the half that was missing: nothing released a tile and nothing closed a map, so what a map held was
- * not what its bots were using but everywhere they had ever been. See {@link #TILE_BUDGET_BYTES}.
+ * not what its bots were using but everywhere they had ever been. The budget is one for every open map ({@link TileBudget}); each map's clock
+ * gives back its own tiles when that budget asks it to.
  */
 public class Navmesh {
 
@@ -61,20 +62,6 @@ public class Navmesh {
 	 * occur.
 	 */
 	public static final int MAX_SURFACES_PER_COLUMN = 255;
-	/**
-	 * Bytes of tiles one map keeps before it starts giving the oldest ones back.
-	 * <p>
-	 * Reading tiles lazily was only half the measurement. Nothing gave one back, and nothing closed a map, so a map's cost was not what its bots were
-	 * using but everything they had ever walked over: measured at +46 MB in twelve minutes with a hundred bots roaming, on its way to the 117 MB a
-	 * whole map costs, times every map anybody visits. Lazily read and never released is not a budget, it is a slower way of loading everything.
-	 * <p>
-	 * The figure is set against what the readers actually need at once, not against what is spare. A tile is about 20 KB, so this holds some 1600 of
-	 * them; one path search refines over at most a few dozen, and the twelve threads that plan them share one map, so the live working set is a few
-	 * hundred KB and the margin against thrashing is two orders of magnitude. Per map rather than global, which is the one compromise here: eighteen
-	 * open maps would allow 576 MB, where the two or three that actually hold bots come to 64-96 MB.
-	 */
-	private static final long TILE_BUDGET_BYTES = 32L << 20;
-
 	private final int mapId, width, height, tilesX, coarseFactor, coarseWidth;
 	/** Read once: asked for every neighbour of every cell a search expands, it read a system property twice and took a tangent each time. */
 	private final float slopeTangent;
@@ -114,6 +101,8 @@ public class Navmesh {
 	private int clockHand;
 	/** Held only while giving tiles back, so the readers that fill the cache never contend with each other. */
 	private final Object evictionLock = new Object();
+	/** Set by {@link #close}, under {@link #evictionLock}: a closed map's tiles have left the budget's count, and it gives none back again. */
+	private boolean closed;
 	private final FileChannel channel;
 	/** How steep a body walks up on this map, as the rise over the run; see {@link MapSlopes}. */
 	float slopeTangent() {
@@ -160,6 +149,7 @@ public class Navmesh {
 		this.recentlyUsed = new AtomicIntegerArray(tileOffsets.length);
 		this.channel = channel;
 		this.dataStart = dataStart;
+		TileBudget.INSTANCE.opened(this);
 	}
 
 	public static Path fileOf(int mapId) {
@@ -255,6 +245,10 @@ public class Navmesh {
 	 * can be deleted again, which Windows refuses while the file is open.
 	 */
 	public void close() throws IOException {
+		synchronized (evictionLock) {
+			closed = true;
+			TileBudget.INSTANCE.closed(this, tileBytes.get());
+		}
 		channel.close();
 	}
 
@@ -390,10 +384,13 @@ public class Navmesh {
 		int index = cellY / TILE_SIZE * tilesX + cellX / TILE_SIZE;
 		Tile tile = tiles.get(index);
 		if (tile == null) {
+			long started = System.nanoTime();
 			tile = readTile(index);
+			long took = System.nanoTime() - started;
 			if (tiles.compareAndSet(index, null, tile)) { // two threads may read the same tile at once, which only wastes one read
-				tileBytes.addAndGet(sizeOf(tile));
-				evictDownToBudget();
+				long size = sizeOf(tile);
+				tileBytes.addAndGet(size);
+				TileBudget.INSTANCE.read(size, took);
 			}
 		}
 		// on hits as well as misses: a tile nobody marks is a tile the hand gives back, however busy the camp standing on it
@@ -402,19 +399,24 @@ public class Navmesh {
 	}
 
 	/**
-	 * Gives tiles back until the map is inside its budget, oldest first.
+	 * Gives tiles back, oldest first, until {@code wanted} bytes are freed or the hand has gone once round the map: asked by {@link TileBudget} when the
+	 * tiles of every map together pass its budget, each map in turn.
+	 * <p>
+	 * Once round, not twice, because the budget turns every map's clock in turn: a map whose first turn only cleared marks gives back on its next one,
+	 * after the other maps have had theirs, which is what lets a busy map keep the tiles its bots stand on while an idle one empties.
 	 * <p>
 	 * Safe to do under the readers' feet because a tile is immutable and {@link #tileOf} hands out the reference it loaded: a thread already holding
 	 * one keeps working from it, and the worst an eviction costs is that the next lookup reads it from the file again.
+	 *
+	 * @return The bytes given back.
 	 */
-	private void evictDownToBudget() {
-		if (tileBytes.get() <= TILE_BUDGET_BYTES)
-			return;
+	long giveBack(long wanted) {
+		long freed = 0;
 		synchronized (evictionLock) {
-			// bounded at two passes of the hand, so a burst of readers cannot turn eviction into an unbounded scan. Two rather than one because the
-			// first pass may spend itself entirely on clearing marks, which is the clock giving every tile its second chance.
-			int steps = tiles.length() * 2;
-			while (tileBytes.get() > TILE_BUDGET_BYTES && steps-- > 0) {
+			if (closed)
+				return 0;
+			int steps = tiles.length();
+			while (freed < wanted && steps-- > 0) {
 				int index = clockHand;
 				clockHand = clockHand + 1 == tiles.length() ? 0 : clockHand + 1;
 				Tile tile = tiles.get(index);
@@ -424,10 +426,14 @@ public class Navmesh {
 					recentlyUsed.lazySet(index, 0);
 					continue;
 				}
-				if (tiles.compareAndSet(index, tile, null))
-					tileBytes.addAndGet(-sizeOf(tile));
+				if (tiles.compareAndSet(index, tile, null)) {
+					long size = sizeOf(tile);
+					tileBytes.addAndGet(-size);
+					freed += size;
+				}
 			}
 		}
+		return freed;
 	}
 
 	private Tile readTile(int index) {

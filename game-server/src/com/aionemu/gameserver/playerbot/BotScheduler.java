@@ -11,6 +11,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,12 +48,22 @@ public class BotScheduler {
 	private static final float PROCESSOR_SHARE = 0.5f;
 	/** A route search that waited longer than this for a thread is logged. */
 	private static final long SLOW_QUEUE_MILLIS = 1000;
+	/** At most one line about the route queue in this many milliseconds. */
+	private static final long QUEUE_REPORT_MILLIS = 10_000;
 
 	private static final BotScheduler INSTANCE = new BotScheduler();
 
 	private final ScheduledExecutorService pool;
 	private final ThreadPoolExecutor routePool;
 	private final ExecutorService lifecyclePool;
+	/** The one search each bot has waiting for a route thread; see {@link #planRoute}. */
+	private final LatestPerKey waitingRoutes = new LatestPerKey();
+	/** When the route queue was last reported, read and written by route threads; a race only costs a line more or less. */
+	private volatile long lastQueueReport;
+	/** The longest a search waited for a route thread since the last report. */
+	private final AtomicLong longestWait = new AtomicLong();
+	/** The same since the population guard last asked, kept apart because the report resets its own when it writes. See {@link #takeLongestRouteWait}. */
+	private final AtomicLong longestWaitForGuard = new AtomicLong();
 
 	private BotScheduler() {
 		int threads = Math.max(2, (int) (Runtime.getRuntime().availableProcessors() * PROCESSOR_SHARE));
@@ -61,7 +72,9 @@ public class BotScheduler {
 		// journey abandoned — and without this the queue grows with the number of cancellations instead of the number of pending ticks.
 		executor.setRemoveOnCancelPolicy(true);
 		pool = executor;
-		int routeThreads = Math.max(1, threads / 2);
+		// Never fewer than two: one search that gives up holds its thread for seconds, and measured on 8 November at four processors the single
+		// thread this made queued 98 bots behind such searches.
+		int routeThreads = Math.max(2, threads / 2);
 		routePool = new ThreadPoolExecutor(routeThreads, routeThreads, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), threadsNamed("PlayerBotRoute"));
 		lifecyclePool = Executors.newSingleThreadExecutor(threadsNamed("PlayerBotLifecycle"));
 		log.info("Bot scheduler running on {} tick thread(s), {} route thread(s) and one lifecycle thread", threads, routeThreads);
@@ -131,21 +144,60 @@ public class BotScheduler {
 		};
 	}
 
-	/** Runs a route search, which belongs in its own lane: it is the longest thing a bot does and must block neither ticks nor the engine. */
-	public void planRoute(Runnable search) {
+	/**
+	 * Runs a route search, which belongs in its own lane: it is the longest thing a bot does and must block neither ticks nor the engine.
+	 * <p>
+	 * <b>One search waits per bot.</b> A bot whose search has waited a minute takes it for lost and asks again, and one whose destination moved asks
+	 * for the new one; both used to join the queue behind the old search, which still ran, for an answer nobody wanted. Once the queue was slower than
+	 * that minute it fed itself: on 5 November, with 1894 bots awake, it grew to 25 000 searches and a wait of ten minutes, and the bots stood still
+	 * waiting for paths. So a newer search for the same bot takes the place of one still waiting, <b>keeping its turn</b>: when that turn comes the
+	 * newest is run, and the older never answers, which costs nothing, since the bot is waiting on the newer. Sent to the back instead, it would never
+	 * run for a bot that asks again every few seconds while the queue takes longer than that. A search already running is left to finish. The queue
+	 * then holds at most one search per bot, whatever the load.
+	 */
+	public void planRoute(int botId, Runnable search) {
+		if (!waitingRoutes.offer(botId, search))
+			return; // this bot already has a place in the queue, which will run this search
+		long queued = System.currentTimeMillis();
 		try {
-			long queued = System.currentTimeMillis();
 			routePool.execute(reporting(() -> {
+				Runnable latest = waitingRoutes.take(botId);
+				if (latest == null)
+					return;
 				// how long a search waited for a thread, which the search's own timing cannot see: logged to tell a queue that falls behind from searches
 				// that are slow by themselves
-				long waited = System.currentTimeMillis() - queued;
-				if (waited >= SLOW_QUEUE_MILLIS)
-					log.info("Route search waited {} ms for a route thread, {} more queued", waited, routePool.getQueue().size());
-				search.run();
+				long now = System.currentTimeMillis();
+				long longest = longestWait.accumulateAndGet(now - queued, Math::max);
+				longestWaitForGuard.accumulateAndGet(now - queued, Math::max);
+				// one line every so often, with the longest wait since the last, rather than one per slow search: at full density that was 12 000
+				// lines in ten minutes
+				if (longest >= SLOW_QUEUE_MILLIS && now - lastQueueReport >= QUEUE_REPORT_MILLIS) {
+					lastQueueReport = now;
+					longestWait.set(0);
+					log.info("Route search waited {} ms for a route thread, {} bot(s) still waiting, {} search(es) replaced by a newer one so far", longest,
+						waitingRoutes.waiting(), waitingRoutes.replaced());
+				}
+				latest.run();
 			}));
 		} catch (RejectedExecutionException e) {
 			// shutting down; the caller is a bot that will not be walking anywhere
+			waitingRoutes.take(botId);
 		}
+	}
+
+	/**
+	 * @return The longest a route search waited for a thread since the last call, which starts the next count, or the wait of the search still
+	 *         waiting longest if that is more: a queue that stops moving would otherwise only be seen when its oldest search finally ran, as late as
+	 *         the wait itself. For the population guard ({@code BotLoadGuard}), once a review.
+	 */
+	public long takeLongestRouteWait() {
+		return Math.max(longestWaitForGuard.getAndSet(0), waitingRoutes.longestWaiting(System.currentTimeMillis()));
+	}
+
+	/** @return How many bots have a route search waiting for a thread, how many run, and how many were replaced by a newer one since the start. */
+	public String routeQueue() {
+		return waitingRoutes.waiting() + " bot(s) waiting for a route, " + routePool.getActiveCount() + " search(es) running, " + waitingRoutes.replaced()
+			+ " replaced by a newer one";
 	}
 
 	/**

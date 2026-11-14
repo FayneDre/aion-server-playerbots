@@ -25,8 +25,18 @@ oldest are deleted and their names freed.
 A bot levels. It is not a resident or an adventurer; it is a character with a career. Three things hold that career together, and the third is
 temporary.
 
-**Its pace.** `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` stat, so `BotPacing` sets it per character with no core patch — the same
-door `EnchantEffect` uses. Set to **1%**, which is what a measurement gave and not what two guesses did.
+**Its pace.** `Rates.XP_HUNTING` multiplies by the `BOOST_HUNTING_XP_RATE` stat, so `BotPacing` sets it per character — the same door
+`EnchantEffect` uses. Set to **1%**, which is what a measurement gave and not what two guesses did. That 1% was measured at the official rate, so a
+paced bot reads the official rate (`BotPacing.OFFICIAL_XP_RATE`) instead of the players' `gameserver.rates.xp.*` in `Rates.calcXpRate`, one
+`playerbots:` line: a server that raises its players' experience (the launcher offers it) leaves the world's bots at the measured pace. A companion
+is not paced and earns at the player's rate.
+
+**Its membership.** Every rate is a list, one value per account membership ("regular, premium"). The login server makes every player account
+premium (`loginserver.accounts.minimum_membership = 1`: new accounts are created with it, older ones raised to it at startup), and a bot has no
+account, so the premium rates are the players' and the regular ones the bots' (drops, AP, kinah; their experience is the pace above). A bot in a
+team takes the highest membership of the players in it (`BotPacing.membershipOf`, read by `Rates.get`), which is how a companion earns at the
+player's rate. The group instances' experience, divided by the players' rate so that it does not raise it, now divides by the premium one
+(`StatFunctions.calculateExperienceReward`).
 
 **Its level at birth** is its home's, within the region's band (the quarter mark and the ninth tenth of its monsters). A home under the floor keeps
 its own level when a tenth of the region fights within five levels of it (`BotPlaces.isLivedAt`): Theobomos and Brusthonin are two regions in one,

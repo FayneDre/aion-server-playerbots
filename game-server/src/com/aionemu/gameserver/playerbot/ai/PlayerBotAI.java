@@ -2,8 +2,6 @@ package com.aionemu.gameserver.playerbot.ai;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 import org.slf4j.Logger;
@@ -86,63 +84,15 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	 * seconds at every pack, reported by a tester as a templar dawdling between them. In an instance it is not put away at all.
 	 */
 	private static final long GROUP_SHEATHE_DELAY_MILLIS = 60_000;
-	/** How long a target the bot could not reach is left alone, so it does not pick the same unreachable one again right away. */
-	private static final long UNREACHABLE_MILLIS = 10000;
-	/** How long a target given up on a second time, then a third and after, is left alone. */
-	private static final long UNREACHABLE_AGAIN_MILLIS = 120000, UNREACHABLE_FOR_GOOD_MILLIS = 600000;
-	/** Give-ups in a row, with no blow landed between them, after which the bot goes back to its camp instead of picking the next monster beside it. */
-	private static final int GIVE_UPS_BEFORE_CAMP = 3;
-	/** How many monsters' failures are remembered before the memory is started again: a monster respawns under a new id, so old ones only take room. */
-	private static final int MAX_FAILED_CHASES_KEPT = 256;
-	/**
-	 * How long a bot may be in a fight without the attack loop running before the fight is abandoned.
-	 * <p>
-	 * The decision tick does nothing while {@link #isAttacking()}, so a lost attack task left a bot standing beside a mob for ever: seen in game
-	 * after an hour, three bots of nineteen frozen that way and the count rising, with no exception in the log and every pool thread idle. Whatever
-	 * loses the task, this notices and lets the bot decide again — and says so, so the cause stays visible instead of being papered over.
-	 */
-	private static final long STALLED_FIGHT_MILLIS = 15000;
-	/**
-	 * How long a fight may run without the bot landing anything before it is given up.
-	 * <p>
-	 * A different failure from the one above, and invisible to it: the attack loop is alive and ticking, and every tick does nothing. The loop only
-	 * swings through {@code BotAttackManager.autoAttack}, which requires line of sight, so a target standing in reach behind a rock, a root or the
-	 * lip of a slope is attacked for ever at no cost to itself -- while it answers, which is how it was seen: a bot at four metres, facing the thing
-	 * killing it, never swinging. {@link #STALLED_FIGHT_MILLIS} cannot catch this because it measures the gap between ticks, and the ticks are fine.
-	 * <p>
-	 * Longer than {@link #MAX_CHASE_MILLIS}, because a bot crossing open ground to something far away has landed nothing yet either, and that is not
-	 * a stuck fight but a fight that has not started.
-	 */
-	private static final long FRUITLESS_FIGHT_MILLIS = 20000;
 	/**
 	 * Longest a swing may be scheduled ahead. No weapon in the game is slower than this, so a larger figure is a stat gone wrong rather than a slow
 	 * weapon, and scheduling it would park the bot for as long as it says.
 	 */
 	private static final int MAX_ATTACK_DELAY_MILLIS = 5000;
-	/**
-	 * Health below which a bot that is outnumbered breaks off and leaves.
-	 * <p>
-	 * Being outmatched on level needs no threshold — that fight is lost at full health and the bot runs at once — but being set upon by two things
-	 * its own size is a fight it may well win, and leaving at the first scratch would mean never finishing one.
-	 */
-	private static final int RETREAT_HP_PERCENT = 40;
 	/** How long whatever drove the bot off is left alone afterwards, so it does not turn round and walk back into it. */
 	private static final long RETREAT_AVOIDED_MILLIS = 30000;
-	/** Health below which the bot waits to regenerate instead of looking for a fight. */
-	private static final int MIN_ENGAGE_HP_PERCENT = 90;
 	/** How many times a bot walks off ground that hurts it before it rests there anyway: a mesh's lava is only known by standing in it. */
 	private static final int HARMFUL_GROUND_TRIES = 3;
-	/**
-	 * Mana below which the bot sits down rather than starting another fight.
-	 * <p>
-	 * Nothing used to look at mana at all, so a bot at full health and an empty bar fought on for ever with its auto attack alone — and never sat, so
-	 * it never recovered, because sitting is what pays the eightfold regeneration rate. Seen across whole regions: casters permanently out of mana,
-	 * which also made every measurement of their damage a measurement of a character with its kit switched off.
-	 * <p>
-	 * Above {@code BotSkillManager.MANA_RESERVE_PERCENT} on purpose. The reserve is the point where the bot stops spending on skills; if the bot were
-	 * allowed to stand up at or below it, it would rise from its rest already unable to cast and sit straight back down.
-	 */
-	private static final int MIN_ENGAGE_MP_PERCENT = 35;
 	/** The penalty skill a player carries after dying, under which a bot will not start a fight. */
 	private static final int SOUL_SICKNESS_SKILL = 8291;
 	/** How little life a target needs for the bot to stop looking after itself and simply end the fight. */
@@ -243,12 +193,8 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	private volatile long combatEndedAt;
 	/** How many times running the bot has walked off ground that hurts it to rest, 0 once it rests on ground that does not. */
 	private volatile int harmfulGroundTries;
-	/** Targets not to pick for a while: either out of reach, or having just killed the bot. */
-	private final Map<Integer, Long> ignoredTargets = new ConcurrentHashMap<>();
-	/** How many times each monster was given up on as out of reach, so the next time it is left alone for longer. */
-	private final Map<Integer, Integer> failedChases = new ConcurrentHashMap<>();
-	/** Give-ups since the bot last landed a blow. */
-	private volatile int giveUpsInARow;
+	/** Targets not to pick for a while, the chases that failed and how many in a row: see {@link FightGiveUps}. */
+	private final FightGiveUps giveUps = new FightGiveUps();
 	/**
 	 * Until when a bot brought in at the server's start waits before its day begins: shop trips, hunting grounds, errands. Every bot of the world
 	 * spawned in the same few seconds and set off in the same few seconds, and the first eight minutes after a restart held three times the refused
@@ -309,7 +255,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 
 	/** Leaves a creature alone until then: the bot picks no fight with it and gives up one it is in. */
 	void ignoreFor(Creature creature, long until) {
-		ignoredTargets.put(creature.getObjectId(), until);
+		giveUps.ignore(creature.getObjectId(), until);
 	}
 
 	/** Has the next tick look at where the bot stands, once a move it has just been given has settled. */
@@ -782,7 +728,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 					recover();
 			} else if (following) {
 				serveTheGroup(); // a member has no business picking its own fights, so the rest of this chain is not its to run
-			} else if (BotSquads.leads(getOwner()) && !BotSquads.isReady(getOwner(), MIN_ENGAGE_HP_PERCENT, MIN_ENGAGE_MP_PERCENT)) {
+			} else if (BotSquads.leads(getOwner()) && !BotSquads.isReady(getOwner(), FightVerdicts.MIN_ENGAGE_HP_PERCENT, FightVerdicts.MIN_ENGAGE_MP_PERCENT)) {
 				// A squad's leader pulls for the squad, so it waits for the squad, as a player leading a group waits for the healer's mana. Buffs and the
 				// rest of its upkeep can wait with it; standing still is what lets the others catch up and sit down.
 				stopMoving();
@@ -929,35 +875,35 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		if (!isAttacking())
 			return;
 		long now = System.currentTimeMillis();
-		if (now - lastAttackTick >= STALLED_FIGHT_MILLIS) {
-			synchronized (combatLock) {
-				// A swing still waiting its turn is a busy server, not a lost loop, and the two want opposite things done about them. Every
-				// occurrence measured so far has been the second kind and not the first: seventeen bots at one and the same second, thirty three
-				// seconds after a start, while the pool worked through a hundred wakes of some twenty database round trips each -- and in the run
-				// before that, fifteen inside one second, likewise just after a start. Letting those fights go threw the fight away and blamed the
-				// loop for the schedule, which is a cause invented rather than found.
-				if (attackTask != null && !attackTask.isDone()) {
-					log.debug("Bot {} has gone {} s without a swing at {}, which is queued behind a busy pool", getOwner().getName(),
-						(now - lastAttackTick) / 1000, nameOfTarget());
-					return;
-				}
-			}
-			log.warn("Bot {} has been fighting {} for {} s and its attack loop has stopped; letting the fight go", getOwner().getName(),
-				nameOfTarget(), (now - lastAttackTick) / 1000);
-			stopAttacking();
-			return;
+		boolean swingQueued;
+		synchronized (combatLock) {
+			swingQueued = attackTask != null && !attackTask.isDone();
 		}
-		if (now - lastBlow < FRUITLESS_FIGHT_MILLIS)
-			return;
-		// Left alone afterwards, like one that could not be reached: something about where this thing stands makes it unfightable from here, and the
-		// bot has no way to tell what. Without that, the next decision tick picks the same target back out of the same list and the fight that
-		// landed nothing starts again -- which is what standing still in front of a monster looks like from outside.
+		switch (FightVerdicts.stall(now, lastAttackTick, lastBlow, swingQueued)) {
+			case KEEP -> {
+				return;
+			}
+			case QUEUED -> {
+				log.debug("Bot {} has gone {} s without a swing at {}, which is queued behind a busy pool", getOwner().getName(),
+					(now - lastAttackTick) / 1000, nameOfTarget());
+				return;
+			}
+			case LOOP_STOPPED -> {
+				log.warn("Bot {} has been fighting {} for {} s and its attack loop has stopped; letting the fight go", getOwner().getName(),
+					nameOfTarget(), (now - lastAttackTick) / 1000);
+				stopAttacking();
+				return;
+			}
+			case FRUITLESS -> {
+				// let go below, and the target left alone afterwards
+			}
+		}
 		Creature target = getOwner().getTarget() instanceof Creature creature ? creature : null;
 		log.warn("Bot {} has been fighting {} for {} s without landing anything; letting the fight go", getOwner().getName(), nameOfTarget(),
 			(now - lastBlow) / 1000);
 		stopAttacking();
 		if (target != null)
-			ignoredTargets.put(target.getObjectId(), now + UNREACHABLE_MILLIS);
+			giveUps.ignore(target.getObjectId(), now + FightGiveUps.UNREACHABLE_MILLIS);
 	}
 
 	private String nameOfTarget() {
@@ -1017,7 +963,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			// a class that never swings (a sorcerer's "Always Be Casting") waits for a spell rather than reaching for its orb
 			if (useBestSkill(target) || BotPlaybooks.of(bot).swings(bot) && BotAttackManager.autoAttack(bot, target)) {
 				lastBlow = System.currentTimeMillis();
-				giveUpsInARow = 0;
+				giveUps.landed();
 			}
 		} else if (target instanceof Player flier && flier.isFlying() && takeOffAfter(bot, flier)) {
 			// an enemy player who took to the air: every walking rule below would give the fight up, since the air has no floor to route to
@@ -1026,7 +972,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		} else if (castFromAfar(target)) {
 			pulledFromAfar = true;
 			lastBlow = System.currentTimeMillis();
-			giveUpsInARow = 0;
+			giveUps.landed();
 			// something in the bot's book reaches where its weapon does not, so there is nothing to close
 		} else if (chase.holdsStation(target)) {
 			// a ranged class in its place with nothing in reach to cast. Walking up to the enemy would be the chase this whole rule exists to replace, and
@@ -1039,22 +985,16 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			// told apart, because the two read the same in the log and are not the same fault: the second is the mesh's, the first is not
 			if (chase.isOffLeash(target)) {
 				log.info("Bot {} leaves {} alone: it is beyond its camp", bot.getName(), target.getName());
-				ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + UNREACHABLE_MILLIS);
+				giveUps.ignore(target.getObjectId(), System.currentTimeMillis() + FightGiveUps.UNREACHABLE_MILLIS);
 				stopAttacking();
 				return;
 			}
 			log.info("Bot {} cannot reach {} and gives up", bot.getName(), target.getName());
 			rememberShutOff(target);
-			// the same monster given up on again is left alone for longer each time: ten seconds was shorter than a round of three of them
-			if (failedChases.size() > MAX_FAILED_CHASES_KEPT)
-				failedChases.clear();
-			int failures = failedChases.merge(target.getObjectId(), 1, Integer::sum);
-			ignoredTargets.put(target.getObjectId(), System.currentTimeMillis() + unreachableFor(failures));
+			boolean backToCamp = giveUps.chaseFailed(target.getObjectId(), System.currentTimeMillis());
 			stopAttacking();
-			if (++giveUpsInARow >= GIVE_UPS_BEFORE_CAMP) {
-				// three in a row without landing a blow: the ground here is the problem, not the monster, and the camp is where its ground is good
-				giveUpsInARow = 0;
-				log.info("Bot {} gave up on {} targets in a row and goes back to its camp", bot.getName(), GIVE_UPS_BEFORE_CAMP);
+			if (backToCamp) {
+				log.info("Bot {} gave up on {} targets in a row and goes back to its camp", bot.getName(), FightGiveUps.GIVE_UPS_BEFORE_CAMP);
 				returnToAnchor();
 			}
 			return;
@@ -1115,12 +1055,9 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 
 
 
-	/**
-	 * @return true if this is a healer in a group, fighting something that is not after it, with no mana to spare. Mana is what a healer is for: below the
-	 *         surplus it goes back to healing. A monster that is hitting the healer itself is another matter, and is fought whatever the mana.
-	 */
+	/** @return see {@link FightVerdicts#healerHasNoSurplus}. */
 	private static boolean healerHasNoSurplus(Player bot, Creature target) {
-		return isGroupHealer(bot) && !BotSkillManager.hasManaToSpare(bot) && !bot.equals(target.getTarget());
+		return FightVerdicts.healerHasNoSurplus(isGroupHealer(bot), BotSkillManager.hasManaToSpare(bot), bot.equals(target.getTarget()));
 	}
 
 	static boolean isGroupHealer(Player bot) {
@@ -1174,21 +1111,14 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	}
 
 	/**
-	 * Walks a melee class in to its target instead of casting at it from where it stands, once the fight has been opened.
-	 * <p>
-	 * Anything in the book that reaches was cast before closing, which suits a caster and not a chanter: alone, it stood back and threw the few spells it
-	 * has that reach, and seldom swung the staff its damage is in, as a tester reported. One cast from afar is kept, the pull, and so is casting at a
-	 * target that runs or that cannot be walked to; everything else is done in reach.
+	 * Walks a melee class in to its target instead of casting at it from where it stands, once the fight has been opened: see
+	 * {@link FightVerdicts#closesIn}.
 	 *
 	 * @return true if the bot set off towards the target.
 	 */
 	private boolean closesInRatherThanCasting(Creature target) {
-		BotPosition position = BotPosition.of(getOwner());
-		if (!pulledFromAfar || position != BotPosition.FRONT && position != BotPosition.BEHIND)
-			return false;
-		if (target.getEffectController().isAbnormalSet(AbnormalState.FEAR) || target.getAi().isInState(AIState.RETURNING))
-			return false; // running away: what reaches is what catches it
-		return chase.after(target);
+		boolean running = target.getEffectController().isAbnormalSet(AbnormalState.FEAR) || target.getAi().isInState(AIState.RETURNING);
+		return FightVerdicts.closesIn(pulledFromAfar, BotPosition.of(getOwner()), running) && chase.after(target);
 	}
 
 	/**
@@ -1227,61 +1157,42 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	}
 
 	/**
-	 * Picks the one thing the bot does with this moment of the fight, most urgent first.
-	 * <p>
-	 * The order is the whole of the bot's combat judgement, so it lives in one place rather than being restated wherever a skill might be cast. It
-	 * reads as a set of priorities: survive, then keep the advantage the class was given, then deal damage. A cast costs a swing either way, which is
-	 * why staying alive comes first and why nothing here is tried twice in the same tick.
+	 * Picks the one thing the bot does with this moment of the fight, most urgent first: the steps of {@link SkillOrder}, tried in turn until one acts.
+	 * See docs/classes/history/templar-plan.md for the templar's own first refusal.
 	 *
 	 * @return true if a skill went off, in which case the bot is busy and should not also swing.
 	 */
 	private boolean useBestSkill(Creature target) {
 		Player bot = getOwner();
-		// The class gets first refusal, and what it declines falls through to the order below. See docs/classes/history/templar-plan.md for the templar's.
-		if (BotPlaybooks.of(bot).act(bot, target) || BotPlaybooks.of(bot).heal(bot))
-			return true;
 		boolean healer = BotRole.of(bot) == BotRole.HEALER;
-		// A healer heals before anything else, and that is the whole of its priority: every other thing it does, the damage it is allowed included, is what
-		// it does when nobody needs mending. Itself first, since a dead healer heals nobody, then whoever is in the most danger.
-		if (healer && (BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
-			|| BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT, true))))
-			return true;
 		boolean closing = !BotAttackManager.isInAttackRange(bot, target);
-		if (closing && !approachSpent) {
-			approachSpent = true;
-			// only while there is still ground to cover: hiding on top of a target it is about to hit buys the bot nothing
-			if (BotSkillManager.tryApproachUnseen(bot))
+		for (SkillOrder.Step step : SkillOrder.steps(healer, closing, approachSpent, openingSpent, isAlmostDead(target))) {
+			// spent once reached, whether it acts or not: tried and refused at the start of a fight is the same as used
+			if (step == SkillOrder.Step.APPROACH)
+				approachSpent = true;
+			else if (step == SkillOrder.Step.OPENING)
+				openingSpent = true;
+			if (tryStep(step, bot, target))
 				return true;
 		}
-		if (!openingSpent) {
-			openingSpent = true;
-			// before the first blow, because a burst spent on a mob already dying is a burst thrown away — and self buffs need no range, so this works
-			// while still closing in
-			if (BotSkillManager.tryOpeningCooldown(bot))
-				return true;
-		}
-		// Finish it. A target this close to death dies to the next blow or two, and every second spent mending instead is a second it spends hitting
-		// back: a bot at low health healing in front of a mob with a sliver left heals, gets hit, heals again, and dies to something it could have
-		// killed twice over. Ending the fight is the best defence available and no rule below can see that.
-		if (!isAlmostDead(target)) {
-			// the defensive ability comes before the heal: it is cheaper in mana and it stops damage instead of repairing it, which only works ahead
-			if (BotSkillManager.tryDefensiveCooldown(bot) || BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT))
-				return true;
-			// the flask is what a class with no heal of its own has instead, and what a healer reaches for when the heal is on cooldown
-			if (BotPotionManager.tryHealingPotion(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
-				|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT))
-				return true;
-		}
-		// A group mate's life outranks the bot's damage, but not the bot's own: a dead healer heals nobody. A healer has done this at the top of the method, ahead
-		// of everything and outside the finishing rule: that rule is about the bot's own survival and says nothing about the tank, and a monster with a sliver
-		// of health left is no reason to let the tank die under it, which is what a healer did every time the group's target got low.
-		if (!healer && !isAlmostDead(target)
-			&& BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT)))
-			return true;
-		// a leap covers ground the bot would otherwise walk, and those last metres on foot are where bots get stuck
-		if (closing && BotSkillManager.tryGapCloser(bot, target))
-			return true;
-		return BotSkillManager.tryCastSkill(bot, target);
+		return false;
+	}
+
+	/** @return true if the step acted. */
+	private static boolean tryStep(SkillOrder.Step step, Player bot, Creature target) {
+		return switch (step) {
+			case PLAYBOOK -> BotPlaybooks.of(bot).act(bot, target) || BotPlaybooks.of(bot).heal(bot);
+			case HEAL_SELF_FIRST, HEAL_SELF -> BotSkillManager.tryHealSelf(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT);
+			case HEAL_ALLY_FIRST -> BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT, true));
+			case APPROACH -> BotSkillManager.tryApproachUnseen(bot);
+			case OPENING -> BotSkillManager.tryOpeningCooldown(bot);
+			case DEFENSIVE -> BotSkillManager.tryDefensiveCooldown(bot);
+			case POTIONS -> BotPotionManager.tryHealingPotion(bot, BotSkillManager.HEAL_IN_COMBAT_PERCENT)
+				|| BotPotionManager.tryManaPotion(bot, BotSkillManager.MANA_RESERVE_PERCENT);
+			case HEAL_ALLY -> BotSkillManager.tryHealAlly(bot, BotGroupManager.mostHurtMember(bot, BotSkillManager.HEAL_ALLY_PERCENT));
+			case GAP_CLOSER -> BotSkillManager.tryGapCloser(bot, target);
+			case ATTACK -> BotSkillManager.tryCastSkill(bot, target);
+		};
 	}
 
 
@@ -1323,7 +1234,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			: useBestSkill(target); // something that reaches from here, which the engine answers by casting it or not
 		if (landed) {
 			lastBlow = System.currentTimeMillis();
-			giveUpsInARow = 0;
+			giveUps.landed();
 		}
 	}
 
@@ -1338,7 +1249,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			return false;
 		if (castFromAfar(flier)) {
 			lastBlow = System.currentTimeMillis();
-			giveUpsInARow = 0;
+			giveUps.landed();
 			return true;
 		}
 		return BotFlight.tryPursue(bot, flier);
@@ -1627,13 +1538,10 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return following && BotRole.of(getOwner()) == BotRole.TANK && BotGroupManager.targetToAssist(getOwner()) != null;
 	}
 
-	/**
-	 * Keeps the bot from starting a fight it is in no shape for — in particular right after resurrecting at 25% hp, next to whatever killed it.
-	 * Only picking a fight is gated: it always defends itself, whatever its health.
-	 */
+	/** @return see {@link FightVerdicts#healthyEnoughToFight}. */
 	boolean isHealthyEnoughToFight() {
-		return getOwner().getLifeStats().getHpPercentage() >= MIN_ENGAGE_HP_PERCENT
-			&& getOwner().getLifeStats().getMpPercentage() >= MIN_ENGAGE_MP_PERCENT && !BotPlaybooks.of(getOwner()).wantsToRest(getOwner());
+		return FightVerdicts.healthyEnoughToFight(getOwner().getLifeStats().getHpPercentage(), getOwner().getLifeStats().getMpPercentage(),
+			BotPlaybooks.of(getOwner()).wantsToRest(getOwner()));
 	}
 
 	/**
@@ -1705,18 +1613,13 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		List<Creature> attackers = findAttackers().stream().filter(npc -> !isIgnored(npc)).toList();
 		if (attackers.isEmpty())
 			return false;
-		boolean outmatched = attackers.stream().anyMatch(npc -> npc.getLevel() > bot.getLevel() + BotTargetSelector.MAX_LEVEL_GAP);
-		// the class may hold or leave where the generic rule would not: a gladiator holds against two normal monsters and leaves an elite at any health
 		ClassPlaybook.Outnumbered call = attackers.size() > 1 ? BotPlaybooks.of(bot).whenOutnumbered(bot, attackers) : ClassPlaybook.Outnumbered.GENERIC;
-		boolean outnumbered = call == ClassPlaybook.Outnumbered.FLEE
-			|| call == ClassPlaybook.Outnumbered.GENERIC && attackers.size() > 1 && bot.getLifeStats().getHpPercentage() < RETREAT_HP_PERCENT;
-		// some classes are told by their guide to leave at a number of attackers whatever their health
-		boolean fleeing = BotPlaybooks.of(bot).flees(bot, attackers.size());
-		if (!outmatched && !outnumbered && !fleeing)
+		List<Integer> levels = attackers.stream().map(npc -> (int) npc.getLevel()).toList();
+		if (!FightVerdicts.retreats(bot.getLevel(), bot.getLifeStats().getHpPercentage(), levels, call, BotPlaybooks.of(bot).flees(bot, attackers.size())))
 			return false;
 		long until = System.currentTimeMillis() + RETREAT_AVOIDED_MILLIS;
 		for (Creature attacker : attackers)
-			ignoredTargets.put(attacker.getObjectId(), until);
+			giveUps.ignore(attacker.getObjectId(), until);
 		log.info("Bot {} breaks off from {} attacker(s) at {}% health and heads home", bot.getName(), attackers.size(),
 			bot.getLifeStats().getHpPercentage());
 		BotPlaybooks.of(bot).onRetreat(bot);
@@ -1748,7 +1651,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			return true;
 		long until = System.currentTimeMillis() + RETREAT_AVOIDED_MILLIS;
 		for (Player opponent : opponents)
-			ignoredTargets.put(opponent.getObjectId(), until);
+			giveUps.ignore(opponent.getObjectId(), until);
 		log.info("Bot {} breaks off from {} enemy player(s) at {}% health and heads home", bot.getName(), opponents.size(), hp);
 		BotPlaybooks.of(bot).onRetreat(bot);
 		stopAttacking();
@@ -1788,8 +1691,8 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			// A group's healer is the exception, and counts only what is aimed at it, by the same rule the fight loop uses to let such a fight go
 			// (healerHasNoSurplus). Read two ways, the add a cleric had rooted was hated enough to start a fight every tick and not aimed at it enough to
 			// keep one, so the cleric started and dropped it every second for 18 s and cast no heal while the templar died (20 October, 13:11).
-			if (attacker[0] == null && !npc.isDead() && !BotTargetSelector.isScenery(npc) && npc.getAggroList().isHating(bot) && !isIgnored(npc)
-				&& (!groupHealer || bot.equals(npc.getTarget())))
+			if (attacker[0] == null && FightVerdicts.defendsAgainst(npc.isDead(), BotTargetSelector.isScenery(npc), npc.getAggroList().isHating(bot),
+				isIgnored(npc), groupHealer, bot.equals(npc.getTarget())))
 				attacker[0] = npc;
 		});
 		if (attacker[0] == null) {
@@ -1801,10 +1704,6 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		return attacker[0];
 	}
 
-	/** @return How long a monster given up on for the n-th time is left alone. */
-	static long unreachableFor(int failures) {
-		return failures <= 1 ? UNREACHABLE_MILLIS : failures == 2 ? UNREACHABLE_AGAIN_MILLIS : UNREACHABLE_FOR_GOOD_MILLIS;
-	}
 
 
 	/** A monster the planner proved no walk reaches is told to the bots standing round, which would each spend a search and a chase to learn it. */
@@ -1826,13 +1725,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	}
 
 	private boolean isIgnored(Creature target) {
-		Long until = ignoredTargets.get(target.getObjectId());
-		if (until == null)
-			return false;
-		if (until > System.currentTimeMillis())
-			return true;
-		ignoredTargets.remove(target.getObjectId());
-		return false;
+		return giveUps.isIgnored(target.getObjectId(), System.currentTimeMillis());
 	}
 
 	@Override

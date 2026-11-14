@@ -11,7 +11,9 @@ import org.slf4j.LoggerFactory;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 
+import com.aionemu.gameserver.AdminChannel;
 import com.aionemu.gameserver.GameServer;
+import com.aionemu.gameserver.ServerRelease;
 import com.aionemu.gameserver.configs.main.GSConfig;
 import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.model.gameobjects.Creature;
@@ -120,7 +122,8 @@ public final class BotDiagnostics {
 
 	/** @return The revision, branch and build date the server runs, which is what a report names so the fix it is about can be found. */
 	public static String version() {
-		return "Server " + GameServer.versionInfo.getBuildInfo(GSConfig.TIME_ZONE_ID) + ".";
+		return "Server " + ServerRelease.version() + ", " + GameServer.versionInfo.getBuildInfo(GSConfig.TIME_ZONE_ID) + ", launcher API level "
+			+ AdminChannel.API_LEVEL + ".";
 	}
 
 	/**

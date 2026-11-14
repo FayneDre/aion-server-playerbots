@@ -23,6 +23,12 @@
     How long to wait for the server to exit before giving up. Must exceed the configured shutdown delay, and the time to save every bot: about
     840 awake took 194 s on 17 October, 864 took 510 s the same evening.
 
+.PARAMETER SkipBackup
+    Do not dump the databases once the server has stopped (backup-db.ps1 does it by default, and keeps the newest ten).
+
+.PARAMETER WithMysql
+    Stop MySQL too, after the dump (stop-mysql.ps1). Left running by default: a deploy restarts the game server, not the database.
+
 .PARAMETER Force
     Kill the process if the graceful shutdown times out. Data saved by the hook up to that point is kept, the rest is lost.
 
@@ -32,10 +38,26 @@
 param(
     [int]$TimeoutSeconds = 900,
     [string]$ServerRoot = $env:AION_SERVER_HOME,
+    [switch]$SkipBackup,
+    [switch]$WithMysql,
     [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
+
+<#
+    What follows a stop that saved: a dump of the databases (the safety net now that MySQL keeps no binary log), then MySQL itself when asked.
+    A failure here is said and never fails the stop: the server is down and its data saved, which is what was asked.
+#>
+function Save-AfterStop {
+    if (-not $ServerRoot) { return }
+    if (-not $SkipBackup) {
+        try { & (Join-Path $PSScriptRoot 'backup-db.ps1') -ServerRoot $ServerRoot } catch { Write-Host "  no backup: $($_.Exception.Message)" -ForegroundColor Yellow }
+    }
+    if ($WithMysql) {
+        try { & (Join-Path $PSScriptRoot 'stop-mysql.ps1') -ServerRoot $ServerRoot } catch { Write-Host "  MySQL still running: $($_.Exception.Message)" -ForegroundColor Yellow }
+    }
+}
 
 <#
     Closes the console start.bat runs in, which outlives the server twice over: CTRL+C makes cmd ask whether to
@@ -120,6 +142,7 @@ while ((Get-Date) -lt $deadline) {
     if (-not (Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue)) {
         Write-Host 'Game server stopped and saved.' -ForegroundColor Green
         Close-HostShell $hostShellPid
+        Save-AfterStop
         exit 0
     }
     if ($requested -and -not $fellBack -and (Get-Date) -gt $fallbackAfter -and (Test-Path $requestFile)) {

@@ -56,10 +56,11 @@ whatever needs the socket tests the socket. See [docs/architecture/how-it-works.
 
 [docs/README.md](docs/README.md) is the index: every document by topic, with each plan's status. The ones to open first:
 
-- [docs/roadmap.md](docs/roadmap.md) — **start here**: what is left, by priority, with what blocks each one.
+- [docs/roadmap.md](docs/roadmap.md) — **start here**: what is done and what is left, by theme in priority order, each theme's work in order.
 - [docs/built.md](docs/built.md) — what already works, one paragraph a topic, each pointing to its `how-it-works.md`.
 - [docs/bot-commands.md](docs/bot-commands.md) — every `//bot` command.
-- [docs/patch-notes/current.md](docs/patch-notes/current.md) — every test patch, in French for the testers, by git tag; `tag-patch.ps1` refuses a patch without its entry.
+- [docs/patch-notes/current.md](docs/patch-notes/current.md) — every test patch, in French for the testers, by version tag, with its English twin in
+  `current.en.md`; `tag-patch.ps1` refuses a patch without both entries.
 - [docs/traps/](docs/traps/) — what the engine, the world data and the skill engine do to a bot that no documentation warns about.
 
 Folders: `architecture/`, `traps/`, `population/`, `combat/`, `classes/` (with `glossary/`, the French skill names `skill-lookup.ps1 -Name`
@@ -76,10 +77,16 @@ the day it is done. A new document goes in the folder of its topic and gets a li
 - **Git**: installed via winget. Remotes:
   - `origin` → personal fork (`https://github.com/FayneDre/aion-server-playerbots.git`)
   - `upstream` → `https://github.com/beyond-aion/aion-server.git`
-  - Branch `4.8`: tracks `origin/4.8` (= upstream), stable base to merge periodically.
-  - Branch `feature/playerbots`: bot development branch, created from `4.8`.
+  - Branch `beyond-aion`: a mirror of `upstream/4.8`, the emulator's updates come in through it (was `4.8` until 5 November 2026).
+  - Branch `main`: the one branch for the bot work, the default on GitHub (`develop` until 14 November 2026: one developer and one tester
+    gained nothing from two). Every version is a tag on it by `tools/tag-patch.ps1`: `vX.Y.Z-beta.N` published as a GitHub pre-release,
+    `vX.Y.Z` stable, on a commit a beta was validated on (`patch-YYYY-MM-DD` until November 2026). To fix a stable once `main` has moved on, a
+    branch is cut from its tag that day. The launcher works the same way, with its own version numbers. `tag-patch.ps1` also builds the bundle
+    a beta launcher installs (`tools/package-release.ps1`: the zip, its manifest, the navmesh maps rebuilt since the previous bundle), which
+    the printed `gh` command attaches.
 
-To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8` into `4.8`, then merge `4.8` into `feature/playerbots`.
+To pull upstream updates: `git fetch upstream`, then fast-forward `beyond-aion` to `upstream/4.8` and push it, then merge `beyond-aion` into
+`main`. Never commit on `beyond-aion` itself.
 
 ## Repo modules (reminder)
 
@@ -116,13 +123,20 @@ To pull upstream updates: `git fetch upstream`, then merge/rebase `upstream/4.8`
   of the reports before. A measurement tool written in a scratch folder is lost with the session: write it here.
 - **Check a mesh against what a person walked**: `tools/check-golden-routes.ps1` (routes a tester walked, both ways; `navmesh.ps1` runs it after a build), `tools/check-walker-routes.ps1` (the patrol routes
   of the data, against a baseline per map) and the route lines of `//bot note` ([docs/navigation/verification-tools.md](docs/navigation/verification-tools.md)). A fix for a tester's note adds its line to `tools/golden-routes.txt`.
-- `tools/apply-sql.ps1` runs the statements of `game-server/sql/update.sql` the database has not had yet, once each (a table `schema_applied_sql` holds
-  their hashes), after a `mysqldump` and with the game server stopped; `deploy.ps1` runs it after the build, so nobody runs upstream's SQL by hand.
-  A database that has them already is told once with `-MarkApplied -Apply`.
+- `tools/apply-sql.ps1` runs the statements of a server's `sql/update.sql` (`-Server game`, the default, or `login`) the database has not had yet,
+  once each (a table `schema_applied_sql` holds their hashes), after a `mysqldump` and with that server stopped; `deploy.ps1` runs it for both
+  after the build, so nobody runs upstream's SQL by hand. A database that has them already is told once with `-MarkApplied -Apply`. `-Create`
+  makes a database from nothing (the schema, then `update.sql` recorded): what an install from nothing runs. `tools/check-schema.ps1`, after
+  every upstream merge, checks into a scratch MySQL that the schema and `update.sql` still make the live database.
 - `tools/sync-install.ps1` brings the installed servers in line with the repository. `deploy.ps1` runs its `-LibsOnly` part on every deploy (the
   libraries the poms ask for, the login server's jar, commons for the login and chat servers; nothing is resolved while the poms are unchanged). After an
   upstream merge, `-From <the commit or patch tag the install holds>` adds the data and configuration files the install still holds as the repository
   had them (and lists the ones edited here, for a hand merge).
+- `tools/start-mysql.ps1` / `stop-mysql.ps1` run MySQL as a program (no service, no administrator rights; `start-server.ps1` and `deploy.ps1` call the first),
+  `grant-shutdown.ps1` gives the game account the right to stop it (run by the user: it asks for the administrator's password),
+  `package-mysql.ps1` trims the official zip to the portable MySQL an install carries and `setup-mysql.ps1` makes its database from nothing (never near existing data), `check-portable-mysql.ps1` tries all of it on a throwaway install (run it after touching these or the schemas), `package-java.ps1` makes the install's Java runtime (jlink, 55 MB) and `check-portable-java.ps1` tries it (pin in `tools/java`, [plan](docs/architecture/plans/empty-machine-install-plan.md)), `migrate-to-portable-mysql.ps1` moves an install's data into its portable MySQL table by table,
+  `backup-db.ps1` dumps the three schemas on every `stop-server.ps1` and keeps ten; the light settings are `tools/mysql/my-light.ini`
+  ([docs/architecture/database.md](docs/architecture/database.md)).
 - `tools/check-server-log.ps1` reads the game server log for errors, a log that has gone silent (a console clicked into pauses the whole server) and the
   number of bots in the world; `start-server.ps1` runs it after startup. `tools/skill-lookup.ps1` finds skills by name (French ones through the glossary), group, id or class, with their group,
   cooldown, reach and tier. Use them before reading the data by hand.

@@ -78,7 +78,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # The docs' links, index, sizes and plan statuses; printed and never blocking, since a stale doc is no reason to keep a fix off the server.
-$docProblems = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-docs.ps1')
+# A line on its error stream (git's line-ending warning was one, and stopped two deploys) is a problem of the check, said as such.
+try {
+    $docProblems = & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-docs.ps1')
+} catch {
+    $docProblems = @("the check itself failed: $($_.Exception.Message)")
+}
 if ($docProblems) {
     Write-Host 'Docs (tools/check-docs.ps1):' -ForegroundColor Yellow
     $docProblems | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
@@ -87,8 +92,17 @@ if ($docProblems) {
 # The database is asked now, before a build of minutes: MySQL not started, or a password that changed, is found out here and not after the tests.
 # Only looks (no -Apply); the statements are run after the build.
 if (-not $SkipSql) {
-    $sqlLook = & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot
-    $sqlLook | Where-Object { $_ -match ', [1-9][0-9]* not applied yet' } | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
+    # MySQL is started when it is down (nothing when it already answers), instead of failing here for a database nobody had started
+    & (Join-Path $PSScriptRoot 'start-mysql.ps1') -ServerRoot $ServerRoot
+    # the game and login servers have an update.sql each; the chat server has none
+    foreach ($sqlServer in 'game', 'login') {
+        $sqlLook = & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Server $sqlServer
+        $sqlLook | Where-Object { $_ -match ', [1-9][0-9]* not applied yet' } | ForEach-Object {
+            # a deploy stops the game server (-Restart) and never the login server: said now, not after the build
+            $hint = if ($sqlServer -eq 'login') { ' (the login server must be stopped for them, or the deploy stops after the build)' } else { '' }
+            Write-Host "$sqlServer`: $_$hint" -ForegroundColor Yellow
+        }
+    }
 }
 
 if (-not $SkipBuild) {
@@ -118,10 +132,12 @@ if (-not $SkipBuild) {
 
 # The schema changes the database has not had yet, once each, from a backup. Only with something new does it do anything, and then the game server
 # must be stopped, which a deploy has asked of it since the start (-Restart stops it; without, it refuses). A failing statement stops the deploy:
-# a server started on a half migrated schema fails in ways that are harder to read.
+# a server started on a half migrated schema fails in ways that are harder to read. The login server's database the same way: rarer, and the login
+# server stopped by hand for it, since a deploy leaves it running.
 if (-not $SkipSql) {
-    Write-Host 'Checking the database...' -ForegroundColor Cyan
+    Write-Host 'Checking the databases...' -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Apply
+    & (Join-Path $PSScriptRoot 'apply-sql.ps1') -ServerRoot $ServerRoot -Server login -Apply
 }
 
 # The libraries the poms ask for, and the jars the login and chat servers load from their own folders. Moving to Netty 4.2 on 28 October left an
@@ -148,6 +164,48 @@ Copy-Item $handlersSource $handlersTarget -Recurse -Force
 Write-Host '  data/handlers'
 
 Write-Host "Deployed to $targetGameServer" -ForegroundColor Green
+
+# What the launcher reads while the game server is stopped (the admin channel answers only while it runs): which build this is and the launcher API
+# level it has. "source": "deploy" also tells a beta launcher that this is a development install, never to be overwritten by a release bundle
+# (docs/architecture/plans/release-process-plan.md).
+$deployedJar = Get-ChildItem (Join-Path $libs 'game-server-*.jar') | Where-Object { $_.Name -notmatch '-(sources|javadoc)\.jar$' } |
+    Sort-Object LastWriteTime | Select-Object -Last 1
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [IO.Compression.ZipFile]::OpenRead($deployedJar.FullName)
+try {
+    $reader = New-Object IO.StreamReader($zip.GetEntry('META-INF/MANIFEST.MF').Open())
+    $jarManifest = $reader.ReadToEnd()
+    $reader.Dispose()
+} finally {
+    $zip.Dispose()
+}
+$revision = if ($jarManifest -match '(?m)^Revision: (\S+)') { $Matches[1] } else { 'unknown' }
+$release = if ($jarManifest -match '(?m)^Implementation-Version: (\S+)') { $Matches[1] } else { 'dev' }
+# The level of the code the jar was built from, not of the working tree: a -SkipBuild after a checkout deploys an older jar. A -DIRTY build is the
+# working tree's. The line is the one AdminChannelTest checks, so a rewording fails a test rather than this.
+function Get-ApiLevel([string]$path) {
+    $source = $null
+    if ($revision -match '^[0-9a-f]{7,40}$') { $source = (git -C $repoRoot show "${revision}:$path" 2>$null) -join "`n" }
+    if (-not $source -and (Test-Path (Join-Path $repoRoot $path))) { $source = Get-Content -Raw (Join-Path $repoRoot $path) }
+    $match = [regex]::Match([string]$source, 'public static final int API_LEVEL = (\d+);')
+    if ($match.Success) { return [int]$match.Groups[1].Value }
+    return $null
+}
+$apiLevel = Get-ApiLevel 'game-server/src/com/aionemu/gameserver/AdminChannel.java'
+if ($null -eq $apiLevel) { throw "AdminChannel.java at revision $revision has no API_LEVEL line to read." }
+# what the addons' pages offer (0: a jar from before them)
+$addonApiLevel = Get-ApiLevel 'game-server/src/com/aionemu/gameserver/playerbot/addon/AddonWebServer.java'
+if ($null -eq $addonApiLevel) { $addonApiLevel = 0 }
+$installManifest = [ordered]@{
+    source        = 'deploy'
+    version       = $release
+    revision      = $revision
+    apiLevel      = $apiLevel
+    addonApiLevel = $addonApiLevel
+    deployedAt    = (Get-Date).ToString('o')
+}
+[IO.File]::WriteAllText((Join-Path $ServerRoot 'manifest.json'), ($installManifest | ConvertTo-Json) + "`n", (New-Object Text.UTF8Encoding($false)))
+Write-Host "  manifest.json: $release, revision $revision, launcher API level $apiLevel, addon API level $addonApiLevel"
 
 # The chat server carries the bots' channel lines (CM_BOT_MESSAGE) since 24 October, so it is built and deployed too, but only when its jar changed:
 # most deploys touch the game server alone. It holds nothing to save, so stopping it is safe, and a running game server reconnects to it by itself.

@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.configs.main.RatesConfig;
 import com.aionemu.gameserver.model.stats.container.StatEnum;
+import com.aionemu.gameserver.playerbot.lifecycle.BotPacing;
 
 /**
  * @author antness, Neon
@@ -51,7 +52,8 @@ public enum Rates {
 
 		@Override
 		public long calcResult(Player player, long xp) {
-			return (long) (xp * get(player, RatesConfig.XP_PVP_RATES));
+			// playerbots: a world bot earns from player kills at the official rate times its own percent, whatever the players' rates are
+			return (long) (xp * (BotPacing.isPaced(player) ? BotPacing.pvpRate() : get(player, RatesConfig.XP_PVP_RATES)));
 		}
 	},
 	SKILL_XP_GATHERING {
@@ -168,12 +170,13 @@ public enum Rates {
 			LoggerFactory.getLogger(Rates.class).warn("Missing rates", new IllegalStateException());
 			return 1;
 		}
-		int membershipLevel = player.getAccount().getMembership();
+		int membershipLevel = BotPacing.membershipOf(player); // playerbots: a bot in a player's team earns at the player's rates
 		return membershipRates[Math.min(membershipRates.length - 1, membershipLevel)];
 	}
 
 	private static float calcXpRate(Player player, float[] membershipRates, StatEnum boostRate) {
-		float endRate = get(player, membershipRates);
+		// playerbots: a world bot advances at its own pace whatever the players' rates are set to, or raising them would empty the low regions
+		float endRate = BotPacing.isPaced(player) ? BotPacing.OFFICIAL_XP_RATE : get(player, membershipRates);
 		endRate *= player.getGameStats().getStat(boostRate, 100).getCurrent() / 100f;
 		if (player.isLegionMember() && player.getLegion().hasBonus())
 			endRate *= 1.1f;

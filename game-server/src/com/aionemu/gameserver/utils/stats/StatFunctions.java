@@ -54,7 +54,9 @@ public class StatFunctions {
 		float mapMulti = instance.getInstanceHandler().getExpMultiplier(); // map modifier to approach retail exp values
 		if (instance.getParent().isInstanceType() && instance.getMaxPlayers() >= 2 && instance.getMaxPlayers() <= 6) {
 			mapMulti *= instance.getMaxPlayers(); // on retail you get mob EP * max instance member count (only for group instances)
-			mapMulti /= RatesConfig.XP_SOLO_RATES[0]; // custom: divide by regular xp rates, so they will not affect the rewarded XP
+			// custom: divide by the players' xp rate, so it will not affect the rewarded XP (playerbots: the premium one, every player account being
+			// premium; it was the regular one)
+			mapMulti /= RatesConfig.XP_SOLO_RATES[Math.min(RatesConfig.XP_SOLO_RATES.length - 1, 1)];
 		}
 		int xpPercentage = XPRewardEnum.xpRewardFrom(target.getLevel() - maxLevelInRange);
 		long rewardXP = Math.round(baseXP * mapMulti * (xpPercentage / 100f));

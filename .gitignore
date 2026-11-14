@@ -15,3 +15,5 @@ login-server/target/
 **/*.iml
 **/.classpath
 **/.project
+# release notes and bundles written by tools/tag-patch.ps1
+/release/

@@ -48,6 +48,7 @@ class BotMemoryTest {
 		Map.entry("BotChat.levelSeen", "a level is remembered per character to tell a level up, asleep or not"),
 		Map.entry("BotSpeech.spokeAt", "a character just heard shouting stays quiet, asleep or not"),
 		Map.entry("BotStores.shelves", "a keeper's stock lasts the day, across its shifts"),
+		Map.entry("CombatMeter.tallies", "a bot is counted only in a player's team, and idle tallies are dropped past 500"),
 		// keyed by something that is not a bot
 		Map.entry("BotDay.rotas", "by map"), Map.entry("BotVisitors.lastWatched", "by map"), Map.entry("BotStores.stallsByMap", "by map"),
 		Map.entry("BotVendorManager.tripsGivenUp", "by map"), Map.entry("BotSpeech.nextAdvert", "by map"), Map.entry("BotSpeech.nextCall", "by map"),

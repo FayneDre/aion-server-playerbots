@@ -57,7 +57,6 @@ public abstract class Creature extends VisibleObject {
 	private final byte[] zoneTypes = new byte[ZoneType.values().length];
 	private int skillNumber;
 	private int attackedCount;
-	private long spawnTime = System.currentTimeMillis();
 
 	public Creature(int objId, CreatureController<? extends Creature> controller, SpawnTemplate spawnTemplate, CreatureTemplate objectTemplate,
 		WorldPosition position, boolean autoReleaseObjectId) {
@@ -130,6 +129,13 @@ public abstract class Creature extends VisibleObject {
 
 	public boolean isDead() {
 		return lifeStats.isDead();
+	}
+
+	/**
+	 * @return True if the creature is dead or a lethal hit is already on its way. Such a creature must neither act nor be targeted normally.
+	 */
+	public boolean isDeadOrDoomed() {
+		return lifeStats.isDeadOrDoomed();
 	}
 
 	/**
@@ -552,10 +558,6 @@ public abstract class Creature extends VisibleObject {
 
 	public int getSkillCooldown(SkillTemplate template) {
 		return template.getCooldown();
-	}
-
-	public long getMillisSinceSpawn() {
-		return System.currentTimeMillis() - spawnTime;
 	}
 
 	public boolean isNewSpawn() {

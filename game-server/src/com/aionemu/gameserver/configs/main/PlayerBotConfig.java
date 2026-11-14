@@ -3,6 +3,7 @@ package com.aionemu.gameserver.configs.main;
 import com.aionemu.commons.configuration.Property;
 import com.aionemu.gameserver.playerbot.positioning.PositioningMode;
 import com.aionemu.gameserver.playerbot.social.ChatLanguage;
+import com.aionemu.gameserver.playerbot.world.DensityMode;
 
 /**
  * Settings for the playerbot system.
@@ -46,11 +47,84 @@ public class PlayerBotConfig {
 	public static volatile boolean AMBIENT_GLIDE;
 
 	/**
+	 * How much of each region's countryside is awake: following the players, held at {@link #DENSITY_PERCENT} whoever is online, or following the
+	 * players but never below it. Villages are always full whichever it is. Read at every review of the director (30 s).
+	 */
+	@Property(key = "gameserver.playerbot.density.mode", defaultValue = "AUTO")
+	public static volatile DensityMode DENSITY_MODE = DensityMode.AUTO;
+
+	/** The percent of its busy countryside a map holds under {@link DensityMode#FIXED}, or at least under {@link DensityMode#FLOOR} (0 to 100). */
+	@Property(key = "gameserver.playerbot.density.percent", defaultValue = "30")
+	public static volatile int DENSITY_PERCENT = 30;
+
+	/**
+	 * Whether the population guard holds the director's wakes (and the capitals' visitors) while the server is short of memory or of route planning.
+	 * Departures go on either way. See {@code BotLoadGuard}. Read at every review (30 s).
+	 */
+	@Property(key = "gameserver.playerbot.guard.enable", defaultValue = "true")
+	public static volatile boolean GUARD_ENABLE = true;
+
+	/** The old generation after a collection, in percent of the heap, from which the wakes are held. */
+	@Property(key = "gameserver.playerbot.guard.heap.hold", defaultValue = "85")
+	public static volatile int GUARD_HEAP_HOLD = 85;
+
+	/** The percent of the heap under which wakes held for the heap go on again. */
+	@Property(key = "gameserver.playerbot.guard.heap.release", defaultValue = "80")
+	public static volatile int GUARD_HEAP_RELEASE = 80;
+
+	/** The seconds a route search waited for a thread, within one review, from which the wakes are held. */
+	@Property(key = "gameserver.playerbot.guard.routes.hold", defaultValue = "20")
+	public static volatile int GUARD_ROUTES_HOLD = 20;
+
+	/** The seconds under which wakes held for route planning go on again. */
+	@Property(key = "gameserver.playerbot.guard.routes.release", defaultValue = "5")
+	public static volatile int GUARD_ROUTES_RELEASE = 5;
+
+	/**
+	 * The navmesh tiles every open map holds together, in percent of the heap (1 to 100). Past it, the tiles nobody walked on lately are given back,
+	 * on whichever map they are, and read again from the file when a bot comes back. See {@code TileBudget}. Initialised here as well as by the
+	 * property, because the offline navmesh tools read it without loading the configuration.
+	 */
+	@Property(key = "gameserver.playerbot.navmesh.tile_budget", defaultValue = "12")
+	public static volatile int NAVMESH_TILE_BUDGET = 12;
+
+	/**
 	 * Whether bots may attack players of the other race (real players and bots) where the engine makes them enemies, which is a PvP zone. Off, no bot
 	 * ever picks a player as a target and nothing of the PvP behaviour runs.
 	 */
 	@Property(key = "gameserver.playerbot.pvp.enable", defaultValue = "true")
 	public static volatile boolean PVP_ENABLE;
+
+	/** How willing a bot is to start a fight with a player of the other race, as shares of the bots (relative: 25, 25 and 50 are a quarter, a quarter and a half). */
+	@Property(key = "gameserver.playerbot.pvp.share.fighter", defaultValue = "25")
+	public static volatile int PVP_SHARE_FIGHTER = 25;
+	@Property(key = "gameserver.playerbot.pvp.share.opportunist", defaultValue = "25")
+	public static volatile int PVP_SHARE_OPPORTUNIST = 25;
+	@Property(key = "gameserver.playerbot.pvp.share.peaceful", defaultValue = "50")
+	public static volatile int PVP_SHARE_PEACEFUL = 50;
+
+	/** How far above its own level a bot picks a fight with a player. */
+	@Property(key = "gameserver.playerbot.pvp.level_above", defaultValue = "3")
+	public static volatile int PVP_LEVEL_ABOVE = 3;
+
+	/** How far beneath its own level a bot still picks a fight with a player. */
+	@Property(key = "gameserver.playerbot.pvp.level_below", defaultValue = "6")
+	public static volatile int PVP_LEVEL_BELOW = 6;
+
+	/**
+	 * What a world bot earns from monsters, alone and in a group, and from player kills, as a percent of the official experience rate (a player's rates do
+	 * not apply to it). The first two are never less than 1: zero is no experience at all, not a slow one. A bot in a player's group follows the player's rate.
+	 */
+	@Property(key = "gameserver.playerbot.xp.solo", defaultValue = "1")
+	public static volatile int XP_SOLO = 1;
+	@Property(key = "gameserver.playerbot.xp.group", defaultValue = "1")
+	public static volatile int XP_GROUP = 1;
+	@Property(key = "gameserver.playerbot.xp.pvp", defaultValue = "100")
+	public static volatile int XP_PVP = 100;
+
+	/** Whether bots speak in the chat channels and by shout; `//bot speech off` silences them further, until the next start. */
+	@Property(key = "gameserver.playerbot.chat.enable", defaultValue = "true")
+	public static volatile boolean CHAT_ENABLE = true;
 
 	/** The language of everything bots say in the chat channels and by shout: FR or EN. */
 	@Property(key = "gameserver.playerbot.chat.language", defaultValue = "FR")
@@ -116,4 +190,11 @@ public class PlayerBotConfig {
 
 	@Property(key = "gameserver.playerbot.broker.buyer.daily_kinah_per_item", defaultValue = "50000000")
 	public static volatile long BROKER_BUYER_DAILY_KINAH_PER_ITEM;
+
+	/**
+	 * The port the interface addons' pages are served on (the combat meter), 0 to serve none. A client reaches it from wherever it plays, so it is
+	 * opened on every interface; a page shows only what concerns the character it names, to a request from where that character's game connection comes from.
+	 */
+	@Property(key = "gameserver.playerbot.addon.port", defaultValue = "7790")
+	public static int ADDON_PORT;
 }

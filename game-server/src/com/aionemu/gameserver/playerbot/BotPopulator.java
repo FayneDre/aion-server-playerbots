@@ -25,6 +25,7 @@ import com.aionemu.gameserver.playerbot.world.BotDirector;
 import com.aionemu.gameserver.playerbot.world.BotPlaces;
 import com.aionemu.gameserver.playerbot.world.BotPresence;
 import com.aionemu.gameserver.playerbot.economy.BotStigmaFitter;
+import com.aionemu.gameserver.playerbot.economy.BotVendorManager;
 import com.aionemu.gameserver.services.player.PlayerService;
 import com.aionemu.gameserver.geoEngine.math.Vector3f;
 import com.aionemu.gameserver.world.World;
@@ -213,6 +214,7 @@ public final class BotPopulator {
 				PlayerBotEnterWorldService.learnMissingSkills(bot);
 				worn += BotOutfitter.dress(bot);
 				BotOutfitter.stockScrolls(bot);
+				BotVendorManager.stockPotions(bot);
 				// After the skills, like the gear and for a nearer reason: which stigmas a character may socket is read from its skill tree, and the
 				// engine charges kinah for each one, so a bot with neither knows nothing and can afford nothing.
 				BotStigmaFitter.fit(bot);

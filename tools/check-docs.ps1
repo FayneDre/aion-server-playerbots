@@ -49,7 +49,7 @@ foreach ($file in $files) {
     if ($file.DirectoryName.StartsWith($docs)) {
         $lines = ([regex]::Matches($text, "`n")).Count + [int](-not $text.EndsWith("`n"))
         $relative = Get-Relative $file.FullName
-        if ($lines -gt 200 -and $relative -notmatch '^docs/patch-notes/\d{4}-\d{2}\.md$') {
+        if ($lines -gt 200 -and $relative -notmatch '^docs/patch-notes/\d{4}-\d{2}(\.en)?\.md$') {
             $warnings += "${relative}: $lines lines, over the 200 the conventions allow; split it by topic"
         }
         # a plan lives in plans/ while it is open and in history/ once done; either way its first lines say which, in the fixed words
@@ -86,12 +86,12 @@ foreach ($file in $files | Where-Object { $_.DirectoryName.StartsWith($docs) -an
 # plans whose classes changed since the last patch, while the plan did not
 Push-Location $root
 try {
-    $lastTag = if ($Since) { $Since } else { git describe --tags --match 'patch-*' --abbrev=0 2>$null }
+    $lastTag = if ($Since) { $Since } else { git describe --tags --match 'patch-*' --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>$null }
     if ($lastTag) {
-        $changed = @(git diff --name-only "$lastTag" HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot') + @(git diff --name-only HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot')
+        $changed = @(git diff --name-only "$lastTag" HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot') + @(git -c core.safecrlf=false diff --name-only HEAD -- 'game-server/src/com/aionemu/gameserver/playerbot')
         $classes = @($changed | Where-Object { $_ -like '*.java' } | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) } | Sort-Object -Unique)
         # a doc not yet committed counts as touched too: a plan written today names classes changed today, and is not stale for it
-        $touched = @(git diff --name-only "$lastTag" HEAD -- docs) + @(git diff --name-only HEAD -- docs) + @(git ls-files --others --exclude-standard -- docs) |
+        $touched = @(git diff --name-only "$lastTag" HEAD -- docs) + @(git -c core.safecrlf=false diff --name-only HEAD -- docs) + @(git ls-files --others --exclude-standard -- docs) |
             ForEach-Object { $_.Replace('/', '\') }
         foreach ($plan in $files | Where-Object { (Split-Path -Leaf $_.DirectoryName) -eq 'plans' -or $_.Name -eq 'how-it-works.md' }) {
             if ($touched -contains (Get-Relative $plan.FullName).Replace('/', '\')) { continue }
