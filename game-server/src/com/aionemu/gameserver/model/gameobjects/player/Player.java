@@ -241,7 +241,7 @@ public class Player extends Creature {
 	}
 
 	public String getName(boolean displayCustomTag) {
-		if (displayCustomTag && AdminConfig.NAME_TAGS.length > 0) {
+		if (displayCustomTag && AdminConfig.CUSTOMTAG_ENABLE && AdminConfig.NAME_TAGS.length > 0) {
 			int index = playerAccount.getAccessLevel() - 1;
 			if (index >= 0 && index < AdminConfig.NAME_TAGS.length)
 				return String.format(AdminConfig.NAME_TAGS[index], getCommonData().getName());

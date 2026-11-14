@@ -36,7 +36,8 @@ import com.aionemu.gameserver.world.WorldMap;
  * it removes the response once read.
  * <p>
  * Same reasoning as {@link ShutdownRequestWatcher}: no port, no key, nothing to expose. Whoever can write in the server's folder can already replace the
- * jar, so a file adds no power. The commands are the few the launcher needs, each acting on one thing; there is no way to run a chat command.
+ * jar, so a file adds no power. The commands are the few the launcher needs, each acting on one thing; there is no way to run a chat command
+ * of one's choosing.
  * <p>
  * The bot inbox ({@code bot-commands.txt}) is another thing: it takes bot commands only and answers in the log.
  */
@@ -51,9 +52,11 @@ public final class AdminChannel {
 	 * {@code playerbot.properties} (experience, PvP shares and level band, chat).</li>
 	 * <li>2 (8 November 2026): {@code population}, and the density settings ({@code density.mode}, {@code density.percent}) applied by
 	 * {@code reload-config} at the next review.</li>
+	 * <li>3 (14 November 2026): {@code gm-state} and {@code gm-set} (a staff member's modes in game, {@link AdminGmOptions}), and the setting
+	 * {@code gameserver.administration.customtags.enable}.</li>
 	 * </ul>
 	 */
-	public static final int API_LEVEL = 2;
+	public static final int API_LEVEL = 3;
 
 	private static final Logger log = LoggerFactory.getLogger(AdminChannel.class);
 	/** Relative to the working directory, which is the game-server folder. */
@@ -141,6 +144,8 @@ public final class AdminChannel {
 			case "reload-config" -> reloadConfig();
 			case "teleport" -> words.length == 6 ? teleport(words) : "error usage: teleport <character id> <map id> <x> <y> <z>";
 			case "destinations" -> destinations();
+			case "gm-state" -> words.length == 2 ? AdminGmOptions.state(words) : "error usage: gm-state <character id>";
+			case "gm-set" -> words.length == 4 ? AdminGmOptions.set(words) : "error usage: gm-set <character id> <mode> <0|1>";
 			case "population" -> population(BotDirector.getInstance().lastTotals(), PlayerBotConfig.DENSITY_MODE, PlayerBotConfig.DENSITY_PERCENT,
 				PlayerBotConfig.GUARD_ENABLE, BotLoadGuard.getInstance().causes(), BotLoadGuard.getInstance().lastReading());
 			default -> "error unknown command " + words[0];

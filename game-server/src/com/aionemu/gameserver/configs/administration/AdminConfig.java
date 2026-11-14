@@ -30,6 +30,12 @@ public class AdminConfig {
 	public static String[] NAME_TAGS;
 
 	/**
+	 * Whether staff names carry their tag ({@link #NAME_TAGS}): off, a staff member plays under the bare name.
+	 */
+	@Property(key = "gameserver.administration.customtags.enable", defaultValue = "true")
+	public static boolean CUSTOMTAG_ENABLE;
+
+	/**
 	 * Admin properties
 	 */
 	@Property(key = "gameserver.administration.unrestricted_itemtrade", defaultValue = "1")
