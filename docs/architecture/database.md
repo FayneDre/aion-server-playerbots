@@ -27,7 +27,8 @@ distro were weighed and left (below).
   The account needs the global privilege, given once by a database administrator: `tools/grant-shutdown.ps1`, run by the person in a terminal, asks
   for the administrator's password (a secure string, kept for that one statement, never written) and checks the result.
   `stop-server.ps1 -WithMysql` does both in order.
-- The installer's service (`MySQL267`) stays disabled: it needs administrator rights at every start.
+- The installer's MySQL and its service (`MySQL267`) were removed on 14 November 2026: the install's portable MySQL is the only one on this
+  machine, and the tools find it first.
 - **Trap**: `mysqld` has no CTRL+C handler on Windows. `send-ctrl-c.ps1` (the game server's way out) ends it at once, with no "Shutdown complete" in its
   log: InnoDB survives it (a dump taken after was identical to the one before) but it is a crash, not a stop. Only `mysqladmin shutdown` is clean.
 
