@@ -7,6 +7,35 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ---
 
+## v0.1.0-beta.5 — 2026-11-14
+
+It goes with launcher v0.3.0-beta.6, which can install it on a computer that has nothing but the game client. **No SQL, no navmesh to
+rebuild.** **Nine default settings files change** (among them `game-server/config/main/playerbot.properties` and `custom.properties`, options
+below); the launcher replaces each one if it was not edited, and puts the new version beside it otherwise.
+
+**What changes for players and testers**
+- **An install from nothing**: the release carries its own Java (55 MB) and its own MySQL database (29 MB), with the scripts that make it.
+  Nothing is installed on Windows: no Java, no MySQL service, no administrator rights. A new install populates the 24 measured maps (both
+  races, the capitals, the contested ground) instead of Poeta alone.
+- **The server fits in less memory**: the navigation tiles of every open map share one budget (12 % of the heap,
+  `gameserver.playerbot.navmesh.tile_budget`), and a guard holds the bots' wake-ups while memory or route planning runs short
+  (`gameserver.playerbot.guard.*`). While it holds, bots of maps nobody plays are exchanged for arrivals where a player is: there are people
+  around you even on a small machine.
+- **The bots carry potions**: when they are made and when they change their gear, from level 10, they get life and mana flasks, the best a
+  merchant sells.
+- **The emulator updated** (49 changes from the original team, up to 12 November): weather and channel change as on the official game, identify
+  failing after the first item, free flight ending when gliding out of a flight zone, the duel timer, falls from elevators, quests where an NPC
+  follows, Eternal Challenge rebalanced, plumes selectable again, failed trade messages, and many guards against malformed packets. A creature
+  that will die from a hit in flight is now treated as dead from the end of the attack, as on the official game
+  (`gameserver.combat.death_at_hittime`, `false` by default).
+
+**To test**
+- With launcher v0.3.0-beta.6 on a machine with no server (or Windows Sandbox): "Install the server" on the home page, up to logging in and
+  seeing bots.
+- On an existing install: the update from beta.4, then an hour of play; bots of level 10 and above drink their potions.
+
+---
+
 ## v0.1.0-beta.4 — 2026-11-08
 
 Revision `0d967aa`, the one `//bot version` shows. It goes with addons v0.1.0-beta.4 (the combat meter), which it serves. **No SQL, no navmesh

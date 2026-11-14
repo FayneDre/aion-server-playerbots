@@ -8,6 +8,35 @@ bundle (the entries up to v0.1.0-beta.4 named the server deployed here, which on
 
 ---
 
+## v0.1.0-beta.5 — 14/11/2026
+
+Il va avec le launcher v0.3.0-beta.6, qui sait l'installer sur un ordinateur qui n'a que le client du jeu. **Pas de SQL, pas de navmesh à
+reconstruire.** **Neuf fichiers de réglages par défaut changent** (dont `game-server/config/main/playerbot.properties` et `custom.properties`,
+options ci-dessous) ; le launcher remplace chacun s'il n'a pas été modifié, sinon il pose la nouvelle version à côté.
+
+**Ce qui change pour les joueurs et les testeurs**
+- **Une installation à partir de rien** : la version porte son propre Java (55 Mo) et sa propre base de données MySQL (29 Mo), avec les
+  scripts qui la créent. Rien n'est installé dans Windows : ni Java, ni service MySQL, ni droits d'administrateur. Une installation neuve peuple
+  les 24 cartes mesurées (les deux races, les capitales, les terres disputées) au lieu du seul Poeta.
+- **Le serveur tient dans moins de mémoire** : les cartes de navigation de toutes les cartes ouvertes partagent un budget (12 % de la mémoire,
+  `gameserver.playerbot.navmesh.tile_budget`), et un garde retient le réveil des bots quand la mémoire ou le calcul des trajets manque
+  (`gameserver.playerbot.guard.*`). Pendant qu'il retient, des bots des cartes où personne ne joue sont échangés contre des arrivées là où un
+  joueur se trouve : il y a du monde autour de toi même sur une petite machine.
+- **Les bots ont des potions** : à leur création et quand ils changent d'équipement, à partir du niveau 10, ils reçoivent des fioles de vie et
+  de mana, les meilleures que vend un marchand.
+- **L'émulateur mis à jour** (49 changements de l'équipe d'origine, jusqu'au 12 novembre) : la météo et le changement de canal comme sur le
+  jeu officiel, l'identification qui échouait après le premier objet, le vol libre qui s'arrête en planant hors d'une zone de vol, le minuteur
+  des duels, les chutes depuis les ascenseurs, les quêtes où un PNJ suit, le Défi éternel rééquilibré, les plumes de nouveau sélectionnables,
+  des messages d'échange raté, et de nombreuses protections contre des paquets malformés. Une créature qui va mourir d'un coup en vol est
+  désormais traitée comme morte dès la fin de l'attaque, comme sur le jeu officiel (`gameserver.combat.death_at_hittime`, `false` par défaut).
+
+**À tester**
+- Avec le launcher v0.3.0-beta.6 sur une machine sans serveur (ou Windows Sandbox) : « Installer le serveur » sur l'accueil, jusqu'à se
+  connecter en jeu et voir des bots.
+- Sur une installation existante : la mise à jour depuis beta.4, puis une heure de jeu ; les bots de niveau 10 et plus boivent leurs potions.
+
+---
+
 ## v0.1.0-beta.4 — 08/11/2026
 
 Révision `0d967aa`, celle que `//bot version` affiche. Il va avec les addons v0.1.0-beta.4 (le compteur de combat), qu'il sert. **Pas de SQL,
