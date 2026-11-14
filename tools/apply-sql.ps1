@@ -116,6 +116,9 @@ $dbHost, $dbPort, $schema = $Matches[1], $(if ($Matches[2]) { $Matches[2] } else
 
 function Find-MySqlTool([string]$name) {
     if ($MysqlBin -and (Test-Path (Join-Path $MysqlBin $name))) { return Join-Path $MysqlBin $name }
+    # the install's portable MySQL, the one its servers use
+    $portable = Join-Path $ServerRoot "mysql\bin\$name"
+    if (Test-Path $portable) { return $portable }
     $onPath = Get-Command $name -ErrorAction SilentlyContinue
     if ($onPath) { return $onPath.Source }
     $found = foreach ($root in 'C:\Program Files\MySQL', 'C:\Program Files (x86)\MySQL') {

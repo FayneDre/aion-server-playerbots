@@ -8,7 +8,7 @@
 # <server>/game-server/log/bot-measures, not to the repository: they are a run's data. Every report has the same sections, so two can be compared.
 from=$1; to=$2; day=${3:-$(date +%Y-%m-%d)}
 SERVER=$(cygpath -u "${AION_SERVER_HOME:-D:/Jeux/Aion/server}")
-MYSQL=${MYSQL_EXE:-"/c/Program Files/MySQL/MySQL Server 26.7/bin/mysql.exe"}
+MYSQL=${MYSQL_EXE:-$SERVER/mysql/bin/mysql.exe}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 M=$SERVER/game-server/log/bot-measures
 # MEASURE_LOG=<file> reads another console log (an archived run, unzipped) instead of the running server's: the "before" of a change that is
