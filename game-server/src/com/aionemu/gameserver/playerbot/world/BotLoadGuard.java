@@ -39,7 +39,7 @@ import com.aionemu.gameserver.playerbot.BotScheduler;
  * Java reads the same figure as the Windows task manager (77 % on both, 14 November). It releases {@value #MACHINE_MARGIN} points under its
  * mark, which the person chooses in the launcher.</li>
  * </ul>
- * The marks are properties (gameserver.playerbot.guard.*), measured rather than chosen.
+ * The marks are properties (gameserver.playerbot.guard.*): the heap's and the routes' measured rather than chosen, the machine's the person's.
  */
 public final class BotLoadGuard {
 
