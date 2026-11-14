@@ -80,6 +80,9 @@ on a database that has its bots): the launcher says so.
    runtime and MySQL `ownRuntimes` already starts. End-to-end tests against a fake feed. Left there: memory checked before the first start.
 3. **A first install on a clean machine**: Windows Sandbox (Windows 11 Pro has it) or a second account, from the launcher alone, to a player logging in.
    Milestone 5 of the install plan did the server's half on an empty database; the downloads, the unpacking and the SmartScreen warnings are not tried.
+   The tool is the launcher's `tools/try-clean-machine.ps1 -Version <launcher release> [-Client <client folder>]`: a sandbox with that Setup
+   installed silently, the launcher open, and `collect.cmd` copying its settings, reports and the servers' logs out before it is closed. Windows
+   Sandbox is off on the development machine (14 November): turning it on is an administrator's command and a restart.
 4. **The disk and the time**: ~3 GB written, and 2.1 GB downloaded at the first launch; a progress that says what it is doing.
 
 Checked: a person with the client and nothing else installs the server from the launcher and plays on it, with bots around.
