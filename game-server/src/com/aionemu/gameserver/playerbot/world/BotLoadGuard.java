@@ -15,7 +15,8 @@ import com.aionemu.gameserver.configs.main.PlayerBotConfig;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 
 /**
- * Holds the wakes of the world's bots while the server is short of memory or of route planning, and lets them go again once it is well clear.
+ * Holds the wakes of the world's bots while the server is short of memory or of route planning, or the machine of memory, and lets them go again
+ * once it is well clear.
  * <p>
  * The density settings say how many bots the world should hold; nothing said how many this machine can. A percent set too high used to fill the heap
  * until the server fell over, and before the heap, on 5 November at full density on sixteen cores, it was route planning that gave out: searches
@@ -23,7 +24,7 @@ import com.aionemu.gameserver.playerbot.BotScheduler;
  * world that has reached what the machine holds stops growing instead of breaking. Departures go on as before: a guard that also held them would keep
  * a server at its limit.
  * <p>
- * Each of the two signals holds above one mark and releases below a lower one, so a server sitting at the limit does not wake and stop every half
+ * Each of the three signals holds above one mark and releases below a lower one, so a server sitting at the limit does not wake and stop every half
  * minute:
  * <ul>
  * <li><b>The heap</b> is read as the old generation <b>after a collection</b> ({@link MemoryPoolMXBean#getCollectionUsage}), not its raw usage,
@@ -33,6 +34,10 @@ import com.aionemu.gameserver.playerbot.BotScheduler;
  * at that level.</li>
  * <li><b>Route planning</b> is read as the longest a search waited for a thread since the last review. Its length would say less: the queue holds
  * one search per bot at most, so a long queue on a big world is ordinary, while a bot that waits a minute takes its search for lost.</li>
+ * <li><b>The machine</b> is read as the share of the computer's memory in use, the game client and every other program included: on a player's
+ * computer the heap has its ceiling while the rest of the machine has none, and a machine that pages slows the game before the server notices.
+ * Java reads the same figure as the Windows task manager (77 % on both, 14 November). It releases {@value #MACHINE_MARGIN} points under its
+ * mark, which the person chooses in the launcher.</li>
  * </ul>
  * The marks are properties (gameserver.playerbot.guard.*), measured rather than chosen.
  */
@@ -42,15 +47,24 @@ public final class BotLoadGuard {
 
 	/** What holds the wakes. */
 	public enum Cause {
-		HEAP, ROUTES
+		HEAP, ROUTES, MACHINE
 	}
 
-	/** Where each signal holds and where it lets go: a percent of the heap, and milliseconds a route search waited. */
-	record Limits(int heapHold, int heapRelease, long routesHold, long routesRelease) {
+	/** How far under its mark the machine's memory must fall for the wakes it held to go on. */
+	static final int MACHINE_MARGIN = 5;
+
+	/**
+	 * Where each signal holds and where it lets go: a percent of the heap, milliseconds a route search waited, and a percent of the machine's memory
+	 * (0 when the machine is not watched).
+	 */
+	record Limits(int heapHold, int heapRelease, long routesHold, long routesRelease, int machineHold) {
 	}
 
-	/** One look at the server: the old generation after the last collection in percent of the heap (-1 when unknown), and the longest route wait. */
-	public record Reading(int heapPercent, long routeWaitMillis) {
+	/**
+	 * One look at the server: the old generation after the last collection in percent of the heap (-1 when unknown), the longest route wait, and the
+	 * machine's memory in use in percent (-1 when unknown).
+	 */
+	public record Reading(int heapPercent, long routeWaitMillis, int machinePercent) {
 	}
 
 	private static final BotLoadGuard INSTANCE = new BotLoadGuard();
@@ -58,7 +72,7 @@ public final class BotLoadGuard {
 	private final MemoryPoolMXBean oldGeneration = findOldGeneration();
 	/** Written by the review, on the lifecycle lane; read by //bot pool from anywhere. */
 	private volatile Set<Cause> holding = EnumSet.noneOf(Cause.class);
-	private volatile Reading last = new Reading(-1, 0);
+	private volatile Reading last = new Reading(-1, 0, -1);
 
 	private BotLoadGuard() {
 	}
@@ -85,6 +99,14 @@ public final class BotLoadGuard {
 			next.add(Cause.ROUTES);
 		else if (reading.routeWaitMillis() < limits.routesRelease())
 			next.remove(Cause.ROUTES);
+		if (limits.machineHold() <= 0)
+			next.remove(Cause.MACHINE);
+		else if (reading.machinePercent() >= 0) {
+			if (reading.machinePercent() >= limits.machineHold())
+				next.add(Cause.MACHINE);
+			else if (reading.machinePercent() < limits.machineHold() - MACHINE_MARGIN)
+				next.remove(Cause.MACHINE);
+		}
 		return next;
 	}
 
@@ -94,7 +116,7 @@ public final class BotLoadGuard {
 	 * @return true when the wakes are held.
 	 */
 	public boolean review() {
-		Reading reading = new Reading(heapPercentAfterCollection(), BotScheduler.getInstance().takeLongestRouteWait());
+		Reading reading = new Reading(heapPercentAfterCollection(), BotScheduler.getInstance().takeLongestRouteWait(), machinePercent());
 		Limits limits = limits();
 		Set<Cause> before = holding;
 		Set<Cause> after = PlayerBotConfig.GUARD_ENABLE ? next(before, reading, limits) : EnumSet.noneOf(Cause.class);
@@ -145,12 +167,26 @@ public final class BotLoadGuard {
 	private static String describe(Reading reading, Limits limits) {
 		String heap = reading.heapPercent() < 0 ? "heap not yet collected" : "heap " + reading.heapPercent() + "% after a collection";
 		return heap + " (holds at " + limits.heapHold() + ", releases under " + limits.heapRelease() + "), longest route wait "
-			+ reading.routeWaitMillis() / 1000 + " s (holds at " + limits.routesHold() / 1000 + ", releases under " + limits.routesRelease() / 1000 + ")";
+			+ reading.routeWaitMillis() / 1000 + " s (holds at " + limits.routesHold() / 1000 + ", releases under " + limits.routesRelease() / 1000 + "), "
+			+ (reading.machinePercent() < 0 ? "machine memory unknown" : "machine memory " + reading.machinePercent() + "% in use")
+			+ (limits.machineHold() <= 0 ? " (not watched)"
+				: " (holds at " + limits.machineHold() + ", releases under " + (limits.machineHold() - MACHINE_MARGIN) + ")");
 	}
 
 	private static Limits limits() {
+		int machineHold = PlayerBotConfig.GUARD_MACHINE_ENABLE ? Math.clamp(PlayerBotConfig.GUARD_MACHINE_HOLD, 50, 99) : 0;
 		return new Limits(PlayerBotConfig.GUARD_HEAP_HOLD, PlayerBotConfig.GUARD_HEAP_RELEASE, PlayerBotConfig.GUARD_ROUTES_HOLD * 1000L,
-			PlayerBotConfig.GUARD_ROUTES_RELEASE * 1000L);
+			PlayerBotConfig.GUARD_ROUTES_RELEASE * 1000L, machineHold);
+	}
+
+	/** @return The share of the machine's memory in use, in percent; -1 when the platform does not say. */
+	private static int machinePercent() {
+		if (!(ManagementFactory.getOperatingSystemMXBean() instanceof com.sun.management.OperatingSystemMXBean machine))
+			return -1;
+		long total = machine.getTotalMemorySize();
+		if (total <= 0)
+			return -1;
+		return (int) ((total - machine.getFreeMemorySize()) * 100 / total);
 	}
 
 	/**

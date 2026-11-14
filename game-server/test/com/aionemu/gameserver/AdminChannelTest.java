@@ -43,16 +43,16 @@ class AdminChannelTest {
 
 	@Test
 	void populationSaysTheDensityTheTotalsAndTheGuard() {
-		assertEquals("ok\nmode FIXED\npercent 60\nawake 900\nwanted 1000\nasleep 300\nshort 2\nguard held HEAP ROUTES\nheap 86\nroute-wait 25",
+		assertEquals("ok\nmode FIXED\npercent 60\nawake 900\nwanted 1000\nasleep 300\nshort 2\nguard held HEAP ROUTES MACHINE\nheap 86\nroute-wait 25\nmachine 93",
 			AdminChannel.population(new BotDirector.Totals(900, 1000, 300, 2), DensityMode.FIXED, 60, true, EnumSet.allOf(BotLoadGuard.Cause.class),
-				new BotLoadGuard.Reading(86, 25_400)));
+				new BotLoadGuard.Reading(86, 25_400, 93)));
 	}
 
 	@Test
 	void populationBeforeTheFirstReviewHasNoTotals() {
-		String answer = AdminChannel.population(null, DensityMode.AUTO, 30, true, Set.of(), new BotLoadGuard.Reading(-1, 0));
-		assertEquals("ok\nmode AUTO\npercent 30\nguard open\nheap unknown\nroute-wait 0", answer);
-		assertTrue(AdminChannel.population(null, DensityMode.AUTO, 30, false, Set.of(), new BotLoadGuard.Reading(-1, 0)).contains("\nguard off\n"));
+		String answer = AdminChannel.population(null, DensityMode.AUTO, 30, true, Set.of(), new BotLoadGuard.Reading(-1, 0, -1));
+		assertEquals("ok\nmode AUTO\npercent 30\nguard open\nheap unknown\nroute-wait 0\nmachine unknown", answer);
+		assertTrue(AdminChannel.population(null, DensityMode.AUTO, 30, false, Set.of(), new BotLoadGuard.Reading(-1, 0, -1)).contains("\nguard off\n"));
 	}
 
 	@Test

@@ -160,8 +160,8 @@ public final class AdminChannel {
 	/**
 	 * One {@code key value} line each: {@code mode} and {@code percent} (the density in force), {@code awake}, {@code wanted}, {@code asleep} and
 	 * {@code short} (the last review's totals; absent before the first review, which comes once the startup is done), {@code guard} ({@code open},
-	 * {@code off}, or {@code held} followed by its causes), {@code heap} (the percent after a collection, or {@code unknown}) and {@code route-wait} (in
-	 * seconds).
+	 * {@code off}, or {@code held} followed by its causes), {@code heap} (the percent after a collection, or {@code unknown}), {@code route-wait} (in
+	 * seconds) and {@code machine} (the machine's memory in use, in percent, or {@code unknown}).
 	 */
 	static String population(BotDirector.Totals totals, DensityMode mode, int percent, boolean guardOn, Set<BotLoadGuard.Cause> causes,
 		BotLoadGuard.Reading reading) {
@@ -172,6 +172,7 @@ public final class AdminChannel {
 		lines.add("guard " + guard);
 		lines.add("heap " + (reading.heapPercent() < 0 ? "unknown" : reading.heapPercent()));
 		lines.add("route-wait " + reading.routeWaitMillis() / 1000);
+		lines.add("machine " + (reading.machinePercent() < 0 ? "unknown" : reading.machinePercent()));
 		return String.join("\n", lines);
 	}
 

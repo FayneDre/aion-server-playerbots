@@ -208,14 +208,15 @@ public class BotDirector {
 
 		PlayerBotService bots = PlayerBotService.getInstance();
 		int budget = anybodyOnline ? CHANGES_PER_REVIEW : Integer.MAX_VALUE;
-		// A server short of memory or of route planning wakes nobody until it is well clear; departures go on, so a world over its target still sheds.
+		// A server short of memory or of route planning, or a machine short of memory, wakes nobody until it is well clear; departures go on, so a
+		// world over its target still sheds.
 		boolean held = BotLoadGuard.getInstance().review();
 		boolean exchanging = held && anybodyOnline && !BotLoadGuard.getInstance().causes().contains(BotLoadGuard.Cause.ROUTES);
 		int woken = 0, slept = 0;
 		int awakeInAll = 0, wantedInAll = 0, asleepInAll = 0, shortAndEmpty = 0;
 		List<String> report = new ArrayList<>();
-		// While the guard holds for the heap: what the played maps are short of, and the bots the others could give them. See exchanges(). Not for route
-		// planning: an exchange is an arrival, and an arrival asks for routes, which is what that guard is short of.
+		// While the guard holds for memory, the heap's or the machine's: what the played maps are short of, and the bots the others could give them.
+		// See exchanges(). Not for route planning: an exchange is an arrival, and an arrival asks for routes, which is what that guard is short of.
 		List<BotRoster.Resident> shortWherePlayed = new ArrayList<>();
 		List<List<Integer>> spareWhereUnplayed = new ArrayList<>();
 		// the played maps first, so a budget spent before the end of the list is spent where somebody is

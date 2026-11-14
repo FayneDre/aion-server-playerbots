@@ -58,7 +58,8 @@ public class PlayerBotConfig {
 	public static volatile int DENSITY_PERCENT = 30;
 
 	/**
-	 * Whether the population guard holds the director's wakes (and the capitals' visitors) while the server is short of memory or of route planning.
+	 * Whether the population guard holds the director's wakes (and the capitals' visitors) while the server is short of memory or of route planning,
+	 * or the machine of memory.
 	 * Departures go on either way. See {@code BotLoadGuard}. Read at every review (30 s).
 	 */
 	@Property(key = "gameserver.playerbot.guard.enable", defaultValue = "true")
@@ -79,6 +80,14 @@ public class PlayerBotConfig {
 	/** The seconds under which wakes held for route planning go on again. */
 	@Property(key = "gameserver.playerbot.guard.routes.release", defaultValue = "5")
 	public static volatile int GUARD_ROUTES_RELEASE = 5;
+
+	/** Whether the guard also watches the machine's memory: what the whole computer uses, the game client and the other programs included. */
+	@Property(key = "gameserver.playerbot.guard.machine.enable", defaultValue = "true")
+	public static volatile boolean GUARD_MACHINE_ENABLE = true;
+
+	/** The percent of the machine's memory in use from which the wakes are held (50 to 99); they go on again five points under it. */
+	@Property(key = "gameserver.playerbot.guard.machine.hold", defaultValue = "90")
+	public static volatile int GUARD_MACHINE_HOLD = 90;
 
 	/**
 	 * The navmesh tiles every open map holds together, in percent of the heap (1 to 100). Past it, the tiles nobody walked on lately are given back,

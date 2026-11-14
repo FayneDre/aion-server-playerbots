@@ -37,7 +37,8 @@ every review, so `//reload config` applies them within 30 s.
 
 **The population guard** (`BotLoadGuard`, `gameserver.playerbot.guard.*`) is what stops a percent set too high: a review wakes nobody, nor the
 capitals' visitors, while the old generation after a collection is at 85 % of the heap or more, or a route search waited 20 s or more since the
-last review (or one still waiting has), and wakes again under 80 % and 5 s; departures go on, and a player's recruits are not held. Each signal releases on its own. Under G1
+last review (or one still waiting has), or the machine has 90 % of its memory in use (`guard.machine.*`, the whole computer, the game client
+included; off or another mark from the launcher's Bots page), and wakes again under 80 %, 5 s and 85 %; departures go on, and a player's recruits are not held. Each signal releases on its own. Under G1
 the heap figure is 0 until the old generation passes about 45 % (no concurrent cycle before), read as unknown; from there it follows the live set,
 never read above what the old generation holds now.
 The review's log line ends with the guard's state, `//bot pool` starts with it, and a change is logged once (`Population guard: wakes held by`).
@@ -49,7 +50,7 @@ search per bot); the guard never had to hold at its 85/80 marks. With the marks 
 1907 and left 702 asleep; the first review asked for 694 wakes, 2 came and 692 were held; held at 73 %, kept at 70, released at 66, and the
 next review's 692 gave 41 arrivals and 651 held.
 
-**While the guard holds for the heap, the played maps take bots from the others** (`exchanges`; not while it holds for route planning, an arrival asking for routes): each arrival a map with a player is short of is paired with a
+**While the guard holds for memory (the heap or the machine), the played maps take bots from the others** (`exchanges`; not while it holds for route planning, an arrival asking for routes): each arrival a map with a player is short of is paired with a
 bot awake on a map nobody plays on, hunters first, then villagers, taken in turn from each such map; the bot leaves, and only if it did the
 arrival follows, on the lane, without the heap check (the count does not change). A bot that would not leave (a fight, a road) is passed over
 for 2 minutes. The played maps also come first in every review, so a wake budget spent early is spent where somebody is. Measured on 8 November
