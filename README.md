@@ -12,7 +12,10 @@ bots live in a module of their own, so that the emulator's improvements keep com
 
 - **A world that lives**: about a thousand bots on 26 open-world maps, created asleep in a pool and woken by a director that keeps each region at
   its population. Villages and capitals stay full; the countryside follows the players or holds a fixed density.
-- **Careers**: bots gain levels, move on to the region their level calls for, dress from what they loot and buy, and sell what they do not need.
+- **Fits the machine**: a guard holds new arrivals while the server's memory, its route planning or the computer's RAM (90 % by default) runs
+  short, and trades bots of maps nobody plays for arrivals where a player is.
+- **Careers**: bots gain levels, move on to the region their level calls for, dress from what they loot and buy, carry the potions a merchant
+  sells, and sell what they do not need.
 - **Combat**: real class skills, with playbooks written from class guides for the templar, gladiator, chanter, cleric, ranger and sorcerer, and the
   data's own order for the others; group roles, positioning against bosses, retreat from a fight they cannot win.
 - **Groups**: invite a bot like anyone; it follows, fights what the group fights, goes into instances with you. The Find Group window fills a party
@@ -22,12 +25,21 @@ bots live in a module of their own, so that the emulator's improvements keep com
 - **Capitals and economy**: a town day, private stores at broker prices, an auction house the server keeps stocked and that buys what players list.
 - **Social**: speech in the Region, Trade and Find Group channels and shouts in the capitals, in French or English; duels, friends and trades.
 
+For the players, beside the bots:
+
+- **Premium rates for everyone**: every player account is premium, and a bot in a player's group earns at the player's rates.
+- **A combat meter**: the server counts each player's damage and healing by skill, and its group bots', and serves the pages that show it on
+  port 7790 ([docs/architecture/addon-pages.md](docs/architecture/addon-pages.md)).
+- **Game master commands for the bots**: `//bot` lists them ([docs/bot-commands.md](docs/bot-commands.md)).
+
 What is built and what is left: [docs/built.md](docs/built.md) and [docs/roadmap.md](docs/roadmap.md). Every document: [docs/README.md](docs/README.md).
 
 ## Playing
 
-The easiest way is the launcher, [Echoes of Atreia](https://github.com/FayneDre/echoes-of-atreia-launcher): it finds the server, the client,
-Java and MySQL, starts the servers in order, sets the rates and the bots' options, and launches the game.
+The easiest way is the launcher, [Echoes of Atreia](https://github.com/FayneDre/echoes-of-atreia-launcher). On a computer with only the game
+client, it installs the server from its latest release, which carries everything it runs on: its own Java runtime and its own MySQL database,
+started as programs on a free port, with nothing installed on Windows. Then it starts the servers in order, sets the rates and the bots'
+options, backs up the characters, updates the server, and launches the game.
 
 The game client is not part of this project. The Aion 4.8 NA client is available from the
 [Internet Archive](https://archive.org/download/aion-4.8-na/Aion%204.8%20NA.7z); it needs Beyond Aion's
@@ -46,14 +58,18 @@ Updates flow one way: Beyond Aion into `beyond-aion`, merged into `main`.
 ## Building and running
 
 Java 25 and [Maven](https://maven.apache.org/) are required; `mvn package` from the root builds the game, login and chat servers, each as a zip in
-its `target` folder, to run with a JDK and a MySQL (or MariaDB) server. Tests are skipped by default: `-Dmaven.test.skip=false` runs them.
+its `target` folder, to run with a JDK and a MySQL server. Tests are skipped by default: `-Dmaven.test.skip=false` runs them.
 
-Initialise the databases with the `*.sql` file in each server's `sql` folder (default names and users in `config/network/database.properties`).
+Initialise the databases with the `*.sql` file in each server's `sql` folder (default names and users in `config/network/database.properties`);
+`tools/apply-sql.ps1` then runs the statements of each server's `sql/update.sql` the database has not had yet, once each. The portable MySQL a
+release carries is made by `tools/setup-mysql.ps1` ([docs/architecture/database.md](docs/architecture/database.md)).
 Local settings go in `config/mygs.properties`, `config/myls.properties` and `config/mycs.properties`, which take precedence over the defaults and are
 never touched by an update. The bots' options are in `game-server/config/main/playerbot.properties`.
 
 The navigation meshes are generated, not stored: `tools/navmesh.ps1` builds them. On Windows, `tools/deploy.ps1` builds and installs into a server
-folder (`AION_SERVER_HOME`), `tools/start-server.ps1` starts the three servers in order and `tools/stop-server.ps1` stops them without losing data.
+folder (`AION_SERVER_HOME`) and applies the SQL updates, `tools/start-server.ps1` starts MySQL and the three servers in order and
+`tools/stop-server.ps1` stops them without losing data, with a backup of the databases. `tools/tag-patch.ps1` tags a version and builds the bundle
+its release carries.
 
 ## Contributing
 
