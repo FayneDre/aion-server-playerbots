@@ -1,6 +1,6 @@
 # A living world: memory, learned ground, road careers, PvP, groups, the director, rumours and prizes
 
-Status: in progress: the density modes built on 5 November; A1, the guard, and A2, one tile budget, built and measured on 8 November (A3, A4 left).
+Status: in progress: the density modes built on 5 November; A1, the guard, and A2, one tile budget, built and measured on 8 November, A3, the density in the launcher, built the same day; the guard gained the machine's memory as a third signal on 14 November; A4 and lots B to I left.
 
 The aim is a world that lives whether a player watches or not. This plan gathers what would take the project there, in lots, after the density
 modes of 5 November. **Out, by decision**: quests for world bots, patching the client's executables, rewards of our own invention (tickets,

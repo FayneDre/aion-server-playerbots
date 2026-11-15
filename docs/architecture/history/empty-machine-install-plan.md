@@ -1,10 +1,10 @@
 # Plan: a server installed on a machine that has nothing
 
-Status: in progress: the server's side is built and tried (the bundle, the navmesh assets, the portable MySQL, the Java runtime, both runtimes as release assets named in the manifest); the launcher's side is built (14 November) and a first install on a clean machine is not started. Written on 13 November 2026, after [fresh-install-readiness-plan.md](fresh-install-readiness-plan.md) made the server installable and [database.md](../database.md) chose its database.
+Status: done: the server's side built and tried (the bundle, the navmesh assets, the portable MySQL, the Java runtime, both runtimes as release assets named in the manifest), the launcher's side built on 14 November, a clean machine installed from the launcher alone the same day (server v0.1.0-beta.6, launcher v0.3.0-beta.8) and the development machine reinstalled from nothing by its owner that evening (launcher beta.10, a backup restored onto it). Written on 13 November 2026, after [fresh-install-readiness-plan.md](../plans/fresh-install-readiness-plan.md) made the server installable and [database.md](../database.md) chose its database.
 
 ## Why
 
-[release-process-plan.md](release-process-plan.md) stops at testers who already have a server built from git: it updates one. This plan is the other
+[release-process-plan.md](../plans/release-process-plan.md) stops at testers who already have a server built from git: it updates one. This plan is the other
 job, which its last milestone named "the server release plan": a player on a Windows machine with the game client and nothing else gets a server
 that runs, from the launcher alone. The server does not need to be built, nor its geometry made, nor Java or a database installed by the person.
 
@@ -85,7 +85,12 @@ on a database that has its bots): the launcher says so.
    First run (14 November, launcher beta.7, server beta.5): the downloads and the unpacking passed; `setup-mysql.ps1` failed, mysqld exit
    -1073741515 (0xC0000135, DLL not found): Oracle's zip lacks the Visual C++ runtime its MSI installs. `package-mysql.ps1` now copies the
    msvcp140/vcruntime140 DLLs the programs import from System32 (signed by Microsoft) into `bin`; the four copied by hand in the sandbox made the
-   database. Needs a server release whose `runtime-mysql` zip carries them (its recipe moved, so it is rebuilt). The Java runtime has its own.
+   database. Shipped in server v0.1.0-beta.6. The Java runtime has its own.
+   Second run (14 November, launcher beta.8, server beta.6, an 8 GB sandbox): installed, the three servers started and the game server registered, the
+   uninstall validated from the launcher and from Windows' own uninstaller. The client did not start in the sandbox (no DirectX 9 there; left as it is,
+   by decision), and the first run's sandbox of 6 GB lost its game server to an `OutOfMemoryError` at 1024 MB: machines that small are not a target, by
+   decision. The person-plays check was made that evening on the real machine instead: its owner installed from nothing with launcher beta.10,
+   restored a backup from the old install into it, and played.
 4. **The disk and the time**: ~3 GB written, and 2.1 GB downloaded at the first launch; a progress that says what it is doing.
 
 Checked: a person with the client and nothing else installs the server from the launcher and plays on it, with bots around.
