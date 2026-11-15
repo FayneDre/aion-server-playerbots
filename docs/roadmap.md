@@ -16,7 +16,7 @@ those of the theme's detail.
 | 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 the group instances without a mesh; 5 lifts; 6 learned ground; 7 corridors |
 | 2 | Population | validated; memory guarded | 1 road careers: merchants, wardens, caravans; 2 the director: a pool stocked by level and role |
 | 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe |
-| 4 | Groups and companions | validated (dungeons, composition, duels, friends, trades) | 1 formations; 2 a companion's gear in the player's hand; 3 cohorts; 4 bots in the Find Group window; 5 bots group together; 6 level 50; 7 doors and arenas |
+| 4 | Groups and companions | validated (dungeons, composition, duels, friends, trades) | 1 formations; 2 a companion's gear in the player's hand; 3 cohorts; 4 bots group together; 5 doors and arenas |
 | 5 | Flight and the Abyss | validated (milestones 1-5) | 1 flying with a player, milestone 6; 2 stalled ambient flights; 3 gliding down |
 | 6 | Capitals and social life | validated (town day, stores, chat, combat meter) | 1 personalities; 2 true rumours; 3 contested named monsters; 4 mentors; 5 bots that take the first step; 6 bots that answer; 7 pages in game, GM tools |
 | 7 | Gear | dressed at creation, loot worn | nothing, by decision |
@@ -33,8 +33,8 @@ those of the theme's detail.
    tester's time; the playbooks do not. Navigation goes on beside, in its own order: obstacles, dungeons, the group instances' meshes, then lifts,
    learned ground and corridors (1.2 to 1.7).
 2. **The living world**, in the order decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md), its lots in brackets):
-   the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots in the Find Group window and
-   bots grouping together (4.4, 4.5, E1, E2); merchants, wardens, caravans (2.1, C1 to C3); personalities, then rumours and contested named monsters,
+   the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots grouping
+   together (4.4, E2); merchants, wardens, caravans (2.1, C1 to C3); personalities, then rumours and contested named monsters,
    mentors and bots that take the first step (6.1 to 6.5, I); the director (2.2, F1). The pages in game (6.7, H) go beside any of them.
 3. **When the rest stands**: bot legions (11.2, G1), grudges (8.6, D4), player shops (10), then RvR (12).
 
@@ -44,7 +44,7 @@ Quests for world bots and companions; patching the client's executables; rewards
 to monster strength; a market other than the native broker; freezing the maps nobody is on; another mesh format; a decision engine other than the
 playbooks. On 15 November: a stable release pair for now (pre-releases go on); tests of what the fight does to the world, nothing
 wrong being seen in game; bots yielding to real players; a day on the clock and bot sessions (F2, F3); a density that finds its own level (A4); slicing route searches for small processors (the guard already holds wakes while planning waits); an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
-broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; a rank of play
+broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; bots posting in the Find Group window (E1); level 50 bots; a rank of play
 per bot; two old tester points (the templar that "drops the fight", the cleric against an assassin's rune); the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
 characters brought in as bots).
 
@@ -129,9 +129,6 @@ Group window, duels, friends and trades with a companion (validated 15 November)
 2. **The player's hand on a companion's gear**: its bag shown, an item put on by the player, enchanting and extraction paid from the companion's kinah
    on the player's order. No plan yet.
 3. **Cohorts**: a bot in an alliance acting as a member of its own group of six ([cohort-plan.md](social/plans/cohort-plan.md)).
-4. **Bots in the Find Group window, lot E1**: the Recruit Group Members tab and alliances; bots posting instance runs, a ceiling per tab, and
-   whispering a player whose post lacks their role.
-5. **Bots group with each other** in the field (lot E2): pairs and trios hunting together, met in the countryside like players; a small group also
+4. **Bots group with each other** in the field (lot E2): pairs and trios hunting together, met in the countryside like players; a small group also
    survives what kills a lone bot. Today they never do; lots G1 and I3 need it.
-6. **Level 50 bots** for the Theobomos instances and Dark Poeta, asked on 9 October; awaiting another test server's feedback.
-7. **Doors, lifts and windstreams used by a bot itself**, only if the 13 s wait proves too long; then **the arenas**, instances of their own.
+5. **Doors, lifts and windstreams used by a bot itself**, only if the 13 s wait proves too long; then **the arenas**, instances of their own.

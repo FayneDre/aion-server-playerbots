@@ -1,6 +1,6 @@
 # A living world: memory, learned ground, road careers, PvP, groups, the director, rumours and prizes
 
-Status: in progress: the density modes built on 5 November; A1, the guard, and A2, one tile budget, built and measured on 8 November, A3, the density in the launcher, built the same day; the guard gained the machine's memory as a third signal on 14 November; lots B to I left; A4, F2 and F3 dropped by decision on 15 November.
+Status: in progress: the density modes built on 5 November; A1, the guard, and A2, one tile budget, built and measured on 8 November, A3, the density in the launcher, built the same day; the guard gained the machine's memory as a third signal on 14 November; lots B to I left; A4, F2, F3 and E1 dropped by decision on 15 November.
 
 The aim is a world that lives whether a player watches or not. This plan gathers what would take the project there, in lots, after the density
 modes of 5 November. **Out, by decision**: quests for world bots, patching the client's executables, rewards of our own invention (tickets,
@@ -79,7 +79,7 @@ lost too often. Players feel known.
 
 ## Lot E: groups
 
-**E1. Bots post in the Find Group window** for an instance of their level, and answer a player's own post with the missing role. We already fill a
+**E1. Bots post in the Find Group window** (dropped by decision on 15 November) for an instance of their level, and answer a player's own post with the missing role. We already fill a
 player's offer (`BotRecruiter`); this is the other direction, with a ceiling of posts per tab so the window is not flooded.
 
 **E2. Bots group with each other in the field.** Pairs and trios hunting together, met in the countryside like players. Today they never do
@@ -168,6 +168,6 @@ and the merchants' stores.
 
 ## Proposed order
 
-1. A1, then A3, after the density measurement of 5 November; A2 after that measurement's histogram. 2. B1. 3. D1 to D3 (priority two). 4. E1, E2.
+1. A1, then A3, after the density measurement of 5 November; A2 after that measurement's histogram. 2. B1. 3. D1 to D3 (priority two). 4. E2.
 5. C1, C2, C3. 6. I2, then I1 and I3 (I3 needs E2). 7. F1 to F3. 8. B2 and B3, unless dungeons are brought forward. 9. G1, D4, A4 when the
 rest stands. H1 and H2 can run beside any of them, since they touch neither the director nor the bots' behaviour.
