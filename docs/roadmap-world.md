@@ -8,11 +8,8 @@ done by decision) and which details themes 0 to 4. Same rules here: **Done** in 
 **Done**: take-off, landing, cruise and flown descents, following a flying player, Reshanta crossed by air and lived on both layers, 120 of its 134
 places ([flight/how-it-works.md](flight/how-it-works.md)).
 
-**Left** ([backlog.md](flight/backlog.md)):
-1. **Flying with a player, milestone 6**: waits for a time and a bot name from the tester ([flying-with-a-player-plan.md](flight/plans/flying-with-a-player-plan.md)).
-2. **Ambient flights stall on fly-zone maps** (a leg handed over again 14 to 100 times in forty minutes): not looked into. The Abyss's deaths
-   come down to the playbooks of theme 3, not to flight.
-3. **Gliding on the way down** (Abyss crossing milestone 6), only if flights run short of points ([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)).
+**Left**: nothing, by decision of 15 November ([backlog.md](flight/backlog.md)). The Terminon camp entrance, the stalled ambient flights and
+gliding on the way down are not done; the Abyss's deaths come down to the playbooks of theme 3, not to flight.
 
 ## 6. Capitals and social life
 

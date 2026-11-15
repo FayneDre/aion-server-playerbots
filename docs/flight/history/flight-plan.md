@@ -5,7 +5,7 @@ How bots get off the ground, in the order the work can actually be verified.
 Status: done; what is left is in the roadmap.
 
 Milestones 1 to 4 built and measured from 4 to 9 October, then ambient flights (end of file); milestone 5 is
-[abyss-crossing-plan.md](../plans/abyss-crossing-plan.md), built; gliding came later with glide links and `LeaderGlides`. What is left is in
+[abyss-crossing-plan.md](abyss-crossing-plan.md), built; gliding came later with glide links and `LeaderGlides`. What is left is in
 [roadmap.md](../../roadmap.md), "Flight, the Abyss, RvR".
 
 Flight is the one capability that gates the most — the Abyss, aerial PvP, gliding shortcuts, a handful of quest routes — but the reason to start it
@@ -132,7 +132,7 @@ reason to descend for a long time. *Since built for glide links and for copying 
 
 **5. Volume navigation, and only then the Abyss.** Reshanta's islands need a route through open air over a gap with no ground under it, which is the
 only case the straight line plus ray cannot answer, and it also needs Reshanta's mesh, which exists since 2026-10-09 (98 MB, 14 s to write, under 3 GB of heap). Planned and built in
-[abyss-crossing-plan.md](../plans/abyss-crossing-plan.md): flight links between islands, one crossing watched end to end on 17 October.
+[abyss-crossing-plan.md](abyss-crossing-plan.md): flight links between islands, one crossing watched end to end on 17 October.
 
 ## Traps to expect, named in advance
 

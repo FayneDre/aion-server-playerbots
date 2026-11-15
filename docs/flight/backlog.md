@@ -8,7 +8,7 @@ order and the status of each item are in [roadmap.md](../roadmap.md).
 ## Flight, the Abyss, RvR
 
 **Bots fly** ([flight-plan.md](../flight/history/flight-plan.md)): take off and land, reach terraces, fly when the mesh proves there is no walk, follow a flying leader,
-glide down a planned glide link, and **cross the Abyss** by flight links between islands ([abyss-crossing-plan.md](../flight/plans/abyss-crossing-plan.md)). Reshanta
+glide down a planned glide link, and **cross the Abyss** by flight links between islands ([abyss-crossing-plan.md](history/abyss-crossing-plan.md)). Reshanta
 is lived on both its layers: 120 of its 134 places, Teminon's and Primum's stairs walked (a 62 degree slope for its buildings), residents three levels
 above their place and nowhere near a hostile elite, nobody in a fortress, no landing in one, on the other side's ground or beside a creature the bot
 cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no crossing refused in flight. What is left:
@@ -27,4 +27,4 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
 ## Gaps
 
 - **Ambient flights stall on fly-zone maps**: "flight has not moved, its leg is handed over again" comes up 14 to 100 times in forty minutes, mostly
-  at heights of 100 to 300 on the open world maps. Older than the Abyss work; not looked into.
+  at heights of 100 to 300 on the open world maps. Older than the Abyss work; left as it is by decision on 15 November.

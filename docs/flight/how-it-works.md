@@ -53,5 +53,6 @@ against the mesh (`BotPlaces.groundToWork`) is not applied where flying is the r
 - Bots rarely glide on their own: only when the best route goes through a glide link ([../navigation/backlog.md](../navigation/backlog.md), point 4).
 - Islands above or below a bot with no link between them stay out of reach; flying there is refused over 300 m or under a roof.
 - No windstreams, no flight transporters, no aerial PvP of their own; the classes that die in the Abyss have no playbook there yet.
-- Milestone 6 of each open plan: [plans/abyss-crossing-plan.md](plans/abyss-crossing-plan.md) (long journeys across the whole map),
-  [plans/flying-with-a-player-plan.md](plans/flying-with-a-player-plan.md) (the Terminon training camp entrance, waiting on the tester).
+- Milestone 6 of both flight plans, dropped by decision on 15 November: gliding on the way down
+  ([history/abyss-crossing-plan.md](history/abyss-crossing-plan.md)) and the Terminon training camp entrance
+  ([history/flying-with-a-player-plan.md](history/flying-with-a-player-plan.md)).

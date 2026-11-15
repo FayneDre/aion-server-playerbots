@@ -1,6 +1,6 @@
 # Flying with a player: plan
 
-Status: in progress: milestones 1 to 5 validated, 6 waits for a time and a bot name from the tester.
+Status: done: milestones 1 to 5 validated, 6 dropped by decision on 15 November.
 
 Milestones 1 to 5 built on 19 October and shipped in `patch-2026-10-19-3`, validated in game on 27 October. Milestone 6 waits for a
 time and a bot name from the tester.
