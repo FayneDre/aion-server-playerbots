@@ -22,7 +22,7 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 | File | What it holds |
 |---|---|
 | [roadmap.md](roadmap.md) | **Start here**: everything left to do by theme in one table, the order in three phases, what is not done by decision; then themes 0 to 4 and 13 in detail. |
-| [roadmap-world.md](roadmap-world.md) | The roadmap's second page, themes 5 to 12 in detail: flight, capitals and lot I (personalities, rumours, contested named monsters, mentors), gear, wild PvP and lot D, the broker, shops, legions, RvR. |
+| [roadmap-world.md](roadmap-world.md) | The roadmap's second page, themes 5 to 12 in detail: flight, capitals and lot I (personalities, rumours, contested named monsters), gear, wild PvP and lot D, the broker, shops, legions, RvR. |
 | [known-limits.md](known-limits.md) | What the project does not control or lives with, in order of how much it bites; reviewed with each patch. |
 | [built.md](built.md) | What already works, one paragraph a topic, each pointing to its `how-it-works.md`. |
 | [bot-commands.md](bot-commands.md) | Every `//bot` command, and the one number that decides who may run them (`check-bot-docs.ps1` keeps it complete). |
@@ -38,7 +38,7 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 | [addon-pages.md](architecture/addon-pages.md) | The pages the interface addons show: the web server, who a page belongs to, the combat meter's count. |
 | [moving-a-body.md](architecture/moving-a-body.md) | Driving a body from the server: what a movement packet carries, how often, and the task manager that drops a body that arrived. |
 | [database.md](architecture/database.md) | How MySQL runs here (native, started by the scripts), what it costs in memory (~530 MB by default, ~210 MB with the light settings), the dumps, why not Docker or WSL, what the launcher takes from it. |
-| [release-process-plan.md](architecture/plans/release-process-plan.md) | Plan: one release process for the server and the launcher (one branch and pre-releases on both sides, a compatibility level the launcher checks, a beta launcher installing the server pre-releases, notes in French and English). In progress: milestones 1-6 validated; next, the first stable pair. |
+| [release-process-plan.md](architecture/plans/release-process-plan.md) | Plan: one release process for the server and the launcher (one branch and pre-releases on both sides, a compatibility level the launcher checks, a beta launcher installing the server pre-releases, notes in French and English). In progress: milestones 1-6 validated; the first stable pair put aside by decision (15 November), pre-releases go on. |
 | [fresh-install-readiness-plan.md](architecture/plans/fresh-install-readiness-plan.md) | Plan: what the server needs before the launcher installs it from nothing (the schemas in the bundle and `apply-sql.ps1 -Create`, the heap guard, one budget for every navmesh, the density in the launcher and defaults for an unknown machine, a first start on an empty database measured, tests for the combat half of `PlayerBotAI`, the upstream merge and the stable pair). In progress: milestones 1 to 6 built and measured, the upstream merge done and checked in game; the stable pair left. |
 
 History: [empty-machine-install-plan.md](architecture/history/empty-machine-install-plan.md) (a server installed from the launcher on a machine
@@ -65,7 +65,7 @@ Where to look first when a bot does nothing and says nothing about why.
 | [population-director.md](population/population-director.md) | The pool and the director: how a region keeps the people it should. |
 | [bot-careers.md](population/bot-careers.md) | How a bot gains levels, where it lives as it grows, what keeps it out of trouble. |
 | [resident-leftovers.md](population/resident-leftovers.md) | What is left of the dropped resident/adventurer system, to check before any removal. |
-| [backlog.md](population/backlog.md) | What is left in detail: the director's stocking, pre-filling and moves across maps; bots yielding to players. |
+| [backlog.md](population/backlog.md) | What is left in detail: the director's stocking, pre-filling and moves across maps; bots yielding to players, left out by decision. |
 | [plans/living-world-plan.md](population/plans/living-world-plan.md) | A world that lives with or without a player: memory, learned ground, road careers, PvP, groups, the director, a window in the game. Not started. |
 
 History: [the-pool.md](population/history/the-pool.md) (what the pool cost to build, and the residents it replaced),
@@ -78,7 +78,7 @@ History: [the-pool.md](population/history/the-pool.md) (what the pool cost to bu
 | [how-it-works.md](combat/how-it-works.md) | **How a bot fights today**: the two ticks, what it fights, how it picks a skill, where it stands, death. |
 | [combat-skills.md](combat/combat-skills.md) | How a bot chooses a skill: the in-fight order, upkeep versus abilities kept in hand, openers. |
 | [group-roles.md](combat/group-roles.md) | What tank, healer, support and damage change, only ever inside a group. |
-| [plans/wild-pvp-plan.md](combat/plans/wild-pvp-plan.md) | Wild PvP, rifts, arenas. Not started: decisions taken, milestones listed. |
+| [plans/wild-pvp-plan.md](combat/plans/wild-pvp-plan.md) | Wild PvP, rifts, arenas. In progress: milestones 0 to 2b built and switched on, unverified in game; 3 onwards not started. |
 
 History: [combat-prototype.md](combat/history/combat-prototype.md) (milestones M0 to M7, kept for their lessons),
 [group-positioning-plan.md](combat/history/group-positioning-plan.md) (where each class stands in a group fight; bosses only by default),
@@ -132,7 +132,7 @@ History: [navigation-prototype.md](navigation/history/navigation-prototype.md) (
 | File | What it holds |
 |---|---|
 | [how-it-works.md](flight/how-it-works.md) | **How a bot flies today**: what the engine leaves to the client, when a bot leaves the ground, Reshanta, the limits. |
-| [backlog.md](flight/backlog.md) | What is left in detail: the Abyss on foot, long journeys, the middle layer, ambient flights that stall. |
+| [backlog.md](flight/backlog.md) | What the project lives with in flight, nothing being left by decision: the Abyss on foot, long journeys, the middle layer, ambient flights that stall. |
 | [history/abyss-crossing-plan.md](flight/history/abyss-crossing-plan.md) | Flight links between Reshanta's islands. Done: 1 to 5, 6 dropped. |
 | [history/flying-with-a-player-plan.md](flight/history/flying-with-a-player-plan.md) | The 19 October report. Done: 1 to 5 validated, 6 dropped. |
 
@@ -142,7 +142,7 @@ History: [flight-plan.md](flight/history/flight-plan.md) (take-off, landing, ter
 
 [how-it-works.md](capitals/how-it-works.md): **how the capitals live today**, the town day, private stores, visitors, speech.
 
-[backlog.md](capitals/backlog.md): what is left in the economy in detail (selling, shops, gear that keeps up).
+[backlog.md](capitals/backlog.md): what is left in the economy in detail (selling, the broker, shops merged into the travelling merchants, gear).
 
 Plans: [plans/auction-house-plan.md](capitals/plans/auction-house-plan.md) (an auction house stocked by the server on the AHBot model; seller, settling and buyer seen working in game on 15 November; prices and goods to adjust).
 

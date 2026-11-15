@@ -28,8 +28,7 @@ each put through a reach check ([dungeon-navmesh-plan.md](../navigation/history/
   there" are the next step if 13 s turns out too long ([dungeon-navmesh-plan.md](../navigation/history/dungeon-navmesh-plan.md)).
 - **Bosses**: a bot that simply fights correctly clears most low-level instances; mechanics are a later refinement, not a prerequisite. Positioning
   against a boss has never been seen, because the only Elyos boss in reach outdoors stands off the mesh.
-- **Levels**: no level 50 bots for the Theobomos instances and Dark Poeta (asked by a tester on 9 October); they exist on another test server,
-  whose feedback is awaited.
+- **Levels**: no level 50 bots for the Theobomos instances and Dark Poeta (asked by a tester on 9 October); left so by decision (15 November).
 
 ## Group play
 
@@ -42,11 +41,12 @@ What is left once roles, playbooks and positioning exist:
 - **Damage waits for the tank to hold.** It focuses the tank's target, but opens at the same instant, so the first blow can pull the mob off.
   `AggroList.getTarget(MOST_HATED)` can answer "the tank holds it".
 - **Composition: built and watched 18 October.** An offer in the Find Group window is filled with bots, a tank, a healer and a support first, at the
-  instance's levels, counting the player's own role (`BotRecruiter`); recruits go home when released. Needs `form_anywhere` in the server's config. Left: the Recruit Group Members tab, alliances, and a pool stocked by role,
+  instance's levels, counting the player's own role (`BotRecruiter`); recruits go home when released. Needs `form_anywhere` in the server's config. Left: alliances (the cohorts) and a pool stocked by role; bots posting
+  offers of their own (the Recruit Group Members tab, lot E1) are left out by decision (15 November),
   since a missing templar or cleric at a level is a missing tank or healer (see the director below).
 - **Bots never form a group of their own.** They join a player's, an offer's or a `//bot squad`; two bots in a field never party with each other.
-- **Tester points still open**: the templar that "drops the fight" (needs the tester's log or the time and the bot's name; a grouped bot no longer
-  breaks off from any fight since 17 October, which may be it), the cleric against an assassin's rune ([cleric-plan.md](../classes/history/cleric-plan.md)).
+- **Two old tester points, put aside by decision** (15 November): the templar that "drops the fight" (a grouped bot no longer breaks off from any
+  fight since 17 October, which may be it), the cleric against an assassin's rune ([cleric-plan.md](../classes/history/cleric-plan.md)).
 
 ## Asked in game, 19 October
 
@@ -54,7 +54,8 @@ The list "missing features in game", each with what stands today:
 
 - **Trading with one's companion**: validated in game (15 November), with its owner only; `//bot give` hands over the companion's side ([player-interactions-plan.md](../social/history/player-interactions-plan.md)).
 - **Adding a bot as a friend**: validated in game (15 November); a bot shows online while awake.
-- **A legion's invitation**: not answered. The first step of the legions section below.
+- **A legion's invitation**: not answered, and left pending (`BotRequests` knows a group, an alliance, a duel, a friend and a trade), so whoever
+  asks the bot anything next is told it is being asked a question. Theme 11, point 1, of the roadmap.
 - **Cohorts** (alliances): a bot answers an alliance invitation but acts as if the whole alliance were its group ([cohort-plan.md](../social/plans/cohort-plan.md)).
 - **Duels**: validated in game (15 November); a free bot within 10 levels accepts and attacks, and never asks for one.
 - **The in-game shop does not work**, and is not the bots' work: the server has none (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty token

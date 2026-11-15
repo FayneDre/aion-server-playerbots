@@ -2,6 +2,8 @@
 
 A report is turned into a fix by finding the moment in the server log and the rule in the code. Each of the items below removes one round of questions;
 the tooling behind them is in [test-harness-plan.md](../architecture/history/test-harness-plan.md).
+A report window inside the game, and a report turned into a GitHub issue for anyone playing the repack, are theme 13 of
+[roadmap.md](../roadmap.md): until they exist, the steps below are the way.
 
 ## During the session
 

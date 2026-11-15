@@ -22,5 +22,5 @@ What this project does not control or has chosen to live with, reviewed with eac
 ## Tests
 
 - **594 tests on the game server**, run on every deploy. The combat half of `PlayerBotAI` now decides through `FightGiveUps`, `FightVerdicts`
-  and `SkillOrder`, each with its suite; the attempts that act on the world (the chase, the casts, the flight) are still untested, and their
-  mistakes silent. Decisions written as pure functions of a situation record are what made the suites possible; keep writing them that way.
+  and `SkillOrder`, each with its suite; the attempts that act on the world (the chase, the casts, the flight) are untested, and their
+  mistakes silent: left so by decision (15 November), nothing wrong being seen in game. Decisions written as pure functions of a situation record are what made the suites possible; keep writing them that way.

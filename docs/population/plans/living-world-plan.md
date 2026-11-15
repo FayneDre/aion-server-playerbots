@@ -29,7 +29,7 @@ with 910 bots, at about 1 % of a core in tile reads ([fresh-install-readiness-pl
 
 **A3. The density setting in the launcher**: the mode as a list, the percent as a slider bounded by what lot A measured, the guard's state shown.
 
-**A4. A density that finds its own level.** A fourth mode, `FIT`: the director raises the countryside's share review by review while the heap after a
+**A4. A density that finds its own level** (dropped by decision on 15 November). A fourth mode, `FIT`: the director raises the countryside's share review by review while the heap after a
 collection stays under a target, and lowers it above. The server then holds as many bots as the machine allows, on any machine, with nothing to
 tune: what a repack installed on unknown hardware needs.
 
@@ -52,7 +52,8 @@ offline by `NavmeshTool` and checked by the golden routes, would end that.
 **C1. Travelling merchants.** A bot of the pool with the career *merchant* walks between two villages of its region and opens a private store when
 a player stops within a few metres, closing it when they leave. It reuses our bot stores (broker prices, goods by level). Its stock is **what the
 region's bots really looted** and sold to it, finite and replenished by their hunting rather than generated; a merchant from a dangerous region
-carries rarer goods. The world's loot then circulates, and a player learns where to look.
+carries rarer goods. The world's loot then circulates, and a player learns where to look. Bot shops kept at a village, an obelisk or a dungeon's
+door (the roadmap's theme 10) were merged into this lot on 15 November: a merchant that does not walk.
 
 **C2. Road wardens.** Bots on a beat between two places of the plan, spaced out, who clear monsters near the road, heal or shield a player of their
 faction in trouble, and in a PvP zone fight the invader. Their reward is a road that is safer, seen. They are also the first defenders lot D needs.
@@ -90,10 +91,10 @@ player's offer (`BotRecruiter`); this is the other direction, with a ceiling of 
 **F1. A pool stocked by level band and role** (the roadmap's stocking): a share per faction and level band, and a missing tank or healer at a level
 grown rather than left missing.
 
-**F2. A day on the clock.** The countryside's share follows the hour: fuller in the evening, thinner at four in the morning, as on a real server,
+**F2. A day on the clock** (dropped by decision on 15 November). The countryside's share follows the hour: fuller in the evening, thinner at four in the morning, as on a real server,
 multiplied with the density mode. A bot's friends see it log in and out at believable hours.
 
-**F3. Sessions.** A bot leaves the world after a session of an hour or a few, and comes back later where it left, as a player does; its place is taken
+**F3. Sessions** (dropped by decision on 15 November). A bot leaves the world after a session of an hour or a few, and comes back later where it left, as a player does; its place is taken
 by a sleeper. It refreshes the faces a player meets without anyone appearing in sight.
 
 ## Lot G: legions, priority five
@@ -160,7 +161,7 @@ The launcher keeps a plain version of each for when the game is closed.
 - *Teleport*: the server's destinations as a page, the one the launcher's Account page offers today (`AdminChannel` `destinations` and `teleport`).
 - *The world map*: per map, the bots awake and asleep, the players, the density, the memory guard; and the bots as a list by faction, with where
   each is and what it is doing. Never the named monsters' state (lot I3): that would be a radar, and their news travels by rumour.
-- *A tester's note*: a button of the H2 bar with a text field, sending `//bot note` with the place and the route taken as the command does today.
+- *A tester's note*: grown on 15 November into a theme of its own, the report window of theme 13 of [roadmap.md](../../roadmap.md).
 
 Left to the launcher, because they need the game closed, the server stopped or files written: install, updates, check and repair, the client's
 language and renderer, several clients, the servers' dashboard, the server and bot settings, backups. Left to the client's own windows: Find Group
@@ -169,5 +170,5 @@ and the merchants' stores.
 ## Proposed order
 
 1. A1, then A3, after the density measurement of 5 November; A2 after that measurement's histogram. 2. B1. 3. D1 to D3 (priority two). 4. E2.
-5. C1, C2, C3. 6. I2, then I1 and I3 (I3 needs E2). 7. F1 to F3. 8. B2 and B3, unless dungeons are brought forward. 9. G1, D4, A4 when the
+5. C1, C2, C3. 6. I2, then I1 and I3 (I3 needs E2). 7. F1. 8. B2 and B3, unless dungeons are brought forward. 9. G1 and D4 when the
 rest stands. H1 and H2 can run beside any of them, since they touch neither the director nor the bots' behaviour.

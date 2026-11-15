@@ -1,6 +1,6 @@
 # Flight and the Abyss: what is left in detail
 
-Status: in progress: see each item; the order is the roadmap's.
+Status: done: nothing is left in flight by decision of 15 November; what follows is what the project lives with.
 
 Moved from the roadmap on 7 November 2026, when it became one page by theme: the detail of what is left, kept here with its numbers. The
 order and the status of each item are in [roadmap.md](../roadmap.md).
@@ -19,7 +19,7 @@ cannot fight. Refused routes 336 to 41 a half hour; no death in the void, no cro
 - **Long journeys**: 17 of 20 random upper-layer journeys of 300 m to 1 km are planned offline, in 0.15 to 3.3 s; across the whole map (3 km) the
   5 s budget still runs out. The layers are not joined to one another (a flight link climbs 200 m, the layers are 1200 m apart).
 - **The middle layer** (the Abyss core, mostly the Divine Fortress) is not lived, by decision.
-- **Gliding on the way down** (milestone 6), only if flights run short of points; they have not so far.
+- **Gliding on the way down** (milestone 6): dropped by decision (15 November); flights have not run short of points.
 
 **RvR and sieges** come next on Reshanta; their supply line is designed (bots at the level cap become the elders the endgame needs,
 [population.md](../population/how-it-works.md)). Panesterra's four fields hold no civilians and have no mesh (no heightmap in the data).

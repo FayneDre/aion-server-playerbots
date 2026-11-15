@@ -7,7 +7,8 @@ for every document, [README.md](README.md). Rewritten on 28 October 2026: the re
 
 Bots are real `Player` objects with no connection, driven by `PlayerBotAI`, about 950 of them awake on 26 maps. They live, level and travel on their
 own, fight with class skills, group with players, keep stores, talk in the channels and fly. Everything shipped up to `patch-2026-10-25-2` was
-validated in game on 27 October, except duels, friends and trades with a companion. `//bot` lists the commands ([bot-commands.md](bot-commands.md)).
+validated in game on 27 October; duels, friends and trades with a companion, and the broker, on 15 November. Wild PvP is built and switched on,
+but no bot has fought a player yet (theme 8 of the roadmap). `//bot` lists the commands ([bot-commands.md](bot-commands.md)).
 
 ## By topic
 
@@ -30,6 +31,10 @@ validated in game on 27 October, except duels, friends and trades with a compani
 - **Groups and players** ([social/how-it-works.md](social/how-it-works.md)): invitations, following, instances, the Find Group window, requests,
   the chat channels. Why groups work the way they do: [social/groups.md](social/groups.md).
 - **Capitals** ([capitals/how-it-works.md](capitals/how-it-works.md)): a town day, private stores at broker prices, high-level visitors, shouts.
+- **Broker** ([auction-house-plan.md](capitals/plans/auction-house-plan.md)): a house the server stocks, one per race, selling, settling and
+  relisting, and a buyer of what players list.
+- **Wild PvP** ([wild-pvp-plan.md](combat/plans/wild-pvp-plan.md)): where PvP really is, a player as a target, defence and PvP behaviour; built,
+  on, unverified.
 
 ## Known limits and traps
 
