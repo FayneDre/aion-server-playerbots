@@ -84,9 +84,11 @@ November ([auction-house-plan.md](capitals/plans/auction-house-plan.md)).
 
 ## 10. Player shops
 
-**Done**: bots sell their junk to merchants ([capitals/backlog.md](capitals/backlog.md)). Gathering and crafting by bots are left out by decision.
+**Done**: 40 bot stores in each capital (theme 6), bots selling their junk to merchants ([capitals/backlog.md](capitals/backlog.md)). Gathering
+and crafting by bots are left out by decision.
 
-**Left**: 1. **player shops** run by bots in the world, beside the travelling merchants of theme 2 (C1).
+**Left**: nothing here. Bot shops in the world were merged on 15 November into the travelling merchants of theme 2 (C1): a store kept at a
+village, an obelisk or a dungeon's door is a merchant that does not walk.
 
 ## 11. Legions
 

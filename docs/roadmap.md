@@ -23,7 +23,7 @@ those of the theme's detail.
 | 7 | Gear | dressed at creation, loot worn | nothing, by decision |
 | 8 | Wild PvP and rifts | built, unverified, on; no PvP fight seen yet | 1 a watch in game; 2 hunting grounds, rifts, measure; 3 limits on a fight; 4 rift raids; 5 raids the world answers; 6 grudges |
 | 9 | Broker | validated (15 November) | 1 prices and goods adjusted |
-| 10 | Player shops | not started | 1 player shops run by bots |
+| 10 | Player shops | done: 40 bot stores a capital; shops in the world merged into 2.1 (C1) | nothing |
 | 11 | Legions | not started | 1 answer an invitation; 2 bot legions born of who played together |
 | 12 | RvR and sieges | not started | after the rest is stable |
 
@@ -37,7 +37,7 @@ those of the theme's detail.
    the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots grouping
    together (4.4, E2); merchants, wardens, caravans (2.1, C1 to C3); personalities, then rumours and contested named monsters,
    bots that take the first step (6.1 to 6.4, I); the director (2.2, F1). The pages in game (6.6, H) go beside any of them.
-3. **When the rest stands**: bot legions (11.2, G1), grudges (8.6, D4), player shops (10), then RvR (12).
+3. **When the rest stands**: bot legions (11.2, G1), grudges (8.6, D4), then RvR (12).
 
 ## Not done, by decision
 
@@ -92,7 +92,8 @@ on 26 maps, the density modes and the memory guard (heap, route planning, the ma
 1. **Careers on the roads, lot C**:
    - **Travelling merchants** (C1): a bot walks between two villages of its region and opens a store when a player stops within a few metres, closing
      it when they leave. Its stock is what the region's bots really looted and sold to it, finite and renewed by their hunting: a merchant from a
-     dangerous region carries rarer goods, and a player learns where to look.
+     dangerous region carries rarer goods, and a player learns where to look. Theme 10's shops in the world are this lot too (15 November): a
+     store kept by a village, an obelisk or a dungeon's door is a merchant that does not walk, the same code.
    - **Road wardens** (C2): bots on a beat between two places, spaced out, who clear monsters near the road, heal or shield a player of their
      faction in trouble, and fight the invader in a PvP zone. They are the first defenders lot D needs.
    - **Caravans** (C3): a merchant escorted by two or three wardens, from one village to the next at set hours, announced in Region chat. In a PvP
