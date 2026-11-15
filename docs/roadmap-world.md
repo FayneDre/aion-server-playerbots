@@ -93,7 +93,9 @@ village, an obelisk or a dungeon's door is a merchant that does not walk.
 ## 11. Legions
 
 **Not started.** **Left**:
-1. **Answering a legion's invitation** (asked in game on 19 October), and its rank's permissions respected.
+1. **Answering a legion's invitation** (asked in game on 19 October), and its rank's permissions respected. Today `BotRequests` answers a group,
+   an alliance, a duel, a friend and a trade only: a legion's invitation is left pending, and whoever asks the bot anything next is told it is
+   being asked a question.
 2. **Bot legions born of who played together** (G1): a legion formed from bots that grouped often (E2), with a name from a list written for it, a
    chat and a home region; the wardens of a region (C2) may be one.
 
