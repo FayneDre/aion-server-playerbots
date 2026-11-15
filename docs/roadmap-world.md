@@ -80,7 +80,7 @@ what they own worn, life and mana flasks from level 10 ([gear/how-it-works.md](g
 **Done**: a house the server stocks, one per race, the seller, settling and relisting, and a buyer of what players list, seen working in game on 15
 November ([auction-house-plan.md](capitals/plans/auction-house-plan.md)).
 
-**Left**: 1. **prices and goods adjusted** from the tester's list; 2. the **measure** (milestone 7): heap, tick cost, listings against targets.
+**Left**: 1. **prices and goods adjusted** from the tester's list. The measure (milestone 7) is dropped by decision of 15 November.
 
 ## 10. Player shops
 

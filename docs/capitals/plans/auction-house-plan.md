@@ -1,6 +1,6 @@
 # Plan: an auction house stocked by the server (AHBot model)
 
-Status: in progress: milestones 0 to 4 and the buyer (milestone 6) built, the house seen working in game by the tester (reported on 15 November); left: adjustments to prices and to the goods listed, from the tester's list, then the measure (milestone 7). Goods and price rules were reworked on 1 November from [feedback-2026-11-01-broker.md](../../feedback/feedback-2026-11-01-broker.md). Analysed on 31 October from the engine's `BrokerService`. Asked by the tester: a broker with items for sale, on the model of AzerothCore's AHBot.
+Status: in progress: milestones 0 to 4 and the buyer (milestone 6) built, the house seen working in game by the tester (reported on 15 November); left: adjustments to prices and to the goods listed, from the tester's list; the measure (milestone 7) dropped by decision on 15 November. Goods and price rules were reworked on 1 November from [feedback-2026-11-01-broker.md](../../feedback/feedback-2026-11-01-broker.md). Analysed on 31 October from the engine's `BrokerService`. Asked by the tester: a broker with items for sale, on the model of AzerothCore's AHBot.
 
 ## What AHBot does, and what we keep
 
@@ -60,7 +60,7 @@ hours unsold), `BotStoreStock` (templates a theme may hold, by level and class).
 4. **Settling and relisting** (built): sold entries deleted, expired ones returned and relisted, an item removed when its template is on the blacklist.
 5. **Watch in game**: the tester opens the broker in both capitals: categories filled, prices believable, a purchase works, kinah and inventory right, `exchange.log` has the line.
 6. **The buyer** (built, unwatched): the rules above, then a watch with the tester listing goods in range, above range, with no known price, and one far under the range.
-7. **Measure**: heap before and after, tick cost of the pass, listings per category against the targets over a day; compare the broker's average prices with the guide's.
+7. **Measure** (dropped by decision on 15 November): heap before and after, tick cost of the pass, listings per category against the targets over a day; compare the broker's average prices with the guide's.
 
 ## Milestone 0: the census (31 October, 4.8 item data)
 

@@ -22,7 +22,7 @@ those of the theme's detail.
 | 6 | Capitals and social life | validated (town day, stores, chat, combat meter) | 1 personalities; 2 true rumours; 3 contested named monsters; 4 bots that take the first step; 5 bots that answer; 6 pages in game, GM tools |
 | 7 | Gear | dressed at creation, loot worn | nothing, by decision |
 | 8 | Wild PvP and rifts | built, unverified, on; no PvP fight seen yet | 1 a watch in game; 2 hunting grounds, rifts, measure; 3 limits on a fight; 4 rift raids; 5 raids the world answers; 6 grudges |
-| 9 | Broker | validated (15 November) | 1 prices and goods adjusted; 2 the measure |
+| 9 | Broker | validated (15 November) | 1 prices and goods adjusted |
 | 10 | Player shops | not started | 1 player shops run by bots |
 | 11 | Legions | not started | 1 answer an invitation; 2 bot legions born of who played together |
 | 12 | RvR and sieges | not started | after the rest is stable |
@@ -45,7 +45,7 @@ Quests for world bots and companions; patching the client's executables; rewards
 to monster strength; a market other than the native broker; freezing the maps nobody is on; another mesh format; a decision engine other than the
 playbooks. On 15 November: a stable release pair for now (pre-releases go on); tests of what the fight does to the world, nothing
 wrong being seen in game; bots yielding to real players; a day on the clock and bot sessions (F2, F3); a density that finds its own level (A4); slicing route searches for small processors (the guard already holds wakes while planning waits); an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
-broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; bots posting in the Find Group window (E1); level 50 bots; mentors in Poeta and Ishalgen; in flight, the Terminon camp entrance, the stalled ambient flights and gliding on the way down; a rank of play
+broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; bots posting in the Find Group window (E1); level 50 bots; mentors in Poeta and Ishalgen; the broker's measure (its milestone 7); in flight, the Terminon camp entrance, the stalled ambient flights and gliding on the way down; a rank of play
 per bot; two old tester points (the templar that "drops the fight", the cleric against an assassin's rune); the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
 characters brought in as bots).
 
