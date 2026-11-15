@@ -27,8 +27,8 @@ unless named otherwise.
 `BotRequests.answer(kind, situation)` is one pure decision for every question a player can ask: accept, refuse or leave, from who asks (the owner,
 a team mate, a stranger, a bot), whether the bot is fighting, dead or in an instance, its level against the asker's. A question left unanswered is
 refused after about 5 s, so it never blocks the next asker. Covered: group invitations, **duels**, **friend requests**, **trades with one's
-companion** (`economy/BotTrades`, `//bot give`); the last three are built and not yet watched in game
-([plans/player-interactions-plan.md](plans/player-interactions-plan.md)).
+companion** (`economy/BotTrades`, `//bot give`); the last three validated in game by the tester on 15 November
+([history/player-interactions-plan.md](history/player-interactions-plan.md)).
 
 ## Chat
 

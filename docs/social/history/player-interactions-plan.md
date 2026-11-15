@@ -1,9 +1,9 @@
 # Plan: what a player does with a bot
 
-Status: built, unverified: trades with a companion, friends and duels not watched in game.
+Status: done: trades with a companion, friends and duels validated in game by the tester (reported on 15 November).
 
 Milestones 0 to 3 built on 19 October (`BotRequests`, `BotTrades`, `//bot give`), not yet watched in game. Priority 5 of [roadmap.md](../../roadmap.md): trading with one's companion, friends and duels. The list came
-from the testers' "missing features in game"; cohorts have a plan of their own, [cohort-plan.md](cohort-plan.md).
+from the testers' "missing features in game"; cohorts have a plan of their own, [cohort-plan.md](../plans/cohort-plan.md).
 
 ## What the engine gives, and what a bot lacks
 

@@ -52,14 +52,13 @@ What is left once roles, playbooks and positioning exist:
 
 The list "missing features in game", each with what stands today:
 
-- **Trading with one's companion**: built 19 October, with its owner only; `//bot give` hands over the companion's side ([player-interactions-plan.md](../social/plans/player-interactions-plan.md)).
-- **Adding a bot as a friend**: built 19 October; a bot shows online while awake.
+- **Trading with one's companion**: validated in game (15 November), with its owner only; `//bot give` hands over the companion's side ([player-interactions-plan.md](../social/history/player-interactions-plan.md)).
+- **Adding a bot as a friend**: validated in game (15 November); a bot shows online while awake.
 - **A legion's invitation**: not answered. The first step of the legions section below.
 - **Cohorts** (alliances): a bot answers an alliance invitation but acts as if the whole alliance were its group ([cohort-plan.md](../social/plans/cohort-plan.md)).
-- **Duels**: built 19 October; a free bot within 10 levels accepts and attacks, and never asks for one.
-- **The in-game shop does not work**, and is not the bots' work: the server has none. The 4.8 client opens a web shop with a token
-  (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty one, a TODO upstream); the older shop packets are commented out and `config/ingameshop` is unused.
-  Either a small web shop answering the token, or reviving the old packets if this client still reads them: a decision, then a project of its own.
+- **Duels**: validated in game (15 November); a free bot within 10 levels accepts and attacks, and never asks for one.
+- **The in-game shop does not work**, and is not the bots' work: the server has none (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty token
+  upstream). **Left out by decision** (15 November): no in-game shop.
 - **The arenas** (four or five kinds): not started; they are instances of their own, after the dungeons.
 - **A living world**: built 20 to 23 October, a town day and 40 bot stores a capital ([living-capitals-plan.md](../capitals/history/living-capitals-plan.md)).
 

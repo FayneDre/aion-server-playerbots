@@ -143,7 +143,7 @@ History: [flight-plan.md](flight/history/flight-plan.md) (take-off, landing, ter
 
 [backlog.md](capitals/backlog.md): what is left in the economy in detail (selling, shops, gear that keeps up).
 
-Plans: [plans/auction-house-plan.md](capitals/plans/auction-house-plan.md) (an auction house stocked by the server on the AHBot model; seller, settling and buyer built, unverified).
+Plans: [plans/auction-house-plan.md](capitals/plans/auction-house-plan.md) (an auction house stocked by the server on the AHBot model; seller, settling and buyer seen working in game on 15 November; prices and goods to adjust).
 
 History, all built: [bot-store-consumables-plan.md](capitals/history/bot-store-consumables-plan.md) (food, scrolls, higher stones and more lines in the bots' stores, validated 1 November), [living-capitals-plan.md](capitals/history/living-capitals-plan.md) (the umbrella plan, milestones 0 to 5),
 [living-capitals-findings.md](capitals/history/living-capitals-findings.md) (Sanctum's bridges and rides, the crowd test, the town routine),
@@ -158,11 +158,10 @@ History, all built: [bot-store-consumables-plan.md](capitals/history/bot-store-c
 | [how-it-works.md](social/how-it-works.md) | **How bots deal with players today**: groups, requests, the chat channels. |
 | [groups.md](social/groups.md) | Why groups work the way they do: following as the anchor, no initiative, assisting, slots, leaders. |
 | [backlog.md](social/backlog.md) | What is left in detail: dungeons and instances, group play, what was asked in game on 19 October, the chat server. |
-| [plans/player-interactions-plan.md](social/plans/player-interactions-plan.md) | Trades with a companion, friends, duels. Built, unverified in game. |
 | [plans/cohort-plan.md](social/plans/cohort-plan.md) | Bots in an alliance. Not started. |
 | [plans/group-options-plan.md](social/plans/group-options-plan.md) | Playing with one's bots: the starting level, bots rolling the dice, stay, guard, passive and two marks. Not started. |
 
-History: [chat-fun-and-languages-plan.md](social/history/chat-fun-and-languages-plan.md) (fun lines in Region, French or English, validated 1 November), [chat-channels-plan.md](social/history/chat-channels-plan.md) (bots in the Region, Trade and Find Group channels).
+History: [player-interactions-plan.md](social/history/player-interactions-plan.md) (trades with a companion, friends and duels, validated 15 November), [chat-fun-and-languages-plan.md](social/history/chat-fun-and-languages-plan.md) (fun lines in Region, French or English, validated 1 November), [chat-channels-plan.md](social/history/chat-channels-plan.md) (bots in the Region, Trade and Find Group channels).
 
 ## Tester reports — [feedback/](feedback/)
 
