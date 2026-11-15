@@ -104,7 +104,8 @@ What the data said that the first reading missed:
   `EffectController.removeEffectByDispelCat` does, and a cleanse notes as resisted only the effects of its own kind: a bard's physical one had
   otherwise kept a cleric's general one off a sleep.
 - **Resurrection**: `BotGroupManager.mateToResurrect` knew the chanter and the cleric only, so a bard and a cleric would both have raised one body.
-  The order is now chanter, cleric, bard (`resurrectorRank`).
+  The order is now chanter, bard, cleric (`resurrectorRank`): the cleric, the group's healer, keeps
+  its mana for the living.
 - **The pieces exist**: the chanter's heals of mates and its resurrection (`BotGroupManager.mateToResurrect`), the cleric's group reading, the
   sorcerer's controls on a second enemy and its silence on a caster, the charge release (`releaseWhenCharged`), the DP rules, hold fire, `flees`.
 

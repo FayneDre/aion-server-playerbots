@@ -54,7 +54,7 @@ a bystander. A class that heals keeps 25 % of its mana for it.
 
 - Loot (`BotLootManager`), potions (`BotPotionManager`, found by what they do), rest (`BotRestManager`; a bot fallen behind its leader walks instead).
 - **Death** (`ai/BotDeath`): revived by a resurrection somebody casts (among bots, one raiser per body: a
-  chanter first, then a cleric, then a bard, `BotGroupManager.resurrectorRank`), at an instance's entrance, or at its obelisk on a quarter of its health, then the death
+  chanter first, then a bard, then a cleric, `BotGroupManager.resurrectorRank`), at an instance's entrance, or at its obelisk on a quarter of its health, then the death
   sickness waited out before any fight is started; three deaths in ten minutes move the bot's home (`BotDay`).
 
 ## Limits

@@ -298,8 +298,8 @@ public class BotGroupManager {
 	 * Finds the group mate that this bot is the one to resurrect.
 	 * <p>
 	 * A dead mate in reach is not enough: a cleric or another chanter in the group may do it, and two resurrections on one body are one wasted. So a human
-	 * cleric or chanter near the body is left to do it themselves. Among the bots a chanter has the right of way over a cleric, which is the guide's ("do not use it
-	 * if a chanter is in the group"), and between two of one class the lowest object id does.
+	 * cleric or chanter near the body is left to do it themselves. Among the bots a chanter has the right of way over a bard and a cleric, which is the guide's
+	 * ("do not use it if a chanter is in the group"), the bard over the cleric, and between two of one class the lowest object id does.
 	 *
 	 * @param range How far the skill reaches.
 	 * @return The mate, or null if there is none, or somebody else is to raise them, or one is already being raised.
@@ -327,12 +327,12 @@ public class BotGroupManager {
 			// a player who can raise is left to it: a chanter or a cleric by every bot, as before the bard had a playbook; a bard only by a bard, since nobody
 			// knows that a player bard will think of its resurrection, and a body left to it could be left for good
 			if (!member.isBot()) {
-				if (rank <= resurrectorRank(PlayerClass.CLERIC) || rank <= own)
+				if (member.getPlayerClass() != PlayerClass.BARD || rank <= own)
 					return null;
 				continue;
 			}
-			// among bots the chanter has the right of way over the cleric, which is the guide's ("do not use it if a chanter is in the group"), and both over
-			// the bard, whose resurrection is no part of a guide; between two of one class the lowest object id does
+			// among bots the chanter has the right of way, which is the guide's ("do not use it if a chanter is in the group"), then the bard, so that the cleric,
+			// the group's healer, keeps its mana and its casts for the living; between two of one class the lowest object id does
 			if (rank < own || rank == own && member.getObjectId() < bot.getObjectId())
 				return null;
 		}
@@ -340,14 +340,14 @@ public class BotGroupManager {
 	}
 
 	/**
-	 * @return Who raises a dead mate first when several could: the chanter, then the cleric, then the bard; -1 for a class with no resurrection a playbook
+	 * @return Who raises a dead mate first when several could: the chanter, then the bard, then the cleric; -1 for a class with no resurrection a playbook
 	 *         casts. A class missing here would raise the same body as the others, two resurrections where one is needed.
 	 */
 	static int resurrectorRank(PlayerClass playerClass) {
 		return switch (playerClass) {
 			case CHANTER -> 0;
-			case CLERIC -> 1;
-			case BARD -> 2;
+			case BARD -> 1;
+			case CLERIC -> 2;
 			default -> -1;
 		};
 	}

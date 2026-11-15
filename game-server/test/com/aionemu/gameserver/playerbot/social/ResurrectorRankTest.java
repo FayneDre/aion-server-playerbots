@@ -12,9 +12,9 @@ import com.aionemu.gameserver.model.PlayerClass;
 class ResurrectorRankTest {
 
 	@Test
-	void theChanterThenTheClericThenTheBard() {
-		assertTrue(BotGroupManager.resurrectorRank(PlayerClass.CHANTER) < BotGroupManager.resurrectorRank(PlayerClass.CLERIC));
-		assertTrue(BotGroupManager.resurrectorRank(PlayerClass.CLERIC) < BotGroupManager.resurrectorRank(PlayerClass.BARD));
+	void theChanterThenTheBardThenTheCleric() {
+		assertTrue(BotGroupManager.resurrectorRank(PlayerClass.CHANTER) < BotGroupManager.resurrectorRank(PlayerClass.BARD));
+		assertTrue(BotGroupManager.resurrectorRank(PlayerClass.BARD) < BotGroupManager.resurrectorRank(PlayerClass.CLERIC));
 	}
 
 	@Test
