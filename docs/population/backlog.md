@@ -25,6 +25,6 @@ on it. Counting each set of islands as a region of its own is the way to raise t
 
 ## Gaps
 
-- **Bots do not yield to real players.** `BotTargetRegistry` stops two bots claiming one mob, but nothing yields to a person. Forty bots stripping a
+- **Bots do not yield to real players**, and are left so by decision (15 November). `BotTargetRegistry` stops two bots claiming one mob, but nothing yields to a person. Forty bots stripping a
   spawn or a gathering node make a worse server than none; this is a design rule to settle before a settled 2000.
 - **Resident/adventurer leftovers**: check [resident-leftovers.md](../population/resident-leftovers.md) before removing any of it.

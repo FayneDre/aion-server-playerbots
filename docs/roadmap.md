@@ -14,7 +14,7 @@ those of the theme's detail.
 |---|---|---|---|
 | 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated | 1 feedback as it comes; 2 the next upstream merge; 3 the emulator's gaps met in play |
 | 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 the group instances without a mesh; 5 lifts; 6 learned ground; 7 corridors |
-| 2 | Population | validated; memory guarded | 1 bots yield to players; 2 road careers: merchants, wardens, caravans; 3 the director: stock, the clock, sessions; 4 a self-finding density |
+| 2 | Population | validated; memory guarded | 1 road careers: merchants, wardens, caravans; 2 the director: a pool stocked by level and role |
 | 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe; 7 two tester points |
 | 4 | Groups and companions | validated (dungeons, composition, duels, friends, trades) | 1 formations; 2 a companion's gear in the player's hand; 3 cohorts; 4 bots in the Find Group window; 5 bots group together; 6 level 50; 7 doors and arenas |
 | 5 | Flight and the Abyss | validated (milestones 1-5) | 1 flying with a player, milestone 6; 2 stalled ambient flights; 3 gliding down |
@@ -34,16 +34,16 @@ those of the theme's detail.
    learned ground and corridors (1.2 to 1.7).
 2. **The living world**, in the order decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md), its lots in brackets):
    the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots in the Find Group window and
-   bots grouping together (4.4, 4.5, E1, E2); merchants, wardens, caravans (2.2, C1 to C3); personalities, then rumours and contested named monsters,
-   mentors and bots that take the first step (6.1 to 6.5, I); the director (2.3, F1 to F3). The pages in game (6.7, H) go beside any of them.
-3. **When the rest stands**: bot legions (11.2, G1), grudges (8.6, D4), the self-finding density (2.4, A4), player shops (10), then RvR (12).
+   bots grouping together (4.4, 4.5, E1, E2); merchants, wardens, caravans (2.1, C1 to C3); personalities, then rumours and contested named monsters,
+   mentors and bots that take the first step (6.1 to 6.5, I); the director (2.2, F1). The pages in game (6.7, H) go beside any of them.
+3. **When the rest stands**: bot legions (11.2, G1), grudges (8.6, D4), player shops (10), then RvR (12).
 
 ## Not done, by decision
 
 Quests for world bots and companions; patching the client's executables; rewards of our own invention (tickets, passes, account bonuses); changes
 to monster strength; a market other than the native broker; freezing the maps nobody is on; another mesh format; a decision engine other than the
 playbooks. On 15 November: a stable release pair for now (pre-releases go on); tests of what the fight does to the world, nothing
-wrong being seen in game; slicing route searches for small processors (the guard already holds wakes while planning waits); an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
+wrong being seen in game; bots yielding to real players; a day on the clock and bot sessions (F2, F3); a density that finds its own level (A4); slicing route searches for small processors (the guard already holds wakes while planning waits); an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
 broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; a rank of play
 per bot; the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
 characters brought in as bots).
@@ -88,8 +88,7 @@ meshes checked against what people walked ([how-it-works.md](navigation/how-it-w
 on 26 maps, the density modes and the memory guard (heap, route planning, the machine's memory) ([how-it-works.md](population/how-it-works.md)).
 
 **Left** ([backlog.md](population/backlog.md), [living-world-plan.md](population/plans/living-world-plan.md)):
-1. **Bots yield to real players**: a design rule to settle before a settled 2000. Today forty bots can strip a hunting ground a player came for.
-2. **Careers on the roads, lot C**:
+1. **Careers on the roads, lot C**:
    - **Travelling merchants** (C1): a bot walks between two villages of its region and opens a store when a player stops within a few metres, closing
      it when they leave. Its stock is what the region's bots really looted and sold to it, finite and renewed by their hunting: a merchant from a
      dangerous region carries rarer goods, and a player learns where to look.
@@ -97,13 +96,9 @@ on 26 maps, the density modes and the memory guard (heap, route planning, the ma
      faction in trouble, and fight the invader in a PvP zone. They are the first defenders lot D needs.
    - **Caravans** (C3): a merchant escorted by two or three wardens, from one village to the next at set hours, announced in Region chat. In a PvP
      zone the other faction's bots may attack it: an event that happens whether a player is there or not, and one a player can defend or raid.
-3. **The director, lot F**: a pool stocked by level band and role, so a missing tank or healer at a level is grown rather than left missing, a map
-   pre-filled before a player arrives, a bot that outgrew its region moved across maps, the oldest retired at the cap (F1); a day on the clock, the
-   countryside fuller in the evening and thinner at four in the morning (F2); sessions, a bot leaving after an hour or a few and coming back later
-   where it left, its place taken by a sleeper, so a player meets new faces without anyone appearing in sight (F3).
-4. **A density that finds its own level** (A4): a mode `FIT` that raises the countryside's share while the heap after a collection stays under a
-   target and lowers it above, so a server holds what its machine allows with nothing to tune.
-5. By decision, left as they are: Reshanta's numbers (29 awake with nobody online) and its middle layer, not lived.
+2. **The director, lot F1**: a pool stocked by level band and role, so a missing tank or healer at a level is grown rather than left missing; a
+   map pre-filled before a player arrives; a bot that outgrew its region moved across maps; the oldest retired at the cap.
+3. By decision, left as they are: Reshanta's numbers (29 awake with nobody online) and its middle layer, not lived.
 
 ## 3. Classes and combat
 
