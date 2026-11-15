@@ -21,7 +21,7 @@ those of the theme's detail.
 | 5 | Flight and the Abyss | validated (milestones 1-5) | nothing, by decision |
 | 6 | Capitals and social life | validated (town day, stores, chat, combat meter) | 1 personalities; 2 true rumours; 3 contested named monsters; 4 bots that take the first step; 5 bots that answer; 6 pages in game, GM tools |
 | 7 | Gear | dressed at creation, loot worn | nothing, by decision |
-| 8 | Wild PvP and rifts | built, unverified, off by default | 1 a watch in game; 2 hunting grounds, rifts, measure; 3 limits on a fight; 4 rift raids; 5 raids the world answers; 6 grudges |
+| 8 | Wild PvP and rifts | built, unverified, on; no PvP fight seen yet | 1 a watch in game; 2 hunting grounds, rifts, measure; 3 limits on a fight; 4 rift raids; 5 raids the world answers; 6 grudges |
 | 9 | Broker | validated (15 November) | 1 prices and goods adjusted; 2 the measure |
 | 10 | Player shops | not started | 1 player shops run by bots |
 | 11 | Legions | not started | 1 answer an invitation; 2 bot legions born of who played together |

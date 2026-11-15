@@ -59,7 +59,7 @@ what they own worn, life and mana flasks from level 10 ([gear/how-it-works.md](g
 
 ## 8. Wild PvP and rifts
 
-**Done**: where PvP really is, a player as a target, defence and PvP behaviour, built, unverified; `gameserver.playerbot.pvp.enable` is off by default
+**Done**: where PvP really is, a player as a target, defence and PvP behaviour, built, unverified; `gameserver.playerbot.pvp.enable` is on (true by default since 31 October), yet no bot has fought in PvP: no `PVP KILL` line in the logs of 14 and 15 November, since bots do not hunt PvP zones before point 2
 ([wild-pvp-plan.md](combat/plans/wild-pvp-plan.md)).
 
 **Left**:

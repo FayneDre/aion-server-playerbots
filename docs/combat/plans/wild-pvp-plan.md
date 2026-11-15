@@ -1,6 +1,6 @@
 # Plan: wild PvP, rifts and the arenas
 
-Status: in progress: milestones 0, 1, 2 and 2b built, unverified in game (the property `gameserver.playerbot.pvp.enable` is false by default; the pure rules are
+Status: in progress: milestones 0, 1, 2 and 2b built, unverified in game (the property `gameserver.playerbot.pvp.enable` is on, true by default since 31 October; no `PVP KILL` line in the logs of 14 and 15 November, bots not hunting PvP zones before milestone 3; the pure rules are
 tested, everything that needs a world only compiles, no bot has met a player yet). Milestones 3 onwards not started.
 
 ## What the engine already does
