@@ -3,7 +3,7 @@
 Status: in progress: milestones 1 to 3 built and used on 6 November (server pre-release v0.1.0-beta.1 and launcher pre-release v0.3.0-beta.1
 published, `Latest` stays launcher v0.2.0); milestone 4 built and checked on the real server the same evening; milestones 5 (the launcher
 updating itself from GitHub) and 6 (a beta launcher installing the server's bundle, and going back) built the same night and validated in use on
-8 November; on 14 November both repositories went to one branch, `main` (the target below). Next, milestone 7. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
+8 November; on 14 November both repositories went to one branch, `main` (the target below). Milestone 7, the first stable pair, put aside by decision on 15 November: pre-releases go on. Written the same day, after a tester ran launcher v0.2.0 against a server older than it needs.
 
 ## Why
 

@@ -12,7 +12,7 @@ those of the theme's detail.
 
 | # | Theme | Where it stands | What is left, in order |
 |---|---|---|---|
-| 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated | 2 the first stable pair; 3 the next upstream merge; 4 tests of the fight's actions; 5 the emulator's gaps met in play |
+| 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated | 1 feedback as it comes; 2 the next upstream merge; 3 the emulator's gaps met in play |
 | 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 maps without a mesh; 5 lifts; 6 learned ground; 7 corridors; 8 the processor's cost |
 | 2 | Population | validated; memory guarded | 1 bots yield to players; 2 road careers: merchants, wardens, caravans; 3 the director: stock, the clock, sessions; 4 a self-finding density |
 | 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe; 7 two tester points |
@@ -28,7 +28,7 @@ those of the theme's detail.
 
 ## The order to do it in
 
-1. **Finish and steady what exists** (now): the first stable pair (0.2), the four places a tester walks (1.1), the four playbooks and the assassin
+1. **Finish and steady what exists** (now): the upstream merge (0.2), the four places a tester walks (1.1), the four playbooks and the assassin
    (3.1), threat, the tank, the healer (3.2 to 3.4), flying with a player (5.1), the PvP watch (8.1), the broker's prices (9.1). Several wait on a
    tester's time; the playbooks do not.
 2. **The living world**, in the order decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md), its lots in brackets):
@@ -42,7 +42,8 @@ those of the theme's detail.
 
 Quests for world bots and companions; patching the client's executables; rewards of our own invention (tickets, passes, account bonuses); changes
 to monster strength; a market other than the native broker; freezing the maps nobody is on; another mesh format; a decision engine other than the
-playbooks. On 15 November: an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
+playbooks. On 15 November: a stable release pair for now (pre-releases go on); tests of what the fight does to the world, nothing
+wrong being seen in game; an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
 broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; a rank of play
 per bot; the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
 characters brought in as bots).
@@ -56,11 +57,9 @@ MySQL and Java, tried on a clean machine on 14 November) ([architecture/how-it-w
 
 **Left**:
 1. **Feedback as it comes**: the tester reports while playing; each plan's Status line says what has been seen ([feedback/](feedback/README.md)).
-2. **Milestone 7, the first stable pair**: a server and a launcher pre-release validated in game together, tagged stable in both repositories
-   ([release-process-plan.md](architecture/plans/release-process-plan.md)); the launcher's install from nothing then installs that pair.
-3. **The next upstream merge**, as soon as `4.8` moves, then `tools/sync-install.ps1`: the sooner, the smaller.
-4. **What the fight does to the world is untested**: the chase, the casts and the flight ([known-limits.md](known-limits.md), Tests).
-5. **The emulator's own gaps met while playing** (a quest that cannot be finished, an npc missing, a boss that does not act): each fixed in a commit
+2. **The next upstream merge**, then `tools/sync-install.ps1`: `4.8` has moved by 9 commits to 14 November (Rentus' Kuhara, the siege fortress
+   bosses, revival after a deadly fall, a chat channel leak, decomposable sets, manastones); the sooner, the smaller.
+3. **The emulator's own gaps met while playing** (a quest that cannot be finished, an npc missing, a boss that does not act): each fixed in a commit
    of its own, offered upstream when it is theirs, so merges stay small. No plan yet.
 
 ## 1. Navigation
