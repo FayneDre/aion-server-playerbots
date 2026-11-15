@@ -94,8 +94,10 @@ per class, are in [glossary/](classes/glossary/README.md): [templar](classes/glo
 
 History, one plan per class guide, each validated in game on 27 October: [templar](classes/history/templar-plan.md),
 [chanter](classes/history/chanter-plan.md), [cleric](classes/history/cleric-plan.md), [ranger](classes/history/ranger-plan.md),
-[gladiator](classes/history/gladiator-plan.md), [sorcerer](classes/history/sorcerer-plan.md). Assassin, spirit master, bard, gunner and aethertech
+[gladiator](classes/history/gladiator-plan.md), [sorcerer](classes/history/sorcerer-plan.md). Assassin, spirit master, gunner and aethertech
 have no plan yet ([roadmap.md](roadmap.md), theme 3).
+
+| [plans/bard-plan.md](classes/plans/bard-plan.md) | The bard, the first playbook planned without a guide: every rule from the data or marked *(play)*. Not started. |
 
 ## Gear — [gear/](gear/)
 
