@@ -13,7 +13,7 @@ those of the theme's detail.
 | # | Theme | Where it stands | What is left, in order |
 |---|---|---|---|
 | 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated | 1 feedback as it comes; 2 the next upstream merge; 3 the emulator's gaps met in play |
-| 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 maps without a mesh; 5 lifts; 6 learned ground; 7 corridors; 8 the processor's cost |
+| 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 the group instances without a mesh; 5 lifts; 6 learned ground; 7 corridors |
 | 2 | Population | validated; memory guarded | 1 bots yield to players; 2 road careers: merchants, wardens, caravans; 3 the director: stock, the clock, sessions; 4 a self-finding density |
 | 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe; 7 two tester points |
 | 4 | Groups and companions | validated (dungeons, composition, duels, friends, trades) | 1 formations; 2 a companion's gear in the player's hand; 3 cohorts; 4 bots in the Find Group window; 5 bots group together; 6 level 50; 7 doors and arenas |
@@ -30,12 +30,12 @@ those of the theme's detail.
 
 1. **Finish and steady what exists** (now): the upstream merge (0.2), the four places a tester walks (1.1), the four playbooks and the assassin
    (3.1), threat, the tank, the healer (3.2 to 3.4), flying with a player (5.1), the PvP watch (8.1), the broker's prices (9.1). Several wait on a
-   tester's time; the playbooks do not.
+   tester's time; the playbooks do not. Navigation goes on beside, in its own order: obstacles, dungeons, the group instances' meshes, then lifts,
+   learned ground and corridors (1.2 to 1.7).
 2. **The living world**, in the order decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md), its lots in brackets):
-   learned ground (1.6, B1); the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots in the Find Group window and
+   the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots in the Find Group window and
    bots grouping together (4.4, 4.5, E1, E2); merchants, wardens, caravans (2.2, C1 to C3); personalities, then rumours and contested named monsters,
-   mentors and bots that take the first step (6.1 to 6.5, I); the director (2.3, F1 to F3); lifts and corridors (1.5, 1.7, B2, B3), sooner if
-   dungeons come first. The pages in game (6.7, H) go beside any of them.
+   mentors and bots that take the first step (6.1 to 6.5, I); the director (2.3, F1 to F3). The pages in game (6.7, H) go beside any of them.
 3. **When the rest stands**: bot legions (11.2, G1), grudges (8.6, D4), the self-finding density (2.4, A4), player shops (10), then RvR (12).
 
 ## Not done, by decision
@@ -43,7 +43,7 @@ those of the theme's detail.
 Quests for world bots and companions; patching the client's executables; rewards of our own invention (tickets, passes, account bonuses); changes
 to monster strength; a market other than the native broker; freezing the maps nobody is on; another mesh format; a decision engine other than the
 playbooks. On 15 November: a stable release pair for now (pre-releases go on); tests of what the fight does to the world, nothing
-wrong being seen in game; an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
+wrong being seen in game; slicing route searches for small processors (the guard already holds wakes while planning waits); an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
 broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; a rank of play
 per bot; the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
 characters brought in as bots).
@@ -72,15 +72,15 @@ meshes checked against what people walked ([how-it-works.md](navigation/how-it-w
    and warehouse district ([step-links-plan.md](navigation/plans/step-links-plan.md)).
 2. **Obstacles and slopes** (backlog point 2, reopened by a note): not started.
 3. **Dungeons, with the Draupnir report** (backlog point 6), then **every dungeon mesh walked**: only Noschana's has been.
-4. **The maps and instances that have no mesh**: counted first (the data holds more instances than our 45 geometries), then generated and checked
-   the same way. No plan yet.
+4. **The group instances that have no mesh** (counted on 15 November: 81 of the data's 161 maps have none, most of them solo instances, PvP
+   arenas and battlefields, test maps or fields without a heightmap): the PvE instances for more than one player, Empyrean Crucible (6), Nightmare
+   Circus (6, two maps), Shugo Imperial Tomb and the Shugo Emperor's Vault (3), Infinity Shard and Stonespear Reach (12, which need cohorts),
+   generated with `tools/navmesh.ps1` and checked like the 45 others. No plan yet.
 5. **Lifts and moving platforms** (B2): a link "board here, ride, step off there" timed from when the platform is at each end, a ceiling of passengers
    per platform; it closes Theobomos Lab (72 %), Rentus (77 and 72 %) and the Pandaemonium dock, and would end the 13 s wait beside a player.
 6. **Ground that refused a bot remembered** (B1): a mesh cell refused to two different bots on two different days becomes blocked for the planner,
    kept in a file per map, listed by `//bot nav learned`, expired after a week unless confirmed, and fed back to the mesh generator.
 7. **Prepared corridors** (B3) between the places of the plan, built offline and checked by the golden routes, for journeys across Reshanta's 3 km.
-8. **Route planning's processor cost**: 6 to 7 cores of 16 for 1430 bots on 5 November. Searches cut into slices of a few milliseconds and shared out,
-   so the cost is spread rather than queued; measured with `measure.sh`. No plan yet.
 
 ## 2. Population and the living world
 
