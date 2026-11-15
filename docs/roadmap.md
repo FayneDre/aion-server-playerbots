@@ -13,7 +13,7 @@ those of the theme's detail.
 | # | Theme | Where it stands | What is left, in order |
 |---|---|---|---|
 | 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated | 1 feedback as it comes; 2 the next upstream merge; 3 the emulator's gaps met in play |
-| 13 | Test feedback in game | `//bot note` and a zip by hand | 1 the report window; 2 what it carries; 3 where it goes; 4 a report's state |
+| 13 | Test feedback in game | `//bot note` and a zip by hand | 1 the report window; 2 what it carries; 3 where it goes; 4 a GitHub issue for everybody else; 5 a report's state |
 | 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 the group instances without a mesh; 5 lifts; 6 learned ground; 7 corridors |
 | 2 | Population | validated; memory guarded | 1 road careers: merchants, wardens, caravans; 2 the director: a pool stocked by level and role |
 | 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe |
@@ -152,7 +152,14 @@ already show a page in the client's browser, which is where the window goes.
    their state and route), the time and the patch version, the bot the tester targets, and the minutes of log around it. A screenshot: the client
    writes its own to its folder; the launcher, on the same machine, attaches the ones taken in the minutes before (whether the client's browser
    can reach them is to be checked first).
-3. **Where it goes**: a file per report in the server's folder, kept apart from the rotating logs, gathered by the launcher into what the tester
-   sends, or straight to the developer when the launcher has a channel for it; then the report becomes its `docs/feedback/` file.
-4. **A report's state, seen in game**: the same page lists the tester's reports with a state (received, understood, fixed in a patch, to check
-   again) and what a fixed one asks to be walked again; the state is written from here, the patch notes name the reports they answer.
+3. **Where it goes**: a file per report in the server's folder, kept apart from the rotating logs, with its zip (the log minutes, the
+   screenshots). The tester close at hand sends it as today; it then becomes its `docs/feedback/` file.
+4. **A GitHub issue, for everybody else**: anyone who plays the repack and knows nobody here reports the same way. The launcher, on the same
+   machine, offers the finished report as an issue on the server repository: the new issue page opened in the browser, title, kind (as a label)
+   and text filled in from the report, through an issue form of the repository's own. No token travels with the launcher, which would let
+   anyone write to the repository: the reporter signs in with their own account. The zip cannot be filled in that way, so the launcher opens its
+   folder beside the page for the reporter to drop it in. What the zip and the text carry is read for what a public page must not show first
+   (account names, addresses, the machine's paths), and the reporter sees it before sending.
+5. **A report's state, seen in game**: the same page lists the tester's reports with a state (received, understood, fixed in a patch, to check
+   again) and what a fixed one asks to be walked again; for an issue, the state is the issue's own (open, labelled, closed by the commit that
+   fixes it), and the patch notes name the reports and issues they answer.
