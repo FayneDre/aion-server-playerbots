@@ -15,7 +15,7 @@ those of the theme's detail.
 | 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated | 1 feedback as it comes; 2 the next upstream merge; 3 the emulator's gaps met in play |
 | 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 the group instances without a mesh; 5 lifts; 6 learned ground; 7 corridors |
 | 2 | Population | validated; memory guarded | 1 road careers: merchants, wardens, caravans; 2 the director: a pool stocked by level and role |
-| 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe; 7 two tester points |
+| 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe |
 | 4 | Groups and companions | validated (dungeons, composition, duels, friends, trades) | 1 formations; 2 a companion's gear in the player's hand; 3 cohorts; 4 bots in the Find Group window; 5 bots group together; 6 level 50; 7 doors and arenas |
 | 5 | Flight and the Abyss | validated (milestones 1-5) | 1 flying with a player, milestone 6; 2 stalled ambient flights; 3 gliding down |
 | 6 | Capitals and social life | validated (town day, stores, chat, combat meter) | 1 personalities; 2 true rumours; 3 contested named monsters; 4 mentors; 5 bots that take the first step; 6 bots that answer; 7 pages in game, GM tools |
@@ -45,7 +45,7 @@ to monster strength; a market other than the native broker; freezing the maps no
 playbooks. On 15 November: a stable release pair for now (pre-releases go on); tests of what the fight does to the world, nothing
 wrong being seen in game; bots yielding to real players; a day on the clock and bot sessions (F2, F3); a density that finds its own level (A4); slicing route searches for small processors (the guard already holds wakes while planning waits); an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
 broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; a rank of play
-per bot; the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
+per bot; two old tester points (the templar that "drops the fight", the cleric against an assassin's rune); the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
 characters brought in as bots).
 
 ## 0. Tooling and releases
@@ -112,11 +112,12 @@ cleric, ranger, gladiator, sorcerer), the fight's decisions as pure rules with t
    today it opens at the same instant and can pull the mob off (`AggroList.getTarget(MOST_HATED)`).
 3. **The tank's tools**: a pull from range on the player's order, the monster brought back to the group; an area taunt once loose monsters reach a
    count; never taking a monster off another tank.
-4. **The healer's priorities**: cleanses by severity (sleep, fear, paralysis first), resurrection after a fight and in one when a skill allows it.
+4. **The healer's priorities**: cleanses by severity (sleep, fear, paralysis first, where today the cleric takes them as it finds them), and
+   resurrection in a fight when a skill allows it (after one, the cleric and the chanter already raise a mate within 15 m).
 5. **Bosses' mechanics**: areas avoided by shape (circle, ring, cone, line) from the cast the bot sees, interrupts shared out in the group, profiles
    for the named encounters of the dungeons played; positioning against a boss was validated on 27 October.
-6. **After a wipe**: rest, the way back to the bodies or the bind point, the group gathered again before the next pull.
-7. **Two tester points still open**: the templar that "drops the fight" (needs a log or a time and a name), the cleric against an assassin's rune.
+6. **After a wipe**: rest, the way back to the bodies or the bind point, the group gathered again before the next pull; today each bot starts
+   again alone from its obelisk.
 
 ## 4. Groups and companions
 
