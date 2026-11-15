@@ -1,7 +1,7 @@
 # Classes: how a class playbook works
 
-Status: reference, written on 28 October 2026 from the code. Six classes have one, each from a guide and each validated in game on 27 October; the
-plan that turned each guide into rules is in [history/](history/). Where a playbook sits in a fight is in [../combat/how-it-works.md](../combat/how-it-works.md).
+Status: reference, written on 28 October 2026 from the code. Seven classes have one: six from a guide, each validated in game on 27 October, whose
+plans are in [history/](history/), and the bard, from the data alone ([plans/bard-plan.md](plans/bard-plan.md), not yet watched in game). Where a playbook sits in a fight is in [../combat/how-it-works.md](../combat/how-it-works.md).
 
 ## The seam
 
@@ -35,7 +35,7 @@ spend it at half). `BotPlaybooks.of(bot)` gives the class's one shared instance,
 
 ## Writing one for a new class
 
-The guide first, then: name its skills in French and English ([glossary/](glossary/README.md), `tools/skill-lookup.ps1 -Name`), map each to its
+The guide first, or without one the data and judgement marked *(play)*, as the bard was; then: name its skills in French and English ([glossary/](glossary/README.md), `tools/skill-lookup.ps1 -Name`), map each to its
 group with `skill-lookup.ps1`, write the rules as a pure `decide` with its tests, the data test, then `act`. A plan per class in `plans/` while it is
-built, with milestones verifiable one at a time. Assassin, spirit master, bard, gunner and aethertech have none yet ([../roadmap.md](../roadmap.md),
+built, with milestones verifiable one at a time. Assassin, spirit master, gunner and aethertech have none yet ([../roadmap.md](../roadmap.md),
 "Group play").

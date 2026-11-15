@@ -1,6 +1,7 @@
 # Bard: implementation plan
 
-Status: not started. Written on 15 November 2026, **without a guide**: the first playbook made that way, by decision, until a guide exists.
+Status: built, unverified: in game. Written and built on 15 November 2026, **without a guide**: the first playbook made that way, by decision, until a
+guide exists. `BardPlaybook`, 24 decision tests and 8 data tests; never yet watched in game.
 
 ## Where the rules come from
 
@@ -14,7 +15,7 @@ below comes from two sources, and says which:
 
 The pattern is the sorcerer's and the chanter's ([sorcerer-plan.md](../history/sorcerer-plan.md), [chanter-plan.md](../history/chanter-plan.md)): a
 `BardPlaybook`, rules by skill **group**, a pure `decide`, its tests, a data test. French names are the French client's (`client_strings_skill.xml`),
-to go into a `glossary/bard.md` at milestone 0.
+in [glossary/bard.md](../glossary/bard.md).
 
 ## What the class is, from the data
 
@@ -81,40 +82,61 @@ Upkeep, defence, control.
 | Inspiration, Rejuvenating Aria | Mélodie d'attaque, Mélodie de la joie | `BA_SONGOFADVANCE`, `BA_EXCITINGMELODY` | 30, 90 | Group speed 15 s; own attack speed 15 s |
 
 Left out: Soaring Sonnet `BA_SONGOFEAGLE` and the flight passives (theme 5 has nothing left), Herb Treatment and MP Recovery (the generic order's).
+Banned, claimed and never cast: Rejuvenating Aria `BA_EXCITINGMELODY` (attack speed, for a bard that never swings) and Inspiration `BA_SONGOFADVANCE`
+(fifteen seconds of run speed, which the generic buffs would cast every half minute).
+
+What the data said that the first reading missed:
+
+- **The stances, Summer, Autumn, Resonant Hymn, Freestyle and Hymn of Rejuvenation are stigmas.** A bard has them only if they are socketed, so the
+  stigma list decides the build: without the stance stigma there is no stance before 45. A bard that wears one stance keeps that one
+  (`BotSkillManager.knows`).
+- **A charged song is two kinds of template**: the learnt one is `CHARGE`, its stages (one second, five) are plain casts of the same group the engine
+  releases into. The data test asks the group, not its last template, which is a stage.
+- **The two stances share a cooldown id** and the engine allows a bard one toggle of that kind: casting the other stance ends the first.
 
 ## What exists, and what the bard needs of the module
 
 - **No bard playbook.** The generic order casts by stated damage with chain links first: the chains go off, but it does not pick a stance, keeps
   nobody alive on purpose, and spends heals as an afterthought. Bards died with the spirit master, aethertech and gunner on Reshanta's upper layer.
-- **The stances are toggles**, and `BotSkillManager` lets a bot touch no toggle but a chanter's mantras (`isMantra`). The bard needs the same
-  exception for its two stances, turning one on, never switching an active one off by casting it again.
-- **Physical cleanses**: `hasDispellableDebuff` reads what a debuff dispel reaches; the bard's reach only the physical category. To be checked
-  against `EffectController.removeEffectByDispelCat` before it is trusted.
+- **The stances are toggles**, kept from the generic order like every toggle but a mantra; the playbook casts one only when it is not up, since a
+  toggle cast again turns itself off.
+- **Physical cleanses**: the module read every cleanse as a general one. `CleanseReach` now says what a cleanse reaches, as
+  `EffectController.removeEffectByDispelCat` does, and a cleanse notes as resisted only the effects of its own kind: a bard's physical one had
+  otherwise kept a cleric's general one off a sleep.
+- **Resurrection**: `BotGroupManager.mateToResurrect` knew the chanter and the cleric only, so a bard and a cleric would both have raised one body.
+  The order is now chanter, cleric, bard (`resurrectorRank`).
 - **The pieces exist**: the chanter's heals of mates and its resurrection (`BotGroupManager.mateToResurrect`), the cleric's group reading, the
   sorcerer's controls on a second enemy and its silence on a caster, the charge release (`releaseWhenCharged`), the DP rules, hold fire, `flees`.
 
 ## Milestones, in verifiable order
 
+All built on 15 November in `BardPlaybook`, as below; the thresholds are its constants.
+
 0. **Name the skills**: the glossary file, every group above checked by the data test.
-1. **The seam**: `BardPlaybook` registered, `swings` false (a bard never auto attacks *(play)*), `claims` for every group above, the stance toggle
-   exception in `BotSkillManager`.
-2. **The stance** *(play)*: Impassion alone and in a group with a living cleric; Exultation in a group without one, or while a member is under 50 %.
+1. **The seam**: `BardPlaybook` registered, `swings` false (a bard never auto attacks *(play)*), `claims` for every group above but the damage
+   chains, Pulse, Sonic Gust and Quaver, which stay with the generic order.
+2. **The stance** *(play)*: Impassion alone and in a group with a living cleric; Exultation in a group without one near. Not on a
+   member's health, which would switch it every twelve seconds of a hard fight (found in review).
    Switched no more than once per 12 s, never mid-chain.
 3. **Upkeep**: before a fight Summer and Autumn (30 min), Protective Ode, Etude on every member without it; nothing while idle in town (the
    sorcerer's rule). In a fight, Protective Ode renewed when gone.
 4. **Healing, in a group** *(play)*: the healer's second in a group with a cleric, the healer without one. Chain B on the most hurt member under 70 %;
    Soothing Hymn under 40 %; Chorus of Blessing with three members under 70 %; Hymn of Rejuvenation on the tank; Cherubim Call after a fight, the
    chanter's rule. Alone: Chain B under 60 %, then back to damage.
-5. **Mana**: chain F when its own mana is under 50 %, its second link when two members are under 50 %; Resonant Counterpoint on a healer under 30 %.
-6. **Damage**: chains A, C, D, E kept running (the generic order already follows a chain while it is open), Fiery Descant and Dragon Song only
-   when nothing hits the bard (a charge is cancelled by a hit *(play)*), Minstrel's Flair at 2000 DP, Pulse as the filler. Quaver on a caster.
+5. **Mana**: chain F when its own mana or two members' are under 50 %, its second link (the group's mana) once open; Resonant Counterpoint on a
+   healer under 30 %.
+6. **Damage**: chains A, C, D, E kept running by the generic order, which follows a chain while it is open; the charged songs (Fiery Requiem,
+   Blazing Requiem, Dragon Song, Harpist's Pod, Fiery Descant) only while nothing hits the bard, and alone as the opener (a charge is cancelled by a
+   hit *(play)*); Minstrel's Flair at 2000 DP, keeping Aria of Hope's 4000 in a group. Quaver on a caster, Half-Stop on a player, Delusional Dirge
+   on a target that turned on the bard.
 7. **Defence**: Remove Shock then Hymn of Thanksgiving; Spring when a stun-heavy enemy is on it *(play)*; Winter under 30 %; Ode to Friendship when
    the target is on the bard in a group; Sonicportation then the generic retreat alone, under 25 %.
-8. **Control**: Freestyle on a second enemy not engaged, alone or in a group (the sorcerer's rule); Requiem when two enemies are within 7 m of the bard
-   and it is alone; Captivate on a runner; Half-Stop on an enemy player with a buff.
+8. **Control**: Freestyle, then Captivate, Staggered Rest, Composer's Bar on a second enemy engaged and not held, in a group or alone with several
+   (the sorcerer's rule and its `secondToControl`); Requiem alone, under 50 %, with two enemies within 7 m.
 9. **The big moments** *(play)*: Symphony of Destruction at 2000 DP on a boss or an elite with the group; Aria of Hope at 4000 DP when two members
    are under 30 %, or before a wipe.
-10. **Stigmas**: `preferredStigmas` *(play)*: Soothing Hymn, Chorus of Blessing, Paean of Pain, Combustible Cacophony, Blazing Requiem, Purging Paean.
+10. **Stigmas** *(play)*: regular Hymn of Rejuvenation, Resonant Hymn, Freestyle; advanced Soothing Hymn, Chorus of Blessing, Exultation. The
+    linked ones are granted by the engine.
 
 Tests per milestone, pure as the others' are; then a watch in game: a bard alone in Eltnen, a bard in a group with a cleric and one without,
 `//bot debug combat` on, and its deaths on Reshanta's upper layer against the 36 of 40 of the measure of the roadmap's theme 3.

@@ -320,19 +320,36 @@ public class BotGroupManager {
 		for (Player member : team.getMembers()) {
 			if (member.equals(bot) || member.isDead() || member.getWorldId() != dead.getWorldId() || PositionUtil.getDistance(dead, member) > ASSIST_RADIUS)
 				continue;
-			boolean canResurrect = member.getPlayerClass() == PlayerClass.CHANTER || member.getPlayerClass() == PlayerClass.CLERIC;
-			if (canResurrect && !member.isBot())
-				return null;
-			if (!canResurrect)
+			int rank = resurrectorRank(member.getPlayerClass());
+			if (rank < 0)
 				continue;
-			// among bots the chanter has the right of way over the cleric, which is the guide's ("do not use it if a chanter is in the group"); between two of one
-			// class the lowest object id does
-			if (member.getPlayerClass() == PlayerClass.CHANTER && bot.getPlayerClass() == PlayerClass.CLERIC)
-				return null;
-			if (member.getPlayerClass() == bot.getPlayerClass() && member.getObjectId() < bot.getObjectId())
+			int own = resurrectorRank(bot.getPlayerClass());
+			// a player who can raise is left to it: a chanter or a cleric by every bot, as before the bard had a playbook; a bard only by a bard, since nobody
+			// knows that a player bard will think of its resurrection, and a body left to it could be left for good
+			if (!member.isBot()) {
+				if (rank <= resurrectorRank(PlayerClass.CLERIC) || rank <= own)
+					return null;
+				continue;
+			}
+			// among bots the chanter has the right of way over the cleric, which is the guide's ("do not use it if a chanter is in the group"), and both over
+			// the bard, whose resurrection is no part of a guide; between two of one class the lowest object id does
+			if (rank < own || rank == own && member.getObjectId() < bot.getObjectId())
 				return null;
 		}
 		return dead;
+	}
+
+	/**
+	 * @return Who raises a dead mate first when several could: the chanter, then the cleric, then the bard; -1 for a class with no resurrection a playbook
+	 *         casts. A class missing here would raise the same body as the others, two resurrections where one is needed.
+	 */
+	static int resurrectorRank(PlayerClass playerClass) {
+		return switch (playerClass) {
+			case CHANTER -> 0;
+			case CLERIC -> 1;
+			case BARD -> 2;
+			default -> -1;
+		};
 	}
 
 	/**

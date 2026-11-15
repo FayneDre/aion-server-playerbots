@@ -14,7 +14,7 @@ import com.aionemu.gameserver.model.PlayerClass;
 class BotPlaybooksTest {
 
 	private static final Set<PlayerClass> WITH_A_PLAYBOOK = Set.of(PlayerClass.TEMPLAR, PlayerClass.CHANTER, PlayerClass.RANGER, PlayerClass.CLERIC,
-		PlayerClass.GLADIATOR, PlayerClass.SORCERER);
+		PlayerClass.GLADIATOR, PlayerClass.SORCERER, PlayerClass.BARD);
 
 	@Test
 	void everyClassHasAPlaybook() {
@@ -23,7 +23,7 @@ class BotPlaybooksTest {
 	}
 
 	@Test
-	void onlyTheClassesWithAGuideHaveOneOfTheirOwn() {
+	void onlyTheClassesWithAPlanHaveOneOfTheirOwn() {
 		for (PlayerClass playerClass : PlayerClass.values()) {
 			if (WITH_A_PLAYBOOK.contains(playerClass))
 				assertNotSame(ClassPlaybook.NONE, BotPlaybooks.of(playerClass), playerClass + " has a playbook");

@@ -3,7 +3,7 @@
 Status: reference.
 
 The French names the guides and the testers use, and the skill group each one is in the data, one file per class: [templar](templar.md),
-[chanter](chanter.md), [cleric](cleric.md), [ranger](ranger.md), [gladiator](gladiator.md), [sorcerer](sorcerer.md). The server's data carries only
+[chanter](chanter.md), [cleric](cleric.md), [ranger](ranger.md), [gladiator](gladiator.md), [sorcerer](sorcerer.md), [bard](bard.md). The server's data carries only
 the English client names, so a French name in a report has to be looked up somewhere, and until then that meant asking.
 `tools/skill-lookup.ps1 -Name` searches every file of this folder as well as the data, and prints the groups it finds here.
 

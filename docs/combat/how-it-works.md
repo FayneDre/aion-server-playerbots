@@ -47,13 +47,17 @@ a bystander. A class that heals keeps 25 % of its mana for it.
 - **Against players** ([plans/wild-pvp-plan.md](plans/wild-pvp-plan.md), built, unverified): an enemy player who hits a bot is answered, helped against when it hits a
   grouped mate, and left (home) under 30 % life, outnumbered or in a crowd; this holds with the PvP option off.
 
+- **Cleanses** (`CleanseReach`): a cleanse reaches what the engine lets it, general, mental or physical; a weakening it failed on is noted as
+  resisted for cleanses of that kind only, so a bard's physical one does not keep a cleric off a sleep.
+
 ## After a fight, and death
 
 - Loot (`BotLootManager`), potions (`BotPotionManager`, found by what they do), rest (`BotRestManager`; a bot fallen behind its leader walks instead).
-- **Death** (`ai/BotDeath`): revived by a resurrection somebody casts, at an instance's entrance, or at its obelisk on a quarter of its health, then the death
+- **Death** (`ai/BotDeath`): revived by a resurrection somebody casts (among bots, one raiser per body: a
+  chanter first, then a cleric, then a bard, `BotGroupManager.resurrectorRank`), at an instance's entrance, or at its obelisk on a quarter of its health, then the death
   sickness waited out before any fight is started; three deaths in ten minutes move the bot's home (`BotDay`).
 
 ## Limits
 
-- Five classes have no playbook; a group of bots alone has nobody to decide for it short of `//bot squad`; no cohorts ([../social/plans/cohort-plan.md](../social/plans/cohort-plan.md)).
+- Four classes have no playbook; a group of bots alone has nobody to decide for it short of `//bot squad`; no cohorts ([../social/plans/cohort-plan.md](../social/plans/cohort-plan.md)).
 - The skill choice reads levels and kinds from the data, not damage figures: no weighing of mana against damage outside a playbook.

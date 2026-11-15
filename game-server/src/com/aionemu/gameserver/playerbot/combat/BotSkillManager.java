@@ -36,7 +36,6 @@ import com.aionemu.gameserver.skillengine.effect.ProvokerEffect;
 import com.aionemu.gameserver.skillengine.effect.RideRobotEffect;
 import com.aionemu.gameserver.skillengine.properties.Properties.CastState;
 import com.aionemu.gameserver.skillengine.model.ChargeSkillEntry;
-import com.aionemu.gameserver.skillengine.model.DispelCategoryType;
 import com.aionemu.gameserver.skillengine.model.Effect;
 import com.aionemu.gameserver.skillengine.model.ChargedSkill;
 import com.aionemu.gameserver.skillengine.model.HitType;
@@ -980,8 +979,9 @@ public class BotSkillManager {
 				if (!halted && bot.getMoveController() instanceof BotMoveController walking && walking.isInMove())
 					walking.tellWalkAfterCast();
 				noteAttempt(bot, template);
-				if (template.hasAnyEffect(EffectType.DISPELDEBUFF, EffectType.DISPELDEBUFFMENTAL, EffectType.DISPELDEBUFFPHYSICAL))
-					noteCleanse(target, template, MAX_DISPEL_LEVEL);
+				CleanseReach reach = CleanseReach.of(template);
+				if (reach != null)
+					noteCleanse(target, template, MAX_DISPEL_LEVEL, reach);
 				return true;
 			}
 		}
@@ -1130,9 +1130,17 @@ public class BotSkillManager {
 	 *         Whether it is then strong enough to be removed is the engine's to decide, so this says "worth trying", not "will work".
 	 */
 	public static boolean hasDispellableDebuff(Creature creature, int dispelLevel) {
+		return hasDispellableDebuff(creature, dispelLevel, CleanseReach.ALL);
+	}
+
+	/**
+	 * The same, for a cleanse that reaches only one kind: a bard's songs remove physical weakening alone, and asked as a general dispel they were cast at a
+	 * sleep or a fear they could never touch.
+	 */
+	public static boolean hasDispellableDebuff(Creature creature, int dispelLevel, CleanseReach reach) {
 		long now = System.currentTimeMillis();
 		for (Effect effect : creature.getEffectController().getAbnormalEffects()) {
-			if (isCleansable(effect, dispelLevel) && !hasResistedACleanse(creature, effect, now))
+			if (isCleansable(effect, dispelLevel, reach) && !hasResistedACleanse(creature, effect, now))
 				return true;
 		}
 		return false;
@@ -1143,11 +1151,10 @@ public class BotSkillManager {
 	 *         level, the category a debuff dispel takes (an assassin's rune is not one of them), and the effects it never touches. Only the level was
 	 *         asked at first, and a cleric cleansed an undispellable rune every time its cleanse came back until the rune wore off, as a tester reported.
 	 */
-	private static boolean isCleansable(Effect effect, int dispelLevel) {
+	private static boolean isCleansable(Effect effect, int dispelLevel, CleanseReach reach) {
 		if (effect.getTargetSlot() != SkillTargetSlot.DEBUFF || effect.getReqDispelLevel() > dispelLevel)
 			return false;
-		DispelCategoryType category = effect.getDispelCategory();
-		if (category != DispelCategoryType.ALL && category != DispelCategoryType.DEBUFF_MENTAL && category != DispelCategoryType.DEBUFF_PHYSICAL)
+		if (!reach.reaches(effect.getDispelCategory()))
 			return false;
 		return !effect.isSanctuaryEffect() && effect.getDesignatedDispelEffect() == null && effect.getDuration() < UNDISPELLABLE_DURATION_MILLIS;
 	}
@@ -1164,13 +1171,16 @@ public class BotSkillManager {
 		return effect.getEndTime() > 0 ? now < effect.getEndTime() : now < tried.lookAfter() + RESISTED_CLEANSE_MEMORY_MILLIS;
 	}
 
-	/** Writes down every effect a cleanse cast at the creature could reach, so that the ones still there once it has landed are left alone. */
-	private static void noteCleanse(Creature target, SkillTemplate template, int dispelLevel) {
+	/**
+	 * Writes down every effect a cleanse cast at the creature could reach, so that the ones still there once it has landed are left alone. Only those of
+	 * its own kind: a physical cleanse noting a sleep as resisted would have kept a cleric's general one off it.
+	 */
+	private static void noteCleanse(Creature target, SkillTemplate template, int dispelLevel, CleanseReach reach) {
 		if (cleanseTries.size() > MAX_HEALTH_SAMPLES)
 			cleanseTries.clear(); // keyed by creature and effect, both of which come and go
 		long lookAfter = System.currentTimeMillis() + Math.max(0, template.getDuration()) + CLEANSE_LANDING_MILLIS;
 		for (Effect effect : target.getEffectController().getAbnormalEffects()) {
-			if (isCleansable(effect, dispelLevel))
+			if (isCleansable(effect, dispelLevel, reach))
 				cleanseTries.put(cleanseKey(target, effect), new CleanseTry(lookAfter));
 		}
 	}
@@ -1206,6 +1216,14 @@ public class BotSkillManager {
 	public static boolean isOnTarget(Player bot, Creature target, String group) {
 		SkillTemplate template = knownTemplate(bot, group);
 		return template != null && template.getStack() != null && target.getEffectController().getAbnormalEffect(template.getStack()) != null;
+	}
+
+	/**
+	 * @return true if the bot has learnt a skill of that group, ready or not. For a class whose skill is a stigma it may not wear: a bard has its stances
+	 *         only if they are socketed, and keeps the one it has.
+	 */
+	public static boolean knows(Player bot, String group) {
+		return knownTemplate(bot, group) != null;
 	}
 
 	/** @return The bot's highest ranked skill of the group, ready or not, or null. */

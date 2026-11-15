@@ -632,9 +632,10 @@ final class SorcererPlaybook implements ClassPlaybook {
 
 	/**
 	 * @return An enemy to control: engaged with the sorcerer or its group, not its target, not already held, slept, transformed or silenced, within reach
-	 *         of the controls. Alone only with several on it; in a group whenever one is there, as the guide asks.
+	 *         of the controls. Alone only with several on it; in a group whenever one is there, as the guide asks. The bard's controls reach as far and
+	 *         ask the same.
 	 */
-	private static Creature secondToControl(Player bot, Creature target) {
+	static Creature secondToControl(Player bot, Creature target) {
 		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
 		List<Player> fighting = team == null ? List.of(bot) : team.getMembers();
 		Npc[] found = { null };

@@ -105,12 +105,12 @@ on 26 maps, the density modes and the memory guard (heap, route planning, the ma
 ## 3. Classes and combat
 
 **Done**: combat in two ticks from the group's aggro, the death routine, retreat, marks, group positioning, six playbooks validated (templar, chanter,
-cleric, ranger, gladiator, sorcerer), the fight's decisions as pure rules with their suites ([combat/how-it-works.md](combat/how-it-works.md)).
+cleric, ranger, gladiator, sorcerer) and the bard's built from the data (unverified in game), the fight's decisions as pure rules with their suites ([combat/how-it-works.md](combat/how-it-works.md)).
 
 **Left**:
 1. **Spirit master, aethertech, bard and gunner playbooks first**: on Reshanta's upper layer they died 36 times of 40 in half an hour, against four
    deaths for the other 21. Then the **assassin** (runes and chains). Without a guide for now (decided 15 November): each from the data, judgement marked as such, with its data test; the bard's
-   plan first ([bard-plan.md](classes/plans/bard-plan.md)).
+   is built, to watch in game ([bard-plan.md](classes/plans/bard-plan.md)), the spirit master next.
 2. **Threat**: damage waits for the tank's first blows, and pauses when its threat nears the tank's (about 85 %) until it falls back (about 70 %);
    today it opens at the same instant and can pull the mob off (`AggroList.getTarget(MOST_HATED)`).
 3. **The tank's tools**: a pull from range on the player's order, the monster brought back to the group; an area taunt once loose monsters reach a
