@@ -1,6 +1,6 @@
 # Flight: how it works today
 
-Status: reference, written on 28 October 2026 from the plans and the code. What is left is in [plans/](plans/) and in [roadmap.md](../roadmap.md),
+Status: reference, written on 28 October 2026 from the plans and the code. What is left is in [backlog.md](backlog.md) and in [roadmap.md](../roadmap.md),
 "Flight, the Abyss, RvR"; why each piece is the way it is, with its numbers, is in [history/flight-plan.md](history/flight-plan.md).
 
 ## What the engine does, and what it leaves to the client

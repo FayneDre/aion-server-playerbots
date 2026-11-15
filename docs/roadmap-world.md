@@ -37,15 +37,12 @@ and reactions ([capitals/how-it-works.md](capitals/how-it-works.md)); pages in t
    - *What it feeds*: the drop goes into a bot's bag and on to a travelling merchant (C1); the kill becomes a rumour (I1), the group's name with it.
    - Measured: prizes killed per day by bots and by players, and how long a prize stays up after its respawn: a player on time gets it most of the
      time, a late one finds it taken.
-4. **Mentors in Poeta and Ishalgen**: a few bots of high level in the starting areas who whisper a new character a piece of advice suited to where
-   it stands (its next zone, its class's first stigma, the way to the Ascension), once each and never again if it is ignored, and offer it a group
-   for its first instances. No plan yet.
-5. **Bots that take the first step**, rarely: a bot on a player's friend list offers a dungeon of their level when the player logs in, one in the
+4. **Bots that take the first step**, rarely: a bot on a player's friend list offers a dungeon of their level when the player logs in, one in the
    region congratulates a player in Region chat on a level gained or a named monster killed; each with a ceiling per player and per day, so it stays
    a surprise and never a spam. It reads what the server knows (friends, levels, kills), as rumours do (I1). No plan yet.
-6. **Bots that answer when spoken to**: a whisper or a line naming a bot answered in its own words, a request in chat ("invite me", "come") acted on
+5. **Bots that answer when spoken to**: a whisper or a line naming a bot answered in its own words, a request in chat ("invite me", "come") acted on
    when it can be. No plan yet.
-7. **A window on the bots inside the game, the rest of lot H**:
+6. **A window on the bots inside the game, the rest of lot H**:
    - a page of one's companions: roster, roles, formations, gear;
    - **GM tools** (H3) as forms on a page, for a staff account or the client on the server's own machine: the character (level, heal, resurrect,
      cooldowns, speed, invisibility, invulnerability, skills, titles), items found by name, quests, the world (an npc, weather, time, a rift, a

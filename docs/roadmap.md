@@ -18,7 +18,7 @@ those of the theme's detail.
 | 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe |
 | 4 | Groups and companions | validated (dungeons, composition, duels, friends, trades) | 1 formations; 2 a companion's gear in the player's hand; 3 cohorts; 4 bots group together; 5 doors and arenas |
 | 5 | Flight and the Abyss | validated (milestones 1-5) | nothing, by decision |
-| 6 | Capitals and social life | validated (town day, stores, chat, combat meter) | 1 personalities; 2 true rumours; 3 contested named monsters; 4 mentors; 5 bots that take the first step; 6 bots that answer; 7 pages in game, GM tools |
+| 6 | Capitals and social life | validated (town day, stores, chat, combat meter) | 1 personalities; 2 true rumours; 3 contested named monsters; 4 bots that take the first step; 5 bots that answer; 6 pages in game, GM tools |
 | 7 | Gear | dressed at creation, loot worn | nothing, by decision |
 | 8 | Wild PvP and rifts | built, unverified, off by default | 1 a watch in game; 2 hunting grounds, rifts, measure; 3 limits on a fight; 4 rift raids; 5 raids the world answers; 6 grudges |
 | 9 | Broker | validated (15 November) | 1 prices and goods adjusted; 2 the measure |
@@ -35,7 +35,7 @@ those of the theme's detail.
 2. **The living world**, in the order decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md), its lots in brackets):
    the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots grouping
    together (4.4, E2); merchants, wardens, caravans (2.1, C1 to C3); personalities, then rumours and contested named monsters,
-   mentors and bots that take the first step (6.1 to 6.5, I); the director (2.2, F1). The pages in game (6.7, H) go beside any of them.
+   bots that take the first step (6.1 to 6.4, I); the director (2.2, F1). The pages in game (6.6, H) go beside any of them.
 3. **When the rest stands**: bot legions (11.2, G1), grudges (8.6, D4), player shops (10), then RvR (12).
 
 ## Not done, by decision
@@ -44,7 +44,7 @@ Quests for world bots and companions; patching the client's executables; rewards
 to monster strength; a market other than the native broker; freezing the maps nobody is on; another mesh format; a decision engine other than the
 playbooks. On 15 November: a stable release pair for now (pre-releases go on); tests of what the fight does to the world, nothing
 wrong being seen in game; bots yielding to real players; a day on the clock and bot sessions (F2, F3); a density that finds its own level (A4); slicing route searches for small processors (the guard already holds wakes while planning waits); an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
-broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; bots posting in the Find Group window (E1); level 50 bots; in flight, the Terminon camp entrance, the stalled ambient flights and gliding on the way down; a rank of play
+broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; bots posting in the Find Group window (E1); level 50 bots; mentors in Poeta and Ishalgen; in flight, the Terminon camp entrance, the stalled ambient flights and gliding on the way down; a rank of play
 per bot; two old tester points (the templar that "drops the fight", the cleric against an assassin's rune); the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
 characters brought in as bots).
 
