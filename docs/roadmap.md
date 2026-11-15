@@ -1,7 +1,7 @@
 # Roadmap: what is left to do, all of it
 
 Rewritten on 15 November 2026. The first three sections are the whole picture: every theme and what is left in it, the order to do it in, what
-is not done by decision. Then each theme in detail: themes 0 to 4 below, 5 to 12 in [roadmap-world.md](roadmap-world.md). What already works is in
+is not done by decision. Then each theme in detail: themes 0 to 4 and 13 below, 5 to 12 in [roadmap-world.md](roadmap-world.md). What already works is in
 [built.md](built.md), what the project lives with in [known-limits.md](known-limits.md), every document in [README.md](README.md). States:
 **validated** (seen in game by a tester), **built, unverified**, **not started**.
 
@@ -13,6 +13,7 @@ those of the theme's detail.
 | # | Theme | Where it stands | What is left, in order |
 |---|---|---|---|
 | 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated | 1 feedback as it comes; 2 the next upstream merge; 3 the emulator's gaps met in play |
+| 13 | Test feedback in game | `//bot note` and a zip by hand | 1 the report window; 2 what it carries; 3 where it goes; 4 a report's state |
 | 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 the group instances without a mesh; 5 lifts; 6 learned ground; 7 corridors |
 | 2 | Population | validated; memory guarded | 1 road careers: merchants, wardens, caravans; 2 the director: a pool stocked by level and role |
 | 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe |
@@ -28,8 +29,8 @@ those of the theme's detail.
 
 ## The order to do it in
 
-1. **Finish and steady what exists** (now): the upstream merge (0.2), the four places a tester walks (1.1), the four playbooks and the assassin
-   (3.1), threat, the tank, the healer (3.2 to 3.4), the PvP watch (8.1), the broker's prices (9.1). Several wait on a
+1. **Finish and steady what exists** (now): the upstream merge (0.2), the four places a tester walks (1.1), the report window in game (13), the four
+   playbooks and the assassin (3.1), threat, the tank, the healer (3.2 to 3.4), the PvP watch (8.1), the broker's prices (9.1). Several wait on a
    tester's time; the playbooks do not. Navigation goes on beside, in its own order: obstacles, dungeons, the group instances' meshes, then lifts,
    learned ground and corridors (1.2 to 1.7).
 2. **The living world**, in the order decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md), its lots in brackets):
@@ -132,3 +133,26 @@ Group window, duels, friends and trades with a companion (validated 15 November)
 4. **Bots group with each other** in the field (lot E2): pairs and trios hunting together, met in the countryside like players; a small group also
    survives what kills a lone bot. Today they never do; lots G1 and I3 need it.
 5. **Doors, lifts and windstreams used by a bot itself**, only if the 13 s wait proves too long; then **the arenas**, instances of their own.
+
+## 13. Test feedback in game
+
+Its own theme, asked on 15 November: a tester reports from inside the game, at the moment something looks wrong, without a command to remember
+or a zip to send by hand. Placed after theme 0 in priority, since every other theme waits on reports.
+
+**Done**: `//bot note <text>` writes a `BOT NOTE` line with where the tester stands and the state of every bot around
+([bot-commands.md](bot-commands.md)); `tools/collect-feedback.ps1` cuts the minutes around each note into a zip; the launcher's problem report
+zips the logs; one file per report in [feedback/](feedback/README.md). The addon pages (`AddonWebServer`, [addon-pages.md](architecture/addon-pages.md))
+already show a page in the client's browser, which is where the window goes.
+
+**Left**:
+1. **The report window**: a button of the addon bar opens a page served by the game server (`/addon/report`), with a text field, a kind (a bot,
+   the path, combat, the broker, the game itself, other) and a send button; a shortcut key if the client allows one. It answers with the report's
+   number. The page belongs to the character the way the combat meter's does (the same address check).
+2. **What a report carries, without the tester writing it**: everything `//bot note` gathers today (place, the bots of the group or within 30 m,
+   their state and route), the time and the patch version, the bot the tester targets, and the minutes of log around it. A screenshot: the client
+   writes its own to its folder; the launcher, on the same machine, attaches the ones taken in the minutes before (whether the client's browser
+   can reach them is to be checked first).
+3. **Where it goes**: a file per report in the server's folder, kept apart from the rotating logs, gathered by the launcher into what the tester
+   sends, or straight to the developer when the launcher has a channel for it; then the report becomes its `docs/feedback/` file.
+4. **A report's state, seen in game**: the same page lists the tester's reports with a state (received, understood, fixed in a patch, to check
+   again) and what a fixed one asks to be walked again; the state is written from here, the patch notes name the reports they answer.

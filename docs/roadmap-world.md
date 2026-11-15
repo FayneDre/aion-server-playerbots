@@ -47,8 +47,8 @@ and reactions ([capitals/how-it-works.md](capitals/how-it-works.md)); pages in t
    - **GM tools** (H3) as forms on a page, for a staff account or the client on the server's own machine: the character (level, heal, resurrect,
      cooldowns, speed, invisibility, invulnerability, skills, titles), items found by name, quests, the world (an npc, weather, time, a rift, a
      siege, an announcement), players (online, kick, ban); the quickest as buttons of the addon bar, a destructive one confirmed;
-   - **what is used while playing** (H4): teleport, the world map (bots awake and asleep, players, density, the guard; never the prizes' state), a
-     tester's note with a text field; the world map needs an admin channel command (`world`) the launcher reads too.
+   - **what is used while playing** (H4): teleport, the world map (bots awake and asleep, players, density, the guard; never the prizes' state);
+     the tester's report is theme 13 of [roadmap.md](roadmap.md); the world map needs an admin channel command (`world`) the launcher reads too.
 
 ## 7. Gear
 
