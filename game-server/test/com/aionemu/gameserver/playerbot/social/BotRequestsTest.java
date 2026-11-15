@@ -47,6 +47,14 @@ class BotRequestsTest {
 	}
 
 	@Test
+	void aLegionsInvitationIsRefusedByEveryBot() {
+		for (Asker asker : Asker.values()) {
+			assertFalse(BotRequests.accepts(ask(Kind.LEGION, asker)));
+			assertFalse(BotRequests.accepts(new Situation(Kind.LEGION, asker, true, false, false, 0, false)), "a companion too");
+		}
+	}
+
+	@Test
 	void onlyACompanionTradesAndOnlyWithItsOwner() {
 		assertTrue(BotRequests.accepts(new Situation(Kind.TRADE, Asker.OWNER, true, false, false, 0, false)));
 		assertFalse(BotRequests.accepts(new Situation(Kind.TRADE, Asker.PLAYER, true, false, false, 0, false)), "a stranger, to a companion");

@@ -13,7 +13,7 @@ import com.aionemu.gameserver.network.aion.serverpackets.SM_QUESTION_WINDOW;
 import com.aionemu.gameserver.playerbot.BotRecruiter;
 
 /**
- * Answers the questions a player asks a bot: an invitation, a duel, a friend request, a trade.
+ * Answers the questions a player asks a bot: an invitation, a duel, a friend request, a trade, a legion's invitation.
  * <p>
  * The engine asks each of them the same way, a handler left on the bot's {@code ResponseRequester} under the question's message id and a window sent to
  * a client the bot does not have. The bot reads who asks ({@code requesterOf}) and answers on its decision tick. Who may ask what is decided by
@@ -35,7 +35,8 @@ public final class BotRequests {
 		ALLIANCE(SM_QUESTION_WINDOW.STR_FORCE_DO_YOU_ACCEPT_INVITATION),
 		DUEL(SM_QUESTION_WINDOW.STR_DUEL_DO_YOU_ACCEPT_REQUEST),
 		FRIEND(SM_QUESTION_WINDOW.STR_BUDDYLIST_ADD_BUDDY_REQUEST),
-		TRADE(SM_QUESTION_WINDOW.STR_EXCHANGE_DO_YOU_ACCEPT_EXCHANGE);
+		TRADE(SM_QUESTION_WINDOW.STR_EXCHANGE_DO_YOU_ACCEPT_EXCHANGE),
+		LEGION(SM_QUESTION_WINDOW.STR_GUILD_INVITE_DO_YOU_ACCEPT_INVITATION);
 
 		private final int messageId;
 
@@ -85,6 +86,8 @@ public final class BotRequests {
 				&& Math.abs(situation.levelGap()) <= DUEL_LEVEL_GAP && !situation.duelledLately();
 			// a companion's bag is its owner's, and an inhabitant's is nobody's to trade into or out of
 			case TRADE -> situation.companion() && situation.asker() == Asker.OWNER && !situation.busy();
+			// refused until a bot can be a legion's member (roadmap theme 11): left pending, the question made every later one to the bot "busy"
+			case LEGION -> false;
 		};
 	}
 

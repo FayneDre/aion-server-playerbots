@@ -54,8 +54,8 @@ The list "missing features in game", each with what stands today:
 
 - **Trading with one's companion**: validated in game (15 November), with its owner only; `//bot give` hands over the companion's side ([player-interactions-plan.md](../social/history/player-interactions-plan.md)).
 - **Adding a bot as a friend**: validated in game (15 November); a bot shows online while awake.
-- **A legion's invitation**: not answered, and left pending (`BotRequests` knows a group, an alliance, a duel, a friend and a trade), so whoever
-  asks the bot anything next is told it is being asked a question. Theme 11, point 1, of the roadmap.
+- **A legion's invitation**: refused since 15 November (`BotRequests`); before, it was left pending and every later question to the bot was
+  told it was busy. Accepting it is theme 11, point 1, of the roadmap.
 - **Cohorts** (alliances): a bot answers an alliance invitation but acts as if the whole alliance were its group ([cohort-plan.md](../social/plans/cohort-plan.md)).
 - **Duels**: validated in game (15 November); a free bot within 10 levels accepts and attacks, and never asks for one.
 - **The in-game shop does not work**, and is not the bots' work: the server has none (`CM_GF_WEBSHOP_TOKEN_REQUEST` answers an empty token
