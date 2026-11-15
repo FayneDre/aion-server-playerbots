@@ -158,11 +158,8 @@ Until H1 is proved, nothing of it is built; if the client cannot open our pages,
 The launcher keeps a plain version of each for when the game is closed.
 
 - *Teleport*: the server's destinations as a page, the one the launcher's Account page offers today (`AdminChannel` `destinations` and `teleport`).
-- *My characters*: the account's other characters, each with a button to bring it into the group ([group-options-plan.md](../../social/plans/group-options-plan.md),
-  point 4); the same button on the H2 bar for the last one brought.
 - *The world map*: per map, the bots awake and asleep, the players, the density, the memory guard; and the bots as a list by faction, with where
   each is and what it is doing. Never the named monsters' state (lot I3): that would be a radar, and their news travels by rumour.
-- *Orders and marks* (stay, guard, passive, kill first, keep asleep): buttons of the H2 bar, as planned with the group options.
 - *A tester's note*: a button of the H2 bar with a text field, sending `//bot note` with the place and the route taken as the command does today.
 
 Left to the launcher, because they need the game closed, the server stopped or files written: install, updates, check and repair, the client's

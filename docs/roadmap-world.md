@@ -1,7 +1,7 @@
 # Roadmap, themes 5 to 12: flight, capitals, gear, PvP, the broker, shops, legions, RvR
 
-The second page of [roadmap.md](roadmap.md), which holds the themes at a glance, the order across themes, what is left out by decision and themes 0
-to 4. Same words and same rules: **Done** in a line, **Left** in the order to do it, with its plan or "no plan yet".
+The second page of [roadmap.md](roadmap.md), whose first three sections are the whole picture (everything left by theme, the order, what is not
+done by decision) and which details themes 0 to 4. Same rules here: **Done** in a line, **Left** in the order to do it, numbered as in the table.
 
 ## 5. Flight and the Abyss
 
@@ -10,9 +10,9 @@ places ([flight/how-it-works.md](flight/how-it-works.md)).
 
 **Left** ([backlog.md](flight/backlog.md)):
 1. **Flying with a player, milestone 6**: waits for a time and a bot name from the tester ([flying-with-a-player-plan.md](flight/plans/flying-with-a-player-plan.md)).
-2. **Ambient flights stall on fly-zone maps** (a leg handed over again 14 to 100 times in forty minutes): not looked into.
-3. **The new playbooks of theme 3**, which are what the Abyss's deaths come down to.
-4. **Gliding on the way down** (Abyss crossing milestone 6), only if flights run short of points ([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)).
+2. **Ambient flights stall on fly-zone maps** (a leg handed over again 14 to 100 times in forty minutes): not looked into. The Abyss's deaths
+   come down to the playbooks of theme 3, not to flight.
+3. **Gliding on the way down** (Abyss crossing milestone 6), only if flights run short of points ([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)).
 
 ## 6. Capitals and social life
 
@@ -20,11 +20,11 @@ places ([flight/how-it-works.md](flight/how-it-works.md)).
 and reactions ([capitals/how-it-works.md](capitals/how-it-works.md)); pages in the client's browser and an interface addon with the combat meter
 ([addon-pages.md](architecture/addon-pages.md)); a staff member's modes switched from the launcher.
 
-**Left** (lot I of [living-world-plan.md](population/plans/living-world-plan.md), then the rest):
+**Left** (1 to 3 are lot I of [living-world-plan.md](population/plans/living-world-plan.md)):
 1. **Personalities** (I2): each bot drawn once a temperament, kept for life: *chatty*, *quiet*, *brawler*, *loner*, *sociable*. One draw sets what is
    drawn apart today or not at all: how often it speaks and of what, its PvP temperament (the `pvp.share.*` shares become what the temperaments add
    up to), whether it groups in the field and answers invitations quickly, whether it camps a prize. The brawler who shouts in Region is the one who
-   attacks on sight. With the rank of play (theme 2), a bot is a person.
+   attacks on sight.
 2. **True rumours** (I1): bots say in the region's chat what the server knows and a player would want to: a named monster just back near a place,
    the other faction seen in numbers somewhere, a prize just taken. Only true things, said once, by a bot of the region, a few minutes late so it
    reads as hearsay rather than a radar; never a rumour that sends a player to a fight far above their level.
@@ -40,16 +40,21 @@ and reactions ([capitals/how-it-works.md](capitals/how-it-works.md)); pages in t
    - *What it feeds*: the drop goes into a bot's bag and on to a travelling merchant (C1); the kill becomes a rumour (I1), the group's name with it.
    - Measured: prizes killed per day by bots and by players, and how long a prize stays up after its respawn: a player on time gets it most of the
      time, a late one finds it taken.
-4. **Bots that answer when spoken to**: a whisper or a line naming a bot answered in its own words, a request in chat ("invite me", "come") acted on
+4. **Mentors in Poeta and Ishalgen**: a few bots of high level in the starting areas who whisper a new character a piece of advice suited to where
+   it stands (its next zone, its class's first stigma, the way to the Ascension), once each and never again if it is ignored, and offer it a group
+   for its first instances. No plan yet.
+5. **Bots that take the first step**, rarely: a bot on a player's friend list offers a dungeon of their level when the player logs in, one in the
+   region congratulates a player in Region chat on a level gained or a named monster killed; each with a ceiling per player and per day, so it stays
+   a surprise and never a spam. It reads what the server knows (friends, levels, kills), as rumours do (I1). No plan yet.
+6. **Bots that answer when spoken to**: a whisper or a line naming a bot answered in its own words, a request in chat ("invite me", "come") acted on
    when it can be. No plan yet.
-5. **A window on the bots inside the game, the rest of lot H**:
-   - a page of one's companions: roster, roles, orders, gear;
+7. **A window on the bots inside the game, the rest of lot H**:
+   - a page of one's companions: roster, roles, formations, gear;
    - **GM tools** (H3) as forms on a page, for a staff account or the client on the server's own machine: the character (level, heal, resurrect,
      cooldowns, speed, invisibility, invulnerability, skills, titles), items found by name, quests, the world (an npc, weather, time, a rift, a
      siege, an announcement), players (online, kick, ban); the quickest as buttons of the addon bar, a destructive one confirmed;
-   - **what is used while playing** (H4): teleport, one's characters, the world map (bots awake and asleep, players, density, the guard; never the
-     prizes' state), orders and marks on the bar, a tester's note with a text field; the world map needs an admin channel command (`world`) the
-     launcher reads too.
+   - **what is used while playing** (H4): teleport, the world map (bots awake and asleep, players, density, the guard; never the prizes' state), a
+     tester's note with a text field; the world map needs an admin channel command (`world`) the launcher reads too.
 
 ## 7. Gear
 
@@ -87,7 +92,7 @@ November ([auction-house-plan.md](capitals/plans/auction-house-plan.md)).
 
 **Done**: bots sell their junk to merchants ([capitals/backlog.md](capitals/backlog.md)). Gathering and crafting by bots are left out by decision.
 
-**Left**: 1. **player shops** run by bots in the world; 2. travelling merchants opening a store on the road (C1, theme 2).
+**Left**: 1. **player shops** run by bots in the world, beside the travelling merchants of theme 2 (C1).
 
 ## 11. Legions
 
