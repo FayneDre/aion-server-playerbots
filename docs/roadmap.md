@@ -1,8 +1,9 @@
 # Roadmap: what is done and what is left, by theme
 
-One page by theme (7 November), what is left detailed on 15 November. Themes in the project's priority order, tooling first; **Done** in a line with
-where it is explained ([built.md](built.md)), **Left** in the order to do it, with its plan, its backlog or "no plan yet". Index: [README.md](README.md);
-limits: [known-limits.md](known-limits.md). States: **validated** (seen in game by a tester), **built, unverified**, **not started**.
+One page by theme (7 November), what is left detailed on 15 November; themes 5 to 12 are in [roadmap-world.md](roadmap-world.md). Themes in the
+project's priority order, tooling first; **Done** in a line with where it is explained ([built.md](built.md)), **Left** in the order to do it, with its
+plan, its backlog or "no plan yet". Index: [README.md](README.md); limits: [known-limits.md](known-limits.md). States: **validated** (seen in game by
+a tester), **built, unverified**, **not started**.
 
 ## The themes at a glance
 
@@ -15,12 +16,21 @@ limits: [known-limits.md](known-limits.md). States: **validated** (seen in game 
 | 4 | Groups and companions | validated (Noschana, composition, duels, friends, trades) | playing with one's bots: orders, dice, one's characters |
 | 5 | Flight and the Abyss | validated (milestones 1 to 5) | the last flying-with-a-player milestone, waiting for a tester |
 | 6 | Capitals and social life | validated (town day, stores, chat); the combat meter in game | personalities and true rumours (lot I) |
-| 7 | Gear | dressed at creation with flasks; only wings follow the level | gear that keeps up with the level |
+| 7 | Gear | dressed at creation with flasks; left as it is by decision | nothing |
 | 8 | Wild PvP and rifts | built, unverified (milestones 0 to 2b, off by default) | a watch in game with the property on |
 | 9 | Broker | validated in game (15 November) | prices and goods adjusted from the tester's list |
-| 10 | Player shops, gathering, crafting | not started | player shops |
+| 10 | Player shops | not started | player shops |
 | 11 | Legions | not started | answer a legion's invitation |
 | 12 | RvR and sieges | not started; the supply of high-level bots designed | after the rest is stable |
+
+**The order across themes**, decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md)): 1. lot A (built 8 November);
+2. B1; 3. D1 to D3; 4. E1, E2; 5. C1 to C3; 6. I2, then I1 and I3; 7. F1 to F3; 8. B2 and B3, unless dungeons are brought forward; 9. G1, D4, A4 when
+the rest stands; lot H beside any of them. The group options ([group-options-plan.md](social/plans/group-options-plan.md)) stand apart, each point small.
+
+**Left out by decision**: quests for world bots and companions, patching the client's executables, rewards of our own invention (tickets, passes,
+account bonuses), changes to monster strength, a market other than the native broker, freezing the maps nobody is on, another mesh format, a decision
+engine other than the playbooks; on 15 November, an in-game shop, gathering and crafting by bots, bots seeking, buying or enchanting their own gear,
+bots trading at the broker in their own name, companions made on demand and saved teams, hiring a world bot, bots entering instance queues themselves.
 
 ## 0. Feedback, tooling and releases
 
@@ -50,10 +60,12 @@ meshes checked against what people walked ([how-it-works.md](navigation/how-it-w
 3. **Dungeons, with the Draupnir report** (backlog point 6), then **every dungeon mesh walked**: only Noschana's has been.
 4. **The maps and instances that have no mesh**: counted first (the data holds more instances than our 45 geometries), then generated and checked
    the same way. No plan yet.
-5. **Lifts and moving platforms** ridden by the bots, a ceiling of passengers per platform: what closes Theobomos Lab (72 %) and Rentus (77 and 72 %)
-   ([living-world-plan.md](population/plans/living-world-plan.md), B2).
-6. **Ground that refused a bot remembered**, then **prepared corridors** for journeys across Reshanta's 3 km (B1, B3).
-7. **Route planning's processor cost**: 6 to 7 cores of 16 for 1430 bots on 5 November. Searches cut into slices of a few milliseconds and shared out,
+5. **Lifts and moving platforms** (B2): a link "board here, ride, step off there" timed from when the platform is at each end, a ceiling of passengers
+   per platform; it closes Theobomos Lab (72 %), Rentus (77 and 72 %) and the Pandaemonium dock, and would end the 13 s wait beside a player.
+6. **Ground that refused a bot remembered** (B1): a mesh cell refused to two different bots on two different days becomes blocked for the planner,
+   kept in a file per map, listed by `//bot nav learned`, expired after a week unless confirmed, and fed back to the mesh generator.
+7. **Prepared corridors** (B3) between the places of the plan, built offline and checked by the golden routes, for journeys across Reshanta's 3 km.
+8. **Route planning's processor cost**: 6 to 7 cores of 16 for 1430 bots on 5 November. Searches cut into slices of a few milliseconds and shared out,
    so the cost is spread rather than queued; measured with `measure.sh`. No plan yet.
 
 ## 2. Population and the living world
@@ -62,13 +74,32 @@ meshes checked against what people walked ([how-it-works.md](navigation/how-it-w
 on 26 maps, the density modes and the memory guard (heap, route planning, the machine's memory) ([how-it-works.md](population/how-it-works.md)).
 
 **Left** ([backlog.md](population/backlog.md), [living-world-plan.md](population/plans/living-world-plan.md)):
-1. **Bots yield to real players**: a design rule to settle before a settled 2000 (nothing yields to a person today).
-2. **The director, lot F**: a pool stocked by level band and role (F1), pre-filling a map before a player arrives, moving a bot that outgrew its region
-   across maps, retiring the oldest at the cap; a day on the clock (F2); sessions, a bot leaving and coming back as a player does (F3).
-3. **Careers on the roads, lot C**: travelling merchants selling what the region looted (C1), road wardens who clear, heal and defend (C2), caravans (C3).
-4. **Bots that do not all play alike**: a rank drawn once, from clumsy to excellent, read by its playbook (reaction time, skill choice) and by its
-   gear; with the temperaments of lot I2, the two make a bot a person. No plan yet.
-5. **A density that finds its own level** (A4), once the rest stands.
+1. **Bots yield to real players**: a design rule to settle before a settled 2000. Today forty bots can strip a hunting ground a player came for.
+2. **Careers on the roads, lot C**:
+   - **Travelling merchants** (C1): a bot walks between two villages of its region and opens a store when a player stops within a few metres, closing
+     it when they leave. Its stock is what the region's bots really looted and sold to it, finite and renewed by their hunting: a merchant from a
+     dangerous region carries rarer goods, and a player learns where to look.
+   - **Road wardens** (C2): bots on a beat between two places, spaced out, who clear monsters near the road, heal or shield a player of their
+     faction in trouble, and fight the invader in a PvP zone. They are the first defenders lot D needs.
+   - **Caravans** (C3): a merchant escorted by two or three wardens, from one village to the next at set hours, announced in Region chat. In a PvP
+     zone the other faction's bots may attack it: an event that happens whether a player is there or not, and one a player can defend or raid.
+3. **The director, lot F**: a pool stocked by level band and role, so a missing tank or healer at a level is grown rather than left missing, a map
+   pre-filled before a player arrives, a bot that outgrew its region moved across maps, the oldest retired at the cap (F1); a day on the clock, the
+   countryside fuller in the evening and thinner at four in the morning (F2); sessions, a bot leaving after an hour or a few and coming back later
+   where it left, its place taken by a sleeper, so a player meets new faces without anyone appearing in sight (F3).
+4. **Bots that do not all play alike**. No plan yet.
+   - A **rank of play** drawn once at creation and kept for life: clumsy, ordinary, good, very good, excellent, with shares as options (about
+     10, 40, 30, 15 and 5 %).
+   - What it changes, through the playbooks and nothing else: the time before reacting (a cast, an interrupt, a heal: from about 0.2 s for the best
+     to 1.5 s for the clumsy); the skill chosen (the best follow the playbook's order and its chains, the clumsy now and then cast a weaker skill or
+     miss an interrupt); standing in an area, pulling a second pack, drinking late, retreating late, more often the lower the rank.
+   - How it is dressed at creation: enchantments and stones in step with the rank, as a player who plays well also gears well.
+   - **A floor in a player's group**: a bot grouped with a player plays at least *good* (an option), so the clumsy are met in the world and never
+     sink a player's dungeon.
+   - With the temperaments of lot I2 (chatty, quiet, brawler, loner, sociable), the two make a bot a person; `//bot` shows both. Measured: deaths
+     and fights won per rank over a day.
+5. **A density that finds its own level** (A4): a mode `FIT` that raises the countryside's share while the heap after a collection stays under a
+   target and lowers it above, so a server holds what its machine allows with nothing to tune; once the rest stands.
 6. By decision, left as they are: Reshanta's numbers (29 awake with nobody online) and its middle layer, not lived.
 
 ## 3. Classes and combat
@@ -94,106 +125,26 @@ cleric, ranger, gladiator, sorcerer), the fight's decisions as pure rules with t
 **Done**: invitations, following, instances with the player (Noschana), a bot cut off put beside its player after 13 s, groups filled from the Find
 Group window, duels, friends and trades with a companion (validated 15 November) ([social/how-it-works.md](social/how-it-works.md)).
 
-**Left** ([backlog.md](social/backlog.md)):
-1. **Playing with one's bots** ([group-options-plan.md](social/plans/group-options-plan.md)): the starting level (1, or 10 at the Ascension); bots
-   rolling the dice for what their class wears; the orders follow, stay, guard and passive; the marks kill first and keep asleep, and the client's
-   own numbered marks followed; one's own characters brought into the group as bots (`//bot alt`), their progress kept.
-2. **Companions made on demand**: a class and the player's level chosen, the companion kept between sessions and called back by name; saved teams that
-   bring their missing members online with their roles and orders. No plan yet.
-3. **Formations** around the player (behind, line, wedge, circle), held while walking and broken by a fight. No plan yet.
-4. **The player's hand on a companion's gear**: its bag, an item put on, a gear policy (what it earned only, or made at a quality and level),
-   enchanting and extraction by its own kinah. No plan yet; it shares its rules with theme 7.
-5. **Hiring a world bot** for a time, paid in kinah from the player, at a price by its level: it fights as a companion, then goes home. No plan yet.
-6. **Cohorts**: a bot in an alliance acting as a member of its own group of six ([cohort-plan.md](social/plans/cohort-plan.md)).
-7. **Composition, lot E1**: the Recruit Group Members tab and alliances; bots posting instance runs in the Find Group window, a ceiling per tab,
-   and whispering a player whose post lacks their role; bots entering the instance queues themselves and running an instance among themselves.
-8. **Bots group with each other** in the field (lot E2): today they never do.
-9. **Level 50 bots** for the Theobomos instances and Dark Poeta, asked on 9 October; awaiting another test server's feedback.
-10. **Doors, lifts and windstreams used by a bot itself**, only if the 13 s wait proves too long; then **the arenas**, instances of their own.
-
-## 5. Flight and the Abyss
-
-**Done**: take-off, landing, cruise and flown descents, following a flying player, Reshanta crossed by air and lived on both layers, 120 of its 134
-places ([flight/how-it-works.md](flight/how-it-works.md)).
-
-**Left** ([backlog.md](flight/backlog.md)):
-1. **Flying with a player, milestone 6**: waits for a time and a bot name from the tester ([flying-with-a-player-plan.md](flight/plans/flying-with-a-player-plan.md)).
-2. **Ambient flights stall on fly-zone maps** (a leg handed over again 14 to 100 times in forty minutes): not looked into.
-3. **The new playbooks of theme 3**, which are what the Abyss's deaths come down to.
-4. **Gliding on the way down** (Abyss crossing milestone 6), only if flights run short of points ([abyss-crossing-plan.md](flight/plans/abyss-crossing-plan.md)).
-
-## 6. Capitals and social life
-
-**Done**: a town day in the capitals, 40 bot stores a capital, high-level visitors, shouted adverts, the bots' chat in French or English with jokes
-and reactions ([capitals/how-it-works.md](capitals/how-it-works.md)); pages in the client's browser and an interface addon with the combat meter
-([addon-pages.md](architecture/addon-pages.md)); a staff member's modes switched from the launcher.
-
-**Left**:
-1. **A world that talks about itself, lot I**: personalities (I2), then true rumours (I1) and contested named monsters (I3, which needs E2)
-   ([living-world-plan.md](population/plans/living-world-plan.md)).
-2. **Bots that answer when spoken to**: a whisper or a line naming a bot answered in its own words, a request in chat ("invite me", "come") acted on
-   when it can be. No plan yet.
-3. **The rest of lot H**: a page of one's companions (roster, roles, orders, gear), GM tools in game (H3), and what else is used while playing (H4:
-   teleport, one's characters, the world map, orders, a tester's note); a world map needs an admin channel command (`world`) the launcher reads too.
-
-## 7. Gear
-
-**Done**: bots dressed at creation (enchanted, socketed, with stigmas), wearing what they loot, wings renewed with the level, junk sold, the best of
-what they own worn, life and mana flasks from level 10 ([gear/how-it-works.md](gear/how-it-works.md)).
-
-**Left** ([capitals/backlog.md](capitals/backlog.md)):
-1. **Gear that keeps up** from 1 to 65: each bot works out the best gear for its stage now and then, and gets it by buying at the broker or a vendor,
-   by crafting (theme 10), or by hunting the monster that drops it.
-2. **Enchanting and extraction** by bots themselves, with a budget of their own kinah.
-
-## 8. Wild PvP and rifts
-
-**Done**: where PvP really is, a player as a target, defence and PvP behaviour, built, unverified; `gameserver.playerbot.pvp.enable` is off by default
-([wild-pvp-plan.md](combat/plans/wild-pvp-plan.md)).
-
-**Left**:
-1. **A watch in game** with the property on: no bot has met a player yet.
-2. **Hunting grounds in PvP zones** (milestone 3), then **rifts** (4), then the **measure** (5).
-3. **Lot D** of [living-world-plan.md](population/plans/living-world-plan.md): limits on a fight (D1: pursuit distance and time, the strength of each
-   side, attackers per target, a level band), rift raids (D2), raids the world answers (D3), and last grudges (D4).
-
-## 9. Broker
-
-**Done**: a house the server stocks, one per race, the seller, settling and relisting, and a buyer of what players list, seen working in game on 15
-November ([auction-house-plan.md](capitals/plans/auction-house-plan.md)).
-
-**Left**:
-1. **Prices and goods adjusted** from the tester's list.
-2. **Bots as traders**: what a bot loots and does not wear listed at the broker in its own name, what it needs bought there with its own kinah, at
-   prices read from the sales already made; it feeds theme 7.
-3. The **measure** (milestone 7): heap, tick cost, listings against targets, prices against the guide's.
-
-## 10. Player shops, gathering, crafting
-
-**Done**: bots sell their junk to merchants ([capitals/backlog.md](capitals/backlog.md)).
-
-**Left**:
-1. **Player shops** run by bots.
-2. **Gathering**: the professions learned, gathering points worked in the field and in flight, which makes the countryside look used.
-3. **Crafting**: recipes learned, work orders done, materials gathered or bought; what is made sold at the broker or worn. No plan yet for 2 and 3.
-4. Travelling merchants opening a store on the road (lot C1).
-
-## 11. Legions
-
-**Not started.** **Left**:
-1. **Answering a legion's invitation** (asked in game on 19 October), and its rank's permissions respected.
-2. **Bot legions born of who played together** (lot G1), named from a list written for it, which needs bots grouping with each other first (theme 4).
-
-## 12. RvR and sieges
-
-**Not started**, the stretch goal. Its supply line is designed: bots at the level cap become the elders the endgame needs
-([population/how-it-works.md](population/how-it-works.md)). Panesterra's four fields hold no civilians and have no mesh (no heightmap in the data).
-
-## The living world plan and the group options, in their own order
-
-Decided on 5 November and spread above by theme. The [living-world-plan.md](population/plans/living-world-plan.md) proposes: 1. A1, A3, A2 (built 8
-November); 2. B1; 3. D1 to D3; 4. E1, E2; 5. C1 to C3; 6. I2, then I1 and I3; 7. F1 to F3; 8. B2 and B3, unless dungeons are brought forward; 9. G1,
-D4, A4 when the rest stands; H beside any of them. The [group-options-plan.md](social/plans/group-options-plan.md) stands apart, each point small.
-**Left out by decision**: quests for world bots and companions, patching the client's executables, rewards of our own invention (tickets, passes,
-account bonuses), changes to monster strength, a market other than the native broker, freezing the maps nobody is on, another mesh format, a decision
-engine other than the playbooks, an in-game shop (15 November).
+**Left** ([backlog.md](social/backlog.md); 1 to 4 are [group-options-plan.md](social/plans/group-options-plan.md), each small):
+1. **The starting level**: a new character, and the bots made for its group, start at level 1 in Poeta or Ishalgen or at the level 10 Ascension in
+   the capital (`gameserver.playerbot.start.level`): the Ascension's quests marked done by the engine, the class kept, bind point and starter gear of
+   that level. To check first: what upstream does with a character created above level 1.
+2. **Bots roll the dice**: today every roll waits for its timeout. *Need* only for a piece its class wears that beats what it wears (the comparison its
+   dressing uses), *pass* on the rest, answered within a second or two: a bot in a player's group is there to help, not to compete.
+3. **Orders and marks**, per bot or for the whole group, kept until the next: *stay* (holds its place, fights what reaches it), *guard* (holds a place,
+   fights within about 20 m and comes back), *passive* (follows, fights nothing); two marks on a monster, *kill first* and *keep asleep* (nobody
+   damages it while a bot that can sleep, stun or fear keeps it so), and the client's own numbered marks read as an order of kill.
+4. **One's own characters as bots**: `//bot alt <name>`, open to players: a character of the same account and race, offline, within 10 levels (an
+   option), comes into the group as a bot with its own gear, skills, stigmas and level, and keeps what it earns. One body at a time (logging it in
+   while it plays is refused, or dismisses it first); it leaves with its owner, follows through instances and teleports, is saved every 5 minutes;
+   its bag is never touched by the bot. The launcher lists the account's characters and gets a button to bring one in.
+5. **Formations** around the player (behind, line, wedge, circle), held while walking and broken by a fight. No plan yet.
+6. **The player's hand on a companion's gear**: its bag shown, an item put on by the player, enchanting and extraction paid from the companion's kinah
+   on the player's order. No plan yet.
+7. **Cohorts**: a bot in an alliance acting as a member of its own group of six ([cohort-plan.md](social/plans/cohort-plan.md)).
+8. **Composition, lot E1**: the Recruit Group Members tab and alliances; bots posting instance runs in the Find Group window, a ceiling per tab, and
+   whispering a player whose post lacks their role.
+9. **Bots group with each other** in the field (lot E2): pairs and trios hunting together, met in the countryside like players; a small group also
+   survives what kills a lone bot. Today they never do; lots G1 and I3 need it.
+10. **Level 50 bots** for the Theobomos instances and Dark Poeta, asked on 9 October; awaiting another test server's feedback.
+11. **Doors, lifts and windstreams used by a bot itself**, only if the 13 s wait proves too long; then **the arenas**, instances of their own.

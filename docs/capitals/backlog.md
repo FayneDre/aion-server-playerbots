@@ -19,4 +19,4 @@ broker and make the countryside look used; they are not started.
 ## Gear
 
 - **Gear does not keep up.** Bots are dressed at creation (enchanted, socketed, with stigmas) and wear what they loot; only wings are renewed with
-  the level (25 October); crossing 1 to 65 needs buying or crafting. Existing gunners keep their cannon until `//bot regear all` (two pistols since 17 October).
+  the level (25 October). Left as it is by decision (15 November): bots neither seek, buy nor enchant their own gear. Existing gunners keep their cannon until `//bot regear all` (two pistols since 17 October).

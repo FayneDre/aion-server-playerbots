@@ -21,7 +21,8 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 
 | File | What it holds |
 |---|---|
-| [roadmap.md](roadmap.md) | **Start here**: what is done and what is left, by theme in the project's priority order, each theme's work in order. |
+| [roadmap.md](roadmap.md) | **Start here**: what is done and what is left, by theme in the project's priority order, each theme's work in order; the order across themes and what is left out by decision; themes 0 to 4. |
+| [roadmap-world.md](roadmap-world.md) | The roadmap's second page, themes 5 to 12: flight, capitals and lot I (personalities, rumours, contested named monsters), gear, wild PvP and lot D, the broker, shops, legions, RvR. |
 | [known-limits.md](known-limits.md) | What the project does not control or lives with, in order of how much it bites; reviewed with each patch. |
 | [built.md](built.md) | What already works, one paragraph a topic, each pointing to its `how-it-works.md`. |
 | [bot-commands.md](bot-commands.md) | Every `//bot` command, and the one number that decides who may run them (`check-bot-docs.ps1` keeps it complete). |
