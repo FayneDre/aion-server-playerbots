@@ -21,7 +21,7 @@ changed since the last patch while it did not); `deploy.ps1` and `tag-patch.ps1`
 
 | File | What it holds |
 |---|---|
-| [roadmap.md](roadmap.md) | **Start here**: everything left to do by theme in one table, the order in three phases, what is not done by decision; then themes 0 to 4 in detail. |
+| [roadmap.md](roadmap.md) | **Start here**: everything left to do by theme in one table, the order in three phases, what is not done by decision; then themes 0 to 4 and 13 in detail. |
 | [roadmap-world.md](roadmap-world.md) | The roadmap's second page, themes 5 to 12 in detail: flight, capitals and lot I (personalities, rumours, contested named monsters, mentors), gear, wild PvP and lot D, the broker, shops, legions, RvR. |
 | [known-limits.md](known-limits.md) | What the project does not control or lives with, in order of how much it bites; reviewed with each patch. |
 | [built.md](built.md) | What already works, one paragraph a topic, each pointing to its `how-it-works.md`. |
