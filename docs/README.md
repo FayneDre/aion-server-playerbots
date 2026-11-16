@@ -98,6 +98,7 @@ History, one plan per class guide, each validated in game on 27 October: [templa
 have no plan yet ([roadmap.md](roadmap.md), theme 3).
 
 | [plans/bard-plan.md](classes/plans/bard-plan.md) | The bard, the first playbook planned without a guide: every rule from the data or marked *(play)*. Built, unverified in game. |
+| [plans/spirit-master-plan.md](classes/plans/spirit-master-plan.md) | The spirit master, from the data: its spirit chosen and kept alive, its commands carried out (a bot has no client to do it). Not started. |
 
 ## Gear — [gear/](gear/)
 
