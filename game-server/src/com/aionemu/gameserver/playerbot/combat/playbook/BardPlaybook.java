@@ -53,6 +53,11 @@ final class BardPlaybook implements ClassPlaybook {
 	/** Every chain a bard opens: a stance is not switched while one is open, since any other cast closes it. */
 	static final List<String> OPEN_CHAINS = List.of("A_CHAINA_1TH", "A_CHAINA_2TH", HEAL_CHAIN_1, HEAL_CHAIN_2, "A_CHAINC_1TH", "A_CHAINC_2TH",
 		"A_CHAIND_1TH", "A_CHAINE_1TH", MANA_CHAIN, SHOCK_CHAIN);
+	/**
+	 * The damage chains the generic order carries on, every link with one after it: no song of the playbook's offence is begun while one is open, since it
+	 * would close it. The playbook runs before the generic order on every tick, so without this the chain was closed by the next cast it chose.
+	 */
+	static final List<String> DAMAGE_CHAINS = List.of("A_CHAINA_1TH", "A_CHAINA_2TH", "A_CHAINC_1TH", "A_CHAINC_2TH", "A_CHAIND_1TH", "A_CHAINE_1TH");
 
 	/**
 	 * Where the heals of a bard that is its group's healer go: chain B under 70 %, Soothing Hymn under 40 %, Chorus of Blessing with three under 70 %, the
@@ -214,7 +219,7 @@ final class BardPlaybook implements ClassPlaybook {
 		boolean inTeam, inFight, controlled, justControlled, clericInGroup;
 		boolean exultationUp, impassionUp, summerUp = true, autumnUp = true, odeUp = true, springUp, winterUp;
 		/** The chains: B's first and second links, F's first, Remove Shock's, and whether any chain at all is open. */
-		boolean healChain1Open, healChain2Open, manaChainOpen, shockChainOpen, anyChainOpen;
+		boolean healChain1Open, healChain2Open, manaChainOpen, shockChainOpen, anyChainOpen, damageChainOpen;
 		/** The most hurt of the group, the bard included, or 100 when nobody is hurt; how many are under 70, 50 and 30. */
 		int hurtHp = 100, hurtUnder70, hurtUnder50, hurtUnder30;
 		/** The tank's health, or -1 without one; whether it carries the heal over time already, or alone whether the bard does. */
@@ -277,6 +282,7 @@ final class BardPlaybook implements ClassPlaybook {
 			s.manaChainOpen = manaChainOpen;
 			s.shockChainOpen = shockChainOpen;
 			s.anyChainOpen = anyChainOpen;
+			s.damageChainOpen = damageChainOpen;
 			s.hurtHp = hurtHp;
 			s.hurtUnder70 = hurtUnder70;
 			s.hurtUnder50 = hurtUnder50;
@@ -508,7 +514,7 @@ final class BardPlaybook implements ClassPlaybook {
 	 */
 	static Move decideOffence(Situation s) {
 		Set<Move> ready = s.ready;
-		if (s.controlled)
+		if (s.controlled || s.damageChainOpen)
 			return null;
 		Move stance = stanceToTurnOn(s);
 		if (stance != null)
@@ -655,6 +661,7 @@ final class BardPlaybook implements ClassPlaybook {
 		s.manaChainOpen = BotSkillManager.isChainOpen(bot, MANA_CHAIN);
 		s.shockChainOpen = BotSkillManager.isChainOpen(bot, SHOCK_CHAIN);
 		s.anyChainOpen = OPEN_CHAINS.stream().anyMatch(category -> BotSkillManager.isChainOpen(bot, category));
+		s.damageChainOpen = DAMAGE_CHAINS.stream().anyMatch(category -> BotSkillManager.isChainOpen(bot, category));
 
 		// the group: who is hurt, the tank, who carries a physical weakening, who is short of mana
 		boolean cleanses = s.ready.contains(Move.PURIFYING_PAEAN) || s.ready.contains(Move.PURGING_PAEAN);

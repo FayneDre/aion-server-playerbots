@@ -16,6 +16,7 @@ public final class BotPlaybooks {
 	private static final ClassPlaybook SORCERER = new SorcererPlaybook();
 	private static final ClassPlaybook BARD = new BardPlaybook();
 	private static final ClassPlaybook SPIRIT_MASTER = new SpiritMasterPlaybook();
+	private static final ClassPlaybook GUNNER = new GunnerPlaybook();
 
 	private BotPlaybooks() {
 	}
@@ -31,6 +32,7 @@ public final class BotPlaybooks {
 			case SORCERER -> SORCERER;
 			case BARD -> BARD;
 			case SPIRIT_MASTER -> SPIRIT_MASTER;
+			case GUNNER -> GUNNER;
 			default -> ClassPlaybook.NONE;
 		};
 	}

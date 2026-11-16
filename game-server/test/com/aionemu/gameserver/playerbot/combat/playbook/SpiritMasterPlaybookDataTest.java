@@ -104,6 +104,15 @@ class SpiritMasterPlaybookDataTest {
 	}
 
 	@Test
+	void theFollowedChainsAreOpenedBySkillsTheGenericOrderCarriesOn() {
+		for (String category : SpiritMasterPlaybook.FOLLOWED_CHAINS)
+			assertTrue(templates.stream().anyMatch(template -> template.getChainCondition() != null && category.equals(template.getChainCondition().getCategory())),
+				category + " is opened by no skill");
+		assertEquals("MWE_CHAINE_1TH", precategory("EL_STONESHOCK"), "Stone Shock follows Chain of Earth");
+		assertEquals("MWE_CHAINO_1TH", precategory("EL_ELEMENTALSTRIKE"), "Ritual Push follows Weaken Spirit");
+	}
+
+	@Test
 	void theFearsAreFearsAndTheRootIsNot() {
 		for (SpiritMasterPlaybook.Move fear : SpiritMasterPlaybook.FEARS)
 			assertTrue(first(fear.group).hasAnyEffect(EffectType.FEAR), fear + " is a fear, which the cast rule keeps out of a group");

@@ -60,6 +60,14 @@ began, then before it, then only within the engine's range rule, each left some 
 move a body that is casting (`BotMoveController.moveToDestination`). Measured with a probe on `PlayerController.cancelCurrentSkill` in a squad: casts
 lost went from 28 of 162 to 6 of 178, the six all to a target that died first.
 
+## Any other cast closes an open chain
+
+`ChainSkills.updateChain` gives a skill without a chain category an empty one, which ends the current chain, and a refused link changes nothing
+(`ChainCondition.validate` only checks). A playbook runs before the generic order on every tick (`SkillOrder.Step.PLAYBOOK`), so whatever it casts
+after an opener the generic order would carry on closes that chain: each playbook keeps a list of those chains and casts nothing but a defence while
+one is open (the sorcerer's `FOLLOWED_CHAINS`, the bard's `DAMAGE_CHAINS`, the spirit master's and the gunner's). `BotSkillManager.isChainOpen`
+does not read the window: a chain past it still counts until the generic order's next cast, one tick.
+
 ## A spell laid on the ground needs a point
 
 A skill whose first target is `POINT` (a sorcerer's Flaming Meteor and Summon Rift, a gladiator's Battle Banner, the Ice Sheet stigma) takes its caster as

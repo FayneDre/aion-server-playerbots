@@ -252,6 +252,20 @@ class SpiritMasterPlaybookTest {
 	}
 
 	@Test
+	void aChainTheGenericOrderCarriesOnIsNotClosed() {
+		Situation s = calm();
+		s.followedChainOpen = true;
+		s.stoneSkinUp = false;
+		assertNull(SpiritMasterPlaybook.decideOffence(s), "Stone Shock after Chain of Earth is the generic order's");
+		assertNull(SpiritMasterPlaybook.decideUpkeep(s));
+		s.disturbanceChainOpen = true;
+		assertEquals(Move.DETONATION_CLAW, SpiritMasterPlaybook.decideOffence(s), "the playbook's own chain is carried on");
+		s.disturbanceChainOpen = false;
+		s.spiritHp = SpiritMasterPlaybook.HEALING_SPIRIT_BELOW - 1;
+		assertEquals(Move.HEALING_SPIRIT, SpiritMasterPlaybook.decideSpirit(s), "a dying spirit is worth more than a link");
+	}
+
+	@Test
 	void aCasterIsSilenced() {
 		Situation s = calm();
 		s.targetCasts = true;

@@ -42,6 +42,13 @@ final class SpiritMasterPlaybook implements ClassPlaybook {
 
 	/** The chain the rules read, as the data names it: Spirit Disturbance opens Spirit Detonation Claw. */
 	static final String DISTURBANCE_CHAIN = "MWE_CHAINN_1TH_1";
+	/**
+	 * The chains the generic order carries on, every link with one after it: Chain of Earth (Stone Shock), Weaken Spirit (Ritual Push), the dispels
+	 * (Aegis Breaker), Soul Torrent (itself), the fears (Nightmare) and Remove Shock (Vengeful Backdraft). Nothing but a defence or the spirit's mending
+	 * is cast while one is open: the playbook runs before the generic order on every tick, and any other cast closes the chain.
+	 */
+	static final List<String> FOLLOWED_CHAINS = List.of("MWE_CHAINE_1TH", "MWE_CHAINO_1TH", "MWE_CHAINL_1TH", "MWE_CHAINZ_1TH", "MWE_CHAINM_1TH",
+		"ALL_CHAINA_1TH");
 
 	/** The spirit's health under which it is mended: Replenish Element, then Healing Spirit, then Divine Spirit Armor for divine power. */
 	static final int REPLENISH_BELOW = 60, HEALING_SPIRIT_BELOW = 40, DIVINE_ARMOR_BELOW = 25;
@@ -173,7 +180,7 @@ final class SpiritMasterPlaybook implements ClassPlaybook {
 		Move spirit;
 		/** What is on the spirit, and on the master. */
 		boolean armorSpiritOn = true, elementalArmorOn = true, sympatheticOn = true, alacrityUp, stoneSkinUp = true, earthenCallUp, contractUp;
-		boolean disturbanceChainOpen;
+		boolean disturbanceChainOpen, followedChainOpen;
 		/** Whether something is hitting the master, which a charged spell does not survive. */
 		boolean assailed;
 		/** The target: on the master, a caster, casting, a player, flying, an elite or a boss, within Ruinous Offensive's reach. */
@@ -225,6 +232,7 @@ final class SpiritMasterPlaybook implements ClassPlaybook {
 			s.earthenCallUp = earthenCallUp;
 			s.contractUp = contractUp;
 			s.disturbanceChainOpen = disturbanceChainOpen;
+			s.followedChainOpen = followedChainOpen;
 			s.assailed = assailed;
 			s.targetOnMe = targetOnMe;
 			s.targetCasts = targetCasts;
@@ -406,7 +414,7 @@ final class SpiritMasterPlaybook implements ClassPlaybook {
 	/** Before a fight, and renewed in one: Stone Skin on the master, the spirit's armours and Sympathetic Mind on the spirit. */
 	static Move decideUpkeep(Situation s) {
 		Set<Move> ready = s.ready;
-		if (s.controlled)
+		if (s.controlled || s.followedChainOpen)
 			return null;
 		if (!s.stoneSkinUp && ready.contains(Move.STONE_SKIN))
 			return Move.STONE_SKIN;
@@ -461,6 +469,10 @@ final class SpiritMasterPlaybook implements ClassPlaybook {
 		Set<Move> ready = s.ready;
 		if (s.controlled)
 			return null;
+		if (s.spiritOut && s.disturbanceChainOpen && ready.contains(Move.DETONATION_CLAW))
+			return Move.DETONATION_CLAW;
+		if (s.followedChainOpen)
+			return null;
 		if (!s.inTeam && s.enemiesEngaged >= CURSECLOUD_ENEMIES && s.dp >= CURSECLOUD_DP && ready.contains(Move.CURSECLOUD))
 			return Move.CURSECLOUD;
 		if (s.targetIsPlayer && s.dp >= ABILITY_DP && ready.contains(Move.DISENCHANT))
@@ -478,8 +490,6 @@ final class SpiritMasterPlaybook implements ClassPlaybook {
 		if (s.targetCasts && ready.contains(Move.SIGIL_OF_SILENCE))
 			return Move.SIGIL_OF_SILENCE;
 		if (s.spiritOut) {
-			if (s.disturbanceChainOpen && ready.contains(Move.DETONATION_CLAW))
-				return Move.DETONATION_CLAW;
 			if (s.targetWithin15m && ready.contains(Move.RUINOUS_OFFENSIVE))
 				return Move.RUINOUS_OFFENSIVE;
 			for (Move command : DAMAGE_COMMANDS) {
@@ -575,6 +585,7 @@ final class SpiritMasterPlaybook implements ClassPlaybook {
 		s.earthenCallUp = BotSkillManager.isUp(bot, Move.EARTHEN_CALL.group);
 		s.contractUp = BotSkillManager.isUp(bot, Move.CONTRACT_OF_RESISTANCE.group);
 		s.disturbanceChainOpen = BotSkillManager.isChainOpen(bot, DISTURBANCE_CHAIN);
+		s.followedChainOpen = FOLLOWED_CHAINS.stream().anyMatch(category -> BotSkillManager.isChainOpen(bot, category));
 		s.assailed = BotGroupManager.enemyHitting(bot, ENEMY_RADIUS) != null;
 
 		Summon spirit = bot.getSummon();

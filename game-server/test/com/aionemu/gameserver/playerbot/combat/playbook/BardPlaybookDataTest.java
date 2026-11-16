@@ -88,6 +88,7 @@ class BardPlaybookDataTest {
 
 	@Test
 	void everyChainTheStanceWaitsForIsOneABardOpens() {
+		assertTrue(BardPlaybook.OPEN_CHAINS.containsAll(BardPlaybook.DAMAGE_CHAINS), "the damage chains are chains the stance waits for too");
 		for (String category : BardPlaybook.OPEN_CHAINS)
 			assertTrue(templates.stream().anyMatch(template -> template.getChainCondition() != null && category.equals(template.getChainCondition().getCategory())),
 				category + " is opened by no skill");

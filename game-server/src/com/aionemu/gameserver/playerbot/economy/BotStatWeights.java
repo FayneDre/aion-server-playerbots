@@ -205,10 +205,12 @@ public class BotStatWeights {
 			// Mana and health ahead of anything offensive, deliberately: a cleric that runs dry or dies is a group wiped, and a cleric that does
 			// less damage is a fight that takes longer. Survivability and fuel are its contribution.
 			case CLERIC -> List.of(StatEnum.MAXMP, StatEnum.MAXHP, StatEnum.HEAL_BOOST);
-			case SORCERER, SPIRIT_MASTER, BARD -> List.of(StatEnum.MAGICAL_ACCURACY, StatEnum.BOOST_MAGICAL_SKILL);
-			// Nobody who wrote the orders plays these two, and saying so is better than inventing a preference. They take the generic order for
-			// their kind, which the engine already settles: both cast.
-			case GUNNER, RIDER -> List.of();
+			// The gunner's too, from the data rather than a player of the class: every attack it has is a spell (spellatk), so what lands and how
+			// hard is magical accuracy and magic boost, as for the sorcerer (docs/classes/plans/gunner-plan.md).
+			case SORCERER, SPIRIT_MASTER, BARD, GUNNER -> List.of(StatEnum.MAGICAL_ACCURACY, StatEnum.BOOST_MAGICAL_SKILL);
+			// Nobody who wrote the orders plays this one, and saying so is better than inventing a preference. It takes the generic order for its
+			// kind, which the engine already settles: it casts.
+			case RIDER -> List.of();
 			default -> List.of(); // the starting classes, which are nobody's build and last nine levels
 		};
 		Set<StatEnum> order = new LinkedHashSet<>(own);

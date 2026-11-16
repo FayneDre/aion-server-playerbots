@@ -129,7 +129,8 @@ Where the build differs from the first plan, the milestone says so.
 5. **Upkeep**: before a fight Stone Skin, Armor Spirit and Elemental Spirit Armor; Sympathetic Mind kept up; nothing while idle in town.
 6. **The spirit kept alive**: Replenish Element under 60 %, Healing Spirit under 40 %, Divine Spirit Armor at 2000 DP when it is about to
    die in a fight that is not won *(play)*. The spirit dead mid-fight: Summoning Alacrity and a resummon, unless the master is under 40 %.
-7. **Damage** *(play)*: the spirit sent first (it has the hate), then the curses kept on the target (Withering Gloom, Infernal Pain,
+7. **Damage** *(play)*: nothing of the offence or the upkeep while a chain the generic order carries on is open (`FOLLOWED_CHAINS`, added in
+   review: any other cast closes it); the spirit sent first (it has the hate), then the curses kept on the target (Withering Gloom, Infernal Pain,
    Infernal Blight, Magic's Freedom), Erosion renewed, the commands (Detonation Claw, Erosion, Wrath Position, Ruinous Offensive) on cooldown
    on anything worth it, the strip-and-hit skills on a target with a buff. Stone Scour only while nothing hits the master. The areas under the
    rules every cast obeys.

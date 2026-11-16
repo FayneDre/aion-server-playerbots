@@ -126,7 +126,8 @@ All built on 15 November in `BardPlaybook`, as below; the thresholds are its con
    chanter's rule. Alone: Chain B under 60 %, then back to damage.
 5. **Mana**: chain F when its own mana or two members' are under 50 %, its second link (the group's mana) once open; Resonant Counterpoint on a
    healer under 30 %.
-6. **Damage**: chains A, C, D, E kept running by the generic order, which follows a chain while it is open; the charged songs (Fiery Requiem,
+6. **Damage**: chains A, C, D, E kept running by the generic order, which follows a chain while it is open, and **no song of the offence begun
+   while one is open** (`DAMAGE_CHAINS`, added 16 November: the playbook runs first and its next song had closed the chain); the charged songs (Fiery Requiem,
    Blazing Requiem, Dragon Song, Harpist's Pod, Fiery Descant) only while nothing hits the bard, and alone as the opener (a charge is cancelled by a
    hit *(play)*); Minstrel's Flair at 2000 DP, keeping Aria of Hope's 4000 in a group. Quaver on a caster, Half-Stop on a player, Delusional Dirge
    on a target that turned on the bard.

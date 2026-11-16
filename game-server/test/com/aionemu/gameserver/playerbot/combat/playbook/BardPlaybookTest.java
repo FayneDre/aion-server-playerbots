@@ -339,4 +339,14 @@ class BardPlaybookTest {
 		assertNull(BardPlaybook.decideOffence(s));
 		assertNull(BardPlaybook.decideUpkeep(s));
 	}
+
+	@Test
+	void noSongOfTheOffenceClosesADamageChain() {
+		Situation s = calm();
+		s.dp = BardPlaybook.ABILITY_DP;
+		s.targetCasts = true;
+		assertNotNull(BardPlaybook.decideOffence(s));
+		s.damageChainOpen = true;
+		assertNull(BardPlaybook.decideOffence(s), "the links are the generic order's, and any other song closes the chain");
+	}
 }

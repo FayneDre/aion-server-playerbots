@@ -1,7 +1,8 @@
 # Gunner: implementation plan
 
-Status: not started. Written on 16 November 2026, **without a guide**, as the bard's and the spirit master's were
+Status: built, unverified: in game. Written and built on 16 November 2026, **without a guide**, as the bard's and the spirit master's were
 ([bard-plan.md](bard-plan.md), [spirit-master-plan.md](spirit-master-plan.md)): every rule from the data, or marked *(play)* when it is judgement.
+`GunnerPlaybook`, 11 decision tests and 7 data tests; never yet watched in game.
 
 ## Where the rules come from
 
@@ -11,7 +12,7 @@ Status: not started. Written on 16 November 2026, **without a guide**, as the ba
   checks.
 
 The pattern is the spirit master's: a `GunnerPlaybook`, rules by skill **group**, a pure `decide`, its tests, a data test, the French client's names
-in `glossary/gunner.md`.
+in [glossary/gunner.md](../glossary/gunner.md).
 
 ## What the class is, from the data
 
@@ -53,7 +54,7 @@ Chains and fillers.
 |---|---|---|---|---|
 | Gunshot → Rapidfire x2 → Automatic Fire x2 → Steel Shot | Tir au pistolet, Volée répétée, Tir rapide répété, Projectile lourd | `EN_DOUBLEFIRECHAIN`, `EN_ENFIRECHAIN`, `GU_RAPIDENFIRE`, `GU_HEAVYFIRECHAIN` | 16, 1, 1, 1 | Chain A; Automatic Fire needs two Rapidfires, Steel Shot (61) two Automatic Fires |
 | Trunk Shot → Volley x2 → Muzzle Flash | Photo d'identité, Volée débilitante, Tir au point faible | `GU_FOREHEADSNIPE`, `GU_CURBINGFIRECHAIN`, `GU_WEAKSPOTSNIPE` | 24, 1, 24 | Chain B; Trunk Shot staggers, Muzzle Flash drains |
-| Crosstrigger → Canted Shot x2 → Aerial Shot x2, or → Trigger Pull | Le coup de l'âme, Soul Volley, Rapid Soul Fire, Tir de sceau | `GU_MENTALICFIRECHAIN`, `GU_BREAKINGFIRECHAIN`, `GU_MENTALICRAPIDFIRE`, `GU_MENTALSHOT` | 24, 1, 1, 24 | Chain D, which burns mana too; Trigger Pull the other branch |
+| Crosstrigger → Canted Shot x2 → Aerial Shot x2, or → Trigger Pull | Le coup de l'âme, Soul Volley, Rapid Soul Fire, Tir de sceau | `GU_MENTALICFIRECHAIN`, `GU_BREAKINGFIRECHAIN`, `GU_MENTALICRAPIDFIRE`, `GU_MENTALICSHOT` | 24, 1, 1, 24 | Chain D, which burns mana too; Trigger Pull the other branch |
 | Steady Fire x5 | Volley rapide | `GU_ONEPOINTRAPIDFIRE` (st 1) | 30 | Chain C: itself five times |
 | Pulverizer Cannon x2 | Projectile de magie sauvage | `GU_BLINDLYSHOT` (st 4) | 122 | An **area**, 20 m, a pistol skill despite its name |
 | Anti-Enemy Fire x3 | Volley de restauration | `GU_DRAINATTACK` | 90 | Chain F, from 65 |
@@ -91,22 +92,31 @@ Sequential Fire, Snow Shell, Aetheric Bombardment, Aerial Fury. Left out: Herb T
 
 ## Milestones, in verifiable order
 
-0. **Name the skills**: `glossary/gunner.md`; read what Reload and Autoload reset, Stable Stance's cost, Memory Manipulation's sign; every group
-   above checked by `GunnerPlaybookDataTest`, with the weapon each move needs (no `CANNON`-only group among the moves).
+All built on 16 November in `GunnerPlaybook` and `BotStatWeights`, as below; the thresholds are the playbook's constants. Where the build differs
+from the first plan, the milestone says so.
+
+0. **Name the skills**: `glossary/gunner.md`; every group above checked by `GunnerPlaybookDataTest`, with the weapon each move and stigma needs
+   (none asks for a cannon alone, and every gunner skill that does is forbidden). What the data answered:
+   - **Reload and Autoload reset cooldown 1802, which Gunshot, Trunk Shot and Crosstrigger share**: the three openers cool down together, one opener
+     a cycle, and a reload gives the next one back.
+   - **Stable Stance**: auto attacks 10 % faster (`ATTACK_SPEED` -10 %), nothing else: kept on.
+   - **Memory Manipulation lowers hate** (`hostileup` -41035): the bard's Ode to Friendship, for a group.
+   - **Aion's Favor** lasts five minutes: an upkeep, not a cooldown.
 1. *(Dropped: the repeated links were to be measured first; the code answers it, above.)*
 2. **The seam**: `GunnerPlaybook` registered, `swings` true (a pistol's shot is its auto attack *(play)*), the cannon groups claimed and never cast,
    `claims` for every move below; the chain links (2TH and after) and Direct Shot stay with the generic order.
-3. **The chains** *(play)*: an opener while none is open: Trunk Shot on a target casting (its stagger), then Gunshot, Crosstrigger, Steady Fire,
-   Anti-Enemy Fire; Reload (then Autoload) when two openers are cooling down and none is open. Pulverizer Cannon alone, under the area rules.
-4. **The stance**: Stable Stance on in a fight and off after if it slows the gunner (milestone 0 says), cast only when it is not up, as the
-   bard's.
-5. **The buffs** *(play)*: Aion's Favor and Pressurized Chamber kept up in a fight; Sighting, Nature's Favor, Stopping Power, Pursuit Stance and
+3. **The chains** *(play)*: an opener while none is open: Trunk Shot's stagger on a caster, Crosstrigger's mana burn on a player, Gunshot
+   otherwise; Reload, then Autoload, while the openers cool down and no chain is open. Steady Fire, Anti-Enemy Fire and Pulverizer Cannon stay with
+   the generic order. **Nothing but a defence is cast while a followed chain is open**: the playbook runs before the generic order on every tick,
+   and any other cast closes the chain (found building this one; the bard and the spirit master had the same hole, closed the same day).
+4. **The stance**: Stable Stance kept on, before a fight and in one, cast only when it is not up, as the bard's.
+5. **The buffs** *(play)*: Aion's Favor kept up; Pressurized Chamber, Sighting, Nature's Favor, Stopping Power, Pursuit Stance and
    Anticipation on an elite, a boss or a player, or alone among three; Spend Success at 2000 DP on the same.
 6. **Defence**: Remove Shock, then Teleport Escape alone under 30 %, else Steal Health; Bulletproof when hit under 50 %; Bullet Resistance when
    hit; Survival Instinct when rooted or snared with a melee near; Memory Manipulation in a group when the target turns on the gunner (if it
    lowers hate). Alone under 25 %, `flees`.
-7. **Distance** *(play)*: alone, a melee enemy within 5 m: Parting Shot, else Green Grenade, Spinning Fire or Hot Shot, then the ranger's step back
-   (`RangerPlaybook`'s distance rule).
+7. **Distance** *(play)*: alone, a melee target within 5 m: Parting Shot, else Spinning Fire's snare. *The ranger has no step back to reuse*: the
+   distance itself is `BotPosition`'s, for every ranged class.
 8. **Control**: a second enemy held (`secondToControl`) with Green Grenade in a group and alone; Quieting Gale on a caster casting; Dazzling Fire
    on a player within 5 m; Wing Clip on a flying player.
 9. **Stigmas** *(play)*, pistol ones only, the list long enough that no cannon stone is ever reached: regular Steady Fire, Sighting, Nature's
