@@ -1196,9 +1196,19 @@ public class BotSkillManager {
 		return (long) creature.getObjectId() << 32 | effect.getSkillId() & 0xffffffffL;
 	}
 
-	/** @return true if the bot has used a skill of that chain category and nothing since, which is what the next link of the chain asks for. */
+	/**
+	 * The longest window any link of the data is given after the hit before it ({@code ChainCondition.getActivationWindow}: its time plus 1.5 s, the
+	 * longest time being 5 s, twelve skills): past it no link can follow, whatever the chain state still says.
+	 */
+	static final int LONGEST_CHAIN_WINDOW_MILLIS = 6500;
+
+	/**
+	 * @return true if the bot has used a skill of that chain category and nothing since, within the time a link could still follow it, which is what
+	 *         the next link asks for. The window matters: the chain state keeps its category until the next cast, so a chain whose next link the bot
+	 *         does not know stayed open for as long as nothing else was cast, and a playbook waiting for it to close waited on itself.
+	 */
 	public static boolean isChainOpen(Player bot, String category) {
-		return bot.getChainSkills().getCurrentChainCount(category) > 0;
+		return bot.getChainSkills().canContinue(category, 1, LONGEST_CHAIN_WINDOW_MILLIS);
 	}
 
 	/** @return true if an effect of that stack group is on the bot, which for a buff is the same name as its skill group. */
