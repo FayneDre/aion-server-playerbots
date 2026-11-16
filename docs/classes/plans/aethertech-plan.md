@@ -16,9 +16,9 @@ chain the generic order carries on is open).
 
 ## What the class is, from the data
 
-A **magical** melee class (every attack is `spellatk`) in chain armour, held in the module as a damage dealer that stands in front like the templar
-(`BotRole.DAMAGE`, `BotPosition` `FRONT`, `BotStatWeights.wantsHostility` true): the gladiator's shape, a second tank when the first is down. Its
-weapon is the cipher-blade (`KEYBLADE`, `BotGearFit.weaponsOfTrade`), and **everything rests on its mech**: Embark (`RI_SUMMONARMOR`) is a toggle
+A **magical** melee class (every attack is `spellatk`) in chain armour, and **a main tank, as the templar is** (decided on 16 November). The module
+still files it as damage (`BotRole.DAMAGE`), though it already stands in front like the templar (`BotPosition` `FRONT`) and wants hostility on its
+gear (`BotStatWeights.wantsHostility`); making it a tank is milestone 1. Its weapon is the cipher-blade (`KEYBLADE`, `BotGearFit.weaponsOfTrade`), and **everything rests on its mech**: Embark (`RI_SUMMONARMOR`) is a toggle
 that asks for the key and grants 4 m of reach, and every other `RI_` skill it casts carries `ride_robot` (62 groups; only Embark and two passives do not). The module already boards it
 (`BotSkillManager.tryBoardRobot`, before anything in a fight) and leaves it to open a store.
 
@@ -26,15 +26,21 @@ that asks for the key and grants 4 m of reach, and every other `RI_` skill it ca
 
 - **No aethertech playbook.** The generic order casts by stated damage with chain links first, and the chains are many and short (below), so it
   already fights. What it cannot do: **the toggles**, since the generic order casts none but mantras and the mech (`skills` refuses every other
-  toggle, since casting a live one turns it off); the DP skills at the right time; the defences on health; the taunts in the one case they are
-  wanted; the mana, which this class spends on its shields as well as its skills.
+  toggle, since casting a live one turns it off); the DP skills at the right time; the defences on health; holding the enemy, which the generic order
+  does not try to do; the mana, which this class spends on its shields as well as its skills.
 - **The engineer's gun skills are in its tree** (Gunshot, Rapidfire, Direct Shot, Green Grenade, Hot Shot, Bullet Resistance, learned 10 to 14):
   they ask for a gun, and an aethertech holds a key. Forbidden, as the gunner's cannon skills are.
 - **No way to end a toggle by group.** `leaveRobot` ends the mech by its effect; Stability Thrusters, which drains mana, has to be turned off after a
   fight, so a `BotSkillManager.endToggle(bot, group)` is added on the same pattern.
 - **No stat weights** (`BotStatWeights` returns an empty list for `RIDER`): it takes the generic tail.
-- **The pieces exist**: the gladiator's tank-down rule (`Group.tankDead`), the generic taunt rule (`isTauntForbidden`, a grouped non-tank never
-  taunts), the sorcerer's `secondToControl`, `isEliteOrBoss`, the toggle rule of the bard's stances, `flees`, the charged skills of the spirit
+- **It is not a tank to the module.** `BotRole.of` gives `TANK` to the templar alone, and everything that serves the tank asks that: recruiting
+  (`RecruitPlan.TANKS`), marking the group's target (`PlayerBotAI`), the taunts a grouped non-tank may not cast (`isTauntForbidden`), whom the
+  cleric, the chanter, the bard and the spirit master heal, shield or choose a spirit for, where the others stand (`BotStations`), damage reduction
+  in the stat weights, hate stones first among stigmas (`BotStigmaFitter`).
+- **One group, one tank.** Every one of those asks for *the* tank, and two tanks on the taunts pull the same enemy back and forth. A group holding
+  a templar and an aethertech needs one of them named.
+- **The pieces exist**: the templar's playbook (what a tank does with its taunts and its hate), the gladiator's tank-down rule (`Group.tankDead`)
+  for the tank that is not the group's, the sorcerer's `secondToControl`, `isEliteOrBoss`, the toggle rule of the bard's stances, `flees`, the charged skills of the spirit
   master's Stone Scour, the area rules.
 
 ## The skills, mapped
@@ -95,30 +101,36 @@ milestone 0), Herb Treatment and MP Recovery. Forbidden: the seven engineer gun 
 0. **Name the skills**: `glossary/aethertech.md`; every group above checked by `AethertechPlaybookDataTest`, with `ride_robot` on each move that
    needs the mech and none of the forbidden ones castable with a key. Read: what Repair Protocol and Stability Thrusters cleanse, whether
    Hypergate Detonation and resting end the mech or the toggles, whether two mana shields stack, whether Boost is a dash forward or a random jump.
-1. **The seam**: `AethertechPlaybook` registered; the gun skills and Mobility Thrusters claimed and never cast; the chain guard.
-2. **The toggles** *(play)*: in a fight, Kinetic Battery on above 20 % mana and Stability Thrusters above 40 %, each cast only when it is not up;
+1. **A tank**: `BotRole.of(RIDER)` is `TANK`; `RecruitPlan.TANKS` asks for the templar, then the aethertech *(play: the templar has been watched in
+   game, the aethertech not yet)*. **The group's tank** is one member: a templar if there is a living one, else an aethertech, the first of each in
+   the group's order; a `BotRole.isGroupTank(bot)` that the rules above ask instead of the role alone, so the other tank of a group with two
+   behaves as the gladiator does (damage, taunting only when the group's tank is dead). Tests for the group of one, two and none.
+2. **The seam**: `AethertechPlaybook` registered; the gun skills and Mobility Thrusters claimed and never cast; the chain guard.
+3. **The toggles** *(play)*: in a fight, Kinetic Battery on above 20 % mana and Stability Thrusters above 40 %, each cast only when it is not up;
    off again under those, and both off between fights (`tend`, with `endToggle`), so a resting aethertech regains its mana.
-3. **The second tank** *(play)*: in a group whose tank is dead, or that has none, Mounting Frustration on and Magnetic Wave on two enemies off the
-   healer, Provoking Whispers on one; otherwise Mounting Frustration off. Alone, off: the hate is its own anyway.
-4. **The DP** *(play)*: Overdrive Trigger at 2000 on an elite, a boss or a player; Annihilation Barrage at 4000 alone among three, or on a boss;
+4. **Holding the enemy** *(play)*, as the group's tank: Mounting Frustration on in a fight; Magnetic Wave when two enemies are on somebody else,
+   Provoking Whispers when one is, as the templar's taunts. Not the group's tank: the gladiator's rule, Mounting Frustration off until the tank
+   is dead. Alone, off: the hate is its own anyway, and the toggle is a cast spent.
+5. **The DP** *(play)*: Overdrive Trigger at 2000 on an elite, a boss or a player; Annihilation Barrage at 4000 alone among three, or on a boss;
    Power Flux at 2000 under 30 % mana when neither is wanted.
-5. **The buffs**: Charging Activation kept up; Aimbot Assist, Life Support Trigger, Leeching Steel and Aethercharged Steel on what is worth them
+6. **The buffs**: Charging Activation kept up; Aimbot Assist, Life Support Trigger, Leeching Steel and Aethercharged Steel on what is worth them
    (the gunner's `worthABurst`).
-6. **Mana**: Aether Recharge under 50 % with nothing on it; Recharge or Powerspike Trigger under 25 % in a fight.
-7. **Defence**: Remove Shock, then Protective Shell under 50 %, else Uppercut; Nullification Trigger hit under 40 %; Kinetic Bulwark under 50 %
-   with half its mana; Trauma Plate Trigger hit by a player; Repair Protocol rooted or snared. Alone under 25 %: Hypergate Detonation, then
+7. **Mana**: Aether Recharge under 50 % with nothing on it; Recharge or Powerspike Trigger under 25 % in a fight.
+8. **Defence**, a tank's, which takes the blows on purpose: Remove Shock, then Protective Shell under 50 %, else Uppercut; Nullification
+   Trigger hit under 40 %; Kinetic Bulwark under 60 % with half its mana, an elite or a boss on it; Trauma Plate Trigger hit by a player; Repair Protocol rooted or snared. Alone under 25 %: Hypergate Detonation, then
    `flees`.
-8. **Control**: a second enemy held (`secondToControl`) with Electric Shock or Convulsion Beam; Aetherlock Blade on a caster; Drillbore or
+9. **Control**: a second enemy held (`secondToControl`) with Electric Shock or Convulsion Beam; Aetherlock Blade on a caster; Drillbore or
    Backlash on a player; Steam Rush on a target beyond 8 m.
-9. **Stigmas** *(play)*: regular Riplash, Aimbot Assist, Drillbore, Steel Storm, Aether Recharge; advanced Rain of Knuckles, Aethercharged Steel,
+10. **Stigmas** *(play)*: regular Riplash, Aimbot Assist, Drillbore, Steel Storm, Aether Recharge; advanced Rain of Knuckles, Aethercharged Steel,
    Trauma Plate Trigger, Kinetic Bulwark, Convulsion Beam, Meteor Strike. Never Mobility Thrusters.
-10. **Stat weights** *(play)*: magical accuracy then magic boost, as the gunner's, every attack being a spell.
-11. **Fuel Reserves**: flying, under a third of its flight time.
+11. **Stat weights** *(play)*: a tank's, as the templar's (`BotRole.TANK` already weighs damage reduction), with magical accuracy, every attack
+    being a spell and a taunt that misses holding nothing.
+12. **Fuel Reserves**: flying, under a third of its flight time.
 
-Tests per milestone, pure as the others' are; then a watch in game: an aethertech alone in Eltnen and one in a group whose templar dies,
+Tests per milestone, pure as the others' are; then a watch in game: an aethertech alone in Eltnen, one tanking a group with no templar and one beside a templar,
 `//bot debug combat` on, its mana through a fight, and its deaths on Reshanta's upper layer against the measure of the roadmap's theme 3.
 
 ## Questions for a player of the class
 
-Whether an aethertech should tank a group with no templar outright (a `BotRole` change, not this playbook's); the toggles' thresholds; which
+Which of a templar and an aethertech tanks a group that has both; the toggles' thresholds; which
 stigmas; whether Boost belongs in a fight; whether Mobility Thrusters is worth turning on to travel, between fights.
