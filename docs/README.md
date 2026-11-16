@@ -99,6 +99,7 @@ have no plan yet ([roadmap.md](roadmap.md), theme 3).
 
 | [plans/bard-plan.md](classes/plans/bard-plan.md) | The bard, the first playbook planned without a guide: every rule from the data or marked *(play)*. Built, unverified in game. |
 | [plans/spirit-master-plan.md](classes/plans/spirit-master-plan.md) | The spirit master, from the data: its spirit chosen and kept alive, its commands carried out (a bot has no client to do it). Built, unverified in game. |
+| [plans/aethertech-plan.md](classes/plans/aethertech-plan.md) | The aethertech, from the data: its mech's toggles kept on and off by mana, a second tank when the first is down, its chains the generic order's. Not started. |
 | [plans/gunner-plan.md](classes/plans/gunner-plan.md) | The gunner, from the data: a pistol gunner (the cannon's 19 skills out of reach), its openers and reloads chosen, its repeated links the generic order's. Built, unverified in game. |
 
 ## Gear — [gear/](gear/)
