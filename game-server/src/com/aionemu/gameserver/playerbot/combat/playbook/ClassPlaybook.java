@@ -134,6 +134,15 @@ public interface ClassPlaybook {
 	}
 
 	/**
+	 * @return The skill groups of the servants this bot should call up, best first, or empty when the class has no opinion and the generic order calls up
+	 *         whichever it sorts first. Only these are tried when it is not empty: a spirit master's spirit for twenty minutes, at 2000 divine power, is
+	 *         not one to call up on the way to the market.
+	 */
+	default List<String> servantOrder(Player bot) {
+		return List.of();
+	}
+
+	/**
 	 * @return true if this class decides alone when this bot casts the skill, so the generic order never offers it. Without this the two would both act on
 	 *         the same skill by different rules: the generic heal fires at half health on any heal a class has, which for a templar is the half hour
 	 *         Hand of Healing that is meant to be kept for a fifth.

@@ -1,7 +1,8 @@
 # Spirit master: implementation plan
 
-Status: not started. Written on 16 November 2026, **without a guide**, as the bard's was ([bard-plan.md](bard-plan.md)): every rule from the
-data, or marked *(play)* when it is judgement.
+Status: built, unverified: in game. Written and built on 16 November 2026, **without a guide**, as the bard's was ([bard-plan.md](bard-plan.md)):
+every rule from the data, or marked *(play)* when it is judgement. `SpiritMasterPlaybook`, 17 decision tests and 9 data tests; the commands carried
+out by `BotServantAI`; never yet watched in game.
 
 ## Where the rules come from
 
@@ -11,8 +12,8 @@ data, or marked *(play)* when it is judgement.
   checks.
 
 The pattern is the bard's: a `SpiritMasterPlaybook`, rules by skill **group**, a pure `decide`, its tests, a data test, the French client's
-names in `glossary/spirit-master.md`. Cast times and the chain links of each group are read again at milestone 0: the first pass read only
-each group's first rank, and its chain column caught links of neighbouring templates.
+names in [glossary/spirit-master.md](../glossary/spirit-master.md). The chains were read again at milestone 0, every rank of each group: the first
+pass had caught links of neighbouring templates, and **Emnity Swap follows no chain** (the table below is the corrected one).
 
 ## What the class is, from the data
 
@@ -21,6 +22,8 @@ curses, and its **spirit**, a summon (`EffectType.SUMMON`) that fights beside it
 master is a cloth caster with no damage. Role: `RANGED`, damage, never the group's healer.
 
 ## What exists, and what is missing
+
+What the module had before this plan, and what it lacked (all of it built since, milestones below):
 
 - **The spirit is called up and driven** (`BotSkillManager.trySummonServant`, `PlayerBotAI.callUpServant`, `BotServantAI`): it follows its
   master, defends it, attacks what it attacks, and casts its own npc skills (`npc_skills.xml`) when the data says they are ready. It is sent
@@ -96,7 +99,7 @@ Control and defence.
 | Sigil of Silence, Dispel Magic | `EL_SILENCE`, `EL_DISPEL` | 20, 10 | On a caster; strip a buff |
 | Stone Skin, Earthen Call, Contract of Resistance | `MA_STONESKIN`, `EL_EARTHGUARDIANCE` (st 1), `EL_RESISTMAGIC` | 120, 122, 300 | Self shield; defence; resists every spell for a while |
 | Cloaking Word | `EL_ESCAPE` (st 1) | 183 | The master and the spirit hidden: the flight |
-| Emnity Swap | `EL_SYMPATHETICSWITCH` (st 1) | 30 | Swaps hate between the master and the spirit, 15 m |
+| Emnity Swap | `EL_SYMPATHETICSWITCH` (st 1) | 30 | Swaps hate between the master and the spirit, 15 m; no chain |
 | Remove Shock | `ALL_SHOCKREFLECT` | 60 | Out of a stun |
 
 Left out: Summon Group Member `EL_SUMMONAID` (a social choice, not a fight's), the flight passives, Herb Treatment and MP Recovery (the
@@ -104,19 +107,25 @@ generic order's).
 
 ## Milestones, in verifiable order
 
+All built on 16 November in `SpiritMasterPlaybook`, `BotServantAI` and `BotSkillManager`, as below; the thresholds are the playbook's constants.
+Where the build differs from the first plan, the milestone says so.
+
 0. **Name the skills**: `glossary/spirit-master.md` from the French client, cast times and chain links read again, every group above
    checked by `SpiritMasterPlaybookDataTest`.
 1. **The commands carried out** (module, before any rule): measure first whether the generic order casts them and what happens (the log,
    `//bot debug combat`); then `BotServantAI` takes the next queued order each tick, as `CM_SUMMON_CASTSPELL` does, and carries it out with
-   `summon.getController().useSkill(order)`, the target checked still there. A test that an order queued by a bot's cast is used. Every
-   other summoning class gains it too (none has commands, so nothing else changes).
-2. **Aim at the spirit**: `BotSkillManager` learns `MYPET` targets: the spirit's buffs and heals cast on `bot.getSummon()`, refused while
-   there is none. Checked in the data test: every `MYPET` group of the class is claimed by the playbook.
+   `summon.getController().useSkill(order)`, the target checked still there. Every other summoning class gains it too (none has commands, so
+   nothing else changes). *Built without the measure first*: the playbook claims every command, so what the generic order did with them no
+   longer matters. No unit test: a summon needs a world; the watch in game looks for `carries out order` (`BotServantAI` at DEBUG).
+2. **Aim at the spirit**: *nothing to change in `BotSkillManager`*: the engine aims a `MYPET` skill at the caster's summon whatever target it
+   is given (`FirstTargetProperty`). The playbook passes the spirit as the target (`Aim.SPIRIT`) so that the cast's own checks measure the
+   right creature, and casts nothing at it while there is none. The data test holds every move's aim to its data's first target.
 3. **The seam**: `SpiritMasterPlaybook` registered, `swings` false *(play)*, `claims` every group above but the fillers (Erosion, Vacuum
    Choke) and the damage chains, which stay with the generic order.
-4. **Which spirit** *(play)*: Earth alone (it holds the enemy while the master casts), Fire in a group with a tank, Water against a player
-   (its slows), Wind never chosen first. Tempest or Lava, at 2000 DP, against an elite or a boss, the 20 minutes then kept. The spirit
-   dismissed and called again only out of a fight, never to switch mid-fight; Summoning Alacrity first when it must be recalled in one.
+4. **Which spirit** *(play)*: Earth alone (it holds the enemy while the master casts), Fire in a group with a tank, Wind never chosen first
+   (`servantOrder`, a new `ClassPlaybook` method that `trySummonServant` follows). The spirit dismissed and called again only out of a fight
+   (`tend`), never a great one. A second summon fails while one is out, so the great spirits and Water against a player are only for a
+   spirit called up again mid fight: Tempest or Lava at 2000 DP against an elite or a boss, Water against a player, Summoning Alacrity first.
 5. **Upkeep**: before a fight Stone Skin, Armor Spirit and Elemental Spirit Armor; Sympathetic Mind kept up; nothing while idle in town.
 6. **The spirit kept alive**: Replenish Element under 60 %, Healing Spirit under 40 %, Divine Spirit Armor at 2000 DP when it is about to
    die in a fight that is not won *(play)*. The spirit dead mid-fight: Summoning Alacrity and a resummon, unless the master is under 40 %.
@@ -124,16 +133,16 @@ generic order's).
    Infernal Blight, Magic's Freedom), Erosion renewed, the commands (Detonation Claw, Erosion, Wrath Position, Ruinous Offensive) on cooldown
    on anything worth it, the strip-and-hit skills on a target with a buff. Stone Scour only while nothing hits the master. The areas under the
    rules every cast obeys.
-8. **Defence**: Spirit Pique, then Emnity Swap, when an enemy turns on the master and the spirit lives; Command: Bodyguard or Absorb Wounds
-   under 50 %; Spirit Absorption under 40 % with a spirit over 50 %; Contract of Resistance against a caster; Cloaking Word then the generic
+8. **Defence**: Emnity Swap, then alone Spirit Pique, when an enemy turns on the master and the spirit lives; Absorb Wounds, Bodyguard,
+   Spirit Preserve, Wall of Protection under 50 % while hit; Spirit Absorption under 40 % with a spirit over 50 %; Contract of Resistance against a caster; Cloaking Word then the generic
    retreat, alone, under 25 %; Remove Shock.
-9. **Control**: alone, a fear on a second enemy (the sorcerer's `secondToControl`); in a group roots and binds only, never a fear (the cast
-   rule); Sigil of Silence and Spirit Disturbance on a caster casting.
+9. **Control**: alone, a fear on a second enemy (the sorcerer's `secondToControl`); in a group Body Root, never a fear (the cast rule); Sigil
+   of Silence on a caster. Spirit Disturbance is cast on cooldown among the commands, to open Detonation Claw's chain.
 10. **The big moments** *(play)*: Kamikaze only to finish a fight already won or to save the master, never with a long cooldown spirit out;
     Spirit's Empowerment never chosen (it throws the spirit away) until a player of the class says otherwise; Cursecloud at 4000 DP against
-    three enemies or more, alone.
-11. **Stigmas** *(play)*: regular Withering Gloom, Magic's Freedom, Cloaking Word; greater Infernal Pain, Magic Implosion, Healing Spirit;
-    major Infernal Blight, Armor Spirit; Command: Absorb Wounds last.
+    three enemies or more, alone; Disenchant at 2000 DP against a player.
+11. **Stigmas** *(play)*: regular Withering Gloom, Magic's Freedom, Cloaking Word; advanced Infernal Pain, Healing Spirit, Infernal Blight,
+    Armor Spirit.
 
 Tests per milestone, pure as the others' are. Then a watch in game: a spirit master alone in Eltnen, one in a group, `//bot debug combat` on,
 its spirit seen casting a command. Then its deaths on Reshanta's upper layer, against the measure of the roadmap's theme 3.

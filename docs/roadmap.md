@@ -110,7 +110,8 @@ cleric, ranger, gladiator, sorcerer) and the bard's built from the data (unverif
 **Left**:
 1. **Spirit master, aethertech, bard and gunner playbooks first**: on Reshanta's upper layer they died 36 times of 40 in half an hour, against four
    deaths for the other 21. Then the **assassin** (runes and chains). Without a guide for now (decided 15 November): each from the data, judgement marked as such, with its data test; the bard's
-   is built, to watch in game ([bard-plan.md](classes/plans/bard-plan.md)), the spirit master next ([spirit-master-plan.md](classes/plans/spirit-master-plan.md)).
+   and the spirit master's are built, to watch in game ([bard-plan.md](classes/plans/bard-plan.md),
+   [spirit-master-plan.md](classes/plans/spirit-master-plan.md)); the aethertech and the gunner next.
 2. **Threat**: damage waits for the tank's first blows, and pauses when its threat nears the tank's (about 85 %) until it falls back (about 70 %);
    today it opens at the same instant and can pull the mob off (`AggroList.getTarget(MOST_HATED)`).
 3. **The tank's tools**: a pull from range on the player's order, the monster brought back to the group; an area taunt once loose monsters reach a

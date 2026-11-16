@@ -154,9 +154,8 @@ Up to three run at once, which is the engine's own limit (`EffectController` end
 
 ## Servants
 
-A spirit master is its spirit, so the summon is cast before any buff: it is the one upkeep still there in ten minutes, and the class cannot fight
-without it. Only the lasting companion — the rest of the `SUMMON` family puts a totem, a trap or a gate on the ground, each a tactic with a moment
-rather than something to call up because the bot happens to know how.
+A spirit master is its spirit, so the summon is cast before any buff; which one is the playbook's `servantOrder`. Only the lasting companion:
+the rest of the `SUMMON` family puts a totem, a trap or a gate on the ground, each a tactic with a moment, not an upkeep.
 
 **Cast only while standing still.** A summon has a cast time and a cast roots the caster, so one started mid-stride is cancelled by the next step. With
 the decision tick coming round every second this looped for ever — a caster running across a field conjuring nothing, which is how it was reported. The
@@ -166,6 +165,7 @@ Once the servant exists, `BotServantAI` drives it, because **nothing on the serv
 
 ```
 gone?      master or servant dead, released          -> the tick takes itself off
+an order?  its master's command queued on it         -> carried out, walking into reach first (5 s at most)
 too far?   beyond the follow distance                -> walk, and nothing else this tick
 defend     anything hating the master or the servant -> attack it
 assist     what the master is attacking              -> same target

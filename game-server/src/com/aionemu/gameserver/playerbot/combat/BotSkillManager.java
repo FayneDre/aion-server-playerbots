@@ -322,7 +322,14 @@ public class BotSkillManager {
 			BotServantAI.take(bot);
 			return false;
 		}
-		return cast(bot, bot, skills(bot, BotSkillManager::isSummon));
+		List<String> order = BotPlaybooks.of(bot).servantOrder(bot);
+		if (order.isEmpty())
+			return cast(bot, bot, skills(bot, BotSkillManager::isSummon));
+		for (String group : order) {
+			if (tryCastGroup(bot, bot, group))
+				return true;
+		}
+		return false;
 	}
 
 	/**

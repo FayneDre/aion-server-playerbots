@@ -12,12 +12,14 @@ import com.aionemu.gameserver.model.gameobjects.Summon;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.skill.NpcSkillEntry;
 import com.aionemu.gameserver.model.skill.NpcSkillList;
+import com.aionemu.gameserver.model.summons.SkillOrder;
 import com.aionemu.gameserver.model.summons.UnsummonType;
 import com.aionemu.gameserver.playerbot.BotScheduler;
 import com.aionemu.gameserver.playerbot.movement.BotServantMoveController;
 import com.aionemu.gameserver.services.summons.SummonsService;
 import com.aionemu.gameserver.skillengine.SkillEngine;
 import com.aionemu.gameserver.skillengine.model.Skill;
+import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.utils.PositionUtil;
 
 /**
@@ -57,11 +59,18 @@ public class BotServantAI implements Runnable {
 	private static final long SWING_MARGIN_MILLIS = 100;
 	/** How long the servant waits between two attempts at a skill, so a spell on cooldown is not asked for twice a second. */
 	private static final long CAST_INTERVAL_MILLIS = 3000;
+	/** How long an order its master gave may wait for the servant to come in reach, after which it is dropped: the moment it was given for is gone. */
+	private static final long ORDER_PATIENCE_MILLIS = 5000;
+	/** Reach an order's skill is given when its data states none, about a spirit's own melee. */
+	private static final float DEFAULT_ORDER_REACH = 5f;
 
 	private final Summon servant;
 	private final Player master;
 	private long nextSwing;
 	private long nextCast;
+	/** The order the servant is walking into reach for, and since when, so that one it can never reach does not hold it for ever. */
+	private SkillOrder pendingOrder;
+	private long pendingSince;
 
 	private BotServantAI(Summon servant, Player master) {
 		this.servant = servant;
@@ -94,6 +103,8 @@ public class BotServantAI implements Runnable {
 				return;
 			if (isBeyondLeash())
 				return;
+			if (carryOutOrder())
+				return;
 			Creature enemy = defend();
 			if (enemy == null)
 				enemy = assist();
@@ -111,6 +122,58 @@ public class BotServantAI implements Runnable {
 		} catch (Exception e) {
 			log.error("Servant of " + master.getName() + " failed its tick", e);
 		}
+	}
+
+	/**
+	 * Carries out the next order its master gave, as the master's client would.
+	 * <p>
+	 * A spirit master's commands ({@code petorderuseultraskill}: Spirit Erosion, Spirit Detonation Claw, Command: Bodyguard...) do not make the spirit act:
+	 * the effect only queues an order on it ({@link Summon#addSkillOrder}) and tells the client, whose {@code CM_SUMMON_CASTSPELL} then has the spirit
+	 * carry it out. A bot has no client, so every command it cast spent its cooldown and its mana, and the spirit did nothing. This is that packet's
+	 * work: the order taken off the queue and handed to {@code SummonController.useSkill}, which checks the skill against {@code pet_skills.xml} and
+	 * releases the spirit after an order that says so (Command: Kamikaze).
+	 *
+	 * @return true if the servant is busy with an order: casting it, or walking into reach for it.
+	 */
+	private boolean carryOutOrder() {
+		SkillOrder order = servant.getNextSkillOrder();
+		if (order == null) {
+			pendingOrder = null;
+			return false;
+		}
+		if (servant.isCasting())
+			return true;
+		long now = System.currentTimeMillis();
+		if (order != pendingOrder) {
+			pendingOrder = order;
+			pendingSince = now;
+		}
+		Creature target = order.getTarget();
+		if (target == null || !target.isSpawned() || target.isDead() || now - pendingSince > ORDER_PATIENCE_MILLIS) {
+			servant.retrieveNextSkillOrder(); // dropped: what it was given for is gone
+			return false;
+		}
+		if (!target.equals(servant) && PositionUtil.getDistance(servant, target) > orderReach(order)) {
+			if (servant.getMoveController() instanceof BotServantMoveController moveController)
+				moveController.headFor(target.getX(), target.getY(), target.getZ());
+			return true;
+		}
+		servant.retrieveNextSkillOrder();
+		if (servant.getMoveController() instanceof BotServantMoveController moveController)
+			moveController.stop();
+		if (!target.equals(servant))
+			servant.setTarget(target);
+		servant.getController().useSkill(order);
+		log.debug("Servant of {} carries out order {} at {}", master.getName(), order.getSkillId(), target.getName());
+		return true;
+	}
+
+	/** @return How near its target the servant must be to cast the skill of an order: the range its data gives, less a step for the target's own moves. */
+	private static float orderReach(SkillOrder order) {
+		SkillTemplate template = DataManager.SKILL_DATA.getSkillTemplate(order.getSkillId());
+		if (template == null || template.getProperties() == null || template.getProperties().getFirstTargetRange() <= 0)
+			return DEFAULT_ORDER_REACH;
+		return Math.max(DEFAULT_ORDER_REACH, template.getProperties().getFirstTargetRange() - 1f);
 	}
 
 	/** @return true if the enemy is close enough to the master, and the servant not too far from it, for the servant to go and fight. */
@@ -194,8 +257,8 @@ public class BotServantAI implements Runnable {
 	 * Casts one of the servant's own skills.
 	 * <p>
 	 * Read from {@code npc_skills.xml} through {@code NPC_SKILL_DATA}, which is where a summon's skills are: the first entry in that file is npc
-	 * 201010, a summon. Not {@code pet_skills.xml}, despite {@code SummonController.useSkill} checking against it — everything in there is a toy pet
-	 * of the 833000 range, and none of the combat summons appears in it, so that path can never fire for a spirit.
+	 * 201010, a summon. Not {@code pet_skills.xml}: that file holds what each spirit casts on its master's orders, which {@link #carryOutOrder} uses,
+	 * not what it casts of its own accord.
 	 *
 	 * @return true if a cast started, in which case the servant is rooted for it and does nothing else.
 	 */

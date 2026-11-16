@@ -129,10 +129,16 @@ master means a statue. See `playerbot/combat/BotServantAI` and `playerbot/moveme
 **A summon extends `Creature`, not `Npc`**, so it has no `getSkillList()` — and no `ai/handler` or `ai/manager` class applies to it, since every one of
 those is typed `NpcAI`.
 
-**Its skills are in `npc_skills.xml`, not `pet_skills.xml`.** `SummonController.useSkill` checks the pet table before casting, which reads like the
-source of truth and is not: everything in that file is a toy pet of the 833000 range, and no combat summon appears in it, so that path can never fire
-for a spirit. The combat summons are in the npc table — its very first entry is npc 201010, a summon. `PetSkillData.petHasSkill` also threw rather than
-answering false for anything absent from its map, which is reachable from a client packet.
+**What it casts of its own accord is in `npc_skills.xml`**, whose very first entry is npc 201010, a summon. `pet_skills.xml` holds something else:
+what each spirit casts on its master's **orders**, by order skill and spirit. `PetSkillData.petHasSkill` also threw rather than answering false for
+anything absent from its map, which is reachable from a client packet.
+
+**A command only queues an order.** A spirit master's commands (`petorderuseultraskill`: Spirit Erosion, Command: Bodyguard, Kamikaze...) make the spirit
+do nothing: `PetOrderUseUltraSkillEffect` puts a `SkillOrder` on the summon and tells the client, whose `CM_SUMMON_CASTSPELL` then has it carried out
+(`SummonController.useSkill(order)`). A bot's command spent its cooldown and its mana for nothing until `BotServantAI.carryOutOrder` did the packet's
+work (16 November 2026).
+
+**A second summon fails while one is out** (`SummonsService.createSummon`), its cooldown spent: changing spirits is a release, then a summon.
 
 **`SummonController.attackTarget` audits a fast swing as a speed hack**, writing to the server log and to every administrator's chat. Anything driving a
 summon must pace itself by `getAttackSpeed()`, exactly as the client does. The stigma work hit the same wall from the other side.
