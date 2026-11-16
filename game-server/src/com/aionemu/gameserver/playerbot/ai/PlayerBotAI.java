@@ -494,8 +494,10 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	private void serveTheGroup() {
 		if (posture.standUp()) // one tick before acting, so the animation has played out by then
 			return;
-		// the class's care between fights on every tick (raising a mate, a cleanse), its buffs only with a fight in sight
-		if (BotPlaybooks.of(getOwner()).tend(getOwner()) || isAFightComing() && (buffForTheFight() || readAFightScroll()))
+		// the servant first, as on the bot's own ticks: a spirit that died, or that the class sent away for another, was otherwise called up again only
+		// by the next fight, four and a half seconds rooted under the first blows. Then the class's care between fights on every tick (raising a mate, a
+		// cleanse), its buffs only with a fight in sight
+		if (callUpServant() || BotPlaybooks.of(getOwner()).tend(getOwner()) || isAFightComing() && (buffForTheFight() || readAFightScroll()))
 			return;
 		// A healer takes its place before the casting that is not urgent: with a mate to heal or a buff to give on every tick, which is most of a fight, the walk was never
 		// reached and the healer stood wherever the pull had left it. A mate in danger is healed first.

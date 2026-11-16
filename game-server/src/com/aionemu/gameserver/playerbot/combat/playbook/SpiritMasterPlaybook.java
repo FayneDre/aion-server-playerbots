@@ -335,11 +335,16 @@ final class SpiritMasterPlaybook implements ClassPlaybook {
 	@Override
 	public boolean tend(Player bot) {
 		Reading reading = readingOf(bot, null, false);
-		if (wrongSpiritOut(reading.situation()) && BotSkillManager.dismissServant(bot)) {
+		if (wrongSpiritOut(reading.situation()) && !aimsAtAnEnemy(bot) && !aimsAtAnEnemy(bot.getSummon()) && BotSkillManager.dismissServant(bot)) {
 			log.debug("Spirit master {} sends away its {} for its {}", bot.getName(), reading.situation().spirit, wantedSpirit(reading.situation()));
 			return true;
 		}
 		return performFirst(bot, reading, SpiritMasterPlaybook::decideSpirit);
+	}
+
+	/** @return true if the creature has a living enemy in its sights: a fight about to start, which the leader's target can be before anything hits. */
+	private static boolean aimsAtAnEnemy(Creature creature) {
+		return creature != null && creature.getTarget() instanceof Creature target && !target.isDead() && creature.isEnemy(target);
 	}
 
 	@Override
