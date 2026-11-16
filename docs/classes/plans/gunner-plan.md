@@ -32,9 +32,11 @@ played"). So the 19 cannon skills cannot be cast: this playbook is a **pistol** 
 - **No gunner playbook.** The generic order casts by stated damage with chain links first. It does not know that the chain links repeat
   (`selfcount`, `precount`: Rapidfire twice, then Automatic Fire twice, then Steel Shot), when Reload is worth its cooldown, or that half the class
   needs a weapon it does not hold. Gunners died with the spirit master, the aethertech and the bard on Reshanta's upper layer.
-- **Repeated chain links are unmeasured.** `continuesAChain` puts every link of an open chain first and sorts the links by power, so the bot may ask
-  for Automatic Fire (which needs Rapidfire *twice*) before the second Rapidfire. Whether the engine's refusal of that try leaves the chain open is
-  not known: the first milestone measures it.
+- **Repeated chain links already work**, read from the code rather than measured. `continuesAChain` puts every link of an open chain first and
+  sorts them by power, so the bot may ask for Automatic Fire (which needs Rapidfire *twice*) after one Rapidfire. The engine refuses it without
+  touching the chain (`ChainCondition.validate` "checks the chain state without changing it"; only a cast that starts resets it),
+  `BotSkillManager.cast` goes on to the next candidate in the same tick, the second Rapidfire, and a refusal is never counted towards
+  `isPausedAfterFailedCasts`, which counts casts begun and cut short.
 - **The cannon skills are offered to it**: nothing in the generic order reads the weapon a skill asks for, so a pistol gunner tries them, the engine
   refuses, and `isPausedAfterFailedCasts` pauses each one for a while. Harmless, but every refusal is a tick spent.
 - **No stat weights** (`BotStatWeights`: "nobody who wrote the orders plays these two"): it takes the magical tail.
@@ -91,9 +93,7 @@ Sequential Fire, Snow Shell, Aetheric Bombardment, Aerial Fury. Left out: Herb T
 
 0. **Name the skills**: `glossary/gunner.md`; read what Reload and Autoload reset, Stable Stance's cost, Memory Manipulation's sign; every group
    above checked by `GunnerPlaybookDataTest`, with the weapon each move needs (no `CANNON`-only group among the moves).
-1. **Measure the chains first**: a gunner alone in Eltnen for ten minutes, `//bot debug combat` on: how many chain A openers reach Steel Shot or
-   Automatic Fire, how many end after the first Rapidfire. If a refused link closes the chain, the repeat is taught where it belongs
-   (`continuesAChain`'s order: a link whose `precount` is not met yet after the one that meets it), for every class.
+1. *(Dropped: the repeated links were to be measured first; the code answers it, above.)*
 2. **The seam**: `GunnerPlaybook` registered, `swings` true (a pistol's shot is its auto attack *(play)*), the cannon groups claimed and never cast,
    `claims` for every move below; the chain links (2TH and after) and Direct Shot stay with the generic order.
 3. **The chains** *(play)*: an opener while none is open: Trunk Shot on a target casting (its stagger), then Gunshot, Crosstrigger, Steady Fire,

@@ -99,7 +99,7 @@ have no plan yet ([roadmap.md](roadmap.md), theme 3).
 
 | [plans/bard-plan.md](classes/plans/bard-plan.md) | The bard, the first playbook planned without a guide: every rule from the data or marked *(play)*. Built, unverified in game. |
 | [plans/spirit-master-plan.md](classes/plans/spirit-master-plan.md) | The spirit master, from the data: its spirit chosen and kept alive, its commands carried out (a bot has no client to do it). Built, unverified in game. |
-| [plans/gunner-plan.md](classes/plans/gunner-plan.md) | The gunner, from the data: a pistol gunner (the cannon's 19 skills out of reach), its repeated chain links measured first. Not started. |
+| [plans/gunner-plan.md](classes/plans/gunner-plan.md) | The gunner, from the data: a pistol gunner (the cannon's 19 skills out of reach), its chains left to the generic order, which already carries their repeated links. Not started. |
 
 ## Gear — [gear/](gear/)
 
