@@ -61,7 +61,7 @@ function Get-Text([string]$rev, [string]$path) {
         cmd /c "git -C `"$repo`" show ${rev}:${path} > `"$tmp`" 2>nul"
         if ($LASTEXITCODE -ne 0) { return $null }
         return [Text.Encoding]::GetEncoding(28591).GetString([IO.File]::ReadAllBytes($tmp)).Replace("`r`n", "`n")
-    } finally { [IO.File]::Delete($tmp) }
+    } finally { try { [IO.File]::Delete($tmp) } catch { Write-Warning "Could not remove $tmp." } }
 }
 
 function Get-InstalledText([string]$path) {
@@ -76,7 +76,7 @@ function Install-File([string]$path, [string]$target) {
         cmd /c "git -C `"$repo`" show ${To}:${path} > `"$tmp`""
         if ($LASTEXITCODE -ne 0) { throw "Could not read $path at $To" }
         Copy-Item $tmp $target -Force
-    } finally { [IO.File]::Delete($tmp) }
+    } finally { try { [IO.File]::Delete($tmp) } catch { Write-Warning "Could not remove $tmp." } }
 }
 
 $mainClass = @{ 'game-server' = 'com.aionemu.gameserver.GameServer'; 'login-server' = 'com.aionemu.loginserver.LoginServer'; 'chat-server' = 'com.aionemu.chatserver.ChatServer' }
