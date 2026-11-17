@@ -66,7 +66,8 @@ foreach ($server in $script:AionServers) {
     } else {
         $failed += "$($db.Schema): $((Select-String -Path $errors -Pattern 'mysqldump: ' -ErrorAction SilentlyContinue | Select-Object -Last 2 | ForEach-Object { $_.Line.Trim() }) -join ' ')"
     }
-    [IO.File]::Delete($errors)  # not Remove-Item: it fails on an 8.3 TEMP path (see apply-sql.ps1)
+    # not Remove-Item: it fails on an 8.3 TEMP path (see apply-sql.ps1)
+    try { [IO.File]::Delete($errors) } catch { Write-Warning "Could not remove $errors ($($_.Exception.Message))." }
 }
 
 if ($failed.Count -gt 0) { throw "Backup incomplete, $folder kept for a look:`n  $($failed -join "`n  ")" }

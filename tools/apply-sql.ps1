@@ -262,7 +262,7 @@ try {
         if (-not (Test-Path $backup) -or -not (Select-String -Path $backup -Pattern '^-- Dump completed' -Quiet)) {
             throw "The backup of $schema failed, nothing was changed: $(Get-Content $errors -ErrorAction SilentlyContinue | Select-Object -Last 3)"
         }
-        [IO.File]::Delete($errors)
+        try { [IO.File]::Delete($errors) } catch { Write-Warning "Could not remove $errors ($($_.Exception.Message))." }
         Write-Output ("Backup: $backup ({0:N0} MB)" -f ((Get-Item $backup).Length / 1MB))
     }
     # duplicate column, duplicate key, table exists, can't drop what is not there, a table to drop that is gone: the statement's effect is in the database.
@@ -284,6 +284,9 @@ try {
     $global:LASTEXITCODE = 0
 } finally {
     # [IO.File]::Delete, not Remove-Item: on a profile whose TEMP is an 8.3 path (C:\Users\ABCDEF~1.XYZ) the provider throws an
-    # argument error that -ErrorAction does not silence, and a run that worked failed in its cleanup.
-    foreach ($f in @($cnf, $work)) { [IO.File]::Delete($f) }
+    # argument error that -ErrorAction does not silence, and a run that worked failed in its cleanup. Whatever the cause, a temp
+    # file left behind is a warning: it never turns a run into a failure, nor hides the error that is failing one.
+    foreach ($f in @($cnf, $work)) {
+        try { [IO.File]::Delete($f) } catch { Write-Warning "Could not remove $f ($($_.Exception.Message)); delete it by hand." }
+    }
 }
