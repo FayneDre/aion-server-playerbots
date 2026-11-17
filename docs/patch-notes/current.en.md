@@ -7,6 +7,35 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ---
 
+## v0.1.0-beta.9 — 2026-11-17
+
+It goes with launcher v0.3.0-beta.15. **No SQL, no navmesh to rebuild, no settings file changes.** The database scripts of the `tools`
+folder change; they come with the server.
+
+**What changes for players and testers**
+- **Installing from nothing no longer fails at the database on some PCs**: on a Windows account whose temporary folder has a short name
+  (such as `C:\Users\ABCDEF~1.XYZ`), deleting a temporary file failed at the very end, with the database made, and the whole install was
+  undone. A temporary file that cannot be deleted is now only a warning.
+- **The database scripts' errors keep their accents** when the launcher shows them.
+- **A dungeon cooldown set to 0 means no cooldown**, as `instance.properties` says: it divided by zero on entry. The Server settings page
+  of launcher v0.3.0-beta.15 sets that cooldown, from "Official" to "None".
+- **Three bot classes have their own way of fighting** instead of the generic order: the bard, the spirit master and the gunner (with
+  pistols). They are made from the game's data alone, with no guide, and have never been watched in game.
+  - **Bard**: its chain heals, cleanses, mana, defences, controls and charged songs.
+  - **Spirit master**: its spirit is called up between fights and carries out its master's commands; it is no longer sent away when a fight
+    is close.
+  - **Gunner**: its chains, the repeated links included.
+- **Resurrection order among bots**: the chanter first, then the bard, then the cleric.
+- **A bot refuses a legion invitation** instead of leaving it pending.
+- A chain whose window has passed is closed: a class waiting on it no longer stays stuck on it.
+
+**To test**
+- **Install the server from nothing** with launcher v0.3.0-beta.15, above all on the PC where the install failed.
+- **Dungeons**: set "None", finish a dungeon, leave and enter again, alone then in a group with a bot. Is it a fresh dungeon?
+- **A bard, a spirit master and a gunner in a group**: what they get wrong, with `//bot note <text>` next to the bot.
+
+---
+
 ## v0.1.0-beta.8 — 2026-11-15
 
 It goes with launcher v0.3.0-beta.12. **No SQL, no navmesh to rebuild.** **One default settings file changes**,
@@ -107,50 +136,3 @@ replaces it if it was not edited, and puts the new version beside it otherwise.
 **To test**
 - Install addons v0.1.0-beta.4, then in game open Combat Meter (the game's menu, Additional Functions, or `/dps`) and fight, alone and then in a
   group with a bot: damage, healing, a member's skills with a click on its name, the reset.
-
----
-
-## v0.1.0-beta.3 — 2026-11-07
-
-Revision `9164482`, the one `//bot version` shows. It goes with launcher v0.3.0-beta.5, which sets the premium rates. **No SQL, no navmesh to
-rebuild.** **One default settings file changes**, `login-server/config/network/network.properties` (the new option below); the launcher
-replaces it if it was not edited, and puts the new version beside it otherwise.
-
-**What changes for players and testers**
-- **Every player account is premium** (`loginserver.accounts.minimum_membership = 1`): new accounts are created premium, older ones become
-  premium when the login server starts. The premium rates are therefore the players', and the regular rates the bots', which have no account.
-- **A bot in a player's group earns at the player's rates** (the highest of the group's players), no longer at the regular ones.
-- **Group instance experience** stays the official game's whatever the rates: it is now divided by the premium rate instead of the regular one.
-
-**To test**
-- Change a premium rate on the launcher's Settings page, restart, and check the gain in game, alone and then in a group with a bot.
-
----
-
-## v0.1.0-beta.2 — 2026-11-06
-
-Revision `c979e97` for the code (the one of the server deployed here); a server installed by the launcher shows in `//bot version` the tag's
-commit, which only adds these notes and the release scripts. **The first patch shipped built**: it goes with launcher v0.3.0-beta.3, which
-installs it by itself, without Maven or a build. **No SQL, no navmesh to rebuild**, no default settings file changes.
-
-**What changes for testers**
-- **The server installs from the launcher**: the pre-release carries the built server (`aion-server-v0.1.0-beta.2.zip`, 149 MB), its
-  manifest and the navmesh maps (1.8 GB the first time; after that, only the maps rebuilt). The launcher downloads and checks everything while
-  the servers run, shows you what it will do, then stops them, installs, updates the database and starts them again. "Return to..." puts the
-  previous version back.
-- **Your files stay yours**: a default settings file you edited is not replaced, the new version is put beside it
-  (`<file>.new-v0.1.0-beta.2`); `mygs.properties`, the logs and what your server wrote into the navmesh are never touched.
-- **The server's version**: `//bot version` shows the version, the revision and the launcher API level, and the launcher asks the server for
-  it to say when it is too old.
-- **A JDK 25 is needed** (the server compiles its handlers at every start); Maven and Git no longer are.
-
-**Not fixed yet** (known, no need to report it)
-- **Installing through the launcher** was checked in tests and on a trial bundle only, not on your install yet.
-- **A database that never went through `apply-sql.ps1`**: its SQL statements are recorded as already done, not run again. If you never applied
-  `game-server/sql/update.sql` to your database, say so before installing.
-
-**To test**
-- **With launcher v0.3.0-beta.3**: "Update the server", install, play, then "Return to the server built from its sources", and check that the
-  server starts and the bots log in after both.
-- Anything wrong: `//bot note <text>` next to the bot, or a screenshot of the "Server version" panel.
-

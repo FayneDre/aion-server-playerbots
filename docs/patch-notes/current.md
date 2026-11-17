@@ -8,6 +8,35 @@ bundle (the entries up to v0.1.0-beta.4 named the server deployed here, which on
 
 ---
 
+## v0.1.0-beta.9 — 17/11/2026
+
+Il va avec le launcher v0.3.0-beta.15. **Pas de SQL, pas de navmesh à reconstruire, aucun fichier de réglages ne change.** Les scripts de
+base de données du dossier `tools` changent ; ils arrivent avec le serveur.
+
+**Ce qui change pour les joueurs et les testeurs**
+- **L'installation à partir de rien n'échoue plus à la base de données sur certains PC** : sur un compte Windows dont le dossier temporaire
+  a un nom court (du genre `C:\Users\ABCDEF~1.XYZ`), la suppression d'un fichier temporaire échouait à la toute fin, alors que la base
+  était faite, et l'installation entière était annulée. Un fichier temporaire qui ne s'efface pas n'est plus qu'un avertissement.
+- **Les erreurs des scripts de base de données gardent leurs accents** quand le launcher les affiche.
+- **Un délai de donjon réglé à 0 veut dire aucun délai**, comme le dit `instance.properties` : il faisait une division par zéro à
+  l'entrée. La page Réglages du serveur du launcher v0.3.0-beta.15 règle ce délai, de « Officiel » à « Aucun ».
+- **Trois classes de bots ont leur façon de combattre** au lieu de l'ordre générique : le barde, le spiritualiste et le pistolero (au
+  pistolet). Elles sont faites à partir des données du jeu seules, sans guide, et n'ont jamais été regardées en jeu.
+  - **Barde** : ses soins en chaîne, ses purifications, sa mana, ses défenses, ses contrôles et ses chants chargés.
+  - **Spiritualiste** : son esprit est rappelé entre les combats et exécute les commandements de son maître ; il n'est plus renvoyé
+    quand un combat approche.
+  - **Pistolero** : ses enchaînements, y compris ceux qui se répètent.
+- **Ordre de résurrection entre bots** : l'aède d'abord, puis le barde, puis le clerc.
+- **Un bot refuse une invitation de légion** au lieu de la laisser en attente.
+- Un enchaînement dont la fenêtre est passée est fermé : une classe qui l'attendait ne reste plus bloquée dessus.
+
+**À tester**
+- **Installer le serveur à partir de rien** avec le launcher v0.3.0-beta.15, surtout sur le PC où l'installation échouait.
+- **Donjons** : régler « Aucun », finir un donjon, ressortir et rentrer, seul puis en groupe avec un bot. Est-ce un donjon neuf ?
+- **Un barde, un spiritualiste et un pistolero en groupe** : ce qu'ils font de travers, avec `//bot note <texte>` près du bot.
+
+---
+
 ## v0.1.0-beta.8 — 15/11/2026
 
 Il va avec le launcher v0.3.0-beta.12. **Pas de SQL, pas de navmesh à reconstruire.** **Un fichier de réglages par défaut change**,
@@ -108,52 +137,3 @@ option ci-dessous) ; le launcher le remplace s'il n'a pas été modifié, sinon 
 **À tester**
 - Installer les addons v0.1.0-beta.4, puis en jeu ouvrir Combat Meter (menu du jeu, Additional Functions, ou `/dps`) et se battre, seul puis
   en groupe avec un bot : les dégâts, les soins, le détail par compétence d'un clic sur un nom, la remise à zéro.
-
----
-
-## v0.1.0-beta.3 — 07/11/2026
-
-Révision `9164482`, celle que `//bot version` affiche. Il va avec le launcher v0.3.0-beta.5, qui règle les taux premium. **Pas de SQL, pas de
-navmesh à reconstruire.** **Un fichier de réglages par défaut change**, `login-server/config/network/network.properties` (la nouvelle option
-ci-dessous) ; le launcher le remplace s'il n'a pas été modifié, sinon il pose la nouvelle version à côté.
-
-**Ce qui change pour les joueurs et les testeurs**
-- **Tous les comptes des joueurs sont premium** (`loginserver.accounts.minimum_membership = 1`) : les nouveaux comptes sont créés premium,
-  les anciens passent premium au démarrage du login server. Les taux premium sont donc ceux des joueurs, et les taux normaux ceux des bots,
-  qui n'ont pas de compte.
-- **Un bot dans le groupe d'un joueur gagne aux taux du joueur** (le plus haut des joueurs du groupe), et non plus aux taux normaux.
-- **L'expérience des instances de groupe** reste celle du jeu officiel quels que soient les taux : elle est maintenant divisée par le taux
-  premium au lieu du taux normal.
-
-**À tester**
-- Changer un taux premium dans la page Réglages du launcher, redémarrer, et vérifier le gain en jeu, seul puis en groupe avec un bot.
-
----
-
-## v0.1.0-beta.2 — 06/11/2026
-
-Révision `c979e97` pour le code (celle du serveur déployé ici) ; le serveur installé par le launcher affiche dans `//bot version` le commit du
-tag, qui n'ajoute que ces notes et les scripts de publication. **Premier patch livré tout compilé** : il va avec le launcher v0.3.0-beta.3, qui
-l'installe lui-même, sans Maven ni compilation. **Pas de SQL, pas de navmesh à reconstruire**, aucun fichier de réglages par défaut ne change.
-
-**Ce qui change pour les testeurs**
-- **Le serveur s'installe depuis le launcher** : la pre-release porte le serveur compilé (`aion-server-v0.1.0-beta.2.zip`, 149 Mo), son
-  manifeste et les cartes du navmesh (1,8 Go la première fois ; ensuite, seules les cartes reconstruites). Le launcher télécharge et vérifie
-  tout pendant que les serveurs tournent, te montre ce qu'il va faire, puis les arrête, installe, met à jour la base et les relance. «
-  Revenir à… » remet la version précédente.
-- **Tes fichiers restent à toi** : un fichier de réglages par défaut que tu as modifié n'est pas remplacé, la nouvelle version est posée à côté
-  (`<fichier>.new-v0.1.0-beta.2`) ; `mygs.properties`, les journaux et ce que ton serveur a écrit dans le navmesh ne sont jamais touchés.
-- **La version du serveur** : `//bot version` affiche la version, la révision et le niveau d'API du launcher, et le launcher la demande au
-  serveur pour dire s'il est trop ancien.
-- **Un JDK 25 est nécessaire** (le serveur compile ses handlers à chaque démarrage) ; Maven et Git ne le sont plus.
-
-**Ce qui n'est pas réglé** (connu, inutile de le signaler)
-- **L'installation par le launcher** n'a été vérifiée qu'en tests et sur un bundle d'essai, pas encore sur ton installation.
-- **Une base jamais passée par `apply-sql.ps1`** : ses instructions SQL sont notées comme déjà faites, pas rejouées. Si tu n'as jamais
-  appliqué `game-server/sql/update.sql` à ta base, dis-le avant d'installer.
-
-**À tester**
-- **Avec le launcher v0.3.0-beta.3** : « Mettre à jour le serveur », installer, jouer, puis « Revenir au serveur compilé depuis ses sources »,
-  et vérifier que le serveur démarre et que les bots se connectent après les deux.
-- Quelque chose ne va pas : `//bot note <texte>` près du bot, ou une capture du panneau « Version du serveur ».
-
