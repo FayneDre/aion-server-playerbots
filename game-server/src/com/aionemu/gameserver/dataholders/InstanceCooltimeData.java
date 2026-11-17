@@ -69,6 +69,8 @@ public class InstanceCooltimeData {
 
 	public long calculateInstanceEntranceCooltime(Player player, int worldId) {
 		int instanceCooldownRate = InstanceService.getInstanceRate(player, worldId);
+		if (instanceCooldownRate == 0) // "0 - disable cooldown" (instance.properties): unlimited entrance, where the division below threw
+			return 0;
 		long instanceCoolTime = 0;
 		InstanceCooltime clt = getInstanceCooltimeByWorldId(worldId);
 		if (clt == null || clt.getMaxCount() == 0)
