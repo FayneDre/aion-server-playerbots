@@ -153,7 +153,7 @@ function Repair-Floats($OldDb, $NewDb, [string]$Table) {
     if ($read.Code -ne 0) { throw "Reading the exact floats of $Table failed: $($read.Lines -join ' ')" }
     $file = Join-Path $env:TEMP "aion-floats-$PID-$Table.sql"
     [IO.File]::WriteAllLines($file, [string[]]@($read.Lines | Where-Object { $_ }), (New-Object Text.UTF8Encoding($false)))
-    try { $r = Restore-Dump $NewDb $file } finally { Remove-Item $file -ErrorAction SilentlyContinue }
+    try { $r = Restore-Dump $NewDb $file } finally { [IO.File]::Delete($file) }
     if ($r.Code -ne 0) { throw "Writing the exact floats of $Table failed: $($r.Output)" }
     return $true
 }

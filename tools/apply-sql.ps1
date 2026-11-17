@@ -262,7 +262,7 @@ try {
         if (-not (Test-Path $backup) -or -not (Select-String -Path $backup -Pattern '^-- Dump completed' -Quiet)) {
             throw "The backup of $schema failed, nothing was changed: $(Get-Content $errors -ErrorAction SilentlyContinue | Select-Object -Last 3)"
         }
-        Remove-Item $errors -ErrorAction SilentlyContinue
+        [IO.File]::Delete($errors)
         Write-Output ("Backup: $backup ({0:N0} MB)" -f ((Get-Item $backup).Length / 1MB))
     }
     # duplicate column, duplicate key, table exists, can't drop what is not there, a table to drop that is gone: the statement's effect is in the database.
@@ -283,5 +283,7 @@ try {
     Write-Output "Applied $($pending.Count) statement(s)."
     $global:LASTEXITCODE = 0
 } finally {
-    Remove-Item $cnf, $work -ErrorAction SilentlyContinue
+    # [IO.File]::Delete, not Remove-Item: on a profile whose TEMP is an 8.3 path (C:\Users\ABCDEF~1.XYZ) the provider throws an
+    # argument error that -ErrorAction does not silence, and a run that worked failed in its cleanup.
+    foreach ($f in @($cnf, $work)) { [IO.File]::Delete($f) }
 }
