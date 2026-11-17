@@ -63,6 +63,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# read by a program (the launcher), the output is UTF-8: in the console's code page an accent of a French error came out as garbage
+if ([Console]::IsOutputRedirected) { [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false) }
 if (-not $ServerRoot) {
     $ownInstall = Split-Path $PSScriptRoot -Parent
     $ServerRoot = if (Test-Path (Join-Path $ownInstall 'game-server\start.bat')) { $ownInstall } else { $env:AION_SERVER_HOME }

@@ -37,6 +37,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# read by a program (the launcher), the output is UTF-8: in the console's code page an accent of a French error came out as garbage
+if ([Console]::IsOutputRedirected) { [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false) }
 . (Join-Path $PSScriptRoot 'mysql-common.ps1')
 
 if (-not $ServerRoot) {
