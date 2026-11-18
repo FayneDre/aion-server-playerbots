@@ -16,7 +16,7 @@ those of the theme's detail.
 | 13 | Test feedback in game | `//bot note` and a zip by hand | 1 the report window; 2 what it carries; 3 where it goes; 4 a GitHub issue for everybody else; 5 a report's state |
 | 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 the group instances without a mesh; 5 lifts; 6 learned ground; 7 corridors |
 | 2 | Population | validated; memory guarded | 1 road careers: merchants, wardens, caravans; 2 the director: a pool stocked by level and role |
-| 3 | Combat | six playbooks validated | 1 four playbooks, then the assassin; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe |
+| 3 | Combat | a playbook for every class: six validated, five built from the data | 1 the five from the data watched in game; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe |
 | 4 | Groups and companions | validated (dungeons, composition, duels, friends, trades) | 1 formations; 2 a companion's gear in the player's hand; 3 cohorts; 4 bots group together; 5 doors and arenas |
 | 5 | Flight and the Abyss | validated (milestones 1-5) | nothing, by decision |
 | 6 | Capitals and social life | validated (town day, stores, chat, combat meter) | 1 personalities; 2 true rumours; 3 contested named monsters; 4 bots that take the first step; 5 bots that answer; 6 pages in game, GM tools |
@@ -29,9 +29,9 @@ those of the theme's detail.
 
 ## The order to do it in
 
-1. **Finish and steady what exists** (now): the upstream merge (0.2), the four places a tester walks (1.1), the report window in game (13), the four
-   playbooks and the assassin (3.1), threat, the tank, the healer (3.2 to 3.4), the PvP watch (8.1), the broker's prices (9.1). Several wait on a
-   tester's time; the playbooks do not. Navigation goes on beside, in its own order: obstacles, dungeons, the group instances' meshes, then lifts,
+1. **Finish and steady what exists** (now): the upstream merge (0.2), the four places a tester walks (1.1), the report window in game (13), the five
+   playbooks from the data watched (3.1), threat, the tank, the healer (3.2 to 3.4), the PvP watch (8.1), the broker's prices (9.1). Several wait on a
+   tester's time; threat (3.2) does not, and comes first. Navigation goes on beside, in its own order: obstacles, dungeons, the group instances' meshes, then lifts,
    learned ground and corridors (1.2 to 1.7).
 2. **The living world**, in the order decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md), its lots in brackets):
    the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots grouping
@@ -54,12 +54,12 @@ characters brought in as bots).
 **Done**: the test harness, two upstream merges (28 October, 13 November), the measuring and mesh-checking tools, about 600 tests on every deploy, the
 release process (one branch, pre-releases in two languages, the launcher updating itself and the server) and the install from nothing (portable
 MySQL and Java, tried on a clean machine on 14 November) ([architecture/how-it-works.md](architecture/how-it-works.md),
-[empty-machine-install-plan.md](architecture/history/empty-machine-install-plan.md)). Published last: server `v0.1.0-beta.8`, launcher `v0.3.0-beta.13`.
+[empty-machine-install-plan.md](architecture/history/empty-machine-install-plan.md)). Published last: server `v0.1.0-beta.9`, launcher `v0.3.0-beta.13`.
 
 **Left**:
 1. **Feedback as it comes**: the tester reports while playing; each plan's Status line says what has been seen ([feedback/](feedback/README.md)).
-2. **The next upstream merge**, then `tools/sync-install.ps1`: `4.8` has moved by 9 commits to 14 November (Rentus' Kuhara, the siege fortress
-   bosses, revival after a deadly fall, a chat channel leak, decomposable sets, manastones); the sooner, the smaller.
+2. **The next upstream merge**, then `tools/sync-install.ps1`: `4.8` has moved by 12 commits to 18 November (Rentus' Kuhara, the siege fortress
+   bosses, revival after a deadly fall, a chat channel leak, decomposable sets, manastones and three since); the sooner, the smaller.
 3. **The emulator's own gaps met while playing** (a quest that cannot be finished, an npc missing, a boss that does not act): each fixed in a commit
    of its own, offered upstream when it is theirs, so merges stay small. No plan yet.
 
@@ -104,16 +104,16 @@ on 26 maps, the density modes and the memory guard (heap, route planning, the ma
 
 ## 3. Classes and combat
 
-**Done**: combat in two ticks from the group's aggro, the death routine, retreat, marks, group positioning, six playbooks validated (templar, chanter,
-cleric, ranger, gladiator, sorcerer) and the bard's built from the data (unverified in game), the fight's decisions as pure rules with their suites ([combat/how-it-works.md](combat/how-it-works.md)).
+**Done**: combat in two ticks from the group's aggro, the death routine, retreat, marks, group positioning, a playbook for every class, six validated (templar, chanter,
+cleric, ranger, gladiator, sorcerer) and five built from the data (bard, spirit master, gunner, aethertech, assassin; unverified in game), the fight's decisions as pure rules with their suites ([combat/how-it-works.md](combat/how-it-works.md)).
 
 **Left**:
-1. **Spirit master, aethertech, bard and gunner playbooks first**: on Reshanta's upper layer they died 36 times of 40 in half an hour, against four
-   deaths for the other 21. Then the **assassin** (runes and chains). Without a guide for now (decided 15 November): each from the data, judgement marked as such, with its data test; the bard's,
-   the spirit master's, the gunner's and the aethertech's are built, to watch in game ([bard-plan.md](classes/plans/bard-plan.md),
+1. **The five playbooks from the data, watched in game**: all built (bard, spirit master, gunner, aethertech, assassin), none seen by a tester yet.
+   They were first because on Reshanta's upper layer four of those classes died 36 times of 40 in half an hour, against four deaths for the other
+   21: the same half hour measured again (`tools/measure.sh`) tells whether they now hold. Each plan says what to watch ([bard-plan.md](classes/plans/bard-plan.md),
    [spirit-master-plan.md](classes/plans/spirit-master-plan.md), [gunner-plan.md](classes/plans/gunner-plan.md),
-   [aethertech-plan.md](classes/plans/aethertech-plan.md): a tank now, one tank named per group), and the assassin's
-   ([assassin-plan.md](classes/plans/assassin-plan.md): its runes carved to five and burst there, where they burst at any level before).
+   [aethertech-plan.md](classes/plans/aethertech-plan.md): a tank now, one tank named per group; [assassin-plan.md](classes/plans/assassin-plan.md):
+   its runes carved to five and burst there).
 2. **Threat**: damage waits for the tank's first blows, and pauses when its threat nears the tank's (about 85 %) until it falls back (about 70 %);
    today it opens at the same instant and can pull the mob off (`AggroList.getTarget(MOST_HATED)`).
 3. **The tank's tools**: a pull from range on the player's order, the monster brought back to the group; an area taunt once loose monsters reach a

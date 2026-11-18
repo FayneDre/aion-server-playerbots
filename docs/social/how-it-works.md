@@ -16,7 +16,7 @@ unless named otherwise.
   one who glides is copied (`LeaderGlides`).
 - **The leader is never a bot**: leading means answering invitations and setting loot; a group with no player left is left. Marks set by the leader
   are read by the playbooks (`BotMarks`).
-- **The Find Group window** (`BotRecruiter` at the top of the module, `RecruitPlan`): every 5 s the Instance Groups offers are read and filled with a tank, a
+- **The Find Group window** (`BotRecruiter` at the top of the module, `RecruitPlan`): every 5 s the Instance Groups offers are read and filled with a tank (a templar or an aethertech), a
   healer and a support before damage, at the player's level give or take two (four if nobody of the role is that close), woken beside the player
   from the pool or taken from the free bots; a recruit no longer in the group, or never in it after 30 s, goes home. Needs
   `gameserver.instance_group.form_anywhere = true`.
