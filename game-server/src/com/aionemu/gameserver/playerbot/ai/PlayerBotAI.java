@@ -518,6 +518,10 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			// an enemy player on a mate, a real player's included: helped whatever the bot's temperament, and whatever the PvP option says
 			assisted = BotPvpDefence.enemyOnAMate(getOwner(), this::isIgnored);
 		}
+		if (assisted != null && BotPull.holdsBack(getOwner(), assisted)) {
+			followLeader(); // the tank is bringing it to the group: the fight is fought here, once it arrives
+			return;
+		}
 		if (assisted == null) {
 			if (healer && tendTheFight())
 				return;
@@ -705,6 +709,8 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 			// start; the decision tick never did.
 		} else if (following && followIntoTheAir()) {
 			// up after the leader, and nothing else this tick: everything below is about ground the bot is no longer standing on
+		} else if (following && BotPull.drive(getOwner(), this)) {
+			// the tank pulling on the player's order, ahead of its own defence: struck on the way back, it walks on rather than fight where it was caught
 		} else if (autonomous && !following && retreatIfLosing()) {
 			// Running from a fight it cannot win, which is the one thing a bot never did: it defended itself against anything, at any level, in any
 			// number, until it died -- then resurrected, walked back to the home it still had beside the thing that killed it, and did it again.

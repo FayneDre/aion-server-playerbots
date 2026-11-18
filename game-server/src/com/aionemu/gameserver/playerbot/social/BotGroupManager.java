@@ -194,8 +194,10 @@ public class BotGroupManager {
 				return;
 			// The one it is actually hitting, not merely one it holds a grudge against: a monster hates everything that has touched it, and a tank
 			// that answered every grudge would spend the fight taunting things already looking at it.
+			// Nor one held by another tank of the group, a player's or a bot's: a second templar or an aethertech holding an add is doing the job, and the
+			// taunt would only drag it back and forth between them.
 			Creature victim = npc.getAggroList().getTarget(AggroTarget.MOST_HATED);
-			if (victim != null && !victim.equals(bot) && members.contains(victim))
+			if (victim != null && !victim.equals(bot) && members.contains(victim) && !BotRole.holdsAsTank(victim))
 				found[0] = npc;
 		});
 		return found[0];

@@ -23,7 +23,7 @@ class ClericPlaybookTest {
 
 		int hp = 100, mp = 100, level = 60, dp = 0, tankHp = -1, memberHp = -1, hurtUnder60, hurtUnder50, hurtUnder30, othersUnder90, debuffedCount, deadCount, tankLoss, membersLosing;
 		boolean inTeam, inFight, assailed, hasTank, tankHasRejuvenation, tankHasSavingGrace, hasMember, selfHasRejuvenation, penanceUp, shieldUp, shroudUp, amplificationUp,
-			focusUp, selfDebuffed, tankDebuffed, hasDebuffedMember, controlled, shockChainOpen, justControlled, hasMateToRaise, hasDeadMate, chanterInGroup, inInstance,
+			focusUp, selfDebuffed, tankDebuffed, hasDebuffedMember, tankDisabled, memberDisabled, controlled, shockChainOpen, justControlled, hasMateToRaise, hasDeadMate, chanterInGroup, inInstance,
 			mending, hasOtherEnemy, hasAssailant, targetInMelee;
 		final Set<Move> onTarget = EnumSet.noneOf(Move.class), ready = EnumSet.noneOf(Move.class);
 
@@ -44,7 +44,7 @@ class ClericPlaybookTest {
 		Situation build() {
 			return new Situation(hp, mp, level, dp, inTeam, inFight, assailed, hasTank, tankHp, tankHasRejuvenation, tankHasSavingGrace, hasMember, memberHp, hurtUnder60,
 				hurtUnder50, hurtUnder30, othersUnder90, selfHasRejuvenation, penanceUp, shieldUp, shroudUp, amplificationUp, focusUp, selfDebuffed, tankDebuffed, hasDebuffedMember,
-				debuffedCount, controlled, shockChainOpen, justControlled, hasMateToRaise, hasDeadMate, deadCount, chanterInGroup, inInstance, tankLoss, membersLosing, mending,
+				tankDisabled, memberDisabled, debuffedCount, controlled, shockChainOpen, justControlled, hasMateToRaise, hasDeadMate, deadCount, chanterInGroup, inInstance, tankLoss, membersLosing, mending,
 				hasOtherEnemy, hasAssailant, targetInMelee, onTarget, ready);
 		}
 	}
@@ -255,6 +255,28 @@ class ClericPlaybookTest {
 	}
 
 	@Test
+	void aMateWhoCannotActIsCleansedFirstWhateverTheMana() {
+		S s = new S().group(100).ready(CLEANSE, SPLENDOR_OF_PURIFICATION, REJUVENATION);
+		s.selfDebuffed = true;
+		s.hasDebuffedMember = true;
+		s.memberDisabled = true;
+		s.debuffedCount = 3;
+		s.mp = 10;
+		assertCasts(CLEANSE, Who.MEMBER, heal(s), "asleep, before the cleric's own weakness, the area cleanse and the heal over time");
+		s.tankDebuffed = true;
+		s.tankDisabled = true;
+		assertCasts(CLEANSE, Who.TANK, heal(s), "the tank first of two put out");
+	}
+
+	@Test
+	void aHealStillComesBeforeTheCleanseOfAMateWhoCannotAct() {
+		S s = new S().group(30).ready(CLEANSE, HEALING_LIGHT);
+		s.hasDebuffedMember = true;
+		s.memberDisabled = true;
+		assertEquals(HEALING_LIGHT, moveOf(heal(s)));
+	}
+
+	@Test
 	void aHealComesBeforeACleanse() {
 		S s = new S().group(30).ready(CLEANSE, HEALING_LIGHT);
 		s.selfDebuffed = true;
@@ -425,10 +447,15 @@ class ClericPlaybookTest {
 	// --- reviving ---------------------------------------------------------------------------------------------------------------------------------------
 
 	@Test
-	void lightOfResurrectionOnlyOutOfAFightAndOnAMemberItIsToRaise() {
+	void lightOfResurrectionInAFightOnlyWhenCalmAndOnAMemberItIsToRaise() {
 		S s = new S().group(100).ready(LIGHT_OF_RESURRECTION);
 		s.hasMateToRaise = true;
-		assertNull(ClericPlaybook.decideRevive(s.build()), "not in a fight");
+		assertCasts(LIGHT_OF_RESURRECTION, Who.DEAD, ClericPlaybook.decideRevive(s.build()), "in a fight nobody is hurt in");
+		s.assailed = true;
+		assertNull(ClericPlaybook.decideRevive(s.build()), "not while it is hit: six seconds it cannot move in");
+		s.assailed = false;
+		s.hurtUnder60 = 1;
+		assertNull(ClericPlaybook.decideRevive(s.build()), "not with a mate under the area heal's threshold");
 
 		s.inFight = false;
 		assertCasts(LIGHT_OF_RESURRECTION, Who.DEAD, ClericPlaybook.decideRevive(s.build()));

@@ -19,6 +19,7 @@ import com.aionemu.gameserver.model.templates.world.WorldMapTemplate;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.gameobjects.player.PlayerCommonData;
+import com.aionemu.gameserver.playerbot.ai.BotPull;
 import com.aionemu.gameserver.playerbot.ai.PlayerBotAI;
 import com.aionemu.gameserver.utils.PositionUtil;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
@@ -216,6 +217,11 @@ public final class BotCommands {
 	 */
 	public static String give(String characterName, Player owner, List<String> what) {
 		return withBotAi(characterName, (bot, ai) -> ai.isOwnedBy(owner) ? BotTrades.give(bot, owner, what) : characterName + " is not your companion");
+	}
+
+	/** Has the group's tank pull the monster the player targets back to where the player stands; see {@link BotPull}. */
+	public static String pull(Player player) {
+		return BotPull.order(player);
 	}
 
 	/**

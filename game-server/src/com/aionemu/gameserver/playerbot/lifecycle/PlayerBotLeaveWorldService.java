@@ -6,6 +6,7 @@ import com.aionemu.gameserver.model.gameobjects.player.FriendList;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.alliance.PlayerAllianceService;
 import com.aionemu.gameserver.model.team.group.PlayerGroupService;
+import com.aionemu.gameserver.playerbot.ai.BotPull;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.playbook.BotPlaybooks;
 import com.aionemu.gameserver.playerbot.economy.BotStores;
@@ -39,6 +40,7 @@ public class PlayerBotLeaveWorldService {
 		BotTrades.forget(bot);
 		BotSkillManager.forget(bot);
 		BotPlaybooks.forget(bot);
+		BotPull.forget(bot);
 		BotTransports.forget(bot);
 		BotInstances.forget(bot);
 		bot.getController().cancelCurrentSkill(null);

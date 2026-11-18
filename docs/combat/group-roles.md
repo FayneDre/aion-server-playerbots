@@ -18,6 +18,15 @@ same one. Everything written for "the tank" asks for that one (`BotRole.isGroupT
 cast, whom the healers and supports look after, where the others stand. The other tank of a group with both fights as damage until this one dies.
 The aethertech's own rules: [aethertech-plan.md](../classes/plans/aethertech-plan.md).
 
+**Another tank's monster is left to it** (`BotRole.holdsAsTank`, 18 November): a monster whose victim is a tank of the group, named or not, a
+player's or a bot's, is not loose. The peel, the templar's hold on its own target and the aethertech's count for Magnetic Wave all leave it, so
+two tanks never drag one monster back and forth.
+
+**A pull on the player's order** (`//bot pull`, `ai/BotPull`, 18 November): the group's tank walks within reach of the monster the player
+targets, strikes it from as far as a skill allows (a taunt first, else any single-target attack, else the weapon) and walks back to where the
+player stood, the monster after it; the others hold off that monster until it is within 10 m of the spot. Up to 50 m away, given up after 30 s.
+Nothing pulls on its own: starting a fight stays the player's. Unverified in game.
+
 **Only inside a group**, with one exception. A solo bot is untouched: a templar alone does not taunt and still sits down to recover. The templar's *defensives* (Hand of Healing, Empyrean Armor, Iron Skin) are the exception, and hold alone as well, which the guide confirmed.
 
 A taunt is **not** `ProvokerEffect`, which is a proc. This used to be found by the `BOOSTHATE` effect, with no list of ids. It is named by skill group now

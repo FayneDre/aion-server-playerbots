@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.aionemu.gameserver.model.PlayerClass;
+import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 
@@ -54,6 +55,14 @@ public enum BotRole {
 
 	public static BotRole of(Player bot) {
 		return of(bot.getPlayerClass());
+	}
+
+	/**
+	 * @return true if the creature is a tank, a player's or a bot's, named or not: a monster on it is being held, and a taunt would only drag it back
+	 *         and forth between two tanks. What every rule that peels a monster off a mate asks of the mate first.
+	 */
+	public static boolean holdsAsTank(Creature creature) {
+		return creature instanceof Player player && of(player) == TANK;
 	}
 
 	/** The tank classes in the order a group takes its tank from: the templar, watched in game, before the aethertech. */

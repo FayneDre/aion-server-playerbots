@@ -557,7 +557,7 @@ final class AethertechPlaybook implements ClassPlaybook {
 				return;
 			near[0]++;
 			Creature victim = npc.getAggroList().getTarget(AggroTarget.MOST_HATED);
-			if (victim != null && !victim.equals(bot) && members.contains(victim)
+			if (victim != null && !victim.equals(bot) && members.contains(victim) && !BotRole.holdsAsTank(victim)
 				&& !npc.getEffectController().isInAnyAbnormalState(AbnormalState.CANT_ATTACK_STATE))
 				looseNear[0]++;
 		});

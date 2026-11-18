@@ -48,7 +48,11 @@ a bystander. A class that heals keeps 25 % of its mana for it.
   grouped mate, and left (home) under 30 % life, outnumbered or in a crowd; this holds with the PvP option off.
 
 - **Cleanses** (`CleanseReach`): a cleanse reaches what the engine lets it, general, mental or physical; a weakening it failed on is noted as
-  resisted for cleanses of that kind only, so a bard's physical one does not keep a cleric off a sleep.
+  resisted for cleanses of that kind only, so a bard's physical one does not keep a cleric off a sleep. A cleric cleanses by severity, once
+  nobody needs a heal: a mate put out of the fight first (asleep, afraid, paralysed, confused, turned to stone:
+  `BotSkillManager.hasDisablingDebuff`), the tank before a member and whatever its mana, then itself, the tank, a member, as before.
+- **Resurrection in a fight**: the chanter raised a mate in a fight already; the cleric now does too (18 November, the guide said out of a fight
+  only), once nobody needs a heal, nobody is under 60 % and nothing is hitting it. Unverified in game.
 
 ## After a fight, and death
 

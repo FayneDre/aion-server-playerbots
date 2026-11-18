@@ -15,6 +15,7 @@ import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
+import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.skillengine.properties.Properties;
@@ -220,7 +221,7 @@ final class TemplarPlaybook implements ClassPlaybook {
 		boolean targetLoose = false, bossTarget = false;
 		if (inTeam && target instanceof Npc npc && !npc.isDead()) {
 			Creature victim = npc.getAggroList().getTarget(AggroTarget.MOST_HATED);
-			targetLoose = victim != null && !victim.equals(bot);
+			targetLoose = victim != null && !victim.equals(bot) && !BotRole.holdsAsTank(victim); // on another tank it is held, and Taunt would drag it back and forth
 			bossTarget = npc.isBoss();
 		}
 		return new Situation(bot.getLevel(), bot.getLifeStats().getHpPercentage(), bot.getCommonData().getDp(),

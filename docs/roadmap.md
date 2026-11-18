@@ -12,11 +12,11 @@ those of the theme's detail.
 
 | # | Theme | Where it stands | What is left, in order |
 |---|---|---|---|
-| 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated | 1 feedback as it comes; 2 the next upstream merge; 3 the emulator's gaps met in play |
+| 0 | Tooling and releases | install from nothing done; release milestones 1-6 validated; upstream merged to 18 November | 1 feedback as it comes; 2 the next upstream merge; 3 the emulator's gaps met in play |
 | 13 | Test feedback in game | `//bot note` and a zip by hand | 1 the report window; 2 what it carries; 3 where it goes; 4 a GitHub issue for everybody else; 5 a report's state |
 | 1 | Navigation | validated on 26 maps and 45 dungeons | 1 four places to walk; 2 obstacles and slopes; 3 dungeons walked; 4 the group instances without a mesh; 5 lifts; 6 learned ground; 7 corridors |
 | 2 | Population | validated; memory guarded | 1 road careers: merchants, wardens, caravans; 2 the director: a pool stocked by level and role |
-| 3 | Combat | a playbook for every class: six validated, five built from the data | 1 the five from the data watched in game; 2 threat; 3 the tank's tools; 4 the healer's priorities; 5 bosses; 6 after a wipe |
+| 3 | Combat | a playbook for every class: six validated, five built from the data | 1 the five from the data watched in game; 2 the tank's tools and 3 the healer's priorities watched; 4 bosses; 5 after a wipe |
 | 4 | Groups and companions | validated (dungeons, composition, duels, friends, trades) | 1 formations; 2 a companion's gear in the player's hand; 3 cohorts; 4 bots group together; 5 doors and arenas |
 | 5 | Flight and the Abyss | validated (milestones 1-5) | nothing, by decision |
 | 6 | Capitals and social life | validated (town day, stores, chat, combat meter) | 1 personalities; 2 true rumours; 3 contested named monsters; 4 bots that take the first step; 5 bots that answer; 6 pages in game, GM tools |
@@ -29,9 +29,9 @@ those of the theme's detail.
 
 ## The order to do it in
 
-1. **Finish and steady what exists** (now): the upstream merge (0.2), the four places a tester walks (1.1), the report window in game (13), the five
-   playbooks from the data watched (3.1), threat, the tank, the healer (3.2 to 3.4), the PvP watch (8.1), the broker's prices (9.1). Several wait on a
-   tester's time; threat (3.2) does not, and comes first. Navigation goes on beside, in its own order: obstacles, dungeons, the group instances' meshes, then lifts,
+1. **Finish and steady what exists** (now): the four places a tester walks (1.1), the five playbooks from the data, the pull and the healer's
+   priorities watched (3.1 to 3.3), the PvP watch (8.1), the broker's prices (9.1), all waiting on a tester's time; the report window in game (13)
+   later, decided on 18 November. Navigation goes on beside, in its own order: obstacles, dungeons, the group instances' meshes, then lifts,
    learned ground and corridors (1.2 to 1.7).
 2. **The living world**, in the order decided on 5 November ([living-world-plan.md](population/plans/living-world-plan.md), its lots in brackets):
    the limits on a fight, rift raids, raids the world answers (8.3 to 8.5, D1 to D3); bots grouping
@@ -47,19 +47,20 @@ playbooks. On 15 November: a stable release pair for now (pre-releases go on); t
 wrong being seen in game; bots yielding to real players; a day on the clock and bot sessions (F2, F3); a density that finds its own level (A4); slicing route searches for small processors (the guard already holds wakes while planning waits); an in-game shop; gathering and crafting by bots; bots seeking, buying or enchanting their own gear; bots trading at the
 broker in their own name; companions made on demand and saved teams; hiring a world bot; bots entering instance queues themselves; bots posting in the Find Group window (E1); level 50 bots; mentors in Poeta and Ishalgen; the broker's measure (its milestone 7); in flight, the Terminon camp entrance, the stalled ambient flights and gliding on the way down; a rank of play
 per bot; two old tester points (the templar that "drops the fight", the cleric against an assassin's rune); the group options (a starting level of 10, bots rolling the dice, stay, guard and passive orders, kill and sleep marks, one's own
-characters brought in as bots).
+characters brought in as bots). On 18 November: threat management for the damage dealers (no report has seen one take a monster off the tank).
 
 ## 0. Tooling and releases
 
-**Done**: the test harness, two upstream merges (28 October, 13 November), the measuring and mesh-checking tools, about 600 tests on every deploy, the
+**Done**: the test harness, three upstream merges (28 October, 13 and 18 November), the measuring and mesh-checking tools, about 600 tests on every deploy, the
 release process (one branch, pre-releases in two languages, the launcher updating itself and the server) and the install from nothing (portable
 MySQL and Java, tried on a clean machine on 14 November) ([architecture/how-it-works.md](architecture/how-it-works.md),
 [empty-machine-install-plan.md](architecture/history/empty-machine-install-plan.md)). Published last: server `v0.1.0-beta.9`, launcher `v0.3.0-beta.13`.
 
 **Left**:
 1. **Feedback as it comes**: the tester reports while playing; each plan's Status line says what has been seen ([feedback/](feedback/README.md)).
-2. **The next upstream merge**, then `tools/sync-install.ps1`: `4.8` has moved by 12 commits to 18 November (Rentus' Kuhara, the siege fortress
-   bosses, revival after a deadly fall, a chat channel leak, decomposable sets, manastones and three since); the sooner, the smaller.
+2. **The next upstream merge**, then `tools/sync-install.ps1`: the last, on 18 November, brought 12 commits (Rentus' Kuhara, the siege fortress
+   bosses, revival after a deadly fall, a chat channel leak, a faster startup, a new library); `sync-install.ps1 -LibsOnly` on the next deploy
+   puts the library in. The sooner each, the smaller.
 3. **The emulator's own gaps met while playing** (a quest that cannot be finished, an npc missing, a boss that does not act): each fixed in a commit
    of its own, offered upstream when it is theirs, so merges stay small. No plan yet.
 
@@ -114,15 +115,15 @@ cleric, ranger, gladiator, sorcerer) and five built from the data (bard, spirit 
    [spirit-master-plan.md](classes/plans/spirit-master-plan.md), [gunner-plan.md](classes/plans/gunner-plan.md),
    [aethertech-plan.md](classes/plans/aethertech-plan.md): a tank now, one tank named per group; [assassin-plan.md](classes/plans/assassin-plan.md):
    its runes carved to five and burst there).
-2. **Threat**: damage waits for the tank's first blows, and pauses when its threat nears the tank's (about 85 %) until it falls back (about 70 %);
-   today it opens at the same instant and can pull the mob off (`AggroList.getTarget(MOST_HATED)`).
-3. **The tank's tools**: a pull from range on the player's order, the monster brought back to the group; an area taunt once loose monsters reach a
-   count; never taking a monster off another tank.
-4. **The healer's priorities**: cleanses by severity (sleep, fear, paralysis first, where today the cleric takes them as it finds them), and
-   resurrection in a fight when a skill allows it (after one, the cleric and the chanter already raise a mate within 15 m).
-5. **Bosses' mechanics**: areas avoided by shape (circle, ring, cone, line) from the cast the bot sees, interrupts shared out in the group, profiles
+2. **The tank's tools**, built on 18 November, to watch in game: `//bot pull` (the tank strikes the player's target from range and brings it back to
+   where the player stood, the group waiting), and a monster on another tank of the group left to it. The area taunt was there already: the
+   templar roars whenever it is ready, the aethertech waves at two loose ([combat/group-roles.md](combat/group-roles.md)).
+3. **The healer's priorities**, built on 18 November, to watch in game: the heal stays first; among the cleanses, a mate put out of the fight
+   (asleep, afraid, paralysed) comes first, whatever the mana; the cleric raises a mate in a fight once nobody needs a heal and nothing hits it
+   ([combat/how-it-works.md](combat/how-it-works.md)).
+4. **Bosses' mechanics**: areas avoided by shape (circle, ring, cone, line) from the cast the bot sees, interrupts shared out in the group, profiles
    for the named encounters of the dungeons played; positioning against a boss was validated on 27 October.
-6. **After a wipe**: rest, the way back to the bodies or the bind point, the group gathered again before the next pull; today each bot starts
+5. **After a wipe**: rest, the way back to the bodies or the bind point, the group gathered again before the next pull; today each bot starts
    again alone from its obelisk.
 
 ## 4. Groups and companions

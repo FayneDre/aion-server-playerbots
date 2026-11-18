@@ -234,6 +234,7 @@ final class ClericPlaybook implements ClassPlaybook {
 	record Situation(int hp, int mp, int level, int dp, boolean inTeam, boolean inFight, boolean assailed, boolean hasTank, int tankHp, boolean tankHasRejuvenation,
 		boolean tankHasSavingGrace, boolean hasMember, int memberHp, int hurtUnder60, int hurtUnder50, int hurtUnder30, int othersUnder90, boolean selfHasRejuvenation, boolean penanceUp,
 		boolean shieldUp, boolean shroudUp, boolean amplificationUp, boolean focusUp, boolean selfDebuffed, boolean tankDebuffed, boolean hasDebuffedMember,
+		boolean tankDisabled, boolean memberDisabled,
 		int debuffedCount, boolean controlled, boolean shockChainOpen, boolean justControlled, boolean hasMateToRaise, boolean hasDeadMate, int deadCount,
 		boolean chanterInGroup, boolean inInstance, int tankLoss, int membersLosing, boolean mending, boolean hasOtherEnemy, boolean hasAssailant,
 		boolean targetInMelee, Set<Move> onTarget, Set<Move> ready) {
@@ -385,7 +386,7 @@ final class ClericPlaybook implements ClassPlaybook {
 		int hurtUnder50 = hp < CONTACT_HEAL_BELOW_PERCENT ? 1 : 0, hurtUnder30 = hp < CHANNEL_AREA_HEAL_BELOW_PERCENT ? 1 : 0, othersUnder90 = 0;
 		boolean selfDebuffed = ready.contains(Move.CLEANSE) && BotSkillManager.hasDispellableDebuff(bot, DISPEL_LEVEL), tankDebuffed = false, chanter = false;
 		int debuffedCount = selfDebuffed ? 1 : 0, tankLoss = 0, membersLosing = 0;
-		boolean tankHasRejuvenation = false, tankHasSavingGrace = false;
+		boolean tankHasRejuvenation = false, tankHasSavingGrace = false, tankDisabled = false, memberDisabled = false;
 		if (inTeam) {
 			HealthRecord record = memory == null ? null : memory.healthRecord();
 			long now = System.currentTimeMillis();
@@ -414,10 +415,13 @@ final class ClericPlaybook implements ClassPlaybook {
 				boolean debuffed = ready.contains(Move.CLEANSE) && BotSkillManager.hasDispellableDebuff(mate, DISPEL_LEVEL);
 				if (debuffed)
 					debuffedCount++;
+				// asleep, afraid, paralysed: out of the fight altogether, which a slow or a weakness is not
+				boolean disabled = debuffed && BotSkillManager.hasDisablingDebuff(mate, DISPEL_LEVEL);
 				if (mate.equals(groupTank)) {
 					tank = mate;
 					tankHp = mateHp;
 					tankDebuffed = debuffed;
+					tankDisabled = disabled;
 					tankHasRejuvenation = BotSkillManager.isCovered(bot, mate, Move.REJUVENATION.group);
 					tankHasSavingGrace = BotSkillManager.isCovered(bot, mate, Move.SAVING_GRACE.group);
 				} else {
@@ -425,8 +429,10 @@ final class ClericPlaybook implements ClassPlaybook {
 						member = mate;
 						memberHp = mateHp;
 					}
-					if (debuffed && debuffedMember == null)
-						debuffedMember = mate;
+					if (debuffed && (debuffedMember == null || disabled && !memberDisabled)) {
+						debuffedMember = mate; // the one put out of the fight, if any, before one merely weakened
+						memberDisabled = disabled;
+					}
 				}
 			}
 			if (record != null) {
@@ -443,7 +449,8 @@ final class ClericPlaybook implements ClassPlaybook {
 			mending = memory.isMendingToFull();
 		}
 		// one look round for whatever is hitting the cleric, asked only when a skill that cares is ready
-		Creature assailant = inFight && inTeam && (ready.contains(Move.HEALING_GRACE) || ready.contains(Move.STABILITY)) ? BotGroupManager.enemyHitting(bot, ENEMY_RADIUS) : null;
+		Creature assailant = inFight && inTeam && (ready.contains(Move.HEALING_GRACE) || ready.contains(Move.STABILITY) || ready.contains(Move.LIGHT_OF_RESURRECTION))
+			? BotGroupManager.enemyHitting(bot, ENEMY_RADIUS) : null;
 		boolean assailed = assailant != null;
 		if (!ready.contains(Move.STABILITY))
 			assailant = null;
@@ -465,6 +472,7 @@ final class ClericPlaybook implements ClassPlaybook {
 			BotSkillManager.isCovered(bot, bot, Move.REJUVENATION.group), BotSkillManager.isUp(bot, Move.PENANCE.group),
 			BotSkillManager.isUp(bot, Move.BLESSED_SHIELD.group), BotSkillManager.isUp(bot, Move.IMMORTAL_SHROUD.group),
 			BotSkillManager.isUp(bot, Move.AMPLIFICATION.group), BotSkillManager.isUp(bot, Move.PRAYER_OF_FOCUS.group), selfDebuffed, tankDebuffed, debuffedMember != null,
+			tankDisabled, memberDisabled,
 			debuffedCount, BotSkillManager.isCrowdControlled(bot), BotSkillManager.isChainOpen(bot, SHOCK_CHAIN), justControlled, mateToRaise != null, deadMate != null,
 			deadCount, chanter, inInstance, tankLoss, membersLosing, mending, otherEnemy != null, assailant != null,
 			target != null && PositionUtil.getDistance(bot, target) <= MELEE_RANGE, onTarget, ready);
@@ -649,9 +657,17 @@ final class ClericPlaybook implements ClassPlaybook {
 		return memberNeeds ? Who.MEMBER : null;
 	}
 
-	/** What a cleric in a group does when nobody needs a heal: keep the heal over time on the tank, cleanse, and spend the mana it has to spare. */
+	/**
+	 * What a cleric in a group does when nobody needs a heal: cleanse a mate who cannot act, keep the heal over time on the tank, cleanse the rest, and spend
+	 * the mana it has to spare. The order of the cleanses is the severity: put out of the fight first, then the cleric itself, the tank, a member.
+	 */
 	private static Decision decideGroupUpkeep(Situation situation) {
 		Set<Move> ready = situation.ready();
+		// a mate who cannot act first, whatever the mana: asleep, afraid or paralysed, the tank holds nothing and a member does nothing
+		if (situation.tankDisabled() && ready.contains(Move.CLEANSE))
+			return new Decision(Move.CLEANSE, Who.TANK);
+		if (situation.memberDisabled() && ready.contains(Move.CLEANSE))
+			return new Decision(Move.CLEANSE, Who.MEMBER);
 		Decision hot = decideHealOverTime(situation);
 		if (hot != null)
 			return hot;
@@ -670,8 +686,10 @@ final class ClericPlaybook implements ClassPlaybook {
 	}
 
 	/**
-	 * Raising the dead. Light of Resurrection only out of a fight, on a member nobody else is to raise: no cleric of the guide does it while a chanter is in the
-	 * group. The area one is the guide's exception for a group that has lost most of its members in an instance, "foutu pour foutu".
+	 * Raising the dead. Light of Resurrection on a member nobody else is to raise: no cleric of the guide does it while a chanter is in the group. Out of a
+	 * fight, as the guide has it; in one too, which the guide does not say (the roadmap's healer priorities, theme 3): only once nobody needs a heal, which
+	 * is asked first, nobody is under the area heal's threshold, and nothing is hitting the cleric, since it is six seconds it cannot move in. The area one
+	 * is the guide's exception for a group that has lost most of its members in an instance, "foutu pour foutu".
 	 */
 	static Decision decideRevive(Situation situation) {
 		Set<Move> ready = situation.ready();
@@ -679,7 +697,8 @@ final class ClericPlaybook implements ClassPlaybook {
 			return null;
 		if (situation.inInstance() && situation.deadCount() > DEAD_FOR_AREA_REVIVE && situation.hasDeadMate() && ready.contains(Move.RESURRECTION_LOCI))
 			return new Decision(Move.RESURRECTION_LOCI, Who.DEAD);
-		if (!situation.inFight() && situation.hasMateToRaise() && ready.contains(Move.LIGHT_OF_RESURRECTION))
+		boolean calmEnough = !situation.inFight() || situation.hurtUnder60() == 0 && !situation.assailed();
+		if (calmEnough && situation.hasMateToRaise() && ready.contains(Move.LIGHT_OF_RESURRECTION))
 			return new Decision(Move.LIGHT_OF_RESURRECTION, Who.DEAD);
 		return null;
 	}

@@ -1123,6 +1123,48 @@ public class BotSkillManager {
 	}
 
 	/**
+	 * @return How far the bot can pull from, in metres: the longest reach of the skills {@link #tryPull} would cast now, or the weapon's when none is
+	 *         ready, since a blow pulls as well as a spell does.
+	 */
+	public static float pullReach(Player bot) {
+		float weapon = bot.getGameStats().getAttackRange().getCurrent() / 1000f;
+		float reach = weapon;
+		for (SkillTemplate template : pullSkills(bot))
+			reach = Math.max(reach, reachOf(template, weapon));
+		return reach;
+	}
+
+	/**
+	 * Strikes the target from where the bot stands to pull it, on the player's order: a taunt first, which hates without hurting, then any skill aimed
+	 * at that one enemy that reaches it. Claimed skills included, since this is no rotation's choice but an order, and the generic order's whole filter
+	 * left out for the same reason; an area is never one, which would pull its neighbours.
+	 *
+	 * @return true if one went off.
+	 */
+	public static boolean tryPull(Player bot, Creature target) {
+		float distance = (float) PositionUtil.getDistance(bot, target);
+		float weapon = bot.getGameStats().getAttackRange().getCurrent() / 1000f;
+		List<SkillTemplate> candidates = pullSkills(bot).stream().filter(template -> reachOf(template, weapon) >= distance)
+			.sorted(Comparator.comparing((SkillTemplate template) -> !isTaunt(template)).thenComparing(HIGHEST_RANK_FIRST)).toList();
+		return cast(bot, target, candidates);
+	}
+
+	/** @return The bot's skills ready now that strike one enemy it aims at, for a pull. */
+	private static List<SkillTemplate> pullSkills(Player bot) {
+		return bot.getSkillList().getAllSkills().stream().map(entry -> DataManager.SKILL_DATA.getSkillTemplate(entry.getSkillId()))
+			.filter(template -> template != null && !template.isPassive() && template.getProperties() != null && isOffensive(bot, template)
+				&& template.getProperties().getFirstTarget() == FirstTargetAttribute.TARGET
+				&& template.getProperties().getTargetType() == TargetRangeAttribute.ONLYONE && !bot.isSkillDisabled(template)
+				&& !isWaitingForTheEventItAnswers(bot, template) && !isPausedAfterFailedCasts(bot, template))
+			.toList();
+	}
+
+	private static float reachOf(SkillTemplate template, float weapon) {
+		Properties properties = template.getProperties();
+		return properties.getFirstTargetRange() + (properties.isAddWeaponRange() ? weapon : 0);
+	}
+
+	/**
 	 * @return true if the bot knows a skill of that group and it is off cooldown. For a {@link ClassPlaybook}, which claims skills the generic order never
 	 *         offers and so has to ask for them by name. The group, not the id: every level of a skill has its own id and the group is what they share.
 	 */
@@ -1166,6 +1208,24 @@ public class BotSkillManager {
 		long now = System.currentTimeMillis();
 		for (Effect effect : creature.getEffectController().getAbnormalEffects()) {
 			if (isCleansable(effect, dispelLevel, reach) && !hasResistedACleanse(creature, effect, now))
+				return true;
+		}
+		return false;
+	}
+
+	/** What puts a creature out of a fight altogether: it neither acts nor answers, where a slow, a root or a silence leaves it something. */
+	private static final int DISABLING_STATES = AbnormalState.SLEEP.getId() | AbnormalState.FEAR.getId() | AbnormalState.PARALYZE.getId()
+		| AbnormalState.CONFUSE.getId() | AbnormalState.CHARM.getId() | AbnormalState.PETRIFICATION.getId();
+
+	/**
+	 * @return true if the creature carries an effect a general cleanse can remove that puts it out of the fight: asleep, afraid, paralysed, confused,
+	 *         charmed or turned to stone. For a healer, which cleanses that first.
+	 */
+	public static boolean hasDisablingDebuff(Creature creature, int dispelLevel) {
+		long now = System.currentTimeMillis();
+		for (Effect effect : creature.getEffectController().getAbnormalEffects()) {
+			if ((effect.getAbnormals() & DISABLING_STATES) != 0 && isCleansable(effect, dispelLevel, CleanseReach.ALL)
+				&& !hasResistedACleanse(creature, effect, now))
 				return true;
 		}
 		return false;
