@@ -8,6 +8,41 @@ bundle (the entries up to v0.1.0-beta.4 named the server deployed here, which on
 
 ---
 
+## v0.1.0-beta.10 — 18/11/2026
+
+Il va avec le launcher v0.3.0-beta.15. **Pas de SQL, pas de navmesh à reconstruire, aucun fichier de réglages ne change.** Le serveur
+utilise une bibliothèque de plus ; elle arrive avec lui.
+
+**Ce qui change pour les joueurs et les testeurs**
+- **Chaque classe de bot a maintenant sa façon de combattre.** Deux nouvelles, faites à partir des données du jeu seules, sans guide, et
+  jamais regardées en jeu :
+  - **Aéthertech** : c'est désormais un tank, comme le templier. Un groupe qui a les deux prend le templier pour tank ; l'autre se bat
+    comme un attaquant tant que le tank est debout. Il gère son mécha, ses provocations, ses boucliers et sa mana.
+  - **Assassin** : il taille ses runes jusqu'à 5 avant de les faire éclater (il les faisait éclater à n'importe quel niveau, et à 0 une
+    rune ne fait qu'un dixième des dégâts) ; il ouvre depuis le camouflage, garde son poison, réserve ses gros buffs aux élites, aux
+    boss et aux joueurs, se défend et contrôle.
+- **Nouvelle commande `//bot pull`** : cible un monstre, et le tank de ton groupe va le frapper de loin puis revient là où tu étais, le
+  monstre derrière lui ; le reste du groupe attend qu'il soit arrivé. Jusqu'à 50 m du tank, abandonné au bout de 30 s.
+- **Un tank ne reprend plus le monstre d'un autre tank du groupe**, joueur ou bot.
+- **Le clerc purifie d'abord un allié mis hors combat** (endormi, apeuré, paralysé), avant les autres purifications et même avec peu de
+  mana ; le soin reste toujours prioritaire.
+- **Le clerc relève un allié en plein combat** quand c'est calme : personne n'a besoin de soin, personne n'est sous 60 % et rien ne le
+  frappe. Avant, il attendait la fin du combat.
+- **En JcJ, un bot assassin, aéthertech ou pistolero voit qu'un joueur le frappe** et lance ses défenses ; il ne voyait que les monstres.
+- **Mises à jour de l'émulateur** (12 corrections) : Kuhara à Rentus, Macunbello à Beshmundir, les boss des forteresses de siège, la
+  résurrection après une chute mortelle et à l'Obélisque Illuminé, une fuite de canaux de chat, les sets à décomposer, les pierres de
+  mana, et un démarrage du serveur plus rapide.
+
+**À tester**
+- **`//bot pull`** dans un groupe avec un templier, puis avec un aéthertech : le monstre arrive-t-il jusqu'au groupe ? les autres
+  attendent-ils ?
+- **Un assassin et un aéthertech en groupe**, et le barde, le spiritualiste et le pistolero de la dernière version : ce qu'ils font de
+  travers, avec `//bot note <texte>` près du bot.
+- **Un groupe avec un clerc** contre des monstres qui endorment ou font peur : est-il purifié en premier ? Un mort est-il relevé pendant
+  le combat ?
+
+---
+
 ## v0.1.0-beta.9 — 17/11/2026
 
 Il va avec le launcher v0.3.0-beta.15. **Pas de SQL, pas de navmesh à reconstruire, aucun fichier de réglages ne change.** Les scripts de

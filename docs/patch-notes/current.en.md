@@ -7,6 +7,38 @@ to `<year>-<month>.en.md`, with their French ones.
 
 ---
 
+## v0.1.0-beta.10 — 2026-11-18
+
+It goes with launcher v0.3.0-beta.15. **No SQL, no navmesh to rebuild, no settings file changes.** The server uses one more library; it
+comes with it.
+
+**What changes for players and testers**
+- **Every bot class now has its own way of fighting.** Two new ones, made from the game's data alone, with no guide, and never watched in
+  game:
+  - **Aethertech**: now a tank, like the templar. A group with both takes the templar as its tank; the other fights as damage while the
+    tank stands. It handles its mech, its taunts, its shields and its mana.
+  - **Assassin**: it carves its runes to 5 before bursting them (it burst them at any level, and a rune at 0 does a tenth of the damage);
+    it opens from hiding, keeps its poison on, saves its big buffs for elites, bosses and players, defends itself and controls.
+- **New command `//bot pull`**: target a monster, and your group's tank strikes it from range and walks back to where you stood, the
+  monster after it; the rest of the group waits for it to arrive. Up to 50 m from the tank, given up after 30 s.
+- **A tank no longer takes a monster off another tank of the group**, a player or a bot.
+- **The cleric first cleanses a mate put out of the fight** (asleep, afraid, paralysed), before the other cleanses and even with little
+  mana; the heal always comes first.
+- **The cleric raises a mate in the middle of a fight** when it is calm: nobody needs a heal, nobody is under 60 % and nothing is hitting
+  it. It used to wait for the fight to end.
+- **In PvP, an assassin, aethertech or gunner bot sees that a player is hitting it** and uses its defences; it only saw monsters.
+- **Emulator updates** (12 fixes): Kuhara in Rentus, Macunbello in Beshmundir, the siege fortress bosses, revival after a deadly fall and
+  in the Illuminary Obelisk, a chat channel leak, decomposable sets, manastones, and a faster server startup.
+
+**To test**
+- **`//bot pull`** in a group with a templar, then with an aethertech: does the monster reach the group? do the others wait?
+- **An assassin and an aethertech in a group**, and the bard, spirit master and gunner of the last version: what they get wrong, with
+  `//bot note <text>` near the bot.
+- **A group with a cleric** against monsters that put to sleep or frighten: is that cleansed first? Is a dead mate raised during the
+  fight?
+
+---
+
 ## v0.1.0-beta.9 — 2026-11-17
 
 It goes with launcher v0.3.0-beta.15. **No SQL, no navmesh to rebuild, no settings file changes.** The database scripts of the `tools`
