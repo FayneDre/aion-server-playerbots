@@ -183,7 +183,8 @@ try {
     & (Join-Path $PSScriptRoot 'package-release.ps1') -Version $tag -ServerRoot $ServerRoot
 
     if ($Push) {
-        git push origin $tag
+        # through cmd: git reports progress on stderr, which Windows PowerShell turns into an error under 'Stop', after the push went through
+        cmd /c "git push origin $tag 2>&1" | Write-Host
         if ($LASTEXITCODE -ne 0) { throw "git push of $tag failed; the tag exists locally" }
         Write-Host "Tagged $head as $tag and pushed it." -ForegroundColor Green
     } else {
