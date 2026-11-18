@@ -118,18 +118,22 @@ public final class BotPull {
 			PositionUtil.getDistance(tank.getX(), tank.getY(), pull.x, pull.y));
 		switch (step) {
 			case APPROACH -> {
-				ai.cancelCombat();
+				if (ai.isAttacking())
+					ai.cancelCombat();
 				if (!mover.isInMove() || !mover.isHeadingTo(target.getX(), target.getY(), RETARGET_STEP))
 					ai.tryMoveTo(mover, target.getX(), target.getY(), target.getZ());
 			}
 			case STRIKE -> {
-				ai.cancelCombat();
-				ai.stopMoving();
 				if (BotSkillManager.tryPull(tank, target))
 					pull.struck = true;
+				else if (!ai.isAttacking() && PositionUtil.getDistance(tank, target) <= BotSkillManager.weaponReach(tank))
+					ai.startAttacking(target); // nothing ready that reaches: a blow, which the walk back then breaks off
+				else if (!ai.isAttacking())
+					ai.stopMoving(); // in reach of a skill that is a moment from ready
 			}
 			case RETURN -> {
-				ai.cancelCombat(); // a blow struck on the way back would stop the walk where the monster caught up
+				if (ai.isAttacking())
+					ai.cancelCombat(); // a blow struck on the way back would stop the walk where the monster caught up
 				if (!mover.isInMove() || !mover.isHeadingTo(pull.x, pull.y, RETARGET_STEP))
 					ai.tryMoveTo(mover, pull.x, pull.y, pull.z);
 			}

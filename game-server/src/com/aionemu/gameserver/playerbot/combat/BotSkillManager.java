@@ -1127,7 +1127,7 @@ public class BotSkillManager {
 	 *         ready, since a blow pulls as well as a spell does.
 	 */
 	public static float pullReach(Player bot) {
-		float weapon = bot.getGameStats().getAttackRange().getCurrent() / 1000f;
+		float weapon = weaponReach(bot);
 		float reach = weapon;
 		for (SkillTemplate template : pullSkills(bot))
 			reach = Math.max(reach, reachOf(template, weapon));
@@ -1143,10 +1143,15 @@ public class BotSkillManager {
 	 */
 	public static boolean tryPull(Player bot, Creature target) {
 		float distance = (float) PositionUtil.getDistance(bot, target);
-		float weapon = bot.getGameStats().getAttackRange().getCurrent() / 1000f;
+		float weapon = weaponReach(bot);
 		List<SkillTemplate> candidates = pullSkills(bot).stream().filter(template -> reachOf(template, weapon) >= distance)
 			.sorted(Comparator.comparing((SkillTemplate template) -> !isTaunt(template)).thenComparing(HIGHEST_RANK_FIRST)).toList();
 		return cast(bot, target, candidates);
+	}
+
+	/** @return How far the bot's weapon reaches, in metres. */
+	public static float weaponReach(Player bot) {
+		return bot.getGameStats().getAttackRange().getCurrent() / 1000f;
 	}
 
 	/** @return The bot's skills ready now that strike one enemy it aims at, for a pull. */
