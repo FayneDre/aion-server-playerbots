@@ -533,7 +533,8 @@ public class BotSkillManager {
 	 * log. An attack that adds some hate to its damage is still an attack, and stays; a skill that lowers hate is not a taunt at all.
 	 */
 	private static boolean takesTheTanksJob(Player bot, SkillTemplate template) {
-		return bot.getCurrentTeam() != null && !BotRole.isGroupTank(bot) && isTaunt(template);
+		// the taunt first: it is asked of every skill the bot has, and the group's tank is a walk over the group
+		return bot.getCurrentTeam() != null && isTaunt(template) && !BotRole.isGroupTank(bot);
 	}
 
 	/** @return true if the skill raises its target's hate for the caster and does nothing else that hurts. */

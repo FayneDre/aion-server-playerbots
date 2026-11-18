@@ -16,6 +16,7 @@ import com.aionemu.gameserver.model.gameobjects.player.Player;
 import com.aionemu.gameserver.model.templates.npc.NpcRating;
 import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
+import com.aionemu.gameserver.playerbot.movement.BotMoveController;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
 import com.aionemu.gameserver.playerbot.social.BotMarks;
 import com.aionemu.gameserver.playerbot.social.BotRole;
@@ -69,6 +70,8 @@ final class AethertechPlaybook implements ClassPlaybook {
 	static final int FLEE_BELOW = 25;
 	/** Mana under which Recharge or Powerspike Trigger is spent in a fight, Power Flux turns divine power into mana, Aether Recharge is cast. */
 	static final int RECHARGE_BELOW = 25, POWER_FLUX_BELOW = 30, AETHER_RECHARGE_BELOW = 50;
+	/** Health under which Recharge is spent for its 3000 health, whatever the mana. */
+	static final int RECHARGE_HEALTH_BELOW = 30;
 	/** What Overdrive Trigger and Power Flux cost, and Annihilation Barrage. */
 	static final int OVERDRIVE_DP = 2000, BARRAGE_DP = 4000;
 	/** How many enemies near a lone aethertech make its cooldowns and Annihilation Barrage worth spending, as an elite would. */
@@ -252,10 +255,19 @@ final class AethertechPlaybook implements ClassPlaybook {
 		return bot.getCurrentTeam() == null && bot.getLifeStats().getHpPercentage() < FLEE_BELOW;
 	}
 
+	/**
+	 * Hypergate Detonation as it breaks off, Nullification Trigger without it. Here rather than in {@link #decideDefence} alone: the retreat is decided on
+	 * the decision tick at the same health, so a lone aethertech was gone before its attack tick saw the threshold. It ends the mech, which a bot
+	 * running home has no use for, and it is cast standing, as the data asks, since the bot has not set off yet.
+	 */
 	@Override
 	public void onRetreat(Player bot) {
-		if (BotSkillManager.tryCastGroup(bot, bot, Move.NULLIFICATION_TRIGGER.group))
-			log.debug("Aethertech {} casts {} as it flees", bot.getName(), Move.NULLIFICATION_TRIGGER);
+		for (Move move : List.of(Move.HYPERGATE_DETONATION, Move.NULLIFICATION_TRIGGER)) {
+			if (BotSkillManager.tryCastGroup(bot, bot, move.group)) {
+				log.debug("Aethertech {} casts {} as it flees", bot.getName(), move);
+				return;
+			}
+		}
 	}
 
 	@Override
@@ -278,7 +290,9 @@ final class AethertechPlaybook implements ClassPlaybook {
 		if (endToggles(bot, togglesToEnd(reading.situation(), false)))
 			return true;
 		Situation s = reading.situation();
-		return s.mp < AETHER_RECHARGE_BELOW && !s.assailed && perform(bot, reading, Move.AETHER_RECHARGE);
+		// three seconds cast standing (move_casting false): one started on the way would be thrown away and the skill paused
+		boolean moving = bot.getMoveController() instanceof BotMoveController mover && mover.isInMove();
+		return s.mp < AETHER_RECHARGE_BELOW && !s.assailed && !moving && perform(bot, reading, Move.AETHER_RECHARGE);
 	}
 
 	/** A fight coming: Charging Activation, and the group's tank's hate. */
@@ -362,6 +376,9 @@ final class AethertechPlaybook implements ClassPlaybook {
 					return move;
 			}
 		}
+		// Recharge gives back 3000 health as well, and claimed here it is no longer the generic heal's to cast
+		if (s.assailed && s.hp < RECHARGE_HEALTH_BELOW && ready.contains(Move.RECHARGE))
+			return Move.RECHARGE;
 		return null;
 	}
 

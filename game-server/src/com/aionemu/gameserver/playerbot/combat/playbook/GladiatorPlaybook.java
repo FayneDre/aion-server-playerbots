@@ -261,9 +261,9 @@ final class GladiatorPlaybook implements ClassPlaybook {
 	}
 
 	/**
-	 * What the tank-dead mode looks at: a group of six whose templar is dead, until it is raised.
+	 * What the tank-dead mode looks at: a group of six whose tanks, templar or aethertech, are all dead, until one is raised.
 	 *
-	 * @param tankDead Whether the gladiator is in such a group and its templar lies dead.
+	 * @param tankDead Whether the gladiator is in such a group and every tank of it lies dead.
 	 * @param defenseUp Whether Defense Preparation is on, which outside the mode is switched off again.
 	 * @param targetElsewhere Whether the target is hitting somebody other than the gladiator, which is what Taunt is for.
 	 * @param bodyChainOpen Whether Body Combo was the last skill used, the moment Body Slice can follow it.

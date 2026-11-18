@@ -210,6 +210,17 @@ class AethertechPlaybookTest {
 	}
 
 	@Test
+	void rechargeIsAHealToo() {
+		Situation s = calm();
+		s.inTeam = true;
+		s.ready.remove(Move.NULLIFICATION_TRIGGER);
+		s.hp = AethertechPlaybook.RECHARGE_HEALTH_BELOW - 1;
+		assertEquals(Move.RECHARGE, AethertechPlaybook.decideDefence(s), "its 3000 health, with the mana full");
+		s.hp = AethertechPlaybook.RECHARGE_HEALTH_BELOW;
+		assertNull(AethertechPlaybook.decideDefence(s));
+	}
+
+	@Test
 	void aetherRechargeWaitsForNothingOnIt() {
 		Situation s = calm();
 		s.mp = AethertechPlaybook.AETHER_RECHARGE_BELOW - 1;
