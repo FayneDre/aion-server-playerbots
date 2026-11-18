@@ -208,9 +208,10 @@ public class BotStatWeights {
 			// The gunner's too, from the data rather than a player of the class: every attack it has is a spell (spellatk), so what lands and how
 			// hard is magical accuracy and magic boost, as for the sorcerer (docs/classes/plans/gunner-plan.md).
 			case SORCERER, SPIRIT_MASTER, BARD, GUNNER -> List.of(StatEnum.MAGICAL_ACCURACY, StatEnum.BOOST_MAGICAL_SKILL);
-			// Nobody who wrote the orders plays this one, and saying so is better than inventing a preference. It takes the generic order for its
-			// kind, which the engine already settles: it casts.
-			case RIDER -> List.of();
+			// A tank whose every attack and taunt is a spell, from the data rather than a player of the class: a taunt that misses holds nothing, so
+			// magical accuracy first, then the health a tank takes blows with, and the mana its two shields take them from
+			// (docs/classes/plans/aethertech-plan.md).
+			case RIDER -> List.of(StatEnum.MAGICAL_ACCURACY, StatEnum.MAXHP, StatEnum.MAXMP, StatEnum.BOOST_MAGICAL_SKILL, StatEnum.PARRY);
 			default -> List.of(); // the starting classes, which are nobody's build and last nine levels
 		};
 		Set<StatEnum> order = new LinkedHashSet<>(own);

@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
-import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
@@ -264,12 +263,8 @@ final class ChanterPlaybook implements ClassPlaybook {
 
 	/** @return The health of the group's tank, bot or player, or -1 when the group has none that is alive. */
 	private static int tankHealth(Player bot) {
-		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
-		for (Player member : team.getMembers()) {
-			if (!member.equals(bot) && !member.isDead() && BotRole.of(member) == BotRole.TANK)
-				return member.getLifeStats().getHpPercentage();
-		}
-		return -1;
+		Player tank = BotRole.groupTank(bot.getCurrentTeam());
+		return tank == null || tank.equals(bot) ? -1 : tank.getLifeStats().getHpPercentage();
 	}
 
 	/**

@@ -394,6 +394,7 @@ final class ClericPlaybook implements ClassPlaybook {
 				record.sample(now, bot.getObjectId(), hp);
 				ids.add(bot.getObjectId());
 			}
+			Player groupTank = BotRole.groupTank(bot.getCurrentTeam());
 			for (Player mate : BotGroupManager.membersToTendTo(bot)) {
 				int mateHp = mate.getLifeStats().getHpPercentage();
 				if (mate.getPlayerClass() == PlayerClass.CHANTER)
@@ -413,7 +414,7 @@ final class ClericPlaybook implements ClassPlaybook {
 				boolean debuffed = ready.contains(Move.CLEANSE) && BotSkillManager.hasDispellableDebuff(mate, DISPEL_LEVEL);
 				if (debuffed)
 					debuffedCount++;
-				if (BotRole.of(mate) == BotRole.TANK && tank == null) {
+				if (mate.equals(groupTank)) {
 					tank = mate;
 					tankHp = mateHp;
 					tankDebuffed = debuffed;

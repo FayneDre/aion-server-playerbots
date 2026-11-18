@@ -533,7 +533,7 @@ public class BotSkillManager {
 	 * log. An attack that adds some hate to its damage is still an attack, and stays; a skill that lowers hate is not a taunt at all.
 	 */
 	private static boolean takesTheTanksJob(Player bot, SkillTemplate template) {
-		return bot.getCurrentTeam() != null && BotRole.of(bot) != BotRole.TANK && isTaunt(template);
+		return bot.getCurrentTeam() != null && !BotRole.isGroupTank(bot) && isTaunt(template);
 	}
 
 	/** @return true if the skill raises its target's hate for the caster and does nothing else that hurts. */
@@ -702,6 +702,23 @@ public class BotSkillManager {
 			return false;
 		for (Effect effect : bot.getEffectController().getAllEffects()) {
 			if (isRobotToggle(effect.getSkillTemplate())) {
+				bot.getEffectController().removeEffect(effect.getSkillId());
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Ends a toggle of that group the bot has running, by removing its effect as {@link #leaveRobot} does: casting it again would turn it off too, but
+	 * through the cast queue, and not at all while the bot is busy. For a toggle that drains mana and is wanted only in a fight.
+	 *
+	 * @return true if one was running and is now off.
+	 */
+	public static boolean endToggle(Player bot, String group) {
+		for (Effect effect : bot.getEffectController().getAllEffects()) {
+			SkillTemplate template = effect.getSkillTemplate();
+			if (template.isToggle() && group.equals(template.getGroup())) {
 				bot.getEffectController().removeEffect(effect.getSkillId());
 				return true;
 			}

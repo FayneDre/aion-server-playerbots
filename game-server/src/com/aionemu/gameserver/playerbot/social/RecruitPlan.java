@@ -21,15 +21,16 @@ public final class RecruitPlan {
 	private static final List<BotRole> ESSENTIAL = List.of(BotRole.TANK, BotRole.HEALER, BotRole.SUPPORT);
 
 	/**
-	 * The classes asked for each role, best first. A support is a chanter before a bard, and damage is a ranger, a gladiator, an assassin or a sorcerer
-	 * before the others: those have a playbook, while the spirit master, the gunner and the aethertech fight on the generic rotation and died 36 times
-	 * of 40 in half an hour on Reshanta's upper layer. A starting class has no role in a group and is never asked for.
+	 * The classes asked for each role, best first. A tank is a templar before an aethertech, the templar having been watched tanking in game and the
+	 * aethertech not yet. A support is a chanter before a bard, and damage is a ranger, a gladiator, an assassin or a sorcerer before the others: those
+	 * had a playbook first, while the spirit master and the gunner fought on the generic rotation and died 36 times of 40 in half an hour on Reshanta's
+	 * upper layer. A starting class has no role in a group and is never asked for.
 	 */
-	private static final List<PlayerClass> TANKS = List.of(PlayerClass.TEMPLAR);
+	private static final List<PlayerClass> TANKS = List.of(PlayerClass.TEMPLAR, PlayerClass.RIDER);
 	private static final List<PlayerClass> HEALERS = List.of(PlayerClass.CLERIC);
 	private static final List<PlayerClass> SUPPORTS = List.of(PlayerClass.CHANTER, PlayerClass.BARD);
 	private static final List<PlayerClass> DAMAGE = List.of(PlayerClass.RANGER, PlayerClass.GLADIATOR, PlayerClass.ASSASSIN, PlayerClass.SORCERER,
-		PlayerClass.SPIRIT_MASTER, PlayerClass.GUNNER, PlayerClass.RIDER);
+		PlayerClass.SPIRIT_MASTER, PlayerClass.GUNNER);
 
 	/** A character that could be recruited: who, of what class, at what level. */
 	public record Candidate(int playerId, PlayerClass playerClass, int level) {

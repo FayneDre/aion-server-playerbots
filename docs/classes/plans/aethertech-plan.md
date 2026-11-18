@@ -1,6 +1,6 @@
 # Aethertech: implementation plan
 
-Status: not started. Written on 16 November 2026, **without a guide**, as the bard's, the spirit master's and the gunner's were
+Status: built, unverified: in game (milestones 0 to 12 built on 18 November, see "What was built"). Written on 16 November 2026, **without a guide**, as the bard's, the spirit master's and the gunner's were
 ([gunner-plan.md](gunner-plan.md)): every rule from the data, or marked *(play)* when it is judgement.
 
 ## Where the rules come from
@@ -89,12 +89,12 @@ Defence, control, taunts.
 | Electric Shock, Drillbore, Backlash | Choc électrique, Clivage de l'armure, Riposte au coup de canon | `RI_TANGLINGATTACK`, `RI_SHIELDDESTROYER` (st 1), `RI_BREAKINGATTACK` | 16, 61, 24 | Paralysis; a stun and a dispel; a stun at 20 m |
 | Aetherlock Blade | Silence Smash | `RI_SHOCKSTRIKE` | 18 | Silence |
 | Convulsion Beam | Reliure électrique | `RI_BINDINGSLAM` (st 2) | 61 | A root at 20 m |
-| Steam Rush | Sprint Strike | `RI_CHARGEATTACK` | 12 | A dash of 15 m |
+| Steam Rush | Sprint Strike | `RI_CHARGEATTACK` | 12 | A dash of 15 m, **only at a target stunned, staggered or stumbling** (`target_status`) |
 | Provoking Whispers, Magnetic Wave | Vent d'incitation, Vague de rage | `RI_PROVOKINGATTACK`, `RI_PROVOKEWAVE` | 12, 30 | Taunts; the wave turns what is round it onto it |
 
 Left to the generic order: the chains above, the charged Kinetic Slam, Ravager Cannon, Particle Whip, Steel Storm and Explosive Exhaust (under the
-area and charge rules), Meteor Strike, Debilitating Blade, Nerve Pulse, Boost and Double Boost (movement, never cast: `randommoveloc`, read at
-milestone 0), Herb Treatment and MP Recovery. Forbidden: the seven engineer gun skills and Mobility Thrusters.
+area and charge rules), Meteor Strike, Debilitating Blade, Nerve Pulse, Herb Treatment and MP Recovery. Forbidden: the six engineer gun skills
+(Rapidfire, Green Grenade, Direct Shot, Bullet Resistance, Gunshot, Hot Shot), Mobility Thrusters, and Boost and Double Boost (dashes forward).
 
 ## Milestones, in verifiable order
 
@@ -129,6 +129,24 @@ milestone 0), Herb Treatment and MP Recovery. Forbidden: the seven engineer gun 
 
 Tests per milestone, pure as the others' are; then a watch in game: an aethertech alone in Eltnen, one tanking a group with no templar and one beside a templar,
 `//bot debug combat` on, its mana through a fight, and its deaths on Reshanta's upper layer against the measure of the roadmap's theme 3.
+
+## What was built (18 November)
+
+`AethertechPlaybook`, `BotRole.groupTank` / `isGroupTank`, `BotSkillManager.endToggle`, the stat order; 34 tests (`AethertechPlaybookTest`,
+`AethertechPlaybookDataTest`, `BotRoleTest`). Milestone 0 read from the data:
+
+- **Repair Protocol** cleanses roots and snares; **Stability Thrusters** cleanses slows, and its magic boost is +500 at its last rank, not +200.
+- **Hypergate Detonation ends the mech** (it dispels `RIDEROBOT`), then jumps 15 m back and cleanses: the way out alone, never in a group.
+- **The two mana shields stack** (two stack groups): both may be up.
+- **Boost and Double Boost dash 15 m forward** (`direction="0"`), wherever the mech faces: forbidden with Mobility Thrusters.
+- **Steam Rush hits only a target stunned, staggered or stumbling**: cast then, not on any target beyond 8 m.
+- **The followed chains** are every category a link follows or repeats (`selfcount`: Gatling Gun twice, Rain of Knuckles three times); the data test
+  derives them, so a link the list missed fails the build.
+
+Differences from the milestones above, each *(play)*: the taunts go while a chain is open (a mate being hit costs more than a link); each toggle is
+turned on at its threshold and off ten points under it (Kinetic Battery 20/10, Stability Thrusters 40/30, Kinetic Bulwark 50/20), so it is not switched
+every tick; the group's tank is the lowest object id of its class, so that every member names the same one. Recruiting: an aethertech is now a tank
+and no longer asked for as damage.
 
 ## Questions for a player of the class
 

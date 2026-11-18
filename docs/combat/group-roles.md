@@ -8,10 +8,15 @@ What a bot's role changes about how it fights, and only ever inside a group. Spl
 
 | Role | Classes | What changes |
 |---|---|---|
-| `TANK` | templar | Roars whenever it can, saves its single target taunts for a monster hitting a mate, and stays on its feet while the group is engaged rather than sitting to heal. Its own rules: [templar-plan.md](../classes/history/templar-plan.md) |
+| `TANK` | templar, aethertech | Roars whenever it can, saves its single target taunts for a monster hitting a mate, and stays on its feet while the group is engaged rather than sitting to heal. Its own rules: [templar-plan.md](../classes/history/templar-plan.md) |
 | `HEALER` | cleric | Weighs the danger a member is in as well as its health, and joins the attack only with mana to spare. Its heals, cleanses and buffs are the playbook's: [cleric-plan.md](../classes/history/cleric-plan.md) |
 | `SUPPORT` | chanter, songweaver | Tends to the group first, then fights |
 | `DAMAGE` | everything else | Assists the tank's target before the leader's |
+
+**One tank per group** (`BotRole.groupTank`): a living templar, else a living aethertech, the lowest object id of each, so every member names the
+same one. Everything written for "the tank" asks for that one (`BotRole.isGroupTank`): the skull, holding the line, the taunts a non-tank may not
+cast, whom the healers and supports look after, where the others stand. The other tank of a group with both fights as damage until this one dies.
+The aethertech's own rules: [aethertech-plan.md](../classes/plans/aethertech-plan.md).
 
 **Only inside a group**, with one exception. A solo bot is untouched: a templar alone does not taunt and still sits down to recover. The templar's *defensives* (Hand of Healing, Empyrean Armor, Iron Skin) are the exception, and hold alone as well, which the guide confirmed.
 

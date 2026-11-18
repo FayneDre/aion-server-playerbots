@@ -21,7 +21,7 @@ but no bot has fought a player yet (theme 8 of the roadmap). `//bot` lists the c
 - **Combat** ([combat/how-it-works.md](combat/how-it-works.md)): two ticks, targets chosen alone or read from the group's aggro, skills from the class's
   playbook then the generic order read from the data, retreat from a fight it cannot win, death and revival.
 - **Classes** ([classes/how-it-works.md](classes/how-it-works.md)): six playbooks from guides (templar, chanter, cleric, ranger, gladiator,
-  sorcerer) and the bard's, the spirit master's and the gunner's from the data alone, rules by skill group, pure decisions, data tests.
+  sorcerer) and the bard's, the spirit master's, the gunner's and the aethertech's from the data alone (the aethertech a tank beside the templar, one tank named per group), rules by skill group, pure decisions, data tests.
 - **Gear** ([gear/how-it-works.md](gear/how-it-works.md)): what a bot wears and how it is upgraded, stigmas; selling junk, dressing in the best of what
   it owns and drinking potions: [gear/looking-after-itself.md](gear/looking-after-itself.md).
 - **Navigation** ([navigation/how-it-works.md](navigation/how-it-works.md)): a generated navmesh for 26 open-world maps and 45 dungeon geometries,

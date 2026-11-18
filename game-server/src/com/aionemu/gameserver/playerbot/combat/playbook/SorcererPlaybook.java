@@ -18,6 +18,7 @@ import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 import com.aionemu.gameserver.model.team.group.PlayerGroup;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.social.BotGroupManager;
+import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -627,7 +628,7 @@ final class SorcererPlaybook implements ClassPlaybook {
 		PlayerGroup group = bot.getPlayerGroup();
 		if (group == null || group.size() < FULL_GROUP)
 			return false;
-		return group.getMembers().stream().anyMatch(member -> member.getPlayerClass() == PlayerClass.TEMPLAR && !member.isDead());
+		return BotRole.groupTank(group) != null;
 	}
 
 	/**

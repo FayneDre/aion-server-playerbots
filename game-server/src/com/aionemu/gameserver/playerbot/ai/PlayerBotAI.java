@@ -510,7 +510,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 		// keeping it alive is the whole of the job. It still defends itself: {@link #findAttacker} is checked ahead of all of this, so something that
 		// comes for the healer is still answered.
 		// The tank chooses what the group fights, so it marks before it looks for something to assist: with the mark up it assists its own choice
-		if (BotRole.of(getOwner()) == BotRole.TANK)
+		if (BotRole.isGroupTank(getOwner()))
 			BotMarks.markWeakestIfNone(getOwner());
 		boolean healer = BotRole.of(getOwner()) == BotRole.HEALER;
 		Creature assisted = healer ? null : BotGroupManager.targetToAssist(getOwner(), this::isIgnored);
@@ -1537,7 +1537,7 @@ public class PlayerBotAI extends AITemplate<Player> implements BotCombatMemory.H
 	 *         every other role and for the same tank the moment the fight is over.
 	 */
 	private boolean mustHoldTheLine(boolean following) {
-		return following && BotRole.of(getOwner()) == BotRole.TANK && BotGroupManager.targetToAssist(getOwner()) != null;
+		return following && BotRole.isGroupTank(getOwner()) && BotGroupManager.targetToAssist(getOwner()) != null;
 	}
 
 	/** @return see {@link FightVerdicts#healthyEnoughToFight}. */

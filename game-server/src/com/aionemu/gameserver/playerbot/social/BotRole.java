@@ -1,7 +1,12 @@
 package com.aionemu.gameserver.playerbot.social;
 
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+
 import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
+import com.aionemu.gameserver.model.team.TemporaryPlayerTeam;
 
 /**
  * What a class is <i>for</i> when it stands in a group.
@@ -33,11 +38,12 @@ public enum BotRole {
 	 *         already full, which is the behaviour this whole exercise exists to stop.
 	 *         <p>
 	 *         A gladiator is {@code DAMAGE} and not a second tank. It can hold a mob, but putting two classes on the taunts means two bots fighting
-	 *         each other for the same aggro, and the group has one tank.
+	 *         each other for the same aggro, and the group has one tank. The aethertech is a tank, as the templar is, and a group holding both names
+	 *         one of them: see {@link #groupTank}.
 	 */
 	public static BotRole of(PlayerClass playerClass) {
 		return switch (playerClass) {
-			case TEMPLAR -> TANK;
+			case TEMPLAR, RIDER -> TANK;
 			case CLERIC -> HEALER;
 			case CHANTER, BARD -> SUPPORT;
 			// Everything else, the six starting classes included. A character under ten is not in a group doing anything that needs a role, and
@@ -48,5 +54,42 @@ public enum BotRole {
 
 	public static BotRole of(Player bot) {
 		return of(bot.getPlayerClass());
+	}
+
+	/** The tank classes in the order a group takes its tank from: the templar, watched in game, before the aethertech. */
+	private static final List<PlayerClass> TANK_ORDER = List.of(PlayerClass.TEMPLAR, PlayerClass.RIDER);
+
+	/** One member of a group as the choice of its tank sees it. */
+	public record Seat(int objectId, PlayerClass playerClass, boolean dead) {
+	}
+
+	/**
+	 * @return The member that tanks the group: a living templar if it has one, else a living aethertech, the lowest object id of each so that every
+	 *         member names the same one whatever order it reads the group in. Null when no tank of the group is standing. Two tanks on the taunts would
+	 *         pull the same enemy back and forth, so the other one fights as damage until this one dies.
+	 */
+	public static Seat groupTank(Collection<Seat> seats) {
+		return seats.stream().filter(seat -> !seat.dead() && TANK_ORDER.contains(seat.playerClass()))
+			.min(Comparator.comparingInt((Seat seat) -> TANK_ORDER.indexOf(seat.playerClass())).thenComparingInt(Seat::objectId)).orElse(null);
+	}
+
+	/** @return The member that tanks the team, bot or player, or null when it has none standing. */
+	public static Player groupTank(TemporaryPlayerTeam<?> team) {
+		if (team == null)
+			return null;
+		List<Player> members = team.getMembers();
+		Seat tank = groupTank(members.stream().map(member -> new Seat(member.getObjectId(), member.getPlayerClass(), member.isDead())).toList());
+		return tank == null ? null : members.stream().filter(member -> member.getObjectId() == tank.objectId()).findFirst().orElse(null);
+	}
+
+	/**
+	 * @return true if the bot is the one holding what its group fights: a tank alone, or its group's tank. What every rule written for "the tank" asks,
+	 *         rather than the role, which an aethertech beside a templar has too.
+	 */
+	public static boolean isGroupTank(Player bot) {
+		if (of(bot) != TANK)
+			return false;
+		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
+		return team == null || bot.equals(groupTank(team));
 	}
 }

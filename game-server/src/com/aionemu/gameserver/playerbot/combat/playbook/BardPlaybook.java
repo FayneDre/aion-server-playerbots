@@ -673,6 +673,7 @@ final class BardPlaybook implements ClassPlaybook {
 			s.debuffedCount++;
 			debuffed = bot;
 		}
+		Player groupTank = BotRole.groupTank(bot.getCurrentTeam());
 		for (Player mate : BotGroupManager.membersToTendTo(bot)) {
 			int mateHp = mate.getLifeStats().getHpPercentage();
 			countHurt(s, mateHp);
@@ -683,7 +684,7 @@ final class BardPlaybook implements ClassPlaybook {
 			if (mate.getPlayerClass() == PlayerClass.CLERIC)
 				s.clericInGroup = true;
 			BotRole role = BotRole.of(mate);
-			if (role == BotRole.TANK && tank == null) {
+			if (mate.equals(groupTank)) {
 				tank = mate;
 				s.tankHp = mateHp;
 				s.tankHasRejuvenation = BotSkillManager.isCovered(bot, mate, Move.HYMN_OF_REJUVENATION.group);

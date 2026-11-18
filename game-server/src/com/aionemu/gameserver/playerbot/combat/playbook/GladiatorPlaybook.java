@@ -8,7 +8,6 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.aionemu.gameserver.model.PlayerClass;
 import com.aionemu.gameserver.model.gameobjects.Creature;
 import com.aionemu.gameserver.model.gameobjects.Npc;
 import com.aionemu.gameserver.model.gameobjects.player.Player;
@@ -18,6 +17,7 @@ import com.aionemu.gameserver.playerbot.combat.BotAttackManager;
 import com.aionemu.gameserver.playerbot.combat.BotCombatMemory;
 import com.aionemu.gameserver.playerbot.combat.BotSkillManager;
 import com.aionemu.gameserver.playerbot.combat.BotTargetSelector;
+import com.aionemu.gameserver.playerbot.social.BotRole;
 import com.aionemu.gameserver.skillengine.effect.AbnormalState;
 import com.aionemu.gameserver.skillengine.model.SkillTemplate;
 import com.aionemu.gameserver.utils.PositionUtil;
@@ -625,20 +625,14 @@ final class GladiatorPlaybook implements ClassPlaybook {
 		return new Offence(bot.getCommonData().getDp(), inReach, distance, chainToFollow, BotSkillManager.isUp(bot, Move.BERSERKING.group), secondToPull);
 	}
 
-	/** @return The tank-dead mode's view of the gladiator's group: a group of six with a templar in it, every templar of it dead. */
+	/** @return The tank-dead mode's view of the gladiator's group: a group of six with a tank in it, templar or aethertech, every tank of it dead. */
 	private static Group groupOf(Player bot, Creature target) {
 		boolean defenseUp = BotSkillManager.isUp(bot, Move.DEFENSE_PREPARATION.group);
 		PlayerGroup group = bot.getPlayerGroup();
 		if (group == null || group.size() < FULL_GROUP)
 			return new Group(false, defenseUp, false, false);
-		boolean templar = false, templarStanding = false;
-		for (Player member : group.getMembers()) {
-			if (member.getPlayerClass() == PlayerClass.TEMPLAR) {
-				templar = true;
-				templarStanding |= !member.isDead();
-			}
-		}
-		boolean tankDead = templar && !templarStanding;
+		boolean hasTank = group.getMembers().stream().anyMatch(member -> BotRole.of(member) == BotRole.TANK);
+		boolean tankDead = hasTank && BotRole.groupTank(group) == null;
 		boolean targetElsewhere = tankDead && target != null && target.getTarget() != null && !bot.equals(target.getTarget());
 		return new Group(tankDead, defenseUp, targetElsewhere, tankDead && BotSkillManager.isChainOpen(bot, BODY_CHAIN));
 	}

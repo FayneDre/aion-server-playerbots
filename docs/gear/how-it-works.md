@@ -45,8 +45,9 @@ Two rules bend those orders with level:
 Accessories are the main source of magic resistance, which is the whole reason for filling those seven slots
 from level 20 rather than leaving them empty.
 
-Gunner and Aethertech have no authored order — the source says so plainly. Both cast as far as the engine is
-concerned, so both take the generic magical order until somebody who plays them says otherwise.
+The gunner and the aethertech have orders from the data rather than from a player of the class: every attack of
+both is a spell, so magical accuracy leads; the aethertech, a tank, then wants health and the mana its two shields
+take blows from ([aethertech-plan.md](../classes/plans/aethertech-plan.md)).
 
 **A weighted sum needs the stats on one scale**, or it is the item-level proxy in disguise: the game hands them
 out in wildly different sizes, so summing them raw makes any piece with HP beat any piece with attack whatever

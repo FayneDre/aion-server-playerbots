@@ -87,14 +87,8 @@ public final class BotStations {
 	 *         way. Seen in play as a group with no templar running in circles behind a boss that followed it; the group then does what it did before positioning existed.
 	 */
 	public static boolean hasTank(Player bot) {
-		TemporaryPlayerTeam<?> team = bot.getCurrentTeam();
-		if (team == null)
-			return false;
-		for (Player member : team.getMembers()) {
-			if (!member.equals(bot) && !member.isDead() && BotRole.of(member) == BotRole.TANK)
-				return true;
-		}
-		return false;
+		Player tank = BotRole.groupTank(bot.getCurrentTeam());
+		return tank != null && !tank.equals(bot);
 	}
 
 	/**
