@@ -199,6 +199,9 @@ class AssassinPlaybookTest {
 		Situation s = fresh();
 		s.targetOnMe = true;
 		assertEquals(Move.CALMING_WHISPER, AssassinPlaybook.decideHate(s));
+		s.targetIsPlayer = true;
+		assertNull(AssassinPlaybook.decideHate(s), "a player keeps no hate to lower");
+		s.targetIsPlayer = false;
 		s.attackersOnMe = AssassinPlaybook.ENEMIES_ON_IT;
 		assertEquals(Move.SHIMMERBOMB, AssassinPlaybook.decideHate(s));
 		s.attackersOnMe = 1;

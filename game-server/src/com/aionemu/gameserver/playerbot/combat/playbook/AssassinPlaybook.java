@@ -326,13 +326,16 @@ final class AssassinPlaybook implements ClassPlaybook {
 		return null;
 	}
 
-	/** In a group, the hate it should not hold: Shimmerbomb with two on it, Calming Whisper when its target has turned to it. Alone, the blinding alone. */
+	/**
+	 * In a group, the hate it should not hold: Shimmerbomb with two on it, Calming Whisper when a monster it hits has turned to it (a player keeps no
+	 * hate). Alone, the blinding alone.
+	 */
 	static Move decideHate(Situation s) {
 		if (s.controlled || s.followedChainOpen)
 			return null;
 		if (s.attackersOnMe >= ENEMIES_ON_IT && s.ready.contains(Move.SHIMMERBOMB))
 			return Move.SHIMMERBOMB;
-		if (s.inTeam && s.targetOnMe && s.ready.contains(Move.CALMING_WHISPER))
+		if (s.inTeam && s.targetOnMe && !s.targetIsPlayer && s.ready.contains(Move.CALMING_WHISPER))
 			return Move.CALMING_WHISPER;
 		return null;
 	}
@@ -539,6 +542,8 @@ final class AssassinPlaybook implements ClassPlaybook {
 			s.rune = BotSkillManager.runeLevel(target);
 			s.targetHp = target.getLifeStats().getHpPercentage();
 			s.targetOnMe = bot.equals(target.getTarget());
+			// a player keeps no aggro list for the reading above: one whose target is the bot is hitting it
+			s.assailed |= s.targetOnMe && target instanceof Player;
 			s.targetCasts = RangerPlaybook.kindOf(target) == RangerPlaybook.EnemyKind.CASTER;
 			s.targetIsPlayer = target instanceof Player;
 			NpcRating rating = target instanceof Npc npc ? npc.getObjectTemplate().getRating() : null;

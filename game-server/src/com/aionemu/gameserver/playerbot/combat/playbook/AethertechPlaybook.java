@@ -567,6 +567,8 @@ final class AethertechPlaybook implements ClassPlaybook {
 		Creature second = null, loose = null;
 		if (target != null) {
 			s.targetOnMe = bot.equals(target.getTarget());
+			// a player keeps no aggro list for the reading above: one whose target is the bot is hitting it
+			s.assailed |= s.targetOnMe && target instanceof Player;
 			s.targetCasts = RangerPlaybook.kindOf(target) == RangerPlaybook.EnemyKind.CASTER;
 			s.targetIsPlayer = target instanceof Player;
 			NpcRating rating = target instanceof Npc npc ? npc.getObjectTemplate().getRating() : null;
