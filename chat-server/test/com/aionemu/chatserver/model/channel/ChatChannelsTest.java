@@ -68,6 +68,6 @@ class ChatChannelsTest {
 	private static Channel join(Race race, String typeAndMeta) {
 		ChatClient reader = new ChatClient(race.ordinal() + 100, null, "account", "Reader", race, (byte) 0);
 		String identifier = "@\u0001" + typeAndMeta + "\u0001" + GAME_SERVER + "." + race.getRaceId() + ".AION.KOR";
-		return ChatChannels.getOrCreate(reader, identifier);
+		return ChatChannels.join(reader, identifier);
 	}
 }
