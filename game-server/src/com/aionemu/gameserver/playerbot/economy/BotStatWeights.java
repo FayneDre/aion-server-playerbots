@@ -200,7 +200,9 @@ public class BotStatWeights {
 			// pushes, and a chanter does a little of both while healing.
 			case TEMPLAR -> List.of(StatEnum.PHYSICAL_CRITICAL, StatEnum.BLOCK, StatEnum.MAGICAL_RESIST, StatEnum.MAXHP);
 			case GLADIATOR -> List.of(StatEnum.PHYSICAL_CRITICAL, StatEnum.PHYSICAL_ATTACK, StatEnum.PARRY, StatEnum.MAGICAL_RESIST);
-			case ASSASSIN, RANGER -> List.of(StatEnum.PHYSICAL_CRITICAL, StatEnum.PHYSICAL_ATTACK);
+			case RANGER -> List.of(StatEnum.PHYSICAL_CRITICAL, StatEnum.PHYSICAL_ATTACK);
+			// accuracy after, from the data rather than a player of the class: a blow that misses carves no rune (docs/classes/plans/assassin-plan.md)
+			case ASSASSIN -> List.of(StatEnum.PHYSICAL_CRITICAL, StatEnum.PHYSICAL_ATTACK, StatEnum.PHYSICAL_ACCURACY);
 			case CHANTER -> List.of(StatEnum.PHYSICAL_CRITICAL, StatEnum.PARRY);
 			// Mana and health ahead of anything offensive, deliberately: a cleric that runs dry or dies is a group wiped, and a cleric that does
 			// less damage is a fight that takes longer. Survivability and fuel are its contribution.

@@ -15,7 +15,7 @@ class BotPlaybooksTest {
 
 	private static final Set<PlayerClass> WITH_A_PLAYBOOK = Set.of(PlayerClass.TEMPLAR, PlayerClass.CHANTER, PlayerClass.RANGER, PlayerClass.CLERIC,
 		PlayerClass.GLADIATOR, PlayerClass.SORCERER, PlayerClass.BARD, PlayerClass.SPIRIT_MASTER, PlayerClass.GUNNER,
-		PlayerClass.RIDER);
+		PlayerClass.RIDER, PlayerClass.ASSASSIN);
 
 	@Test
 	void everyClassHasAPlaybook() {

@@ -33,8 +33,8 @@ target and conditions as each candidate is tried, so trying is the question. Rul
 a bystander. A class that heals keeps 25 % of its mana for it.
 
 - **A playbook** (`combat/playbook`, one per class: templar, chanter, cleric, ranger, gladiator, sorcerer from a guide; bard, spirit master, gunner,
-  aethertech from the data) is a pure `decide` over the bot's inputs, rules by skill **group**; what it remembers of one bot's fight is in
-  `BotCombatMemory`, which the AI hands over. The assassin plays the generic order alone.
+  aethertech, assassin from the data) is a pure `decide` over the bot's inputs, rules by skill **group**; what it remembers of one bot's fight is in
+  `BotCombatMemory`, which the AI hands over.
 - **Roles** (`BotRole`, authored: tank, healer, support, damage) change things only in a group ([group-roles.md](group-roles.md)).
 
 ## Where it stands

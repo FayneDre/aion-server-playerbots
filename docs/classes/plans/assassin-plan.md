@@ -1,6 +1,6 @@
 # Assassin: implementation plan
 
-Status: not started. Written on 18 November 2026, **without a guide**, as the bard's, the spirit master's, the gunner's and the aethertech's were
+Status: built, unverified: in game (milestones 0 to 10 built on 18 November, see "What was built"). Written on 18 November 2026, **without a guide**, as the bard's, the spirit master's, the gunner's and the aethertech's were
 ([aethertech-plan.md](aethertech-plan.md)): every rule from the data, or marked *(play)* when it is judgement.
 
 ## Where the rules come from
@@ -136,6 +136,22 @@ Herb Treatment and MP Recovery. Kept from it: Searching Eye and Advanced Eye, Wi
 
 Tests per milestone, pure as the others' are; then a watch in game: an assassin alone in Eltnen and one in a group with `//bot debug combat` on,
 the rune level at each burst in the log, and its damage against the measure of the roadmap's theme 3.
+
+## What was built (18 November)
+
+`AssassinPlaybook`, `BotSkillManager.runeLevel`, the stat order (accuracy third), `glossary/assassin.md`; 29 tests (`AssassinPlaybookTest`,
+`AssassinPlaybookDataTest`). Milestone 0 read from the data:
+
+- **One rune**: every carver and burst of the class names `SIGNET1` (the data test holds every `AS_` template to it).
+- **Binding Rune's added effect** is skill 8224, which no template of this server's data defines: it bursts and nothing more.
+- **Fangdrop Stab and Blind Side** put the assassin behind its target themselves (`movebehind`); no skill of the class asks for its back but
+  Surprise Attack's extra damage (`backdamage`).
+- **Break Away** cleanses two effect ids, a snare (20007) and a throw (20003): not a root, which Flash of Speed takes.
+- **Shadow Walk and Hide ask to be out of a fight** (`combatcheck`), so the way out alone is Focused Evasion as it breaks off, not a hide; the
+  generic approach keeps them for arriving unseen. Tactical Retreat's proc is not read, and left to the generic order.
+
+Differences from the milestones above, each *(play)*: Ripclaw Strike only alone (it adds hate) and Massacre only with two or more engaged (an area);
+Shimmerbomb with two on it alone too; nothing but Surprise Attack or Ambush is cast from hiding, not even the poison.
 
 ## Questions for a player of the class
 

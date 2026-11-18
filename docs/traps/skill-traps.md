@@ -65,7 +65,7 @@ lost went from 28 of 162 to 6 of 178, the six all to a target that died first.
 `ChainSkills.updateChain` gives a skill without a chain category an empty one, which ends the current chain, and a refused link changes nothing
 (`ChainCondition.validate` only checks). A playbook runs before the generic order on every tick (`SkillOrder.Step.PLAYBOOK`), so whatever it casts
 after an opener the generic order would carry on closes that chain: each playbook keeps a list of those chains and casts nothing but a defence while
-one is open (the sorcerer's `FOLLOWED_CHAINS`, the bard's `DAMAGE_CHAINS`, the spirit master's, the gunner's and the aethertech's). The chain state keeps its category
+one is open (the sorcerer's `FOLLOWED_CHAINS`, the bard's `DAMAGE_CHAINS`, the spirit master's, the gunner's, the aethertech's and the assassin's). The chain state keeps its category
 until the next cast, so `BotSkillManager.isChainOpen` also reads the window (the data's longest, 6.5 s: a link's time plus 1.5 s): without it a chain whose next link the bot
 did not know stayed open, and a playbook that claims the opener and waits for the chain to close never cast again.
 

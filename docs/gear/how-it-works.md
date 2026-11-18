@@ -27,7 +27,8 @@ The orders below are the author's, by class and in priority order:
 | --- | --- |
 | Templar | physical crit (to 500), block / magic resist, HP |
 | Gladiator | physical crit (to 500), attack, parry / magic resist |
-| Assassin, Ranger | physical crit (to 500), attack |
+| Ranger | physical crit (to 500), attack |
+| Assassin | physical crit (to 500), attack, accuracy |
 | Chanter | physical crit (to 500), parry |
 | Cleric | MP, HP |
 | Sorcerer, Spiritmaster, Bard | magical accuracy, magical boost |

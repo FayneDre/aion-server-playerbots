@@ -1229,6 +1229,18 @@ public class BotSkillManager {
 		return bot.getChainSkills().canContinue(category, 1, LONGEST_CHAIN_WINDOW_MILLIS);
 	}
 
+	/** The stack of an assassin's rune on its target, which every carver and burst of the class names. */
+	public static final String RUNE_STACK = "SIGNET1";
+
+	/**
+	 * @return The level of the assassin's rune on the creature, 0 to 5, or 0 when it carries none. Read as the engine reads it: the rune is an effect of
+	 *         stack {@link #RUNE_STACK} whose skill level is the rune's ({@code CarveSignetEffect}, {@code SignetBurstEffect}).
+	 */
+	public static int runeLevel(Creature creature) {
+		Effect rune = creature.getEffectController().getAbnormalEffect(RUNE_STACK);
+		return rune == null ? 0 : rune.getSkillLevel();
+	}
+
 	/** @return true if an effect of that stack group is on the bot, which for a buff is the same name as its skill group. */
 	public static boolean isUp(Player bot, String group) {
 		return bot.getEffectController().getAbnormalEffect(group) != null;
