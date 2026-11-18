@@ -39,5 +39,5 @@ spend it at half). `BotPlaybooks.of(bot)` gives the class's one shared instance,
 
 The guide first, or without one the data and judgement marked *(play)*, as the bard was; then: name its skills in French and English ([glossary/](glossary/README.md), `tools/skill-lookup.ps1 -Name`), map each to its
 group with `skill-lookup.ps1`, write the rules as a pure `decide` with its tests, the data test, then `act`. A plan per class in `plans/` while it is
-built, with milestones verifiable one at a time. The assassin has none yet ([../roadmap.md](../roadmap.md),
+built, with milestones verifiable one at a time. The assassin is planned ([plans/assassin-plan.md](plans/assassin-plan.md), [../roadmap.md](../roadmap.md),
 "Group play").

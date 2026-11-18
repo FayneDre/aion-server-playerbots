@@ -112,7 +112,8 @@ cleric, ranger, gladiator, sorcerer) and the bard's built from the data (unverif
    deaths for the other 21. Then the **assassin** (runes and chains). Without a guide for now (decided 15 November): each from the data, judgement marked as such, with its data test; the bard's,
    the spirit master's, the gunner's and the aethertech's are built, to watch in game ([bard-plan.md](classes/plans/bard-plan.md),
    [spirit-master-plan.md](classes/plans/spirit-master-plan.md), [gunner-plan.md](classes/plans/gunner-plan.md),
-   [aethertech-plan.md](classes/plans/aethertech-plan.md): a tank now, one tank named per group); the assassin next.
+   [aethertech-plan.md](classes/plans/aethertech-plan.md): a tank now, one tank named per group); the assassin next, planned
+   ([assassin-plan.md](classes/plans/assassin-plan.md): its runes burst at any level today, a tenth of their damage at none).
 2. **Threat**: damage waits for the tank's first blows, and pauses when its threat nears the tank's (about 85 %) until it falls back (about 70 %);
    today it opens at the same instant and can pull the mob off (`AggroList.getTarget(MOST_HATED)`).
 3. **The tank's tools**: a pull from range on the player's order, the monster brought back to the group; an area taunt once loose monsters reach a
